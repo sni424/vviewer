@@ -1,10 +1,13 @@
-import { OrbitControls } from '@react-three/drei'
+import { Environment, OrbitControls } from '@react-three/drei'
 import { Canvas, RootState, useThree } from '@react-three/fiber'
 import { atom, useAtom, useAtomValue, useSetAtom } from 'jotai';
 import { useEffect, useState } from 'react';
 import VGLTFLoader from './VGLTFLoader';
 import ObjectViewer from './ObjectViewer';
-import { formatNumber, groupInfo } from './utils';
+import { envAtom, loadHistoryAtom, sourceAtom, threeExportsAtom } from './atoms';
+import SceneInfo from './SceneInfo';
+import useFiles from './useFiles';
+import { Texture } from 'three';
 
 declare global {
   interface Map<K, V> {
@@ -34,71 +37,13 @@ const useForceUpdate = () => {
   const value = useAtomValue(forceUpdateAtom);
 }
 
-const sourceAtom = atom<{ name: string; url: string; file: File }[]>([]);
-const loadHistoryAtom = atom<Map<string, { name: string; start: number; end: number; file: File, uuid: string; }>>(new Map());
-const threeExportsAtom = atom<RootState>();
+
 
 const Tabs = ["scene", "tree"] as const;
 type Tab = typeof Tabs[number];
 
-const SceneInfo = () => {
-  const { files, loadingFiles } = useFiles();
-  const threeExports = useAtomValue(threeExportsAtom);
-  if (!threeExports) {
-    return null;
-  }
 
-  const { scene } = threeExports;
-  const totals = groupInfo(scene);
 
-  return <div style={{
-    width: "100%",
-    height: "100%",
-    overflow: "auto",
-    padding: 8,
-  }}>
-    <section>
-      <strong>Files</strong> <span style={{ color: "gray" }}>{files.length}개</span>
-      <ul style={{ paddingLeft: 4 }}>
-        {files.map(({ file, name, start, end }, index) => {
-          return <li key={`파일로드-${index}-${name}`} style={{ marginTop: 6, fontSize: 14 }}>
-            <div>{name}({Math.round(file.size / (1024 * 1024))}mb){end === 0 ? " : loading..." : ` : ${formatNumber(end - start)}ms`}</div>
-          </li>
-        })}
-      </ul>
-    </section>
-    <section style={{ marginTop: 16 }}>
-      <strong>Scene</strong>
-      <div style={{ paddingLeft: 4 }}>
-        총 메쉬 : {formatNumber(totals.meshCount)}개
-      </div>
-      <div style={{ paddingLeft: 4 }}>
-        총 삼각형 : {formatNumber(totals.triangleCount)}개
-      </div>
-      <div style={{ paddingLeft: 4 }}>
-        총 버텍스 : {formatNumber(totals.vertexCount)}개
-      </div>
-
-      <ul style={{ paddingLeft: 4, marginTop: 8 }}>
-        {scene.children.map((child, index) => {
-          return <li key={"info-" + child.uuid} style={{ fontSize: 14 }}>
-            {/* <div>{child.uuid}</div> */}
-            <div style={{ fontSize: 15, fontWeight: "bold" }}>{child.name}</div>
-            <div style={{ paddingLeft: 8 }}>
-              메쉬 : {formatNumber(groupInfo(child).meshCount)}개
-            </div>
-            <div style={{ paddingLeft: 8 }}>
-              삼각형 : {formatNumber(groupInfo(child).triangleCount)}개
-            </div>
-            <div style={{ paddingLeft: 8 }}>
-              버텍스 : {formatNumber(groupInfo(child).vertexCount)}개
-            </div>
-          </li>
-        })}
-      </ul>
-    </section>
-  </div>
-}
 
 const SceneTree = () => {
   const threeExports = useAtomValue(threeExportsAtom);
@@ -149,15 +94,47 @@ const ThePanel = () => {
   </div>
 }
 
+function MyEnvironment() {
+  const env = useAtomValue(envAtom);
+  if (env.select === "none") {
+    return null;
+  }
+
+  const intensity = env.intensity ?? 1;
+
+  if (env.select === "preset") {
+    return <Environment preset={env.preset ?? "apartment"} environmentIntensity={intensity} />
+  }
+
+  if (env.select === "custom") {
+    if (!env.url) {
+      return null;
+    }
+    return <Environment files={env.url} environmentIntensity={intensity} />
+  }
+}
+
 function Renderer() {
   const threeExports = useThree();
   const sources = useAtomValue(sourceAtom);
   const setLoadHistoryAtom = useSetAtom(loadHistoryAtom);
   const setThreeExportsAtom = useSetAtom(threeExportsAtom);
-  const { scene } = threeExports;
+  const { scene, camera } = threeExports;
 
   useEffect(() => {
     setThreeExportsAtom(threeExports);
+    camera.position.set(1, 1, 1);
+    const emptyEnvironment = new Texture();
+    const img = new ImageData(1, 1);
+    img.data[0] = 255;
+    img.data[1] = 0;
+    img.data[2] = 0;
+    emptyEnvironment.colorSpace = "sRGB";
+    emptyEnvironment.image = img;
+    emptyEnvironment.needsUpdate = true;
+    scene.environment = emptyEnvironment;
+    // scene.environment = 
+
   }, []);
 
   useEffect(() => {
@@ -195,6 +172,7 @@ function Renderer() {
       <meshStandardMaterial color="hotpink" />
     </mesh> */}
     <OrbitControls />
+    <MyEnvironment></MyEnvironment>
   </>
 }
 
@@ -266,21 +244,7 @@ const useDragAndDrop = () => {
   }
 }
 
-const useFiles = () => {
-  const loadingHistory = useAtomValue(loadHistoryAtom);
-  const files = loadingHistory.reduce((returnFiles, value) => {
-    returnFiles.files.push(value);
-    if (value.end === 0) {
-      returnFiles.loadingFiles.push(value);
-    }
-    return returnFiles;
-  }
-    , {
-      files: [] as { name: string; start: number; end: number; file: File; }[],
-      loadingFiles: [] as { name: string; start: number; end: number; }[],
-    });
-  return files;
-};
+
 
 function Loading() {
   // const loadings = useAtomValue(loadingsAtom);
