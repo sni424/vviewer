@@ -1,6 +1,6 @@
 import { OrbitControls } from '@react-three/drei'
 import { Canvas, RootState, useThree } from '@react-three/fiber'
-import { atom, useAtomValue, useSetAtom } from 'jotai';
+import { atom, useAtom, useAtomValue, useSetAtom } from 'jotai';
 import { useEffect, useState } from 'react';
 import VGLTFLoader from './VGLTFLoader';
 import ObjectViewer from './ObjectViewer';
@@ -25,6 +25,15 @@ Map.prototype.reduce = function <K, V, T>(
 };
 
 const selectedAtom = atom<string[]>([]);
+const forceUpdateAtom = atom<number>(0);
+const setForceUpdate = () => {
+  const setForceUpdateAtom = useSetAtom(forceUpdateAtom);
+  setForceUpdateAtom(prev => prev + 1);
+}
+const useForceUpdate = () => {
+  const value = useAtomValue(forceUpdateAtom);
+}
+
 const sourceAtom = atom<{ name: string; url: string; file: File }[]>([]);
 const loadHistoryAtom = atom<Map<string, { name: string; start: number; end: number; file: File, uuid: string; }>>(new Map());
 const threeExportsAtom = atom<RootState>();
@@ -32,7 +41,7 @@ const threeExportsAtom = atom<RootState>();
 const Tabs = ["scene", "tree"] as const;
 type Tab = typeof Tabs[number];
 
-const FileInfo = () => {
+const SceneInfo = () => {
   const { files, loadingFiles } = useFiles();
   const threeExports = useAtomValue(threeExportsAtom);
   if (!threeExports) {
@@ -91,6 +100,18 @@ const FileInfo = () => {
   </div>
 }
 
+const SceneTree = () => {
+  const threeExports = useAtomValue(threeExportsAtom);
+  if (!threeExports) {
+    return null;
+  }
+
+  const { scene } = threeExports;
+
+  // return <ObjectViewer data={scene}></ObjectViewer>
+  return null
+}
+
 const ThePanel = () => {
   const loadHistory = useAtomValue(loadHistoryAtom);
   const [tab, setTab] = useState<Tab>(
@@ -111,7 +132,7 @@ const ThePanel = () => {
       // alignItems: "center",
       display: "grid",
       gridTemplateColumns: "repeat(auto-fit, minmax(0, 1fr))", /* Equal width for each element */
-      width:"100%",
+      width: "100%",
     }}>
       {Tabs.map((t) => {
         return <button style={{ height: "100%", textTransform: "capitalize" }} key={t} onClick={() => setTab(t)}>{t}</button>
@@ -122,7 +143,7 @@ const ThePanel = () => {
       minHeight: 0,
     }}>
       {
-        tab === "scene" ? <FileInfo /> : null
+        tab === "scene" ? <SceneInfo /> : <SceneTree></SceneTree>
       }
     </div>
   </div>
@@ -360,6 +381,7 @@ function App() {
       </div>
       <div style={{
         width: "25%",
+        maxWidth: "400px",
         minWidth: "240px",
         height: "100%",
       }}>
