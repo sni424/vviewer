@@ -1,7 +1,7 @@
-import { useAtom, useAtomValue } from 'jotai';
+import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import useFiles from './useFiles';
 import { formatNumber, groupInfo, toNthDigit } from './utils';
-import { cameraMatrixAtom, cameraModeAtom, envAtom, threeExportsAtom } from './atoms';
+import { cameraMatrixAtom, cameraModeAtom, envAtom, selectedAtom, threeExportsAtom } from './atoms';
 import { useEffect, useState } from 'react';
 import { get, set } from 'idb-keyval';
 import { Euler, Quaternion, THREE, Vector3 } from './VTHREE';
@@ -51,6 +51,7 @@ const SceneInfo = () => {
     const threeExports = useAtomValue(threeExportsAtom);
     const [envUrl, setEnvUrl] = useEnvUrl();
     const cameraMatrix = useAtomValue(cameraMatrixAtom);
+    const [selecteds, setSelecteds] = useAtom(selectedAtom);
 
     if (!threeExports) {
         return null;
@@ -84,7 +85,7 @@ const SceneInfo = () => {
                             saveString(output, `scene-${new Date().toISOString()}.gltf`);
                         }
                     })
-                }}>내보내기</button>
+                }}>GLTF 내보내기</button>
             </div>
 
 
@@ -198,23 +199,41 @@ const SceneInfo = () => {
 
             <ul style={{ paddingLeft: 4, marginTop: 8 }}>
                 {scene.children.map((child, index) => {
-                    return <li key={"info-" + child.uuid} style={{ fontSize: 14 }}>
+                    if(child.type === "BoxHelper"){
+                        return null;
+                    }
+
+                    const info = groupInfo(child);
+                    if(info.nodeCount === 0){
+                        console.log(child);
+                        return null;
+                    }
+
+                    return <li key={"info-" + child.uuid} style={{ cursor: "pointer", fontSize: 13, border: selecteds.includes(child.uuid) ? "1px solid #888" : undefined }} onClick={() => {
+                        setSelecteds(prev => {
+                            if (prev.length === 1 && prev[0] === child.uuid) {
+                                return [];
+                            } else {
+                                return [child.uuid];
+                            }
+                        });
+                    }}>
                         {/* <div>{child.uuid}</div> */}
-                        <div style={{ fontSize: 15, fontWeight: "bold" }}>{child.name}</div>
+                        <div style={{ fontSize: 14, fontWeight: "bold" }} >{child.name}</div>
                         <div style={{ paddingLeft: 8 }}>
-                            노드 : {formatNumber(groupInfo(child).nodeCount)}개
+                            노드 : {formatNumber(info.nodeCount)}개
                         </div>
                         <div style={{ paddingLeft: 8 }}>
-                            오브젝트3D : {formatNumber(groupInfo(child).object3dCount)}개
+                            오브젝트3D : {formatNumber(info.object3dCount)}개
                         </div>
                         <div style={{ paddingLeft: 8 }}>
-                            메쉬 : {formatNumber(groupInfo(child).meshCount)}개
+                            메쉬 : {formatNumber(info.meshCount)}개
                         </div>
                         <div style={{ paddingLeft: 8 }}>
-                            삼각형 : {formatNumber(groupInfo(child).triangleCount)}개
+                            삼각형 : {formatNumber(info.triangleCount)}개
                         </div>
                         <div style={{ paddingLeft: 8 }}>
-                            버텍스 : {formatNumber(groupInfo(child).vertexCount)}개
+                            버텍스 : {formatNumber(info.vertexCount)}개
                         </div>
                     </li>
                 })}

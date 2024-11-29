@@ -1,10 +1,10 @@
 import { Box, Environment, OrbitControls, OrthographicCamera } from '@react-three/drei'
 import { Canvas, RootState, useThree } from '@react-three/fiber'
 import VGLTFLoader from './VGLTFLoader';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { Scene, Texture, THREE } from './VTHREE';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
-import { cameraMatrixAtom, envAtom, loadHistoryAtom, selectedAtom, sourceAtom, threeExportsAtom } from './atoms';
+import { cameraMatrixAtom, envAtom, loadHistoryAtom, materialSelectedAtom, selectedAtom, sourceAtom, threeExportsAtom } from './atoms';
 import { TransformControlsPlane } from 'three/examples/jsm/Addons.js';
 
 function MyEnvironment() {
@@ -210,6 +210,39 @@ const getIntersects = (
 function RendererContainer() {
     const threeExports = useAtomValue(threeExportsAtom);
     const [selected, setSelected] = useAtom(selectedAtom);
+    const setMaterialSelected = useSetAtom(materialSelectedAtom);
+    const lastClickRef = useRef<number>(0);
+
+    useEffect(() => {
+        if (!threeExports) {
+            return;
+        }
+        const keyHandler = (e: KeyboardEvent) => {
+            // on escape
+            if (e.key === "Escape") {
+                setSelected([]);
+                setMaterialSelected(null);
+                return;
+            }
+            if (e.ctrlKey && e.key.toLowerCase() === "a") {
+                e.preventDefault();
+                const everyObject: string[] = [];
+                threeExports?.scene.traverse(obj => {
+                    if (obj.type === "BoxHelper") {
+                        return;
+                    }
+                    everyObject.push(obj.uuid);
+                });
+                setSelected(everyObject);
+                return;
+            }
+        }
+
+        window.addEventListener("keydown", keyHandler);
+        return () => {
+            window.removeEventListener("keydown", keyHandler);
+        }
+    }, [threeExports]);
 
     return (
         <div style={{
@@ -217,9 +250,16 @@ function RendererContainer() {
             height: "100%",
         }}>
             <Canvas
-                onClick={(e) => {
+                onMouseDown={() => {
+                    lastClickRef.current = Date.now();
+                }}
+                onMouseUp={(e) => {
 
                     if (!threeExports) {
+                        return;
+                    }
+
+                    if (Date.now() - lastClickRef.current > 200) {
                         return;
                     }
 

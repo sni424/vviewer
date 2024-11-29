@@ -25,3 +25,5 @@ export const setForceUpdate = () => {
 export const useForceUpdate = () => {
     const value = useAtomValue(forceUpdateAtom);
 }
+
+export const materialSelectedAtom = atom<THREE.Material | null>(null);

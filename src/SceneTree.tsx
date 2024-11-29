@@ -1,17 +1,35 @@
-import { useAtom, useAtomValue } from "jotai";
-import { selectedAtom, threeExportsAtom } from "./atoms";
+import { useAtom, useAtomValue, useSetAtom } from "jotai";
+import { materialSelectedAtom, selectedAtom, threeExportsAtom } from "./atoms";
 import { useState } from "react";
 import { THREE } from "./VTHREE";
 
 const MeshChildren = ({ data }: { data: THREE.Mesh }) => {
     const material = data.material as THREE.Material;
+    const [mat, setMaterialSelected] = useAtom(materialSelectedAtom);
     return <div style={{
         paddingLeft: 28,
         display: "flex",
         justifyContent: "space-between",
-    }}>
+        cursor: "pointer",
+    }}
+        onClick={() => {
+
+            setMaterialSelected(prev => {
+                if (!prev) {
+                    return material;
+                }
+                if (prev.uuid === material.uuid) {
+                    return null;
+                } else {
+                    return material;
+                }
+            });
+
+        }}
+    >
         <div style={{
             fontSize: 11,
+            backgroundColor: mat?.uuid === material.uuid ? "#888" : undefined
         }}>{material.name}</div>
         <div style={{
             fontSize: 10,
@@ -37,9 +55,9 @@ const RecursiveNode = ({ data, depth = 0 }: { data: THREE.Object3D, depth: numbe
     }
 
 
-    return <div style={{ width: "100%", paddingLeft: depth * 4, fontSize: 12, marginTop: 2, backgroundColor: selecteds.includes(data.uuid) ? "#bbb" : undefined }}>
-        <div style={{ display: "flex", justifyContent: "space-between", textAlign: "center" }}>
-            <div>
+    return <div style={{ width: "100%", paddingLeft: depth * 4, fontSize: 12, marginTop: 2 }}>
+        <div style={{ width: "100%", display: "flex", justifyContent: "space-between", textAlign: "center", backgroundColor: selecteds.includes(data.uuid) ? "#bbb" : undefined }}>
+            <div style={{ flex: 1, minWidth: 0, display:"flex",justifyContent:"start" }}>
                 <div style={{
                     transform: open ? "rotate(90deg)" : "rotate(0deg)",
                     width: 16, height: 16,
@@ -50,10 +68,17 @@ const RecursiveNode = ({ data, depth = 0 }: { data: THREE.Object3D, depth: numbe
                     if (openable) {
                         setOpen(!open);
                     }
-                }}>&gt;</div> <span style={{
-                    color: data.name.length === 0 ? "#666" : "#000", cursor: "pointer"
+                }}>&gt;</div> <div style={{
+                    width: "calc(100% - 16px)",
+                    color: data.name.length === 0 ? "#666" : "#000", cursor: "pointer",
+                    // single line with ellipsis
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                    display: "inline-block"
                 }} onClick={(e) => {
-                    console.log(data.type, data.name, data.uuid)
+                    console.log(data);
+                    // console.log(data.type, data.name, data.uuid)
                     if (e.ctrlKey) {
                         if (selecteds.includes(data.uuid)) {
                             setSelecteds(selecteds.filter(uuid => uuid !== data.uuid));
@@ -67,11 +92,11 @@ const RecursiveNode = ({ data, depth = 0 }: { data: THREE.Object3D, depth: numbe
 
                 }}>
                     {data.name.length === 0 ? "<이름없음>" : data.name}
-                </span>
+                </div>
             </div>
 
             <div style={{ fontSize: 10, color: "#555" }}>{data.type}
-                <div style={{ cursor: "pointer", marginLeft: 4, width: 40, height: 16, border: "1px solid #999", backgroundColor: hidden?"#bbb":"white", textAlign: "center", display: "inline-block" }} onClick={() => {
+                <div style={{ cursor: "pointer", marginLeft: 4, width: 40, height: 16, border: "1px solid #999", backgroundColor: hidden ? "#bbb" : "white", textAlign: "center", display: "inline-block" }} onClick={() => {
                     if (threeExports) {
                         setHidden(!hidden);
                         data.visible = hidden;
@@ -83,7 +108,7 @@ const RecursiveNode = ({ data, depth = 0 }: { data: THREE.Object3D, depth: numbe
                 }}>{hidden ? "보이기" : "숨기기"}</div>
             </div>
         </div>
-        <div>
+        <div style={{ display:"flex",justifyContent:"end", flexDirection:"column"}}>
             {open && data.type === "Mesh" && <MeshChildren data={data as THREE.Mesh}></MeshChildren>}
             {open && data.children.map((child, index) => {
                 return <RecursiveNode key={index} data={child} depth={depth + 1}></RecursiveNode>
