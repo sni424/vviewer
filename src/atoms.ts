@@ -1,5 +1,5 @@
 import type { RootState } from "@react-three/fiber";
-import { atom } from "jotai";
+import { atom, useAtomValue, useSetAtom } from "jotai";
 import { THREE } from "./VTHREE";
 
 export const sourceAtom = atom<{ name: string; url: string; file: File }[]>([]);
@@ -15,3 +15,13 @@ export type Env = {
 export const envAtom = atom<Env>({ select: "none" });
 export const cameraMatrixAtom = atom<THREE.Matrix4>();
 export const cameraModeAtom = atom<"perspective" | "iso">("perspective");
+
+export const selectedAtom = atom<string[]>([]);
+export const forceUpdateAtom = atom<number>(0);
+export const setForceUpdate = () => {
+    const setForceUpdateAtom = useSetAtom(forceUpdateAtom);
+    setForceUpdateAtom(prev => prev + 1);
+}
+export const useForceUpdate = () => {
+    const value = useAtomValue(forceUpdateAtom);
+}
