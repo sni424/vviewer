@@ -1,13 +1,14 @@
-import { Environment, OrbitControls } from '@react-three/drei'
+import { Environment, OrbitControls, OrthographicCamera } from '@react-three/drei'
 import { Canvas, RootState, useThree } from '@react-three/fiber'
 import { atom, useAtom, useAtomValue, useSetAtom } from 'jotai';
 import { useEffect, useState } from 'react';
 import VGLTFLoader from './VGLTFLoader';
 import ObjectViewer from './ObjectViewer';
-import { cameraAtom, envAtom, loadHistoryAtom, sourceAtom, threeExportsAtom } from './atoms';
+import { cameraMatrixAtom, envAtom, loadHistoryAtom, sourceAtom, threeExportsAtom } from './atoms';
 import SceneInfo from './SceneInfo';
 import useFiles from './useFiles';
-import { Texture } from 'three';
+import { Quaternion, Texture } from 'three';
+import { Vector3 } from './VTHREE';
 
 declare global {
   interface Map<K, V> {
@@ -116,17 +117,24 @@ function MyEnvironment() {
   }
 }
 
+
+
 function Renderer() {
   const threeExports = useThree();
   const sources = useAtomValue(sourceAtom);
   const setLoadHistoryAtom = useSetAtom(loadHistoryAtom);
   const setThreeExportsAtom = useSetAtom(threeExportsAtom);
   const { scene, camera } = threeExports;
-  const setCameraAtom = useSetAtom(cameraAtom);
+  const setCameraAtom = useSetAtom(cameraMatrixAtom);
 
   useEffect(() => {
     setThreeExportsAtom(threeExports);
     camera.position.set(1, 1, 1);
+    const mat = camera.matrix.clone();
+    setCameraAtom(mat);
+
+
+
     const emptyEnvironment = new Texture();
     const img = new ImageData(1, 1);
     img.data[0] = 255;

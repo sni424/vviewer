@@ -1,10 +1,10 @@
 import { useAtom, useAtomValue } from 'jotai';
 import useFiles from './useFiles';
 import { formatNumber, groupInfo, toNthDigit } from './utils';
-import { cameraAtom, envAtom, threeExportsAtom } from './atoms';
+import { cameraMatrixAtom, cameraModeAtom, envAtom, threeExportsAtom } from './atoms';
 import { useEffect, useState } from 'react';
 import { get, set } from 'idb-keyval';
-import { Quaternion, Vector3 } from './VTHREE';
+import { Euler, Quaternion, THREE, Vector3 } from './VTHREE';
 
 const useEnvUrl = () => {
     const [envUrl, setEnvUrl] = useState<string | null>(null);
@@ -22,7 +22,32 @@ const SceneInfo = () => {
     const [env, setEnv] = useAtom(envAtom);
     const threeExports = useAtomValue(threeExportsAtom);
     const [envUrl, setEnvUrl] = useEnvUrl();
-    const cameraMatrix = useAtomValue(cameraAtom);
+    const cameraMatrix = useAtomValue(cameraMatrixAtom);
+    const [cameraMode, setCameraMode] = useAtom(cameraModeAtom);
+
+    useEffect(() => {
+        if (!threeExports) {
+            return;
+        }
+        const { camera, set } = threeExports;
+        if (cameraMode === "iso") {
+            const curMat = camera.matrix.clone();
+            const aspect = window.innerWidth / window.innerHeight;
+            const d = 20;
+            const isoCamera = new THREE.OrthographicCamera(-d * aspect, d * aspect, d, -d, 1, 1000);
+            // isoCamera.matrix.copy(curMat);
+            set({ camera: isoCamera });
+            // threeExports.camera = isoCamera;
+            console.log("아이소")
+        } else if (cameraMode === "perspective") {
+            const curMat = camera.matrix.clone();
+            const aspect = window.innerWidth / window.innerHeight;
+            const persCamera = new THREE.PerspectiveCamera(75, aspect, 0.1, 1000);
+            // persCamera.matrix.copy(curMat);
+            // threeExports.camera = persCamera;
+            set({ camera: persCamera });
+        }
+    }, [cameraMode]);
 
     if (!threeExports) {
         return null;
@@ -34,6 +59,9 @@ const SceneInfo = () => {
     const rotation = new Quaternion();
     const scale = new Vector3();
     cameraMatrix?.decompose(position, rotation, scale);
+    const rotationEuler = new Euler().setFromQuaternion(rotation);
+
+
 
     return <div style={{
         width: "100%",
@@ -79,13 +107,15 @@ const SceneInfo = () => {
                         <option value="sunset">일몰</option>
                         <option value="warehouse">창고</option>
                     </select>
-                    <div style={{ width: "50%" }}>
+                    <div style={{ width: "100%" }}>
                         <input type="range" min={0} max={1} step={0.01} value={env.intensity ?? 1} onChange={(e) => {
                             setEnv({
                                 ...env,
                                 intensity: parseFloat(e.target.value)
                             })
                         }}></input>
+                        <span style={{ marginLeft: 8, fontSize: 12 }}>Intensity : {toNthDigit(env.intensity ?? 1, 2)}</span>
+
                     </div>
                 </div>
             </>}
@@ -106,7 +136,16 @@ const SceneInfo = () => {
                         }
 
                     }} disabled={Boolean(envUrl) && env.url === envUrl}>{Boolean(envUrl) && env.url === envUrl ? "적용됨" : "적용하기"}</button>
+                    <div style={{ width: "100%" }}>
+                        <input type="range" min={0} max={1} step={0.01} value={env.intensity ?? 1} onChange={(e) => {
+                            setEnv({
+                                ...env,
+                                intensity: parseFloat(e.target.value)
+                            })
+                        }}></input>
+                        <span style={{ marginLeft: 8, fontSize: 12 }}>Intensity : {toNthDigit(env.intensity ?? 1, 2)}</span>
 
+                    </div>
                 </div>
             </>}
         </section>
@@ -154,10 +193,28 @@ const SceneInfo = () => {
 
         <section style={{ marginTop: 16 }}>
             <strong>카메라</strong>
+            {/* <select
+                style={{ textTransform: "capitalize" }}
+                value={cameraMode}
+                onChange={(e) => {
+                    // setEnv({ select: e.target.value as "none" | "preset" | "custom" });
+                    setCameraMode(e.target.value as "perspective" | "iso");
+                }}>
+                <option value="perspective">투시</option>
+                <option value="iso">아이소</option>
+            </select> */}
+
+
             <div>Position</div>
             <div style={{ paddingLeft: 8 }}>X: {toNthDigit(position.x, 4)}</div>
             <div style={{ paddingLeft: 8 }}>Y: {toNthDigit(position.y, 4)}</div>
             <div style={{ paddingLeft: 8 }}>Z: {toNthDigit(position.z, 4)}</div>
+
+            <div>Rotation</div>
+            <div style={{ paddingLeft: 8 }}>X: {toNthDigit(rotationEuler.x, 4)}</div>
+            <div style={{ paddingLeft: 8 }}>Y: {toNthDigit(rotationEuler.y, 4)}</div>
+            <div style={{ paddingLeft: 8 }}>Z: {toNthDigit(rotationEuler.z, 4)}</div>
+
 
         </section>
     </div>

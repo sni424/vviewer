@@ -10,7 +10,8 @@ export type Env = {
     select: "none" | "preset" | "custom";
     preset?: "apartment" | "city" | "dawn" | "forest" | "lobby" | "night" | "park" | "studio" | "sunset" | "warehouse";
     url?: string;
-    intensity?:number;
+    intensity?: number;
 };
 export const envAtom = atom<Env>({ select: "none" });
-export const cameraAtom = atom<THREE.Matrix4>();
+export const cameraMatrixAtom = atom<THREE.Matrix4>();
+export const cameraModeAtom = atom<"perspective" | "iso">("perspective");
