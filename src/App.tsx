@@ -1,16 +1,21 @@
-import { OrbitControls } from '@react-three/drei'
-import { Canvas, RootState, useThree } from '@react-three/fiber'
-import { atom, useAtom, useAtomValue, useSetAtom } from 'jotai';
-import { useEffect, useState } from 'react';
-import VGLTFLoader from './VGLTFLoader';
-import ObjectViewer from './ObjectViewer';
-import { formatNumber, groupInfo } from './utils';
+
+import { atom, useAtomValue, useSetAtom } from 'jotai';
+import { useState } from 'react';
+import { loadHistoryAtom, sourceAtom, threeExportsAtom } from './atoms';
+import SceneInfo from './SceneInfo';
+import useFiles from './useFiles';
+import SceneTree from './SceneTree';
+import RendererContainer from './Renderer';
+import InfoPanel from './InfoPanel';
+import MaterialPanel from './MaterialPanel';
 
 declare global {
   interface Map<K, V> {
     reduce<T>(callback: (accumulator: T, value: V, key: K, map: Map<K, V>) => T, initialValue: T): T;
   }
 }
+
+
 
 Map.prototype.reduce = function <K, V, T>(
   this: Map<K, V>,
@@ -24,93 +29,13 @@ Map.prototype.reduce = function <K, V, T>(
   return accumulator;
 };
 
-const selectedAtom = atom<string[]>([]);
-const forceUpdateAtom = atom<number>(0);
-const setForceUpdate = () => {
-  const setForceUpdateAtom = useSetAtom(forceUpdateAtom);
-  setForceUpdateAtom(prev => prev + 1);
-}
-const useForceUpdate = () => {
-  const value = useAtomValue(forceUpdateAtom);
-}
-
-const sourceAtom = atom<{ name: string; url: string; file: File }[]>([]);
-const loadHistoryAtom = atom<Map<string, { name: string; start: number; end: number; file: File, uuid: string; }>>(new Map());
-const threeExportsAtom = atom<RootState>();
-
 const Tabs = ["scene", "tree"] as const;
 type Tab = typeof Tabs[number];
 
-const SceneInfo = () => {
-  const { files, loadingFiles } = useFiles();
-  const threeExports = useAtomValue(threeExportsAtom);
-  if (!threeExports) {
-    return null;
-  }
 
-  const { scene } = threeExports;
-  const totals = groupInfo(scene);
 
-  return <div style={{
-    width: "100%",
-    height: "100%",
-    overflow: "auto",
-    padding: 8,
-  }}>
-    <section>
-      <strong>Files</strong> <span style={{ color: "gray" }}>{files.length}개</span>
-      <ul style={{ paddingLeft: 4 }}>
-        {files.map(({ file, name, start, end }, index) => {
-          return <li key={`파일로드-${index}-${name}`} style={{ marginTop: 6, fontSize: 14 }}>
-            <div>{name}({Math.round(file.size / (1024 * 1024))}mb){end === 0 ? " : loading..." : ` : ${formatNumber(end - start)}ms`}</div>
-          </li>
-        })}
-      </ul>
-    </section>
-    <section style={{ marginTop: 16 }}>
-      <strong>Scene</strong>
-      <div style={{ paddingLeft: 4 }}>
-        총 메쉬 : {formatNumber(totals.meshCount)}개
-      </div>
-      <div style={{ paddingLeft: 4 }}>
-        총 삼각형 : {formatNumber(totals.triangleCount)}개
-      </div>
-      <div style={{ paddingLeft: 4 }}>
-        총 버텍스 : {formatNumber(totals.vertexCount)}개
-      </div>
 
-      <ul style={{ paddingLeft: 4, marginTop: 8 }}>
-        {scene.children.map((child, index) => {
-          return <li key={"info-" + child.uuid} style={{ fontSize: 14 }}>
-            {/* <div>{child.uuid}</div> */}
-            <div style={{ fontSize: 15, fontWeight: "bold" }}>{child.name}</div>
-            <div style={{ paddingLeft: 8 }}>
-              메쉬 : {formatNumber(groupInfo(child).meshCount)}개
-            </div>
-            <div style={{ paddingLeft: 8 }}>
-              삼각형 : {formatNumber(groupInfo(child).triangleCount)}개
-            </div>
-            <div style={{ paddingLeft: 8 }}>
-              버텍스 : {formatNumber(groupInfo(child).vertexCount)}개
-            </div>
-          </li>
-        })}
-      </ul>
-    </section>
-  </div>
-}
 
-const SceneTree = () => {
-  const threeExports = useAtomValue(threeExportsAtom);
-  if (!threeExports) {
-    return null;
-  }
-
-  const { scene } = threeExports;
-
-  // return <ObjectViewer data={scene}></ObjectViewer>
-  return null
-}
 
 const ThePanel = () => {
   const loadHistory = useAtomValue(loadHistoryAtom);
@@ -135,7 +60,7 @@ const ThePanel = () => {
       width: "100%",
     }}>
       {Tabs.map((t) => {
-        return <button style={{ height: "100%", textTransform: "capitalize" }} key={t} onClick={() => setTab(t)}>{t}</button>
+        return <button style={{ height: "100%", textTransform: "capitalize", borderBottom: tab === t ? "none" : undefined, fontWeight: tab === t ? "bold" : undefined }} key={"tab-" + t} onClick={() => setTab(t)}>{t}</button>
       })}
     </div>
     <div style={{
@@ -149,74 +74,8 @@ const ThePanel = () => {
   </div>
 }
 
-function Renderer() {
-  const threeExports = useThree();
-  const sources = useAtomValue(sourceAtom);
-  const setLoadHistoryAtom = useSetAtom(loadHistoryAtom);
-  const setThreeExportsAtom = useSetAtom(threeExportsAtom);
-  const { scene } = threeExports;
-
-  useEffect(() => {
-    setThreeExportsAtom(threeExports);
-  }, []);
-
-  useEffect(() => {
-
-    sources.forEach(source => {
-      const { name, url, file } = source;
-      // setLoadingsAtom(loadings => [...loadings, source]);
-      setLoadHistoryAtom(history => {
-        const newHistory = new Map(history);
-        //@ts-ignore
-        newHistory.set(url, { name, start: Date.now(), end: 0, file, uuid: null });
-        return newHistory;
-      })
-
-      new VGLTFLoader().loadAsync(url).then(gltf => {
-        gltf.scene.name = name + "-" + gltf.scene.name;
-        scene.add(gltf.scene);
-        // revoke object url
-        URL.revokeObjectURL(url);
-        setLoadHistoryAtom(history => {
-          const newHistory = new Map(history);
-          newHistory.get(url)!.end = Date.now();
-          newHistory.get(url)!.uuid = gltf.scene.uuid;
-          return newHistory;
-        })
-      })
-    })
-  }, [sources]);
-
-  return <>
-    {/* <ambientLight />
-    <pointLight position={[10, 10, 10]} />
-    <mesh>
-      <boxGeometry args={[1, 1, 1]} />
-      <meshStandardMaterial color="hotpink" />
-    </mesh> */}
-    <OrbitControls />
-  </>
-}
-
-function RendererContainer() {
 
 
-  return (
-    <div style={{
-      width: "100%",
-      height: "100%",
-    }}>
-      <Canvas
-        style={{
-          width: "100%",
-          height: "100%",
-        }}
-      >
-        <Renderer></Renderer>
-      </Canvas>
-    </div>
-  )
-}
 
 const useDragAndDrop = () => {
   const [isDragging, setIsDragging] = useState(false);
@@ -266,21 +125,7 @@ const useDragAndDrop = () => {
   }
 }
 
-const useFiles = () => {
-  const loadingHistory = useAtomValue(loadHistoryAtom);
-  const files = loadingHistory.reduce((returnFiles, value) => {
-    returnFiles.files.push(value);
-    if (value.end === 0) {
-      returnFiles.loadingFiles.push(value);
-    }
-    return returnFiles;
-  }
-    , {
-      files: [] as { name: string; start: number; end: number; file: File; }[],
-      loadingFiles: [] as { name: string; start: number; end: number; }[],
-    });
-  return files;
-};
+
 
 function Loading() {
   // const loadings = useAtomValue(loadingsAtom);
@@ -389,6 +234,8 @@ function App() {
         <ThePanel />
       </div>
       <ControlPanel></ControlPanel>
+      <MaterialPanel></MaterialPanel>
+      <InfoPanel></InfoPanel>
       <Loading />
     </div>
   )
