@@ -9,6 +9,7 @@ import SceneInfo from './SceneInfo';
 import useFiles from './useFiles';
 import { Quaternion, Texture } from 'three';
 import { Vector3 } from './VTHREE';
+import SceneTree from './SceneTree';
 
 declare global {
   interface Map<K, V> {
@@ -48,17 +49,7 @@ type Tab = typeof Tabs[number];
 
 
 
-const SceneTree = () => {
-  const threeExports = useAtomValue(threeExportsAtom);
-  if (!threeExports) {
-    return null;
-  }
 
-  const { scene } = threeExports;
-
-  // return <ObjectViewer data={scene}></ObjectViewer>
-  return null
-}
 
 const ThePanel = () => {
   const loadHistory = useAtomValue(loadHistoryAtom);

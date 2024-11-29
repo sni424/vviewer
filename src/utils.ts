@@ -7,6 +7,8 @@ export const groupInfo = (group: THREE.Group | GLTF) => {
     let triangleCount = 0;
     let vertexCount = 0;
     let meshCount = 0;
+    let object3dCount = 0;
+    let nodeCount = 0;
     scene.traverse((node: THREE.Object3D) => {
         if (node instanceof THREE.Mesh) {
             const geometry = node.geometry;
@@ -15,9 +17,14 @@ export const groupInfo = (group: THREE.Group | GLTF) => {
                 vertexCount += geometry.attributes.position.count;
                 meshCount++;
             }
+            nodeCount++;
+        }
+        if (node instanceof THREE.Object3D) {
+            object3dCount++;
+            nodeCount++;
         }
     });
-    return { triangleCount, vertexCount, meshCount };
+    return { triangleCount, vertexCount, meshCount, nodeCount, object3dCount };
 
 }
 

@@ -5,6 +5,7 @@ import { cameraMatrixAtom, cameraModeAtom, envAtom, threeExportsAtom } from './a
 import { useEffect, useState } from 'react';
 import { get, set } from 'idb-keyval';
 import { Euler, Quaternion, THREE, Vector3 } from './VTHREE';
+import { GLTFExporter } from 'three/examples/jsm/Addons.js';
 
 const useEnvUrl = () => {
     const [envUrl, setEnvUrl] = useState<string | null>(null);
@@ -17,37 +18,39 @@ const useEnvUrl = () => {
     return [envUrl, setEnvUrl] as const;
 }
 
+function save(blob: Blob, filename: string) {
+    const link = document.createElement('a');
+    link.style.display = 'none';
+    document.body.appendChild(link); // Firefox workaround, see #6594
+    const url = URL.createObjectURL(blob);
+    link.href = url;
+    link.download = filename;
+    link.click();
+
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+}
+
+function saveString(text: string, filename: string) {
+
+    save(new Blob([text], { type: 'text/plain' }), filename);
+
+}
+
+
+function saveArrayBuffer(buffer: ArrayBuffer, filename: string) {
+
+    save(new Blob([buffer], { type: 'application/octet-stream' }), filename);
+
+}
+
 const SceneInfo = () => {
     const { files, loadingFiles } = useFiles();
     const [env, setEnv] = useAtom(envAtom);
     const threeExports = useAtomValue(threeExportsAtom);
     const [envUrl, setEnvUrl] = useEnvUrl();
     const cameraMatrix = useAtomValue(cameraMatrixAtom);
-    const [cameraMode, setCameraMode] = useAtom(cameraModeAtom);
-
-    useEffect(() => {
-        if (!threeExports) {
-            return;
-        }
-        const { camera, set } = threeExports;
-        if (cameraMode === "iso") {
-            const curMat = camera.matrix.clone();
-            const aspect = window.innerWidth / window.innerHeight;
-            const d = 20;
-            const isoCamera = new THREE.OrthographicCamera(-d * aspect, d * aspect, d, -d, 1, 1000);
-            // isoCamera.matrix.copy(curMat);
-            set({ camera: isoCamera });
-            // threeExports.camera = isoCamera;
-            console.log("아이소")
-        } else if (cameraMode === "perspective") {
-            const curMat = camera.matrix.clone();
-            const aspect = window.innerWidth / window.innerHeight;
-            const persCamera = new THREE.PerspectiveCamera(75, aspect, 0.1, 1000);
-            // persCamera.matrix.copy(curMat);
-            // threeExports.camera = persCamera;
-            set({ camera: persCamera });
-        }
-    }, [cameraMode]);
 
     if (!threeExports) {
         return null;
@@ -70,6 +73,21 @@ const SceneInfo = () => {
         padding: 8,
     }}>
         <section style={{ width: "100%" }}>
+            <div>
+                <button disabled={scene.children.length === 0} onClick={() => {
+
+                    new GLTFExporter().parseAsync(threeExports.scene).then(result => {
+                        if (result instanceof ArrayBuffer) {
+                            saveArrayBuffer(result, `scene-${new Date().toISOString()}.glb`);
+                        } else {
+                            const output = JSON.stringify(result, null, 2);
+                            saveString(output, `scene-${new Date().toISOString()}.gltf`);
+                        }
+                    })
+                }}>내보내기</button>
+            </div>
+
+
             <strong>환경맵</strong>
             <div style={{ marginTop: 4, display: "flex", flexDirection: "column" }}>
                 <div >
@@ -163,6 +181,12 @@ const SceneInfo = () => {
         <section style={{ marginTop: 16 }}>
             <strong>Scene</strong>
             <div style={{ paddingLeft: 4 }}>
+                총 노드 : {formatNumber(totals.nodeCount)}개
+            </div>
+            <div style={{ paddingLeft: 4 }}>
+                총 오브젝트3D : {formatNumber(totals.object3dCount)}개
+            </div>
+            <div style={{ paddingLeft: 4 }}>
                 총 메쉬 : {formatNumber(totals.meshCount)}개
             </div>
             <div style={{ paddingLeft: 4 }}>
@@ -177,6 +201,12 @@ const SceneInfo = () => {
                     return <li key={"info-" + child.uuid} style={{ fontSize: 14 }}>
                         {/* <div>{child.uuid}</div> */}
                         <div style={{ fontSize: 15, fontWeight: "bold" }}>{child.name}</div>
+                        <div style={{ paddingLeft: 8 }}>
+                            노드 : {formatNumber(groupInfo(child).nodeCount)}개
+                        </div>
+                        <div style={{ paddingLeft: 8 }}>
+                            오브젝트3D : {formatNumber(groupInfo(child).object3dCount)}개
+                        </div>
                         <div style={{ paddingLeft: 8 }}>
                             메쉬 : {formatNumber(groupInfo(child).meshCount)}개
                         </div>
