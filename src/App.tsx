@@ -6,6 +6,7 @@ import SceneInfo from './SceneInfo';
 import useFiles from './useFiles';
 import SceneTree from './SceneTree';
 import RendererContainer from './Renderer';
+import InfoPanel from './InfoPanel';
 
 declare global {
   interface Map<K, V> {
@@ -232,6 +233,7 @@ function App() {
         <ThePanel />
       </div>
       <ControlPanel></ControlPanel>
+      <InfoPanel></InfoPanel>
       <Loading />
     </div>
   )
