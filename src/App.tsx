@@ -4,7 +4,7 @@ import { atom, useAtom, useAtomValue, useSetAtom } from 'jotai';
 import { useEffect, useState } from 'react';
 import VGLTFLoader from './VGLTFLoader';
 import ObjectViewer from './ObjectViewer';
-import { envAtom, loadHistoryAtom, sourceAtom, threeExportsAtom } from './atoms';
+import { cameraAtom, envAtom, loadHistoryAtom, sourceAtom, threeExportsAtom } from './atoms';
 import SceneInfo from './SceneInfo';
 import useFiles from './useFiles';
 import { Texture } from 'three';
@@ -14,6 +14,8 @@ declare global {
     reduce<T>(callback: (accumulator: T, value: V, key: K, map: Map<K, V>) => T, initialValue: T): T;
   }
 }
+
+
 
 Map.prototype.reduce = function <K, V, T>(
   this: Map<K, V>,
@@ -80,7 +82,7 @@ const ThePanel = () => {
       width: "100%",
     }}>
       {Tabs.map((t) => {
-        return <button style={{ height: "100%", textTransform: "capitalize" }} key={t} onClick={() => setTab(t)}>{t}</button>
+        return <button style={{ height: "100%", textTransform: "capitalize", borderBottom: tab === t ? "none" : undefined, fontWeight: tab === t ? "bold" : undefined }} key={"tab-" + t} onClick={() => setTab(t)}>{t}</button>
       })}
     </div>
     <div style={{
@@ -120,6 +122,7 @@ function Renderer() {
   const setLoadHistoryAtom = useSetAtom(loadHistoryAtom);
   const setThreeExportsAtom = useSetAtom(threeExportsAtom);
   const { scene, camera } = threeExports;
+  const setCameraAtom = useSetAtom(cameraAtom);
 
   useEffect(() => {
     setThreeExportsAtom(threeExports);
@@ -171,7 +174,10 @@ function Renderer() {
       <boxGeometry args={[1, 1, 1]} />
       <meshStandardMaterial color="hotpink" />
     </mesh> */}
-    <OrbitControls />
+    <OrbitControls onChange={e => {
+      const matrix = e?.target.object.matrix.clone()
+      setCameraAtom(matrix);
+    }} />
     <MyEnvironment></MyEnvironment>
   </>
 }

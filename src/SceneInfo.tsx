@@ -1,12 +1,28 @@
 import { useAtom, useAtomValue } from 'jotai';
 import useFiles from './useFiles';
-import { formatNumber, groupInfo } from './utils';
-import { envAtom, threeExportsAtom } from './atoms';
+import { formatNumber, groupInfo, toNthDigit } from './utils';
+import { cameraAtom, envAtom, threeExportsAtom } from './atoms';
+import { useEffect, useState } from 'react';
+import { get, set } from 'idb-keyval';
+import { Quaternion, Vector3 } from './VTHREE';
+
+const useEnvUrl = () => {
+    const [envUrl, setEnvUrl] = useState<string | null>(null);
+
+    useEffect(() => {
+        get("envUrl").then((url) => {
+            setEnvUrl(url);
+        })
+    }, []);
+    return [envUrl, setEnvUrl] as const;
+}
 
 const SceneInfo = () => {
     const { files, loadingFiles } = useFiles();
     const [env, setEnv] = useAtom(envAtom);
     const threeExports = useAtomValue(threeExportsAtom);
+    const [envUrl, setEnvUrl] = useEnvUrl();
+    const cameraMatrix = useAtomValue(cameraAtom);
 
     if (!threeExports) {
         return null;
@@ -14,6 +30,10 @@ const SceneInfo = () => {
 
     const { scene } = threeExports;
     const totals = groupInfo(scene);
+    const position = new Vector3();
+    const rotation = new Quaternion();
+    const scale = new Vector3();
+    cameraMatrix?.decompose(position, rotation, scale);
 
     return <div style={{
         width: "100%",
@@ -69,7 +89,26 @@ const SceneInfo = () => {
                     </div>
                 </div>
             </>}
+            {env.select === "custom" && <>
+                <div style={{
+                    width: "100%"
+                }}>
+                    Url :
+                    <input type="text" value={envUrl ?? ""} onChange={(e) => {
+                        setEnvUrl((e.target.value)?.trim());
+                    }}></input>
+                    <button onClick={() => {
+                        if (envUrl) {
+                            setEnv({ select: "custom", url: envUrl });
+                            set("envUrl", envUrl);
+                        } else {
+                            alert("URL을 입력해주세요.");
+                        }
 
+                    }} disabled={Boolean(envUrl) && env.url === envUrl}>{Boolean(envUrl) && env.url === envUrl ? "적용됨" : "적용하기"}</button>
+
+                </div>
+            </>}
         </section>
 
         <section style={{ marginTop: 16 }}>
@@ -111,6 +150,15 @@ const SceneInfo = () => {
                     </li>
                 })}
             </ul>
+        </section>
+
+        <section style={{ marginTop: 16 }}>
+            <strong>카메라</strong>
+            <div>Position</div>
+            <div style={{ paddingLeft: 8 }}>X: {toNthDigit(position.x, 4)}</div>
+            <div style={{ paddingLeft: 8 }}>Y: {toNthDigit(position.y, 4)}</div>
+            <div style={{ paddingLeft: 8 }}>Z: {toNthDigit(position.z, 4)}</div>
+
         </section>
     </div>
 }

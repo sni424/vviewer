@@ -1,5 +1,6 @@
 import type { RootState } from "@react-three/fiber";
 import { atom } from "jotai";
+import { THREE } from "./VTHREE";
 
 export const sourceAtom = atom<{ name: string; url: string; file: File }[]>([]);
 export const loadHistoryAtom = atom<Map<string, { name: string; start: number; end: number; file: File, uuid: string; }>>(new Map());
@@ -12,3 +13,4 @@ export type Env = {
     intensity?:number;
 };
 export const envAtom = atom<Env>({ select: "none" });
+export const cameraAtom = atom<THREE.Matrix4>();

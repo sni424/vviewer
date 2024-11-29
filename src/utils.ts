@@ -24,3 +24,19 @@ export const groupInfo = (group: THREE.Group | GLTF) => {
 export const formatNumber = (num: number): string => {
     return new Intl.NumberFormat('en-US').format(num);
 }
+
+export const toNthDigit = (num: number, digit: number): string => {
+
+    const isNegative = num < 0;
+    const positivePart = Math.abs(num);
+
+    // add dot with pad
+    const multiplied = Math.round(positivePart * Math.pow(10, digit));
+    const padded = multiplied.toString().padStart(digit, '0');
+    const integerPart = padded.slice(0, -digit);
+    const decimalPart = padded.slice(-digit);
+
+    return `${isNegative ? '-' : ''}${integerPart.length === 0 ? "0" : integerPart}.${decimalPart}`;
+
+
+}
