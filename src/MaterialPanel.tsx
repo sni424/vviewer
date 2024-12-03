@@ -2,6 +2,7 @@ import { useAtom, useAtomValue } from 'jotai';
 import React, { useState } from 'react'
 import { materialSelectedAtom, selectedAtom, threeExportsAtom } from './atoms';
 import { THREE } from './VTHREE';
+import { toNthDigit } from './utils';
 
 const useLightMapDragAndDrop = (mat: THREE.MeshStandardMaterial) => {
     const [isDragging, setIsDragging] = useState(false);
@@ -62,6 +63,7 @@ const useLightMapDragAndDrop = (mat: THREE.MeshStandardMaterial) => {
 
 const MeshStandardMaterialPanel = ({ mat }: { mat: THREE.MeshStandardMaterial }) => {
     const { isDragging, handleDrop, handleDragOver, handleDragLeave } = useLightMapDragAndDrop(mat);
+    const [lightMapIntensity, setLightMapIntensity] = useState(mat.lightMapIntensity);
 
     return <div style={{ display: "flex", flexDirection: "column" }}>
         <div style={{ display: "flex", flexDirection: "column", border: "1px solid gray", padding: 8, borderRadius: 8, boxSizing: "border-box", cursor: isDragging ? "copy" : undefined }}
@@ -69,8 +71,19 @@ const MeshStandardMaterialPanel = ({ mat }: { mat: THREE.MeshStandardMaterial })
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
         >
-            <div>Lightmap</div>
-            <div></div>
+            <div>Lightmap : {mat.lightMap === null ? "없음" : mat.lightMap.name ?? "이름없음"}</div>
+            {mat.lightMap && <div>
+                <div>Intensity: {lightMapIntensity}</div>
+                <div>Channel: {mat.lightMap.channel}</div>
+                <div style={{ width: "100%" }}>
+                    <input type="range" min={0} max={1} step={0.01} value={lightMapIntensity ?? 1} onChange={(e) => {
+                        mat.lightMapIntensity = parseFloat(e.target.value);
+                        setLightMapIntensity(mat.lightMapIntensity);
+                    }}></input>
+                    <span style={{ marginLeft: 8, fontSize: 12 }}>Intensity : {toNthDigit(lightMapIntensity ?? 1, 2)}</span>
+
+                </div>
+            </div>}
             {/* <LightMapPreview ></LightMapPreview> */}
         </div>
         {/* {Object.entries(mat).map(([key, value]) => {
