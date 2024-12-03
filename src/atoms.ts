@@ -1,6 +1,7 @@
 import type { RootState } from "@react-three/fiber";
 import { atom, useAtomValue, useSetAtom } from "jotai";
 import { THREE } from "./VTHREE";
+import React from "react";
 
 export const sourceAtom = atom<{ name: string; url: string; file: File }[]>([]);
 export const loadHistoryAtom = atom<Map<string, { name: string; start: number; end: number; file: File, uuid: string; }>>(new Map());
@@ -27,3 +28,12 @@ export const useForceUpdate = () => {
 }
 
 export const materialSelectedAtom = atom<THREE.Material | null>(null);
+
+export const modalAtom = atom<React.ReactElement<{ closeModal?: () => any }> | null>(null);
+export const useModal = () => {
+    const setModal = useSetAtom(modalAtom);
+    return {
+        openModal: (modal: React.ReactElement<{ closeModal?: () => any }>) => setModal(modal),
+        closeModal: () => setModal(null)
+    };
+}

@@ -10,7 +10,7 @@ export const groupInfo = (group: THREE.Group | GLTF) => {
     let object3dCount = 0;
     let nodeCount = 0;
     scene.traverse((node: THREE.Object3D) => {
-        if(node.type === "BoxHelper"){
+        if (node.type === "BoxHelper") {
             return;
         }
         if (node instanceof THREE.Mesh) {

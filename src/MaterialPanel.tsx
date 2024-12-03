@@ -1,8 +1,118 @@
 import { useAtom, useAtomValue } from 'jotai';
-import React from 'react'
+import React, { useState } from 'react'
 import { materialSelectedAtom, selectedAtom, threeExportsAtom } from './atoms';
+import { THREE } from './VTHREE';
 
-function MaterialPanel() {
+const useLightMapDragAndDrop = (mat: THREE.MeshStandardMaterial) => {
+    const [isDragging, setIsDragging] = useState(false);
+
+    const handleDragOver = (event: React.DragEvent<HTMLDivElement>) => {
+        event.preventDefault();
+        setIsDragging(true);
+    };
+
+    const handleDragLeave = () => {
+        setIsDragging(false);
+    };
+
+    const handleDrop = (event: React.DragEvent<HTMLDivElement>) => {
+        event.preventDefault();
+        event.stopPropagation();
+        setIsDragging(false);
+
+        if (event.dataTransfer.files && event.dataTransfer.files.length > 0) {
+
+            const acceptedExtensions = ['.png', ".jpg"];
+            const files = Array.from(event.dataTransfer.files);
+
+            // Filter files by .gltf and .glb extensions
+            const filteredFiles = files.filter((file) =>
+                acceptedExtensions.some((ext) => file.name.toLowerCase().endsWith(ext))
+            );
+
+            if (filteredFiles.length === 0) {
+                alert("Only .png and .jpg files are accepted.");
+                return;
+            }
+
+            // Convert files to Blob URLs
+            const fileUrls = filteredFiles.map((file) => ({ name: file.name, url: URL.createObjectURL(file), file }));
+
+            if (fileUrls.length > 0) {
+                const texture = new THREE.TextureLoader().load(fileUrls[0].url);
+                texture.flipY = !texture.flipY;
+                console.log(texture);
+
+                mat.lightMap = texture;
+                mat.lightMap.channel = 1;
+                console.log("HERERERER", mat);
+            }
+
+            event.dataTransfer.clearData();
+        }
+    };
+
+    return {
+        isDragging,
+        handleDragOver,
+        handleDragLeave,
+        handleDrop,
+    }
+}
+
+const MeshStandardMaterialPanel = ({ mat }: { mat: THREE.MeshStandardMaterial }) => {
+    const { isDragging, handleDrop, handleDragOver, handleDragLeave } = useLightMapDragAndDrop(mat);
+
+    return <div style={{ display: "flex", flexDirection: "column" }}>
+        <div style={{ display: "flex", flexDirection: "column", border: "1px solid gray", padding: 8, borderRadius: 8, boxSizing: "border-box", cursor: isDragging ? "copy" : undefined }}
+            onDrop={handleDrop}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+        >
+            <div>Lightmap</div>
+            <div></div>
+            {/* <LightMapPreview ></LightMapPreview> */}
+        </div>
+        {/* {Object.entries(mat).map(([key, value]) => {
+            return <div key={`mat-${mat.uuid}` + key} style={{ fontSize: 10 }}>{key}: {JSON.stringify(value)}</div>
+        })} */}
+    </div >
+
+    // return <div>
+    //     <div>color: {JSON.stringify(mat.color)}</div>
+    //     <div>emissive: {JSON.stringify(mat.emissive)}</div>
+    //     <div>emissiveIntensity: {JSON.stringify(mat.emissiveIntensity)}</div>
+    //     <div>emissiveMap: {JSON.stringify(mat.emissiveMap)}</div>
+    //     <div>envMap: {JSON.stringify(mat.envMap)}</div>
+    //     <div>lightMap: {JSON.stringify(mat.lightMap)}</div>
+    //     <div>map: {JSON.stringify(mat.map)}</div>
+    //     <div>metalness: {JSON.stringify(mat.metalness)}</div>
+    //     <div>normalMap: {JSON.stringify(mat.normalMap)}</div>
+    //     <div>roughness: {JSON.stringify(mat.roughness)}</div>
+    //     <div>roughnessMap: {JSON.stringify(mat.roughnessMap)}</div>
+    // </div>
+}
+
+const MaterialPanel = ({ mat }: { mat: THREE.Material }) => {
+    if (mat.type === "MeshStandardMaterial") {
+        return <MeshStandardMaterialPanel mat={mat as THREE.MeshStandardMaterial} />
+    }
+
+    // return <div style={{ display: "flex", flexDirection: "column" }}>
+    //     <div style={{ display: "flex", flexDirection: "column" }}>
+    //         <div>Lightmap</div>
+    //         <div>{mat.lightMap}</div>
+    //     </div>
+
+    // </div >
+    console.log(mat)
+    return <> {Object.entries(mat).map(([key, value]) => {
+        return <div key={`mat-${mat.uuid}` + key} style={{ fontSize: 10 }}>{key}: {JSON.stringify(value)}</div>
+    })}</>
+}
+
+
+function MaterialPanelContainer() {
     const selecteds = useAtomValue(selectedAtom);
     const threeExports = useAtomValue(threeExportsAtom);
     const [mat, setMat] = useAtom(materialSelectedAtom);
@@ -21,7 +131,7 @@ function MaterialPanel() {
             left: 10,
             top: 10,
             maxHeight: selecteds.length > 0 ? "calc(50% - 20px)" : "calc(100% - 20px)",
-            width: 240,
+            width: 300,
             backgroundColor: "#bbbbbb99",
             padding: 8,
             borderRadius: 8,
@@ -39,11 +149,7 @@ function MaterialPanel() {
                 </div>
 
             </div>
-            {
-                Object.entries(mat).map(([key, value]) => {
-                    return <div key={`mat-${mat.uuid}` + key} style={{ fontSize: 10 }}>{key}: {JSON.stringify(value)}</div>
-                })
-            }
+            <MaterialPanel mat={mat}></MaterialPanel>
             <div style={{ position: "absolute", top: 5, right: 5, fontSize: 12, fontWeight: "bold", cursor: "pointer" }} onClick={() => {
                 setMat(null);
             }}>X</div>
@@ -51,4 +157,4 @@ function MaterialPanel() {
     )
 }
 
-export default MaterialPanel
+export default MaterialPanelContainer

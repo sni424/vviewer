@@ -1,13 +1,14 @@
 
 import { atom, useAtomValue, useSetAtom } from 'jotai';
 import { useState } from 'react';
-import { loadHistoryAtom, sourceAtom, threeExportsAtom } from './atoms';
+import { loadHistoryAtom, modalAtom, sourceAtom, threeExportsAtom, useModal } from './atoms';
 import SceneInfo from './SceneInfo';
 import useFiles from './useFiles';
 import SceneTree from './SceneTree';
 import RendererContainer from './Renderer';
 import InfoPanel from './InfoPanel';
-import MaterialPanel from './MaterialPanel';
+import MaterialPanelContainer from './MaterialPanel';
+import Modal from './Modal';
 
 declare global {
   interface Map<K, V> {
@@ -177,19 +178,36 @@ function Loading() {
   </>
 }
 
+const MyModal = ({ closeModal }: { closeModal?: () => any }) => {
+
+  return <div style={{ backgroundColor: "white", padding: 16, borderRadius: 8 }} onClick={(e) => {
+    e.stopPropagation();
+  }}>asdf <button onClick={(e) => {
+    e.stopPropagation();
+    closeModal?.()
+  }}>close</button></div>;
+}
+
 const ControlPanel = () => {
   const threeExports = useAtomValue(threeExportsAtom);
   const setLoadHistoryAtom = useSetAtom(loadHistoryAtom);
+  // const { openModal } = useModal();
+  const setModal = useSetAtom(modalAtom);
 
   if (!threeExports) {
     return null;
   }
 
-  return null;
+  // return null;
 
   return <div
     style={{ position: "absolute", top: 8, left: 8, padding: 4, borderRadius: 4, backgroundColor: "rgba(0, 0, 0, 0.1)" }}>
+
     <button onClick={() => {
+      setModal(<MyModal></MyModal>);
+    }}>Modal</button>
+
+    {/* <button onClick={() => {
       //@ts-ignore
       threeExports.scene.children.forEach(child => {
         //@ts-ignore
@@ -197,7 +215,7 @@ const ControlPanel = () => {
       })
 
       setLoadHistoryAtom(new Map());
-    }}>Reset</button>
+    }}>Reset</button> */}
   </div>
 }
 
@@ -234,8 +252,9 @@ function App() {
         <ThePanel />
       </div>
       <ControlPanel></ControlPanel>
-      <MaterialPanel></MaterialPanel>
+      <MaterialPanelContainer></MaterialPanelContainer>
       <InfoPanel></InfoPanel>
+      <Modal></Modal>
       <Loading />
     </div>
   )
