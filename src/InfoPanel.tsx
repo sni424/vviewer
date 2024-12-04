@@ -1,11 +1,8 @@
 import React, { useState } from 'react'
 import { materialSelectedAtom, selectedAtom, threeExportsAtom, useModal } from './atoms';
 import { useAtom, useAtomValue } from 'jotai';
-import ObjectViewer from './components/ObjectViewer';
 import { THREE } from './VTHREE';
-import { max } from 'three/webgpu';
 import { groupInfo } from './utils';
-import useLightMapDragAndDrop from './useLightMapDragAndDrop';
 
 const ObjectView = ({ object }: { object: THREE.Object3D }) => {
 
@@ -128,10 +125,13 @@ const ApplyLightMapComponent = () => {
 
                 const texture = new THREE.TextureLoader().load(URL.createObjectURL(imageFile!));
                 texture.flipY = !texture.flipY;
+                texture.channel = 1;
 
                 meshes.forEach(mesh => {
                     (mesh.material as THREE.MeshStandardMaterial).lightMap = texture;
+
                     (mesh.material as THREE.MeshStandardMaterial).needsUpdate = true;
+
                 });
                 closeModal();
             }} disabled={!imageFile}>적용</button>

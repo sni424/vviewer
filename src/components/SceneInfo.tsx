@@ -193,6 +193,16 @@ const SceneInfo = () => {
                         }
                         )}
                     </select>
+                    <div style={{ width: "100%" }}>
+                        <input type="range" min={0} max={1} step={0.01} value={env.intensity ?? 1} onChange={(e) => {
+                            setEnv({
+                                ...env,
+                                intensity: parseFloat(e.target.value)
+                            })
+                        }}></input>
+                        <span style={{ marginLeft: 8, fontSize: 12 }}>Intensity : {toNthDigit(env.intensity ?? 1, 2)}</span>
+
+                    </div>
                 </div>
             </>}
             {env.select === "url" && <>
