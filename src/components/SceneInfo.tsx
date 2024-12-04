@@ -1,11 +1,12 @@
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
-import useFiles from './useFiles';
-import { formatNumber, groupInfo, toNthDigit } from './utils';
-import { cameraMatrixAtom, cameraModeAtom, envAtom, selectedAtom, threeExportsAtom } from './atoms';
+import useFiles from '../useFiles';
+import { formatNumber, groupInfo, toNthDigit } from '../utils';
+import { cameraMatrixAtom, cameraModeAtom, envAtom, selectedAtom, threeExportsAtom } from '../atoms';
 import { useEffect, useState } from 'react';
 import { get, set } from 'idb-keyval';
-import { Euler, Quaternion, THREE, Vector3 } from './VTHREE';
+import { Euler, Quaternion, THREE, Vector3 } from '../VTHREE';
 import { GLTFExporter } from 'three/examples/jsm/Addons.js';
+import { useNavigate } from 'react-router-dom';
 
 const useEnvUrl = () => {
     const [envUrl, setEnvUrl] = useState<string | null>(null);
@@ -52,6 +53,7 @@ const SceneInfo = () => {
     const [envUrl, setEnvUrl] = useEnvUrl();
     const cameraMatrix = useAtomValue(cameraMatrixAtom);
     const [selecteds, setSelecteds] = useAtom(selectedAtom);
+    const navigate = useNavigate();
 
     if (!threeExports) {
         return null;
@@ -72,23 +74,27 @@ const SceneInfo = () => {
         height: "100%",
         overflow: "auto",
         padding: 8,
+        display: "flex",
+        flexDirection: "column",
+        gap: 12
     }}>
+        <section style={{ width: "100%", display: "flex", gap: 8 }}>
+            <button disabled={scene.children.length === 0} onClick={() => {
+
+                new GLTFExporter().parseAsync(threeExports.scene).then(result => {
+                    if (result instanceof ArrayBuffer) {
+                        saveArrayBuffer(result, `scene-${new Date().toISOString()}.glb`);
+                    } else {
+                        const output = JSON.stringify(result, null, 2);
+                        saveString(output, `scene-${new Date().toISOString()}.gltf`);
+                    }
+                })
+            }}>GLTF 내보내기</button>
+            <button onClick={() => {
+                navigate("/upload");
+            }}>업로드하기</button>
+        </section>
         <section style={{ width: "100%" }}>
-            <div>
-                <button disabled={scene.children.length === 0} onClick={() => {
-
-                    new GLTFExporter().parseAsync(threeExports.scene).then(result => {
-                        if (result instanceof ArrayBuffer) {
-                            saveArrayBuffer(result, `scene-${new Date().toISOString()}.glb`);
-                        } else {
-                            const output = JSON.stringify(result, null, 2);
-                            saveString(output, `scene-${new Date().toISOString()}.gltf`);
-                        }
-                    })
-                }}>GLTF 내보내기</button>
-            </div>
-
-
             <strong>환경맵</strong>
             <div style={{ marginTop: 4, display: "flex", flexDirection: "column" }}>
                 <div >
@@ -199,12 +205,12 @@ const SceneInfo = () => {
 
             <ul style={{ paddingLeft: 4, marginTop: 8 }}>
                 {scene.children.map((child, index) => {
-                    if(child.type === "BoxHelper"){
+                    if (child.type === "BoxHelper") {
                         return null;
                     }
 
                     const info = groupInfo(child);
-                    if(info.nodeCount === 0){
+                    if (info.nodeCount === 0) {
                         console.log(child);
                         return null;
                     }

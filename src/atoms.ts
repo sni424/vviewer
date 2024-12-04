@@ -8,7 +8,7 @@ export const loadHistoryAtom = atom<Map<string, { name: string; start: number; e
 export const threeExportsAtom = atom<RootState>();
 
 export type Env = {
-    select: "none" | "preset" | "custom";
+    select: "none" | "preset" | "custom" | "url";
     preset?: "apartment" | "city" | "dawn" | "forest" | "lobby" | "night" | "park" | "studio" | "sunset" | "warehouse";
     url?: string;
     intensity?: number;

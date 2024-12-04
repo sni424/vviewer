@@ -1,8 +1,8 @@
 import { useAtom, useAtomValue } from 'jotai';
 import React, { useState } from 'react'
-import { materialSelectedAtom, selectedAtom, threeExportsAtom } from './atoms';
-import { THREE } from './VTHREE';
-import { toNthDigit } from './utils';
+import { materialSelectedAtom, selectedAtom, threeExportsAtom } from '../atoms';
+import { THREE } from '../VTHREE';
+import { toNthDigit } from '../utils';
 
 const useLightMapDragAndDrop = (mat: THREE.MeshStandardMaterial) => {
     const [isDragging, setIsDragging] = useState(false);
@@ -129,7 +129,6 @@ function MaterialPanelContainer() {
     const selecteds = useAtomValue(selectedAtom);
     const threeExports = useAtomValue(threeExportsAtom);
     const [mat, setMat] = useAtom(materialSelectedAtom);
-    console.log("mat", mat);
 
     if (!mat || !threeExports) {
         return null;

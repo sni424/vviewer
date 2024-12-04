@@ -200,9 +200,9 @@ const getIntersects = (
             obj => !obj.getUserData().ignoreRaycast && !isGizmo(obj) && !isBoxHelper(obj),
         )
         : scene.children;
-    const intersects = raycaster.intersectObjects(dstObjects, true);
+    const intersects = raycaster.intersectObjects(dstObjects, true) as THREE.Intersection[];
 
-    const mesh = intersects.filter(obj => obj.object.type === 'Mesh');
+    const mesh = intersects.filter(obj => obj.object.type === 'Mesh') as THREE.Intersection<THREE.Mesh>[];
 
     return { intersects, mesh };
 };
@@ -256,6 +256,19 @@ function RendererContainer() {
                 onMouseUp={(e) => {
 
                     if (!threeExports) {
+                        return;
+                    }
+
+                    // if riht 
+                    if (e.button === 2) {
+                        const { intersects, mesh } = getIntersects(e, threeExports);
+                        if (mesh.length > 0) {
+                            console.log(mesh[0].object.uuid);
+                            const mightBeMaterials = mesh[0].object.material;
+                            const mat = Array.isArray(mightBeMaterials) ? mightBeMaterials[0] : mightBeMaterials;
+                            setSelected([mesh[0].object.uuid]);
+                            setMaterialSelected(mat);
+                        }
                         return;
                     }
 

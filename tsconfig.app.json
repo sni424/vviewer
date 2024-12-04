@@ -22,5 +22,11 @@
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true
   },
-  "include": ["src"]
+  "include": [
+    "src",
+    "src/pages",
+    "src/components/SceneInfo.tsx",
+    "src/components/ObjectViewer.tsx",
+    "src/components/MaterialPanel.tsx"
+  ]
 }

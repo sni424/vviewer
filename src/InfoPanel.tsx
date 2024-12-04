@@ -1,7 +1,7 @@
 import React from 'react'
 import { materialSelectedAtom, selectedAtom, threeExportsAtom } from './atoms';
 import { useAtom, useAtomValue } from 'jotai';
-import ObjectViewer from './ObjectViewer';
+import ObjectViewer from './components/ObjectViewer';
 import { THREE } from './VTHREE';
 import { max } from 'three/webgpu';
 import { groupInfo } from './utils';

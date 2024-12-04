@@ -1,7 +1,7 @@
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
-import { materialSelectedAtom, selectedAtom, threeExportsAtom } from "./atoms";
+import { materialSelectedAtom, selectedAtom, threeExportsAtom } from "../atoms";
 import { useState } from "react";
-import { THREE } from "./VTHREE";
+import { THREE } from "../VTHREE";
 
 const MeshChildren = ({ data }: { data: THREE.Mesh }) => {
     const material = data.material as THREE.Material;
@@ -57,7 +57,7 @@ const RecursiveNode = ({ data, depth = 0 }: { data: THREE.Object3D, depth: numbe
 
     return <div style={{ width: "100%", paddingLeft: depth * 4, fontSize: 12, marginTop: 2 }}>
         <div style={{ width: "100%", display: "flex", justifyContent: "space-between", textAlign: "center", backgroundColor: selecteds.includes(data.uuid) ? "#bbb" : undefined }}>
-            <div style={{ flex: 1, minWidth: 0, display:"flex",justifyContent:"start" }}>
+            <div style={{ flex: 1, minWidth: 0, display: "flex", justifyContent: "start" }}>
                 <div style={{
                     transform: open ? "rotate(90deg)" : "rotate(0deg)",
                     width: 16, height: 16,
@@ -108,7 +108,7 @@ const RecursiveNode = ({ data, depth = 0 }: { data: THREE.Object3D, depth: numbe
                 }}>{hidden ? "보이기" : "숨기기"}</div>
             </div>
         </div>
-        <div style={{ display:"flex",justifyContent:"end", flexDirection:"column"}}>
+        <div style={{ display: "flex", justifyContent: "end", flexDirection: "column" }}>
             {open && data.type === "Mesh" && <MeshChildren data={data as THREE.Mesh}></MeshChildren>}
             {open && data.children.map((child, index) => {
                 return <RecursiveNode key={index} data={child} depth={depth + 1}></RecursiveNode>

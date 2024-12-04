@@ -26,7 +26,6 @@ function isReactComponent(component: any) {
 
 function Modal() {
     const Content = useAtomValue(modalAtom);
-    console.log("MOdal.tsx, Content:",)
     const { closeModal } = useModal();
 
     useEffect(() => {

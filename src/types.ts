@@ -220,3 +220,28 @@ export type Matrix4Array = [
   number,
   number,
 ];
+
+import { GLTF } from "three/examples/jsm/Addons.js";
+
+export type FileInfo = {
+  filename: string,
+  fileType: null,
+  fileSize: number,
+  fileUrl: string;
+  uploadDate: string;
+};
+
+export type ModelFileSaved = {
+  file: FileInfo,
+  // gltfEncoded: string;
+  blob: Blob;
+  elapsed: number;
+  hash: string;
+}
+
+export type ModelFile = {
+  file: FileInfo,
+  gltf: GLTF["scene"];
+  elapsed: number;
+  hash: string;
+}
