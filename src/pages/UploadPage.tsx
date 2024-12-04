@@ -2,6 +2,8 @@ import { atom, useAtom, useAtomValue, useSetAtom } from 'jotai';
 import React, { useEffect, useState } from 'react'
 import { FileInfo } from '../types';
 import { useNavigate } from 'react-router-dom';
+import { formatNumber } from '../utils';
+import useFilelist from '../useFilelist';
 
 const sourceAtom = atom<{
     name: string;
@@ -59,7 +61,7 @@ const useDragAndDrop = () => {
 
 const FileInfoList = ({ filelist }: { filelist: FileInfo[] }) => {
     return <ul>{filelist.map((fileinfo, i) => {
-        return <li style={{ fontSize: 12, marginBottom: 3 }} key={"filelist" + fileinfo.fileUrl}>{i + 1}. {fileinfo.filename} ({fileinfo.fileSize}) - {new Date(fileinfo.uploadDate).toLocaleString()}</li>
+        return <li style={{ fontSize: 12, marginBottom: 3 }} key={"filelist" + fileinfo.fileUrl}>{i + 1}. {fileinfo.filename} ({formatNumber(fileinfo.fileSize / (1024 * 1024))}mb) - {new Date(fileinfo.uploadDate).toLocaleString()}</li>
     })}</ul>
 }
 
@@ -67,7 +69,7 @@ function Upload() {
     const { isDragging, handleDragOver, handleDragLeave, handleDrop } = useDragAndDrop();
     const [uploading, setUploading] = useState(false);
     const [source, setSource] = useAtom(sourceAtom);
-    const [filelist, setFilelist] = useState<FileInfo[] | null>(null);
+    const { filelist } = useFilelist();
 
     useEffect(() => {
         const uploadUrl = import.meta.env.VITE_UPLOAD_URL;
@@ -96,22 +98,6 @@ function Upload() {
             window.location.reload();
         })
     }, [source]);
-
-    useEffect(() => {
-        const filelistUrl = import.meta.env.VITE_FILELIST_URL;
-        if (!filelistUrl) {
-            alert(".env에 환경변수를 설정해주세요");
-            return;
-        }
-
-        fetch(filelistUrl).then(res => res.json()).then(filelist =>
-            setFilelist(filelist)
-        ).catch(e => {
-            console.error(e);
-            alert("파일리스트를 불러오는데 실패했습니다. : " + e.message);
-        });
-
-    }, []);
 
     if (uploading) {
         return <div style={{

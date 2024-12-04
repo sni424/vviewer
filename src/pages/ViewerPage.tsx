@@ -74,7 +74,7 @@ const ThePanel = () => {
 
 
 
-const useDragAndDrop = () => {
+const useModelDragAndDrop = () => {
     const [isDragging, setIsDragging] = useState(false);
     const setSourceUrls = useSetAtom(sourceAtom);
 
@@ -200,7 +200,7 @@ const ControlPanel = () => {
         style={{ position: "absolute", top: 8, left: 8, padding: 4, borderRadius: 4, backgroundColor: "rgba(0, 0, 0, 0.1)" }}>
 
         <button onClick={() => {
-            setModal(<MyModal></MyModal>);
+            setModal(MyModal);
         }}>Modal</button>
 
         {/* <button onClick={() => {
@@ -217,7 +217,7 @@ const ControlPanel = () => {
 
 
 const ViewerPage = () => {
-    const { isDragging, handleDragOver, handleDragLeave, handleDrop } = useDragAndDrop();
+    const { isDragging, handleDragOver, handleDragLeave, handleDrop } = useModelDragAndDrop();
     return <div style={{
         width: "100vw",
         height: "100vh",
@@ -225,16 +225,18 @@ const ViewerPage = () => {
         position: "relative",
         display: "flex",
     }}
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-        onDrop={handleDrop}
+
     >
         <div style={{
             flex: 1,
             minWidth: 0,
             height: "100%",
 
-        }}>
+        }}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+        >
             <RendererContainer />
         </div>
         <div style={{

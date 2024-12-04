@@ -1,7 +1,8 @@
 import type { RootState } from "@react-three/fiber";
-import { atom, useAtomValue, useSetAtom } from "jotai";
+import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { THREE } from "./VTHREE";
 import React from "react";
+import { set } from "idb-keyval";
 
 export const sourceAtom = atom<{ name: string; url: string; file: File }[]>([]);
 export const loadHistoryAtom = atom<Map<string, { name: string; start: number; end: number; file: File, uuid: string; }>>(new Map());
@@ -13,6 +14,7 @@ export type Env = {
     url?: string;
     intensity?: number;
 };
+// export const envAtom = atom<Env>({ select: "none" });
 export const envAtom = atom<Env>({ select: "none" });
 export const cameraMatrixAtom = atom<THREE.Matrix4>();
 export const cameraModeAtom = atom<"perspective" | "iso">("perspective");
@@ -29,11 +31,33 @@ export const useForceUpdate = () => {
 
 export const materialSelectedAtom = atom<THREE.Material | null>(null);
 
-export const modalAtom = atom<React.ReactElement<{ closeModal?: () => any }> | null>(null);
+export const modalAtom = atom<React.FC<{ closeModal?: () => any }> | null>(null);
+
+
 export const useModal = () => {
     const setModal = useSetAtom(modalAtom);
     return {
-        openModal: (modal: React.ReactElement<{ closeModal?: () => any }>) => setModal(modal),
+        // ()=>Element instead of Element
+        // openModal: (modal: React.ReactElement<{ closeModal?: () => any }>) => setModal(modal),
+        openModal: (modal: React.FC<{ closeModal?: () => any }>) => setModal(modal),
         closeModal: () => setModal(null)
     };
+}
+
+export const useEnvParams = () => {
+    const [env, _setEnv] = useAtom(envAtom);
+    const setEnv = (param: Env | ((prev: Env) => Env)) => {
+        let retval: Env = env;
+        if (typeof param === "function") {
+            _setEnv((prev) => {
+                retval = param(prev);
+                return retval;
+            });
+        } else {
+            _setEnv(param);
+            retval = param;
+        }
+        set("envParam", { ...retval })
+    };
+    return [env, setEnv] as const;
 }

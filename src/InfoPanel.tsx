@@ -1,10 +1,11 @@
-import React from 'react'
-import { materialSelectedAtom, selectedAtom, threeExportsAtom } from './atoms';
+import React, { useState } from 'react'
+import { materialSelectedAtom, selectedAtom, threeExportsAtom, useModal } from './atoms';
 import { useAtom, useAtomValue } from 'jotai';
 import ObjectViewer from './components/ObjectViewer';
 import { THREE } from './VTHREE';
 import { max } from 'three/webgpu';
 import { groupInfo } from './utils';
+import useLightMapDragAndDrop from './useLightMapDragAndDrop';
 
 const ObjectView = ({ object }: { object: THREE.Object3D }) => {
 
@@ -45,10 +46,105 @@ const ObjectView = ({ object }: { object: THREE.Object3D }) => {
     </div>
 }
 
+const ApplyLightMapComponent = () => {
+    const { closeModal } = useModal();
+    const [imageFile, setImageFile] = useState<File | null>(null);
+    const [isDragging, setIsDragging] = useState(false);
+    const selectedMeshes = useAtomValue(selectedAtom);
+    const threeExports = useAtomValue(threeExportsAtom);
+    if (!threeExports) {
+        return null;
+    }
+
+    const { scene } = threeExports;
+
+    const handleDragOver = (event: React.DragEvent<HTMLDivElement>) => {
+        console.log("HERE")
+        event.preventDefault();
+        event.stopPropagation();
+        setIsDragging(true);
+    };
+
+    const handleDragLeave = (event: React.DragEvent<HTMLDivElement>) => {
+        event.preventDefault();
+        event.stopPropagation();
+        setIsDragging(false);
+    };
+    return <div style={{
+        width: "50%", backgroundColor: "white", borderRadius: 8, padding: 20, display: "flex", flexDirection: "column",
+        cursor: isDragging ? "copy" : undefined,
+        border: isDragging ? "2px dashed #000" : undefined,
+        boxSizing: "border-box"
+    }}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            setIsDragging(false);
+
+            if (event.dataTransfer.files && event.dataTransfer.files.length > 0) {
+
+                const acceptedExtensions = ['.png', ".jpg"];
+                const files = Array.from(event.dataTransfer.files);
+
+                // Filter files by .gltf and .glb extensions
+                const filteredFiles = files.filter((file) =>
+                    acceptedExtensions.some((ext) => file.name.toLowerCase().endsWith(ext))
+                );
+
+                if (filteredFiles.length === 0) {
+                    alert("Only .png and .jpg files are accepted.");
+                    return;
+                }
+
+                if (filteredFiles.length > 0) {
+                    setImageFile(filteredFiles[0]);
+                }
+
+                event.dataTransfer.clearData();
+            }
+        }}
+        onMouseDown={(e) => { e.stopPropagation(); }}
+        onMouseUp={(e) => {
+            e.stopPropagation();
+            console.log("onMoucseUp")
+        }}
+        onClick={(e) => {
+            e.stopPropagation();
+        }}
+    >
+        <div style={{ fontSize: 20, fontWeight: "bold" }}>라이트맵 일괄적용</div>
+        <div style={{ fontSize: 12 }}>선택된 메쉬 {selectedMeshes.length}개에 라이트맵을 일괄적용합니다.</div>
+
+        <div style={{ fontSize: 20, margin: 40, width: "100%", textAlign: "center", fontWeight: "bold" }}>라이트맵 드래그 & 드랍</div>
+        {imageFile && <img src={URL.createObjectURL(imageFile)} style={{ width: "100%", height: 100, objectFit: "contain" }}></img>}
+        <div style={{ width: "100%", display: "flex", gap: 8, marginTop: 8, justifyContent: "flex-end" }}>
+            <button onClick={() => {
+                closeModal();
+            }}>취소</button>
+            <button onClick={() => {
+                const meshes = selectedMeshes.map(uuid => scene.getObjectByProperty("uuid", uuid)).filter(obj => obj instanceof THREE.Mesh) as THREE.Mesh[];
+
+                const texture = new THREE.TextureLoader().load(URL.createObjectURL(imageFile!));
+                texture.flipY = !texture.flipY;
+
+                meshes.forEach(mesh => {
+                    (mesh.material as THREE.MeshStandardMaterial).lightMap = texture;
+                    (mesh.material as THREE.MeshStandardMaterial).needsUpdate = true;
+                });
+                closeModal();
+            }} disabled={!imageFile}>적용</button>
+        </div>
+    </div>
+}
+
 function InfoPanel() {
     const [selecteds, setSelecteds] = useAtom(selectedAtom);
     const threeExports = useAtomValue(threeExportsAtom);
     const materialSelected = useAtomValue(materialSelectedAtom);
+    const { openModal, closeModal } = useModal();
+
 
     if (selecteds.length === 0 || !threeExports) {
         return null;
@@ -69,19 +165,27 @@ function InfoPanel() {
             display: "flex",
             flexDirection: "column",
             gap: 8,
-            overflowY: "auto"
-        }}>
+            overflowY: "auto",
+        }}
+
+
+        >
             <div>{selecteds.length}개 선택됨</div>
-            {selecteds.map(selected => {
-                const found = scene.getObjectByProperty("uuid", selected);
-                if (!found) {
-                    return null;
-                }
-                return <ObjectView key={`info-object-${found.uuid}`} object={found}></ObjectView>
-            })}
-            <div style={{ position: "absolute", top: 5, right: 5, fontSize: 12, fontWeight: "bold", cursor: "pointer" }} onClick={() => {
+            <button onClick={() => {
+                openModal(<ApplyLightMapComponent />);
+            }}> 라이트맵 일괄적용</button >
+            {
+                selecteds.map(selected => {
+                    const found = scene.getObjectByProperty("uuid", selected);
+                    if (!found) {
+                        return null;
+                    }
+                    return <ObjectView key={`info-object-${found.uuid}`} object={found}></ObjectView>
+                })
+            }
+            < div style={{ position: "absolute", top: 5, right: 5, fontSize: 12, fontWeight: "bold", cursor: "pointer" }} onClick={() => {
                 setSelecteds([]);
-            }}>X</div>
+            }}> X</div >
         </div >
     )
 }

@@ -6,6 +6,7 @@ import { Scene, Texture, THREE } from './VTHREE';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import { cameraMatrixAtom, envAtom, loadHistoryAtom, materialSelectedAtom, selectedAtom, sourceAtom, threeExportsAtom } from './atoms';
 import { TransformControlsPlane } from 'three/examples/jsm/Addons.js';
+import { __UNDEFINED__ } from './Constants';
 
 function MyEnvironment() {
     const env = useAtomValue(envAtom);
@@ -20,7 +21,14 @@ function MyEnvironment() {
     }
 
     if (env.select === "custom") {
-        if (!env.url) {
+        if (!env.url || env.url === __UNDEFINED__) {
+            return null;
+        }
+        return <Environment files={env.url} environmentIntensity={intensity} />
+    }
+
+    if (env.select === "url") {
+        if (!env.url || env.url === __UNDEFINED__) {
             return null;
         }
         return <Environment files={env.url} environmentIntensity={intensity} />
@@ -259,19 +267,6 @@ function RendererContainer() {
                         return;
                     }
 
-                    // if riht 
-                    if (e.button === 2) {
-                        const { intersects, mesh } = getIntersects(e, threeExports);
-                        if (mesh.length > 0) {
-                            console.log(mesh[0].object.uuid);
-                            const mightBeMaterials = mesh[0].object.material;
-                            const mat = Array.isArray(mightBeMaterials) ? mightBeMaterials[0] : mightBeMaterials;
-                            setSelected([mesh[0].object.uuid]);
-                            setMaterialSelected(mat);
-                        }
-                        return;
-                    }
-
                     if (Date.now() - lastClickRef.current > 200) {
                         return;
                     }
@@ -290,6 +285,13 @@ function RendererContainer() {
                             });
                         } else {
                             setSelected([intersects[0].object.uuid]);
+                        }
+
+                        // if riht 
+                        if (e.button === 2) {
+                            if (intersects[0].object.type === "Mesh") {
+                                setMaterialSelected((intersects[0].object as THREE.Mesh).material as THREE.Material);
+                            }
                         }
                     } else {
                         setSelected([]);

@@ -1,12 +1,14 @@
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import useFiles from '../useFiles';
-import { formatNumber, groupInfo, toNthDigit } from '../utils';
-import { cameraMatrixAtom, cameraModeAtom, envAtom, selectedAtom, threeExportsAtom } from '../atoms';
+import { cacheLoadModel, formatNumber, groupInfo, toNthDigit } from '../utils';
+import { cameraMatrixAtom, cameraModeAtom, envAtom, selectedAtom, sourceAtom, threeExportsAtom, useEnvParams, useModal } from '../atoms';
 import { useEffect, useState } from 'react';
 import { get, set } from 'idb-keyval';
 import { Euler, Quaternion, THREE, Vector3 } from '../VTHREE';
 import { GLTFExporter } from 'three/examples/jsm/Addons.js';
 import { useNavigate } from 'react-router-dom';
+import useFilelist from '../useFilelist';
+import { __UNDEFINED__ } from '../Constants';
 
 const useEnvUrl = () => {
     const [envUrl, setEnvUrl] = useState<string | null>(null);
@@ -48,12 +50,16 @@ function saveArrayBuffer(buffer: ArrayBuffer, filename: string) {
 
 const SceneInfo = () => {
     const { files, loadingFiles } = useFiles();
-    const [env, setEnv] = useAtom(envAtom);
+    // const [env, setEnv] = useAtom(envAtom);
+    const [env, setEnv] = useEnvParams();
     const threeExports = useAtomValue(threeExportsAtom);
     const [envUrl, setEnvUrl] = useEnvUrl();
     const cameraMatrix = useAtomValue(cameraMatrixAtom);
     const [selecteds, setSelecteds] = useAtom(selectedAtom);
+    const { openModal, closeModal } = useModal();
     const navigate = useNavigate();
+    const { filelist, loading } = useFilelist();
+    const setSource = useSetAtom(sourceAtom);
 
     if (!threeExports) {
         return null;
@@ -79,7 +85,7 @@ const SceneInfo = () => {
         gap: 12
     }}>
         <section style={{ width: "100%", display: "flex", gap: 8 }}>
-            <button disabled={scene.children.length === 0} onClick={() => {
+            <button style={{ fontSize: 10 }} disabled={scene.children.length === 0} onClick={() => {
 
                 new GLTFExporter().parseAsync(threeExports.scene).then(result => {
                     if (result instanceof ArrayBuffer) {
@@ -90,9 +96,36 @@ const SceneInfo = () => {
                     }
                 })
             }}>GLTF 내보내기</button>
-            <button onClick={() => {
+            <button style={{ fontSize: 10 }} onClick={() => {
                 navigate("/upload");
-            }}>업로드하기</button>
+            }}>업로드하러가기</button>
+            <button style={{ fontSize: 10 }} onClick={() => {
+                openModal(
+                    () => <div style={{ backgroundColor: "white", padding: 16, borderRadius: 8 }} onClick={(e) => {
+                        e.stopPropagation();
+                    }}>
+                        {!filelist ? "로딩중..." : <div>
+                            <ul>{filelist.map((file, index) => {
+                                return <li onClick={() => {
+                                    cacheLoadModel(file.fileUrl).then(blob => {
+                                        const url = URL.createObjectURL(blob);
+                                        const fileFromBlob = new File([blob], file.filename);
+                                        setSource([{ url, name: file.filename, file: fileFromBlob }]);
+                                        closeModal?.();
+                                    })
+                                }} style={{
+                                    fontSize: 12,
+                                    cursor: "pointer"
+                                }} key={`loadfile=${file.fileUrl}`}>{index + 1}. {file.filename} ({formatNumber(file.fileSize / (1024 * 1024))}mb)</li>
+                            })}</ul>
+                        </div>
+                        }
+                        <button onClick={(e) => {
+                            e.stopPropagation();
+                            closeModal?.()
+                        }}>close</button>
+                    </div>);
+            }}>모델 추가</button>
         </section>
         <section style={{ width: "100%" }}>
             <strong>환경맵</strong>
@@ -101,11 +134,12 @@ const SceneInfo = () => {
                     <select
                         value={env.select}
                         onChange={(e) => {
-                            setEnv({ select: e.target.value as "none" | "preset" | "custom" });
+                            setEnv({ select: e.target.value as "none" | "preset" | "custom" | "url" });
                         }}>
                         <option value="none">없음</option>
                         <option value="preset">프리셋</option>
-                        <option value="custom">URL</option>
+                        <option value="custom">업로드한 환경맵</option>
+                        <option value="url">URL</option>
                     </select>
                 </div>
             </div>
@@ -145,6 +179,23 @@ const SceneInfo = () => {
                 </div>
             </>}
             {env.select === "custom" && <>
+                <div style={{
+                    display: env.select === "custom" ? "flex" : "none",
+                    flexDirection: "column",
+                    marginTop: 4,
+                }}>
+                    <select value={env.url ?? __UNDEFINED__} onChange={e => {
+                        setEnv({ select: "custom", url: e.target.value });
+                    }}>
+                        <option value={__UNDEFINED__}>선택</option>
+                        {filelist?.filter(fileinfo => fileinfo.filename.endsWith(".hdr") || fileinfo.filename.endsWith("exr")).map(fileinfo => {
+                            return <option key={`customenvmap-${fileinfo.fileUrl}`} value={fileinfo.fileUrl}>{fileinfo.filename}</option>
+                        }
+                        )}
+                    </select>
+                </div>
+            </>}
+            {env.select === "url" && <>
                 <div style={{
                     width: "100%"
                 }}>

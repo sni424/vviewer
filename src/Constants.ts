@@ -9,3 +9,5 @@ export const EnvirontmentPresets = ["apartment",
     "sunset",
     "warehouse",] as const;
 export type EnvirontmentPresets = typeof EnvirontmentPresets[number];
+
+export const __UNDEFINED__ = "__UNDEFINED__" as const;

@@ -1,3 +1,4 @@
+import { get, set } from 'idb-keyval';
 import * as THREE from 'three';
 import type { GLTF } from 'three/examples/jsm/loaders/GLTFLoader';
 
@@ -48,4 +49,17 @@ export const toNthDigit = (num: number, digit: number): string => {
     return `${isNegative ? '-' : ''}${integerPart.length === 0 ? "0" : integerPart}.${decimalPart}`;
 
 
+}
+
+export const cacheLoadModel = async (url: string): Promise<Blob> => {
+    return get(url).then(data => {
+        if (!data) {
+            return fetch(url).then(res => res.blob()).then(data => {
+                return set(url, data).then(_ => {
+                    return data
+                })
+            })
+        }
+        return data;
+    })
 }

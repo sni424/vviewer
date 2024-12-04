@@ -47,14 +47,21 @@ function Modal() {
         return null;
     }
 
+    // console.log(Content);
+
 
     return (
         <div style={{
             width: "100vw", height: "100vh", position: "fixed", top: 0, left: 0, backgroundColor: "#00000033", display: "flex",
             justifyContent: "center", alignItems: "center"
-        }} onClick={closeModal}>
+        }} onClick={e => {
+            e.stopPropagation();
+            closeModal()
+        }
+        }>
             {React.cloneElement(Content, { closeModal })}
-        </div>
+            {/* <Content closeModal={closeModal} /> */}
+        </div >
     )
 }
 
