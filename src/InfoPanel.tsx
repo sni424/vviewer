@@ -47,13 +47,41 @@ const ApplyLightMapComponent = () => {
     const { closeModal } = useModal();
     const [imageFile, setImageFile] = useState<File | null>(null);
     const [isDragging, setIsDragging] = useState(false);
-    const selectedMeshes = useAtomValue(selectedAtom);
+    const selectedObjects = useAtomValue(selectedAtom);
     const threeExports = useAtomValue(threeExportsAtom);
     if (!threeExports) {
         return null;
     }
 
     const { scene } = threeExports;
+    const childrenMeshes: THREE.Mesh[] = [];
+    const addMeshIfNotExists = (mesh: THREE.Object3D) => {
+        if (mesh.type === "Mesh") {
+            if (childrenMeshes.some(exist => exist.uuid === mesh.uuid)) {
+                return;
+            }
+            childrenMeshes.push(mesh as THREE.Mesh);
+        }
+    }
+
+    selectedObjects.forEach(uuid => {
+        const obj = scene.getObjectByProperty("uuid", uuid);
+        if (!obj) {
+            return;
+        }
+        if (obj.type === "Mesh") {
+            addMeshIfNotExists(obj)
+        } else {
+            const recursivelyAdd = (object: THREE.Object3D) => {
+                object.children.forEach(addMeshIfNotExists);
+                object.children.forEach(recursivelyAdd);
+            }
+            recursivelyAdd(obj);
+        }
+    })
+
+
+
 
     const handleDragOver = (event: React.DragEvent<HTMLDivElement>) => {
         console.log("HERE")
@@ -112,7 +140,7 @@ const ApplyLightMapComponent = () => {
         }}
     >
         <div style={{ fontSize: 20, fontWeight: "bold" }}>라이트맵 일괄적용</div>
-        <div style={{ fontSize: 12 }}>선택된 메쉬 {selectedMeshes.length}개에 라이트맵을 일괄적용합니다.</div>
+        <div style={{ fontSize: 12 }}>선택된 오브젝트 {selectedObjects.length}개의 하위 메쉬 {childrenMeshes.length}개에 라이트맵을 일괄적용합니다.</div>
 
         <div style={{ fontSize: 20, margin: 40, width: "100%", textAlign: "center", fontWeight: "bold" }}>라이트맵 드래그 & 드랍</div>
         {imageFile && <img src={URL.createObjectURL(imageFile)} style={{ width: "100%", height: 100, objectFit: "contain" }}></img>}
@@ -121,13 +149,12 @@ const ApplyLightMapComponent = () => {
                 closeModal();
             }}>취소</button>
             <button onClick={() => {
-                const meshes = selectedMeshes.map(uuid => scene.getObjectByProperty("uuid", uuid)).filter(obj => obj instanceof THREE.Mesh) as THREE.Mesh[];
 
                 const texture = new THREE.TextureLoader().load(URL.createObjectURL(imageFile!));
                 texture.flipY = !texture.flipY;
                 texture.channel = 1;
 
-                meshes.forEach(mesh => {
+                childrenMeshes.forEach(mesh => {
                     (mesh.material as THREE.MeshStandardMaterial).lightMap = texture;
 
                     (mesh.material as THREE.MeshStandardMaterial).needsUpdate = true;

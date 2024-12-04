@@ -51,9 +51,9 @@ const MeshStandardMaterialPanel = ({ mat }: { mat: THREE.MeshStandardMaterial })
 }
 
 const MaterialPanel = ({ mat }: { mat: THREE.Material }) => {
-    if (mat.type === "MeshStandardMaterial") {
-        return <MeshStandardMaterialPanel mat={mat as THREE.MeshStandardMaterial} />
-    }
+    // if (mat.type === "MeshStandardMaterial") {
+    return <MeshStandardMaterialPanel mat={mat as THREE.MeshStandardMaterial} />
+    // }
 
     // return <div style={{ display: "flex", flexDirection: "column" }}>
     //     <div style={{ display: "flex", flexDirection: "column" }}>
