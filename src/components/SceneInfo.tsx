@@ -166,8 +166,8 @@ const SceneInfo = () => {
                         }}>close</button>
                     </div>);
             }}>모델 추가</button>
-            <button onClick={() => { saveScene(scene) }}>씬 저장</button>
-            <button onClick={() => {
+            <button style={{fontSize:10}} onClick={() => { saveScene(scene) }}>씬 저장</button>
+            <button style={{fontSize:10}} onClick={() => {
                 loadScene().then(loaded => {
                     if (loaded) {
                         scene.removeFromParent();
@@ -176,6 +176,9 @@ const SceneInfo = () => {
 
                 })
             }}>씬 불러오기</button>
+            <button style={{fontSize:10}} onClick={() => {
+                saveString(JSON.stringify(scene.toJSON(), null, 2), `scene-${new Date().toISOString()}.json`);
+            }}>씬 내보내기</button>
         </section>
         <section style={{ width: "100%" }}>
             <strong>환경맵</strong>

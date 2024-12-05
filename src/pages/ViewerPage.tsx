@@ -9,6 +9,7 @@ import RendererContainer from '../components/canvas/Renderer';
 import InfoPanel from '../components/InfoPanel';
 import MaterialPanelContainer from '../components/MaterialPanel';
 import Modal from '../components/Modal';
+import { Scene, THREE } from '../scripts/VTHREE';
 
 declare global {
     interface Map<K, V> {
@@ -77,6 +78,7 @@ const ThePanel = () => {
 const useModelDragAndDrop = () => {
     const [isDragging, setIsDragging] = useState(false);
     const setSourceUrls = useSetAtom(sourceAtom);
+    const threeExports = useAtomValue(threeExportsAtom);
 
     const handleDragOver = (event: React.DragEvent<HTMLDivElement>) => {
         event.preventDefault();
@@ -93,7 +95,7 @@ const useModelDragAndDrop = () => {
 
         if (event.dataTransfer.files && event.dataTransfer.files.length > 0) {
 
-            const acceptedExtensions = ['.gltf', '.glb'];
+            const acceptedExtensions = ['.gltf', '.glb', ".json"];
             const files = Array.from(event.dataTransfer.files);
 
             // Filter files by .gltf and .glb extensions
@@ -102,13 +104,36 @@ const useModelDragAndDrop = () => {
             );
 
             if (filteredFiles.length === 0) {
-                alert("Only .gltf and .glb files are accepted.");
+                alert("Only .gltf and .glb, .json files are accepted.");
                 return;
             }
 
-            // Convert files to Blob URLs
-            const fileUrls = filteredFiles.map((file) => ({ name: file.name, url: URL.createObjectURL(file), file }));
+            const gltfs = filteredFiles.filter(file => file.name.toLowerCase().endsWith(".gltf") || file.name.toLowerCase().endsWith(".glb"));;
+
+            const fileUrls = gltfs.map((file) => ({ name: file.name, url: URL.createObjectURL(file), file }));
             setSourceUrls(fileUrls);
+
+            if (threeExports) {
+                const jsons = filteredFiles.filter(file => file.name.toLowerCase().endsWith(".json"));
+
+                const loader = new THREE.ObjectLoader();
+                jsons.forEach(jsonFile => {
+                    // scene.toJSON()
+                    const reader = new FileReader();
+                    reader.readAsText(jsonFile);
+
+                    const { scene } = threeExports;
+                    reader.onload = function () {
+                        const obj = JSON.parse(reader.result as string);
+                        const parsedScene = loader.parse(obj);
+                        scene.add(parsedScene);
+                    }
+
+                })
+
+            }
+
+
 
             event.dataTransfer.clearData();
         }

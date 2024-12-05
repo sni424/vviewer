@@ -162,7 +162,9 @@ function RendererContainer() {
             // ctrl s
             if(e.ctrlKey && e.key.toLowerCase() === "s"){
                 e.preventDefault();
-                saveScene(scene);
+                saveScene(scene).then(()=>{
+                    alert("저장 완료")
+                })
             }
         }
 
