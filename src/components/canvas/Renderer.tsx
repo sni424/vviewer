@@ -11,6 +11,7 @@ import MyEnvironment from './EnvironmentMap';
 import SelectBox from './SelectBox';
 import { getIntersects } from '../../scripts/utils';
 import Gizmo from './Gizmo';
+import GlobalContrast from './GlobalContrast';
 
 function Renderer() {
     const threeExports = useThree();
@@ -86,10 +87,11 @@ function Renderer() {
             name='GizmoHelper'
             alignment="bottom-right" // widget alignment within scene
             margin={[80, 80]} // widget margins (X, Y)
-            
+
         >
             <GizmoViewport name='GizmoHelper' axisColors={['red', 'green', 'blue']} labelColor="black" />
         </GizmoHelper>
+        <GlobalContrast></GlobalContrast>
     </>
 }
 

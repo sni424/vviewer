@@ -1,7 +1,7 @@
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import useFiles from '../scripts/useFiles';
 import { cacheLoadModel, formatNumber, groupInfo, toNthDigit } from '../scripts/utils';
-import { cameraMatrixAtom, cameraModeAtom, envAtom, selectedAtom, sourceAtom, threeExportsAtom, useEnvParams, useModal } from '../scripts/atoms';
+import { cameraMatrixAtom, cameraModeAtom, envAtom, globalContrastAtom, selectedAtom, sourceAtom, threeExportsAtom, useEnvParams, useModal } from '../scripts/atoms';
 import { useEffect, useState } from 'react';
 import { get, set } from 'idb-keyval';
 import { Euler, Quaternion, THREE, Vector3 } from '../scripts/VTHREE';
@@ -103,6 +103,7 @@ const SceneInfo = () => {
     const navigate = useNavigate();
     const { filelist, loading } = useFilelist();
     const setSource = useSetAtom(sourceAtom);
+    const [globalContrast, setGlobalContrast] = useAtom(globalContrastAtom)
 
     if (!threeExports) {
         return null;
@@ -272,6 +273,15 @@ const SceneInfo = () => {
                     </div>
                 </div>
             </>}
+        </section>
+
+        <section style={{ marginTop: 16 }}>
+            <div>
+                <strong>대비</strong>
+                <input type="range" min={1} max={2} step={0.005} value={globalContrast ?? 1} onChange={(e) => {
+                    setGlobalContrast(parseFloat(e.target.value));
+                }} />
+            </div>
         </section>
 
         <section style={{ marginTop: 16 }}>
