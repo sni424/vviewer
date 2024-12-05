@@ -15,13 +15,24 @@ class CustomEffect extends Effect {
           uniform float uContrast;
   
           vec3 adjustContrast(vec3 color, float contrast) {
-            return (color - 0.5) * contrast + 0.5;
-          }
+            // Sigmoid-based contrast adjustment
+            contrast = contrast + 1.0;
+            color = clamp(color, 0.0, 1.0); // Ensure color stays in [0, 1]
+            color = (color - 0.5) * contrast + 0.5; // Scale and re-center color
+            color = smoothstep(0.0, 1.0, color);   // Smooth results using a sigmoid-like function
+            return color;
+        }
   
           void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor) {
             vec4 color = texture2D(tDiffuse, uv);
-            color.rgb = adjustContrast(color.rgb, uContrast);
-            outputColor = vec4(color.rgb, 1.0);
+            
+            // Check the alpha value to determine if the fragment is background
+            if (color.a < 0.01) { // Background threshold
+                outputColor = color; // Skip contrast adjustment for the background
+            } else {
+                color.rgb = adjustContrast(color.rgb, uContrast); // Apply contrast adjustment
+                outputColor = vec4(color.rgb, color.a);
+            }
           }
         `,
             {
@@ -36,9 +47,9 @@ class CustomEffect extends Effect {
 extend({ CustomEffect });
 
 const GlobalContrast = () => {
-    const globalContrastValue = useAtomValue(globalContrastAtom);
+    const { on, value: globalContrastValue } = useAtomValue(globalContrastAtom);
 
-    if (typeof globalContrastValue !== "number") {
+    if (!on) {
         return null;
     }
 

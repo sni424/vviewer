@@ -65,4 +65,8 @@ export const useEnvParams = () => {
 export const GizmoModes = ["translate", "rotate", "scale"] as const;
 export type GizmoMode = typeof GizmoModes[number];
 export const mouseModeAtom = atom<"select" | GizmoMode>("select");
-export const globalContrastAtom = atom<number>();
+
+export const globalContrastAtom = atom<{on:boolean; value:number}>({
+    on: false,
+    value: 0
+});

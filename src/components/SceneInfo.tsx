@@ -104,6 +104,7 @@ const SceneInfo = () => {
     const { filelist, loading } = useFilelist();
     const setSource = useSetAtom(sourceAtom);
     const [globalContrast, setGlobalContrast] = useAtom(globalContrastAtom)
+    const { on: globalContrastOn, value: globalContrastValue } = globalContrast;
 
     if (!threeExports) {
         return null;
@@ -278,9 +279,14 @@ const SceneInfo = () => {
         <section style={{ marginTop: 16 }}>
             <div>
                 <strong>대비</strong>
-                <input type="range" min={1} max={2} step={0.005} value={globalContrast ?? 1} onChange={(e) => {
-                    setGlobalContrast(parseFloat(e.target.value));
-                }} />
+                <input type="checkbox" checked={globalContrastOn} onChange={(e) => {
+                    setGlobalContrast({ on: e.target.checked, value: globalContrastValue ?? 1 });
+                }
+                } />
+                {globalContrastOn && <input type="range" min={0} max={1} step={0.005} value={globalContrastValue ?? 1} onChange={(e) => {
+                    setGlobalContrast({ on: true, value: parseFloat(e.target.value) });
+                }} />}
+
             </div>
         </section>
 
