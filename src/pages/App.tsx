@@ -5,13 +5,14 @@ import AtomProvider from '../components/AtomProvider';
 import { Env, envAtom, useEnvParams } from '../scripts/atoms';
 import { useEffect, useState } from 'react';
 import { get } from 'idb-keyval';
+import TestPage from './TestPage';
 
 
 const MyRoutes = () => {
   return <Routes>
     <Route path="/" element={<ViewerPage />} />
     <Route path="/upload" element={<UploadPage />} />
-    {/* <Route path="/landing" element={<Landing />} /> */}
+    <Route path="/test" element={<TestPage />} />
     {/* <Route path="/about" element={<About />} /> */}
   </Routes>
 }

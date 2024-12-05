@@ -7,7 +7,6 @@ import useLightMapDragAndDrop from '../scripts/useLightMapDragAndDrop';
 import LightMapPreview from './LightMapPreview';
 
 const LightmapSection = ({ mat }: { mat: THREE.MeshStandardMaterial }) => {
-    console.log("Channel : ", mat.lightMap?.channel ?? "-", mat.uuid.substring(0, 5));
     const { isDragging, handleDrop, handleDragOver, handleDragLeave } = useLightMapDragAndDrop(mat);
     const [lightMapIntensity, setLightMapIntensity] = useState(mat.lightMapIntensity);
     const [lightmapChannel, setLightmapChannel] = useState<number>(mat.lightMap?.channel ?? 0);

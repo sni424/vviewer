@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { Matrix4Array } from '../types';
+import { TransformControlsPlane } from 'three/examples/jsm/Addons.js';
 
 export interface ThreeUserData {
   otherUserCamera?: boolean;
@@ -49,6 +50,15 @@ declare module 'three' {
     // false이면 오버라이드
     // default : true
     setUserData(userData: ThreeUserData, extend?: boolean): Object3D;
+    traverse(
+      callback: (node: Object3D) => any,
+      filter?: (node: Object3D) => boolean,
+    ): void;
+
+    isSystemGenerated(): boolean;
+    isBoxHelper(): boolean;
+    isXYZGizmo(): boolean;
+    isTransformControl(): boolean;
   }
 }
 
@@ -135,6 +145,61 @@ THREE.Matrix4.prototype.decomposed = function () {
   this.decompose(position, quaternion, scale);
   return [position, quaternion, scale];
 };
+
+THREE.Object3D.prototype.isTransformControl = function () {
+  return this.name === "TransformControl" ||
+    ['translate', 'rotate', 'scale'].includes(
+      (this as TransformControlsPlane).mode,
+    );
+}
+THREE.Object3D.prototype.isBoxHelper = function () { return this.type === 'BoxHelper'; }
+
+THREE.Object3D.prototype.isXYZGizmo = function () { return this.name === "GizmoHelper" || (this.type === "Mesh" && this.name === "XYZ") }
+
+THREE.Object3D.prototype.isSystemGenerated = function () {
+  return this.isBoxHelper() || this.isXYZGizmo() || this.isTransformControl();
+}
+
+const defaultSceneFilter = (node: THREE.Object3D) => {
+  if (node.isTransformControl()) {
+    return false;
+  }
+  if (node.isXYZGizmo()) {
+    return false;
+  }
+  if (node.isBoxHelper()) {
+    return false;
+  }
+  return true;
+}
+THREE.Object3D.prototype.traverse = function (callback: (node: THREE.Object3D) => any,
+  filter: (node: THREE.Object3D) => boolean = defaultSceneFilter) {
+  //original code : 
+  /*
+  callback( this );
+
+    const children = this.children;
+
+    for ( let i = 0, l = children.length; i < l; i ++ ) {
+
+      children[ i ].traverse( callback );
+
+    }
+   */
+
+  callback(this);
+
+  if (filter && !filter(this)) {
+    // debugger;
+    return;
+  }
+
+  const children = this.children;
+
+  for (let i = 0, l = children.length; i < l; i++) {
+    children[i].traverse(callback, filter);
+  }
+}
 
 export * from 'three';
 export { THREE };

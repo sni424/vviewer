@@ -1,4 +1,4 @@
-import { OrbitControls, } from '@react-three/drei'
+import { GizmoHelper, GizmoViewport, OrbitControls, } from '@react-three/drei'
 import { Canvas, RootState, useThree } from '@react-three/fiber'
 import VGLTFLoader from '../../scripts/VGLTFLoader';
 import { useEffect, useRef } from 'react';
@@ -75,13 +75,21 @@ function Renderer() {
         <boxGeometry args={[1, 1, 1]} />
         <meshStandardMaterial color="hotpink" />
       </mesh> */}
-        <OrbitControls onChange={e => {
+        <OrbitControls makeDefault onChange={e => {
             const matrix = e?.target.object.matrix.clone()
             setCameraAtom(matrix);
         }} />
         <MyEnvironment></MyEnvironment>
         <SelectBox></SelectBox>
         {/* <Gizmo></Gizmo> */}
+        <GizmoHelper
+            name='GizmoHelper'
+            alignment="bottom-right" // widget alignment within scene
+            margin={[80, 80]} // widget margins (X, Y)
+            
+        >
+            <GizmoViewport name='GizmoHelper' axisColors={['red', 'green', 'blue']} labelColor="black" />
+        </GizmoHelper>
     </>
 }
 
@@ -185,7 +193,7 @@ function RendererContainer() {
                         // }
                     } else {
                         setSelected([]);
-                        console.log("none")
+                        // console.log("none")
                     }
                 }}
                 style={{

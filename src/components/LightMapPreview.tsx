@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import * as THREE from "three";
+import { THREE } from "../scripts/VTHREE";
 
 interface LightMapPreviewProps {
     material: THREE.MeshStandardMaterial;

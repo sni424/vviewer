@@ -1,8 +1,8 @@
 import { RootState } from '@react-three/fiber';
 import { get, set } from 'idb-keyval';
-import * as THREE from 'three';
-import { TransformControlsPlane } from 'three/examples/jsm/Addons.js';
+
 import { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import * as THREE from "./VTHREE";
 // import type { GLTF } from 'three/examples/jsm/loaders/GLTFLoader';
 
 export const groupInfo = (group: THREE.Group | { scene: THREE.Group } | THREE.Scene | THREE.Object3D) => {
@@ -14,15 +14,29 @@ export const groupInfo = (group: THREE.Group | { scene: THREE.Group } | THREE.Sc
     let object3dCount = 0;
     let nodeCount = 0;
     scene.traverse((node: THREE.Object3D) => {
-        if (node.type === "BoxHelper") {
+        if (node.isSystemGenerated()) {
             return;
         }
+
+        // if (isGizmo(node)) {
+        //     return;
+        // }
+
+        // if (node.type === "BoxHelper") {
+        //     return;
+        // }
         if (node instanceof THREE.Mesh) {
-            const geometry = node.geometry;
-            if (geometry instanceof THREE.BufferGeometry) {
-                triangleCount += geometry.index!.count / 3;
-                vertexCount += geometry.attributes.position.count;
-                meshCount++;
+            try {
+
+                const geometry = node.geometry;
+                if (geometry instanceof THREE.BufferGeometry) {
+                    triangleCount += geometry.index!.count / 3;
+                    vertexCount += geometry.attributes.position.count;
+                    meshCount++;
+                }
+            } catch (e) {
+                console.error(e);
+                debugger;
             }
         }
         if (node instanceof THREE.Object3D) {
@@ -96,14 +110,9 @@ export const getIntersects = (
     mouse.y = -yRatio * 2 + 1;
     raycaster.setFromCamera(mouse, camera);
 
-    const isGizmo = (obj: THREE.Object3D) =>
-        ['translate', 'rotate', 'scale'].includes(
-            (obj as TransformControlsPlane).mode,
-        );
-    const isBoxHelper = (obj: THREE.Object3D) => obj.type === 'BoxHelper';
     const dstObjects = filterUserdataIgnoreRaycast
         ? scene.children.filter(
-            obj => !obj.getUserData().ignoreRaycast && !isGizmo(obj) && !isBoxHelper(obj),
+            obj => !obj.getUserData().ignoreRaycast && !obj.isTransformControl() && !obj.isBoxHelper(),
         )
         : scene.children;
     const intersects = raycaster.intersectObjects(dstObjects, true) as THREE.Intersection[];

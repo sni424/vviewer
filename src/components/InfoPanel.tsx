@@ -76,9 +76,26 @@ function InfoPanel() {
 
         >
             <div>{selecteds.length}개 선택됨</div>
-            <button onClick={() => {
-                openModal(<ApplyLightMapComponent /> as any);
-            }}> 라이트맵 일괄적용</button >
+            <div style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+            }}>
+                <button style={{fontSize:11}} onClick={() => {
+                    openModal(<ApplyLightMapComponent /> as any);
+                }}> 라이트맵 일괄적용</button >
+                <button style={{fontSize:11}} onClick={() => {
+                    setSelecteds(prev => {
+                        return prev.filter(uuid => {
+                            const found = scene.getObjectByProperty("uuid", uuid);
+                            if (!found) {
+                                return false;
+                            }
+                            return found.type !== "Mesh";
+                        });
+                    })
+                }}>하위메시제외</button>
+            </div>
+
             {
                 selecteds.map(selected => {
                     const found = scene.getObjectByProperty("uuid", selected);

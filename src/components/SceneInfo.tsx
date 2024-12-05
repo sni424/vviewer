@@ -48,13 +48,56 @@ function saveArrayBuffer(buffer: ArrayBuffer, filename: string) {
 
 }
 
+const CameraInfoSection = () => {
+    const threeExports = useAtomValue(threeExportsAtom);
+    const cameraMatrix = useAtomValue(cameraMatrixAtom);
+
+    if (!threeExports) {
+        return null;
+    }
+
+    const { scene } = threeExports;
+    const position = new Vector3();
+    const rotation = new Quaternion();
+    const scale = new Vector3();
+    cameraMatrix?.decompose(position, rotation, scale);
+    const rotationEuler = new Euler().setFromQuaternion(rotation);
+
+    <section style={{ marginTop: 16 }}>
+        <strong>카메라</strong>
+        {/* <select
+                style={{ textTransform: "capitalize" }}
+                value={cameraMode}
+                onChange={(e) => {
+                    // setEnv({ select: e.target.value as "none" | "preset" | "custom" });
+                    setCameraMode(e.target.value as "perspective" | "iso");
+                }}>
+                <option value="perspective">투시</option>
+                <option value="iso">아이소</option>
+            </select> */}
+
+
+        <div>Position</div>
+        <div style={{ paddingLeft: 8 }}>X: {toNthDigit(position.x, 4)}</div>
+        <div style={{ paddingLeft: 8 }}>Y: {toNthDigit(position.y, 4)}</div>
+        <div style={{ paddingLeft: 8 }}>Z: {toNthDigit(position.z, 4)}</div>
+
+        <div>Rotation</div>
+        <div style={{ paddingLeft: 8 }}>X: {toNthDigit(rotationEuler.x, 4)}</div>
+        <div style={{ paddingLeft: 8 }}>Y: {toNthDigit(rotationEuler.y, 4)}</div>
+        <div style={{ paddingLeft: 8 }}>Z: {toNthDigit(rotationEuler.z, 4)}</div>
+
+
+    </section>
+}
+
 const SceneInfo = () => {
     const { files, loadingFiles } = useFiles();
     // const [env, setEnv] = useAtom(envAtom);
     const [env, setEnv] = useEnvParams();
     const threeExports = useAtomValue(threeExportsAtom);
     const [envUrl, setEnvUrl] = useEnvUrl();
-    const cameraMatrix = useAtomValue(cameraMatrixAtom);
+
     const [selecteds, setSelecteds] = useAtom(selectedAtom);
     const { openModal, closeModal } = useModal();
     const navigate = useNavigate();
@@ -67,11 +110,6 @@ const SceneInfo = () => {
 
     const { scene } = threeExports;
     const totals = groupInfo(scene);
-    const position = new Vector3();
-    const rotation = new Quaternion();
-    const scale = new Vector3();
-    cameraMatrix?.decompose(position, rotation, scale);
-    const rotationEuler = new Euler().setFromQuaternion(rotation);
 
 
 
@@ -306,33 +344,7 @@ const SceneInfo = () => {
                 })}
             </ul>
         </section>
-
-        <section style={{ marginTop: 16 }}>
-            <strong>카메라</strong>
-            {/* <select
-                style={{ textTransform: "capitalize" }}
-                value={cameraMode}
-                onChange={(e) => {
-                    // setEnv({ select: e.target.value as "none" | "preset" | "custom" });
-                    setCameraMode(e.target.value as "perspective" | "iso");
-                }}>
-                <option value="perspective">투시</option>
-                <option value="iso">아이소</option>
-            </select> */}
-
-
-            <div>Position</div>
-            <div style={{ paddingLeft: 8 }}>X: {toNthDigit(position.x, 4)}</div>
-            <div style={{ paddingLeft: 8 }}>Y: {toNthDigit(position.y, 4)}</div>
-            <div style={{ paddingLeft: 8 }}>Z: {toNthDigit(position.z, 4)}</div>
-
-            <div>Rotation</div>
-            <div style={{ paddingLeft: 8 }}>X: {toNthDigit(rotationEuler.x, 4)}</div>
-            <div style={{ paddingLeft: 8 }}>Y: {toNthDigit(rotationEuler.y, 4)}</div>
-            <div style={{ paddingLeft: 8 }}>Z: {toNthDigit(rotationEuler.z, 4)}</div>
-
-
-        </section>
+        <CameraInfoSection></CameraInfoSection>
     </div>
 }
 
