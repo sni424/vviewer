@@ -1,8 +1,8 @@
 import React, { useState } from 'react'
-import { materialSelectedAtom, selectedAtom, threeExportsAtom, useModal } from './atoms';
+import { materialSelectedAtom, selectedAtom, threeExportsAtom, useModal } from '../scripts/atoms';
 import { useAtom, useAtomValue } from 'jotai';
-import { THREE } from './VTHREE';
-import { groupInfo } from './utils';
+import { THREE } from '../scripts/VTHREE';
+import { groupInfo } from '../scripts/utils';
 
 const ObjectView = ({ object }: { object: THREE.Object3D }) => {
 
@@ -199,7 +199,7 @@ function InfoPanel() {
         >
             <div>{selecteds.length}개 선택됨</div>
             <button onClick={() => {
-                openModal(<ApplyLightMapComponent />);
+                openModal(<ApplyLightMapComponent /> as any);
             }}> 라이트맵 일괄적용</button >
             {
                 selecteds.map(selected => {

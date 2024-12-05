@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react'
-import { modalAtom, useModal } from './atoms';
+import { modalAtom, useModal } from '../scripts/atoms';
 import { useAtomValue } from 'jotai';
 
 function isClassComponent(component: any) {
@@ -59,7 +59,7 @@ function Modal() {
             closeModal()
         }
         }>
-            {React.cloneElement(Content, { closeModal })}
+            {React.cloneElement(Content as any, { closeModal })}
             {/* <Content closeModal={closeModal} /> */}
         </div >
     )

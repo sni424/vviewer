@@ -1,13 +1,13 @@
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
-import useFiles from '../useFiles';
-import { cacheLoadModel, formatNumber, groupInfo, toNthDigit } from '../utils';
-import { cameraMatrixAtom, cameraModeAtom, envAtom, selectedAtom, sourceAtom, threeExportsAtom, useEnvParams, useModal } from '../atoms';
+import useFiles from '../scripts/useFiles';
+import { cacheLoadModel, formatNumber, groupInfo, toNthDigit } from '../scripts/utils';
+import { cameraMatrixAtom, cameraModeAtom, envAtom, selectedAtom, sourceAtom, threeExportsAtom, useEnvParams, useModal } from '../scripts/atoms';
 import { useEffect, useState } from 'react';
 import { get, set } from 'idb-keyval';
-import { Euler, Quaternion, THREE, Vector3 } from '../VTHREE';
+import { Euler, Quaternion, THREE, Vector3 } from '../scripts/VTHREE';
 import { GLTFExporter } from 'three/examples/jsm/Addons.js';
 import { useNavigate } from 'react-router-dom';
-import useFilelist from '../useFilelist';
+import useFilelist from '../scripts/useFilelist';
 import { __UNDEFINED__ } from '../Constants';
 
 const useEnvUrl = () => {

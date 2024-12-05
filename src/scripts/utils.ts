@@ -1,10 +1,11 @@
 import { get, set } from 'idb-keyval';
 import * as THREE from 'three';
-import type { GLTF } from 'three/examples/jsm/loaders/GLTFLoader';
+import { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
+// import type { GLTF } from 'three/examples/jsm/loaders/GLTFLoader';
 
-export const groupInfo = (group: THREE.Group | GLTF) => {
+export const groupInfo = (group: THREE.Group | { scene: THREE.Group } | THREE.Scene | THREE.Object3D) => {
     // triangle, vertices, mesh count
-    const scene = group.scene ?? group;
+    const scene = ((group as GLTF).scene ?? group) as THREE.Group;
     let triangleCount = 0;
     let vertexCount = 0;
     let meshCount = 0;

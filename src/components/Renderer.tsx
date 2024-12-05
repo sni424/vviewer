@@ -1,12 +1,12 @@
 import { Box, Environment, OrbitControls, OrthographicCamera } from '@react-three/drei'
 import { Canvas, RootState, useThree } from '@react-three/fiber'
-import VGLTFLoader from './VGLTFLoader';
+import VGLTFLoader from '../scripts/VGLTFLoader';
 import { useEffect, useRef } from 'react';
-import { Scene, Texture, THREE } from './VTHREE';
+import { Scene, Texture, THREE } from '../scripts/VTHREE';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
-import { cameraMatrixAtom, envAtom, loadHistoryAtom, materialSelectedAtom, selectedAtom, sourceAtom, threeExportsAtom } from './atoms';
+import { cameraMatrixAtom, envAtom, loadHistoryAtom, materialSelectedAtom, selectedAtom, sourceAtom, threeExportsAtom } from '../scripts/atoms';
 import { TransformControlsPlane } from 'three/examples/jsm/Addons.js';
-import { __UNDEFINED__ } from './Constants';
+import { __UNDEFINED__ } from '../Constants';
 
 function MyEnvironment() {
     const env = useAtomValue(envAtom);

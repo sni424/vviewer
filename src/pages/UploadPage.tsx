@@ -2,8 +2,8 @@ import { atom, useAtom, useAtomValue, useSetAtom } from 'jotai';
 import React, { useEffect, useState } from 'react'
 import { FileInfo } from '../types';
 import { useNavigate } from 'react-router-dom';
-import { formatNumber } from '../utils';
-import useFilelist from '../useFilelist';
+import { formatNumber } from '../scripts/utils';
+import useFilelist from '../scripts/useFilelist';
 
 const sourceAtom = atom<{
     name: string;

@@ -1,14 +1,14 @@
 import React from 'react';
 import { atom, useAtomValue, useSetAtom } from 'jotai';
 import { useState } from 'react';
-import { loadHistoryAtom, modalAtom, sourceAtom, threeExportsAtom, useModal } from '../atoms';
+import { loadHistoryAtom, modalAtom, sourceAtom, threeExportsAtom, useModal } from '../scripts/atoms';
 import SceneInfo from '../components/SceneInfo';
-import useFiles from '../useFiles';
+import useFiles from '../scripts/useFiles';
 import SceneTree from '../components/SceneTree';
-import RendererContainer from '../Renderer';
-import InfoPanel from '../InfoPanel';
+import RendererContainer from '../components/Renderer';
+import InfoPanel from '../components/InfoPanel';
 import MaterialPanelContainer from '../components/MaterialPanel';
-import Modal from '../Modal';
+import Modal from '../components/Modal';
 
 declare global {
     interface Map<K, V> {

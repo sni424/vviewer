@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { Matrix4Array } from './types';
+import { Matrix4Array } from '../types';
 
 export interface ThreeUserData {
   otherUserCamera?: boolean;

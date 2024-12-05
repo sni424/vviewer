@@ -1,8 +1,8 @@
 import { Route, Routes } from 'react-router-dom';
 import ViewerPage from "./ViewerPage";
 import UploadPage from './UploadPage';
-import AtomProvider from '../AtomProvider';
-import { Env, envAtom, useEnvParams } from '../atoms';
+import AtomProvider from '../components/AtomProvider';
+import { Env, envAtom, useEnvParams } from '../scripts/atoms';
 import { useEffect, useState } from 'react';
 import { get } from 'idb-keyval';
 

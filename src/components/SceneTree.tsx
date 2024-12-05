@@ -1,7 +1,7 @@
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
-import { materialSelectedAtom, selectedAtom, threeExportsAtom } from "../atoms";
+import { materialSelectedAtom, selectedAtom, threeExportsAtom } from "../scripts/atoms";
 import { useState } from "react";
-import { THREE } from "../VTHREE";
+import { THREE } from "../scripts/VTHREE";
 
 const MeshChildren = ({ data }: { data: THREE.Mesh }) => {
     const material = data.material as THREE.Material;

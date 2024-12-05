@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { FileInfo } from "./types";
+import { FileInfo } from "../types";
 
 export default function useFilelist() {
     const [filelist, setFilelist] = useState<FileInfo[] | null>(null);
