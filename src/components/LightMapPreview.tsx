@@ -34,11 +34,9 @@ const LightMapPreview: React.FC<LightMapPreviewProps> = ({ material, width, heig
         }
     }, [material.lightMap]);
 
-    return lightMapSrc ? (
-        <img width={width ?? 60} height={height ?? 60} src={lightMapSrc} alt="Light Map Preview" />
-    ) : (
-        <p>No light map available.</p>
-    );
+    return <div style={{ width: width ?? 60, height: height ?? 60, backgroundClip: "gray", borderRadius: 8 }}>
+        {lightMapSrc && <img style={{ width: "100%", height: "100%", objectFit: "contain" }} src={lightMapSrc} alt="Light Map Preview" />}
+    </div>
 };
 
 export default LightMapPreview;

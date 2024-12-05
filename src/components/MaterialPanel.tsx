@@ -1,5 +1,5 @@
 import { useAtom, useAtomValue } from 'jotai';
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { materialSelectedAtom, selectedAtom, threeExportsAtom } from '../scripts/atoms';
 import { THREE } from '../scripts/VTHREE';
 import { toNthDigit } from '../scripts/utils';
@@ -7,9 +7,16 @@ import useLightMapDragAndDrop from '../scripts/useLightMapDragAndDrop';
 import LightMapPreview from './LightMapPreview';
 
 const LightmapSection = ({ mat }: { mat: THREE.MeshStandardMaterial }) => {
+    console.log("Channel : ", mat.lightMap?.channel ?? "-", mat.uuid.substring(0, 5));
     const { isDragging, handleDrop, handleDragOver, handleDragLeave } = useLightMapDragAndDrop(mat);
     const [lightMapIntensity, setLightMapIntensity] = useState(mat.lightMapIntensity);
     const [lightmapChannel, setLightmapChannel] = useState<number>(mat.lightMap?.channel ?? 0);
+    useEffect(() => {
+        if (mat.lightMap) {
+            console.log("Changing mat lightmap, channel", mat.lightMap.channel, ", uuid:", mat.uuid.substring(0, 5));
+            setLightmapChannel(mat.lightMap.channel);
+        }
+    }, [mat.uuid, lightmapChannel]);
 
     return <section style={{ display: "flex", flexDirection: "column" }}>
         <div style={{ display: "flex", flexDirection: "column", border: "1px solid gray", padding: 8, borderRadius: 8, boxSizing: "border-box", cursor: isDragging ? "copy" : undefined }}
@@ -21,7 +28,7 @@ const LightmapSection = ({ mat }: { mat: THREE.MeshStandardMaterial }) => {
             {mat.lightMap && <div>
                 <LightMapPreview material={mat}></LightMapPreview>
                 <div>Intensity: {lightMapIntensity}</div>
-                <div>Channel: {lightmapChannel} <button onClick={() => {
+                <div key={`lmchannel-` + mat.uuid}>Channel: {lightmapChannel} <button onClick={() => {
                     setLightmapChannel(prev => Math.max(prev - 1, 0));
                     mat.lightMap!.channel = Math.max(mat.lightMap!.channel - 1, 0);
                     mat.needsUpdate = true;
@@ -63,7 +70,7 @@ const LightmapSection = ({ mat }: { mat: THREE.MeshStandardMaterial }) => {
 
 const MaterialPanel = ({ mat }: { mat: THREE.Material }) => {
     // if (mat.type === "MeshStandardMaterial") {
-    return <LightmapSection mat={mat as THREE.MeshStandardMaterial} />
+    return <LightmapSection key={"lightmapsection-" + mat.uuid} mat={mat as THREE.MeshStandardMaterial} />
     // }
 
     // return <div style={{ display: "flex", flexDirection: "column" }}>
@@ -90,7 +97,6 @@ function MaterialPanelContainer() {
     }
 
     const maps = Object.keys(mat).filter(key => key.toLowerCase().endsWith("map"));
-    console.log(maps);
 
     return (
         <div style={{

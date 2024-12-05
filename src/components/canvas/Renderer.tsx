@@ -116,8 +116,8 @@ function RendererContainer() {
                 return;
             }
 
-            if(e.key.toLowerCase() === "a"){
-                const {scene} = threeExports;
+            if (e.key.toLowerCase() === "a") {
+                const { scene } = threeExports;
                 // get all objects in scene
                 const everyObject: string[] = [];
                 scene.traverse(obj => {
@@ -159,25 +159,30 @@ function RendererContainer() {
                     const { intersects, mesh } = getIntersects(e, threeExports);
 
                     if (intersects.length > 0) {
-                        console.log(intersects[0].object.uuid);
+                        // console.log(intersects[0].object.uuid);
 
                         if (e.ctrlKey) {
                             setSelected(selected => {
                                 if (selected.includes(intersects[0].object.uuid)) {
+                                    setMaterialSelected(null);
                                     return selected.filter(uuid => uuid !== intersects[0].object.uuid);
+                                }
+                                if (intersects[0].object.type === "Mesh") {
+                                    setMaterialSelected((intersects[0].object as THREE.Mesh).material as THREE.Material);
                                 }
                                 return [...selected, intersects[0].object.uuid];
                             });
                         } else {
                             setSelected([intersects[0].object.uuid]);
-                        }
-
-                        // if riht 
-                        if (e.button === 2) {
                             if (intersects[0].object.type === "Mesh") {
                                 setMaterialSelected((intersects[0].object as THREE.Mesh).material as THREE.Material);
                             }
                         }
+
+                        // if riht 
+                        // if (e.button === 2) {
+
+                        // }
                     } else {
                         setSelected([]);
                         console.log("none")
