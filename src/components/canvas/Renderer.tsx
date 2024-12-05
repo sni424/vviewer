@@ -106,6 +106,8 @@ function RendererContainer() {
         if (!threeExports) {
             return;
         }
+
+        const { scene } = threeExports;
         const keyHandler = (e: KeyboardEvent) => {
             // on escape
             if (e.key === "Escape") {
@@ -116,7 +118,7 @@ function RendererContainer() {
             if (e.ctrlKey && e.key.toLowerCase() === "a") {
                 e.preventDefault();
                 const everyObject: string[] = [];
-                threeExports?.scene.traverse(obj => {
+                scene.traverse(obj => {
                     if (obj.type === "BoxHelper") {
                         return;
                     }
@@ -127,7 +129,6 @@ function RendererContainer() {
             }
 
             if (e.key.toLowerCase() === "a") {
-                const { scene } = threeExports;
                 // get all objects in scene
                 const everyObject: string[] = [];
                 scene.traverse(obj => {
@@ -137,13 +138,33 @@ function RendererContainer() {
                     everyObject.push(obj.uuid);
                 });
             }
+
+            if (e.key === "Delete") {
+
+                let deletes: THREE.Object3D[] = [];
+                scene.traverse(obj => {
+                    if (selected.includes(obj.uuid)) {
+                        deletes.push(obj);
+                    }
+                })
+                console.log(deletes)
+
+                deletes.forEach(obj => {
+                    obj.removeFromParent();
+                });
+                deletes = [];
+
+                const { gl } = threeExports;
+                gl.renderLists.dispose()
+                setSelected([]);
+            }
         }
 
         window.addEventListener("keydown", keyHandler);
         return () => {
             window.removeEventListener("keydown", keyHandler);
         }
-    }, [threeExports]);
+    }, [threeExports, selected]);
 
 
 
