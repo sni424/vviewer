@@ -4,12 +4,14 @@ import { materialSelectedAtom, selectedAtom, threeExportsAtom } from '../scripts
 import { THREE } from '../scripts/VTHREE';
 import { toNthDigit } from '../scripts/utils';
 import useLightMapDragAndDrop from '../scripts/useLightMapDragAndDrop';
+import LightMapPreview from './LightMapPreview';
 
-const MeshStandardMaterialPanel = ({ mat }: { mat: THREE.MeshStandardMaterial }) => {
+const LightmapSection = ({ mat }: { mat: THREE.MeshStandardMaterial }) => {
     const { isDragging, handleDrop, handleDragOver, handleDragLeave } = useLightMapDragAndDrop(mat);
     const [lightMapIntensity, setLightMapIntensity] = useState(mat.lightMapIntensity);
+    const [lightmapChannel, setLightmapChannel] = useState<number>(mat.lightMap?.channel ?? 0);
 
-    return <div style={{ display: "flex", flexDirection: "column" }}>
+    return <section style={{ display: "flex", flexDirection: "column" }}>
         <div style={{ display: "flex", flexDirection: "column", border: "1px solid gray", padding: 8, borderRadius: 8, boxSizing: "border-box", cursor: isDragging ? "copy" : undefined }}
             onDrop={handleDrop}
             onDragOver={handleDragOver}
@@ -17,8 +19,17 @@ const MeshStandardMaterialPanel = ({ mat }: { mat: THREE.MeshStandardMaterial })
         >
             <div>Lightmap : {mat.lightMap === null ? "없음" : mat.lightMap.name ?? "이름없음"}</div>
             {mat.lightMap && <div>
+                <LightMapPreview material={mat}></LightMapPreview>
                 <div>Intensity: {lightMapIntensity}</div>
-                <div>Channel: {mat.lightMap.channel}</div>
+                <div>Channel: {lightmapChannel} <button onClick={() => {
+                    setLightmapChannel(prev => Math.max(prev - 1, 0));
+                    mat.lightMap!.channel = Math.max(mat.lightMap!.channel - 1, 0);
+                    mat.needsUpdate = true;
+                }}>-1</button><button onClick={() => {
+                    setLightmapChannel(prev => prev + 1);
+                    mat.lightMap!.channel = mat.lightMap!.channel + 1
+                    mat.needsUpdate = true;
+                }}>+1</button></div>
                 <div style={{ width: "100%" }}>
                     <input type="range" min={0} max={1} step={0.01} value={lightMapIntensity ?? 1} onChange={(e) => {
                         mat.lightMapIntensity = parseFloat(e.target.value);
@@ -33,7 +44,7 @@ const MeshStandardMaterialPanel = ({ mat }: { mat: THREE.MeshStandardMaterial })
         {/* {Object.entries(mat).map(([key, value]) => {
             return <div key={`mat-${mat.uuid}` + key} style={{ fontSize: 10 }}>{key}: {JSON.stringify(value)}</div>
         })} */}
-    </div >
+    </section >
 
     // return <div>
     //     <div>color: {JSON.stringify(mat.color)}</div>
@@ -52,7 +63,7 @@ const MeshStandardMaterialPanel = ({ mat }: { mat: THREE.MeshStandardMaterial })
 
 const MaterialPanel = ({ mat }: { mat: THREE.Material }) => {
     // if (mat.type === "MeshStandardMaterial") {
-    return <MeshStandardMaterialPanel mat={mat as THREE.MeshStandardMaterial} />
+    return <LightmapSection mat={mat as THREE.MeshStandardMaterial} />
     // }
 
     // return <div style={{ display: "flex", flexDirection: "column" }}>

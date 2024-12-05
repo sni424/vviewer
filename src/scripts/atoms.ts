@@ -61,3 +61,7 @@ export const useEnvParams = () => {
     };
     return [env, setEnv] as const;
 }
+
+export const GizmoModes = ["translate", "rotate", "scale"] as const;
+export type GizmoMode = typeof GizmoModes[number];
+export const mouseModeAtom = atom<"select" | GizmoMode>("select");

@@ -1,5 +1,7 @@
+import { RootState } from '@react-three/fiber';
 import { get, set } from 'idb-keyval';
 import * as THREE from 'three';
+import { TransformControlsPlane } from 'three/examples/jsm/Addons.js';
 import { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
 // import type { GLTF } from 'three/examples/jsm/loaders/GLTFLoader';
 
@@ -64,3 +66,49 @@ export const cacheLoadModel = async (url: string): Promise<Blob> => {
         return data;
     })
 }
+
+
+export const getIntersects = (
+    e: React.MouseEvent,
+    threeExports: RootState | null,
+    raycaster: THREE.Raycaster = new THREE.Raycaster(),
+    filterUserdataIgnoreRaycast = true, // Object3D.userData.ignoreRayCast가 true인 아이들은 무시
+) => {
+
+    if (!threeExports) {
+        console.error(
+            'Three가 셋업되지 않은 상태에서 Intersect가 불림 @useEditorInputEvents',
+        );
+        return {
+            intersects: [],
+            mesh: [],
+            otherUserCameras: [],
+            review: [],
+        };
+    }
+    const { scene, camera } = threeExports;
+    const mouse = new THREE.Vector2();
+    const rect = e.currentTarget.getBoundingClientRect();
+    const xRatio = (e.clientX - rect.left) / rect.width;
+    const yRatio = (e.clientY - rect.top) / rect.height;
+
+    mouse.x = xRatio * 2 - 1;
+    mouse.y = -yRatio * 2 + 1;
+    raycaster.setFromCamera(mouse, camera);
+
+    const isGizmo = (obj: THREE.Object3D) =>
+        ['translate', 'rotate', 'scale'].includes(
+            (obj as TransformControlsPlane).mode,
+        );
+    const isBoxHelper = (obj: THREE.Object3D) => obj.type === 'BoxHelper';
+    const dstObjects = filterUserdataIgnoreRaycast
+        ? scene.children.filter(
+            obj => !obj.getUserData().ignoreRaycast && !isGizmo(obj) && !isBoxHelper(obj),
+        )
+        : scene.children;
+    const intersects = raycaster.intersectObjects(dstObjects, true) as THREE.Intersection[];
+
+    const mesh = intersects.filter(obj => obj.object.type === 'Mesh') as THREE.Intersection<THREE.Mesh>[];
+
+    return { intersects, mesh };
+};

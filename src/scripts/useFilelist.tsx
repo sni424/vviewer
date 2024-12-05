@@ -10,7 +10,7 @@ export default function useFilelist() {
             return;
         }
 
-        fetch(filelistUrl).then(res => res.json()).then((filelist: FileInfo[]) =>
+        fetch(filelistUrl, {cache: "no-store"}).then(res => res.json()).then((filelist: FileInfo[]) =>
             // 최신순으로 정렬
             setFilelist(filelist.reverse())
         ).catch(e => {

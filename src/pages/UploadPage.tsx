@@ -95,7 +95,7 @@ function Upload() {
             setUploading(false);
             setSource([]);
             alert("업로드 완료")
-            window.location.reload();
+            // window.location.reload();
         })
     }, [source]);
 

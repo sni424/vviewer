@@ -3,9 +3,11 @@ import * as THREE from "three";
 
 interface LightMapPreviewProps {
     material: THREE.MeshStandardMaterial;
+    width?: number;
+    height?: number;
 }
 
-const LightMapPreview: React.FC<LightMapPreviewProps> = ({ material }) => {
+const LightMapPreview: React.FC<LightMapPreviewProps> = ({ material, width, height }) => {
     const [lightMapSrc, setLightMapSrc] = useState<string | null>(null);
 
     useEffect(() => {
@@ -33,7 +35,7 @@ const LightMapPreview: React.FC<LightMapPreviewProps> = ({ material }) => {
     }, [material.lightMap]);
 
     return lightMapSrc ? (
-        <img src={lightMapSrc} alt="Light Map Preview" />
+        <img width={width ?? 60} height={height ?? 60} src={lightMapSrc} alt="Light Map Preview" />
     ) : (
         <p>No light map available.</p>
     );

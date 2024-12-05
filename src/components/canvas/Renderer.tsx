@@ -1,102 +1,16 @@
-import { Box, Environment, OrbitControls, OrthographicCamera } from '@react-three/drei'
+import { OrbitControls, } from '@react-three/drei'
 import { Canvas, RootState, useThree } from '@react-three/fiber'
-import VGLTFLoader from '../scripts/VGLTFLoader';
+import VGLTFLoader from '../../scripts/VGLTFLoader';
 import { useEffect, useRef } from 'react';
-import { Scene, Texture, THREE } from '../scripts/VTHREE';
+import { Scene, Texture, THREE } from '../../scripts/VTHREE';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
-import { cameraMatrixAtom, envAtom, loadHistoryAtom, materialSelectedAtom, selectedAtom, sourceAtom, threeExportsAtom } from '../scripts/atoms';
+import { cameraMatrixAtom, loadHistoryAtom, materialSelectedAtom, selectedAtom, sourceAtom, threeExportsAtom } from '../../scripts/atoms';
 import { TransformControlsPlane } from 'three/examples/jsm/Addons.js';
-import { __UNDEFINED__ } from '../Constants';
-
-function MyEnvironment() {
-    const env = useAtomValue(envAtom);
-    if (env.select === "none") {
-        return null;
-    }
-
-    const intensity = env.intensity ?? 1;
-
-    if (env.select === "preset") {
-        return <Environment preset={env.preset ?? "apartment"} environmentIntensity={intensity} />
-    }
-
-    if (env.select === "custom") {
-        if (!env.url || env.url === __UNDEFINED__) {
-            return null;
-        }
-        return <Environment files={env.url} environmentIntensity={intensity} />
-    }
-
-    if (env.select === "url") {
-        if (!env.url || env.url === __UNDEFINED__) {
-            return null;
-        }
-        return <Environment files={env.url} environmentIntensity={intensity} />
-    }
-}
-
-const SelectBox = () => {
-    const selecteds = useAtomValue(selectedAtom);
-    const threeExports = useAtomValue(threeExportsAtom);
-    if (!threeExports) {
-        return null;
-    }
-
-    if (selecteds.length === 0) {
-        const { scene } = threeExports;
-        const deletes: string[] = [];
-        scene.traverse(obj => {
-            if (obj.userData.boxhelper) {
-                deletes.push(obj.uuid);
-            }
-        })
-        scene.remove(...deletes.map(uuid => scene.getObjectByProperty("uuid", uuid)!));
-        return;
-    }
-
-    const { scene } = threeExports;
-    const existings: string[] = [];
-    scene.traverse(obj => {
-        if (obj.userData.boxhelper) {
-            existings.push(obj.uuid);
-        }
-    })
-    const keeps: string[] = [];
-    const deletes: string[] = [];
-    const adds: string[] = [];
-    selecteds.forEach(select => {
-        // add to keeps, deletes, adds
-        if (existings.includes(select)) {
-            keeps.push(select);
-        } else {
-            adds.push(select);
-        }
-    })
-    existings.forEach(existing => {
-        if (!selecteds.includes(existing)) {
-            deletes.push(existing);
-        }
-    });
-    deletes.forEach(deleteUuid => {
-        const helper = scene.getObjectByProperty("uuid", deleteUuid);
-        if (helper) {
-            scene.remove(helper);
-        }
-    });
-    adds.forEach(addUuid => {
-        const selectedObject = scene.getObjectByProperty("uuid", addUuid);
-        if (!selectedObject) {
-            return;
-        }
-        const helper = new THREE.BoxHelper(selectedObject, 0xff0000);
-        helper.userData.boxhelper = true;
-        scene.add(helper);
-    });
-
-    return null;
-
-}
-
+import { __UNDEFINED__ } from '../../Constants';
+import MyEnvironment from './EnvironmentMap';
+import SelectBox from './SelectBox';
+import { getIntersects } from '../../scripts/utils';
+import Gizmo from './Gizmo';
 
 function Renderer() {
     const threeExports = useThree();
@@ -167,53 +81,10 @@ function Renderer() {
         }} />
         <MyEnvironment></MyEnvironment>
         <SelectBox></SelectBox>
+        {/* <Gizmo></Gizmo> */}
     </>
 }
 
-const getIntersects = (
-    e: React.MouseEvent,
-    threeExports: RootState | null,
-    raycaster: THREE.Raycaster = new THREE.Raycaster(),
-    filterUserdataIgnoreRaycast = true, // Object3D.userData.ignoreRayCast가 true인 아이들은 무시
-) => {
-
-    if (!threeExports) {
-        console.error(
-            'Three가 셋업되지 않은 상태에서 Intersect가 불림 @useEditorInputEvents',
-        );
-        return {
-            intersects: [],
-            mesh: [],
-            otherUserCameras: [],
-            review: [],
-        };
-    }
-    const { scene, camera } = threeExports;
-    const mouse = new THREE.Vector2();
-    const rect = e.currentTarget.getBoundingClientRect();
-    const xRatio = (e.clientX - rect.left) / rect.width;
-    const yRatio = (e.clientY - rect.top) / rect.height;
-
-    mouse.x = xRatio * 2 - 1;
-    mouse.y = -yRatio * 2 + 1;
-    raycaster.setFromCamera(mouse, camera);
-
-    const isGizmo = (obj: THREE.Object3D) =>
-        ['translate', 'rotate', 'scale'].includes(
-            (obj as TransformControlsPlane).mode,
-        );
-    const isBoxHelper = (obj: THREE.Object3D) => obj.type === 'BoxHelper';
-    const dstObjects = filterUserdataIgnoreRaycast
-        ? scene.children.filter(
-            obj => !obj.getUserData().ignoreRaycast && !isGizmo(obj) && !isBoxHelper(obj),
-        )
-        : scene.children;
-    const intersects = raycaster.intersectObjects(dstObjects, true) as THREE.Intersection[];
-
-    const mesh = intersects.filter(obj => obj.object.type === 'Mesh') as THREE.Intersection<THREE.Mesh>[];
-
-    return { intersects, mesh };
-};
 
 function RendererContainer() {
     const threeExports = useAtomValue(threeExportsAtom);
@@ -244,6 +115,18 @@ function RendererContainer() {
                 setSelected(everyObject);
                 return;
             }
+
+            if(e.key.toLowerCase() === "a"){
+                const {scene} = threeExports;
+                // get all objects in scene
+                const everyObject: string[] = [];
+                scene.traverse(obj => {
+                    if (obj.type === "BoxHelper") {
+                        return;
+                    }
+                    everyObject.push(obj.uuid);
+                });
+            }
         }
 
         window.addEventListener("keydown", keyHandler);
@@ -251,6 +134,8 @@ function RendererContainer() {
             window.removeEventListener("keydown", keyHandler);
         }
     }, [threeExports]);
+
+
 
     return (
         <div style={{

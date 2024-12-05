@@ -5,7 +5,7 @@ import { loadHistoryAtom, modalAtom, sourceAtom, threeExportsAtom, useModal } fr
 import SceneInfo from '../components/SceneInfo';
 import useFiles from '../scripts/useFiles';
 import SceneTree from '../components/SceneTree';
-import RendererContainer from '../components/Renderer';
+import RendererContainer from '../components/canvas/Renderer';
 import InfoPanel from '../components/InfoPanel';
 import MaterialPanelContainer from '../components/MaterialPanel';
 import Modal from '../components/Modal';
