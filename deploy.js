@@ -11,8 +11,8 @@ const deploy = fs.readFileSync(deployFile, 'utf8').trim();
 const newDeploy = parseInt(deploy) + 1;
 fs.writeFileSync(deployFile, newDeploy.toString());
 
-execSync('git add .');
-execSync(`git commit -m "deploy ${newDeploy}"`);
+execSync('git add deploy');
+execSync(`git commit -m "auto deploy"`);
 execSync('git push');
 
 console.log(`deployed ${newDeploy}`);
