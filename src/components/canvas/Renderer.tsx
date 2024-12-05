@@ -9,7 +9,7 @@ import { TransformControlsPlane } from 'three/examples/jsm/Addons.js';
 import { __UNDEFINED__ } from '../../Constants';
 import MyEnvironment from './EnvironmentMap';
 import SelectBox from './SelectBox';
-import { getIntersects } from '../../scripts/utils';
+import { getIntersects, saveScene } from '../../scripts/utils';
 import Gizmo from './Gizmo';
 import GlobalContrast from './GlobalContrast';
 
@@ -140,7 +140,7 @@ function RendererContainer() {
             }
 
             if (e.key === "Delete") {
-
+                e.preventDefault();
                 let deletes: THREE.Object3D[] = [];
                 scene.traverse(obj => {
                     if (selected.includes(obj.uuid)) {
@@ -157,6 +157,12 @@ function RendererContainer() {
                 const { gl } = threeExports;
                 gl.renderLists.dispose()
                 setSelected([]);
+            }
+
+            // ctrl s
+            if(e.ctrlKey && e.key.toLowerCase() === "s"){
+                e.preventDefault();
+                saveScene(scene);
             }
         }
 

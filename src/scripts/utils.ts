@@ -4,6 +4,7 @@ import { get, set } from 'idb-keyval';
 import { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import * as THREE from "./VTHREE";
 // import type { GLTF } from 'three/examples/jsm/loaders/GLTFLoader';
+import objectHash from 'object-hash';
 
 export const groupInfo = (group: THREE.Group | { scene: THREE.Group } | THREE.Scene | THREE.Object3D) => {
     // triangle, vertices, mesh count
@@ -121,3 +122,37 @@ export const getIntersects = (
 
     return { intersects, mesh };
 };
+
+export const saveScene = async (scene: THREE.Scene) => {
+    return new Promise(async (resolve, reject) => {
+        const json = scene.toJSON();
+        const key = "savedScene";
+
+        set(key, json).then(() => {
+            resolve(true);
+            return true;
+        }).catch(e => {
+            console.error(e);
+            reject(false);
+        })
+
+    });
+}
+
+export const loadScene = async ():Promise<THREE.Object3D | undefined> => {
+    return new Promise(async (resolve, reject) => {
+        const key = "savedScene";
+        get(key).then((json) => {
+            if (!json) {
+                reject(undefined);
+                return;
+            }
+            const loader = new THREE.ObjectLoader();
+            const scene = loader.parse(json);
+            resolve(scene);
+        }).catch(e => {
+            console.error(e);
+            reject(undefined);
+        })
+    });
+}

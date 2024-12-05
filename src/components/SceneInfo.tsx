@@ -1,6 +1,6 @@
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import useFiles from '../scripts/useFiles';
-import { cacheLoadModel, formatNumber, groupInfo, toNthDigit } from '../scripts/utils';
+import { cacheLoadModel, formatNumber, groupInfo, loadScene, saveScene, toNthDigit } from '../scripts/utils';
 import { cameraMatrixAtom, cameraModeAtom, envAtom, globalContrastAtom, selectedAtom, sourceAtom, threeExportsAtom, useEnvParams, useModal } from '../scripts/atoms';
 import { useEffect, useState } from 'react';
 import { get, set } from 'idb-keyval';
@@ -166,6 +166,16 @@ const SceneInfo = () => {
                         }}>close</button>
                     </div>);
             }}>모델 추가</button>
+            <button onClick={() => { saveScene(scene) }}>씬 저장</button>
+            <button onClick={() => {
+                loadScene().then(loaded => {
+                    if (loaded) {
+                        scene.removeFromParent();
+                        scene.add(loaded);
+                    }
+
+                })
+            }}>씬 불러오기</button>
         </section>
         <section style={{ width: "100%" }}>
             <strong>환경맵</strong>
