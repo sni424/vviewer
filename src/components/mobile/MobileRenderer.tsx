@@ -6,6 +6,7 @@ import { useSetAtom } from 'jotai';
 import { OrbitControls } from '@react-three/drei';
 import { threeExportsAtom } from '../../scripts/atoms';
 import EnvironmentMap from '../canvas/EnvironmentMap';
+import GlobalContrast from '../canvas/GlobalContrast';
 
 const Renderer = () => {
     const setThreeExports = useSetAtom(threeExportsAtom);
@@ -26,6 +27,7 @@ const MobileRenderer = () => {
     return <Canvas>
         <Renderer />
         <EnvironmentMap></EnvironmentMap>
+        <GlobalContrast></GlobalContrast>
     </Canvas>
 }
 

@@ -1,10 +1,29 @@
 import { clear } from "idb-keyval";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
-import { envAtom, filelistAtom, openLoaderAtom } from "../../scripts/atoms";
+import { envAtom, filelistAtom, globalContrastAtom, openLoaderAtom } from "../../scripts/atoms";
 import { toNthDigit } from "../../scripts/utils";
 import { useRef, useState } from "react";
 import { __UNDEFINED__ } from "../../Constants";
 import useFilelist from "../../scripts/useFilelist";
+
+const ContrastController = () => {
+    const [globalContrast, setGlobalContrast] = useAtom(globalContrastAtom);
+    const { on: globalContrastOn, value: globalContrastValue } = globalContrast;
+
+    return <section style={{ marginTop: 16 }}>
+        <div>
+            <strong>대비</strong>
+            <input type="checkbox" checked={globalContrastOn} onChange={(e) => {
+                setGlobalContrast({ on: e.target.checked, value: globalContrastValue ?? 1 });
+            }
+            } />
+            {globalContrastOn && <input type="range" min={0} max={1} step={0.005} value={globalContrastValue ?? 1} onChange={(e) => {
+                setGlobalContrast({ on: true, value: parseFloat(e.target.value) });
+            }} />}
+
+        </div>
+    </section>
+}
 
 const EnvController = () => {
     const { filelist, loading } = useFilelist();
@@ -205,6 +224,7 @@ function MobileControlPanel() {
             }}>
             <div style={{ flex: 1, minWidth: 0 }}>
                 <EnvController></EnvController>
+                <ContrastController></ContrastController>
             </div>
 
             <div style={{
