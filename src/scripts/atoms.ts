@@ -66,7 +66,41 @@ export const GizmoModes = ["translate", "rotate", "scale"] as const;
 export type GizmoMode = typeof GizmoModes[number];
 export const mouseModeAtom = atom<"select" | GizmoMode>("select");
 
-export const globalContrastAtom = atom<{on:boolean; value:number}>({
+export const globalContrastAtom = atom<{ on: boolean; value: number }>({
     on: false,
     value: 0
 });
+
+
+export const sceneAnalysisAtom = atom<{
+    meshCount: number;
+    vertexCount: number;
+    triangleCount: number;
+    maxVertexInMesh: number;
+    maxTriangleInMesh: number;
+}>();
+
+export const benchmarkAtom = atom<{
+    start?: number;
+    end?: number;
+    downloadStart?: number;
+    downloadEnd?: number;
+    parseStart?: number;
+    parseEnd?: number;
+    sceneAddStart?: number;
+    sceneAddEnd?: number;
+}>({});
+
+export const useBenchmark = () => {
+    const benchmark = useAtomValue(benchmarkAtom);
+    const setBenchmark = useSetAtom(benchmarkAtom);
+    const addBenchmark = (key: keyof typeof benchmark, value: number = Date.now()) => {
+        setBenchmark((prev) => ({ ...prev, [key]: value }));
+    }
+    const loading = benchmark && benchmark.sceneAddStart && !benchmark.sceneAddEnd;
+    const clearBenchmark = () => {
+        setBenchmark({});
+    }
+    return { benchmark, setBenchmark, loading, addBenchmark, clearBenchmark };
+}
+export const openLoaderAtom = atom<boolean>(true);

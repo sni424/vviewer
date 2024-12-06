@@ -1,11 +1,11 @@
 import { Route, Routes } from 'react-router-dom';
 import ViewerPage from "./ViewerPage";
 import UploadPage from './UploadPage';
-import AtomProvider from '../components/AtomProvider';
 import { Env, envAtom, useEnvParams } from '../scripts/atoms';
 import { useEffect, useState } from 'react';
 import { get } from 'idb-keyval';
 import TestPage from './TestPage';
+import MobilePage from './MobilePage';
 
 
 const MyRoutes = () => {
@@ -13,7 +13,7 @@ const MyRoutes = () => {
     <Route path="/" element={<ViewerPage />} />
     <Route path="/upload" element={<UploadPage />} />
     <Route path="/test" element={<TestPage />} />
-    {/* <Route path="/about" element={<About />} /> */}
+    <Route path="/mobile" element={<MobilePage />} />
   </Routes>
 }
 

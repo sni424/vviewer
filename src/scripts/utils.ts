@@ -3,8 +3,8 @@ import { get, set } from 'idb-keyval';
 
 import { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import * as THREE from "./VTHREE";
-// import type { GLTF } from 'three/examples/jsm/loaders/GLTFLoader';
-import objectHash from 'object-hash';
+import pako from 'pako';
+
 
 export const groupInfo = (group: THREE.Group | { scene: THREE.Group } | THREE.Scene | THREE.Object3D) => {
     // triangle, vertices, mesh count
@@ -139,7 +139,7 @@ export const saveScene = async (scene: THREE.Scene) => {
     });
 }
 
-export const loadScene = async ():Promise<THREE.Object3D | undefined> => {
+export const loadScene = async (): Promise<THREE.Object3D | undefined> => {
     return new Promise(async (resolve, reject) => {
         const key = "savedScene";
         get(key).then((json) => {
@@ -155,4 +155,27 @@ export const loadScene = async ():Promise<THREE.Object3D | undefined> => {
             reject(undefined);
         })
     });
+}
+
+
+export function compressObjectToFile(obj: object, fileName: string): File {
+
+    // Convert the object to a JSON string
+    const jsonString = JSON.stringify(obj);
+
+    // Compress the JSON string using pako
+    const compressed = pako.gzip(jsonString);
+
+    // Create a Blob from the compressed data
+    const blob = new Blob([compressed], { type: 'application/gzip' });
+
+    // Return a File instance
+    return new File([blob], fileName, { type: 'application/gzip' });
+}
+
+export async function decompressFileToObject<T = any>(url: string): Promise<T> {
+    return fetch(url).then(res => res.arrayBuffer()).then(buffer => {
+        const decompressed = pako.ungzip(buffer, { to: 'string' });
+        return JSON.parse(decompressed) as T
+    })
 }

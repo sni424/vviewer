@@ -1,6 +1,6 @@
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import useFiles from '../scripts/useFiles';
-import { cacheLoadModel, formatNumber, groupInfo, loadScene, saveScene, toNthDigit } from '../scripts/utils';
+import { cacheLoadModel, compressObjectToFile, formatNumber, groupInfo, loadScene, saveScene, toNthDigit } from '../scripts/utils';
 import { cameraMatrixAtom, cameraModeAtom, envAtom, globalContrastAtom, selectedAtom, sourceAtom, threeExportsAtom, useEnvParams, useModal } from '../scripts/atoms';
 import { useEffect, useState } from 'react';
 import { get, set } from 'idb-keyval';
@@ -9,6 +9,7 @@ import { GLTFExporter } from 'three/examples/jsm/Addons.js';
 import { useNavigate } from 'react-router-dom';
 import useFilelist from '../scripts/useFilelist';
 import { __UNDEFINED__ } from '../Constants';
+import objectHash from 'object-hash';
 
 const useEnvUrl = () => {
     const [envUrl, setEnvUrl] = useState<string | null>(null);
@@ -124,7 +125,7 @@ const SceneInfo = () => {
         flexDirection: "column",
         gap: 12
     }}>
-        <section style={{ width: "100%", display: "flex", gap: 8 }}>
+        <section style={{ width: "100%", display: "grid", gap: 8, gridTemplateColumns: "1fr 1fr 1fr" }}>
             <button style={{ fontSize: 10 }} disabled={scene.children.length === 0} onClick={() => {
 
                 new GLTFExporter().parseAsync(threeExports.scene).then(result => {
@@ -166,8 +167,8 @@ const SceneInfo = () => {
                         }}>close</button>
                     </div>);
             }}>모델 추가</button>
-            <button style={{fontSize:10}} onClick={() => { saveScene(scene) }}>씬 저장</button>
-            <button style={{fontSize:10}} onClick={() => {
+            <button style={{ fontSize: 10 }} onClick={() => { saveScene(scene) }}>씬 저장</button>
+            <button style={{ fontSize: 10 }} onClick={() => {
                 loadScene().then(loaded => {
                     if (loaded) {
                         scene.removeFromParent();
@@ -176,9 +177,45 @@ const SceneInfo = () => {
 
                 })
             }}>씬 불러오기</button>
-            <button style={{fontSize:10}} onClick={() => {
+            <button style={{ fontSize: 10 }} onClick={() => {
                 saveString(JSON.stringify(scene.toJSON(), null, 2), `scene-${new Date().toISOString()}.json`);
             }}>씬 내보내기</button>
+            <button style={{ fontSize: 10 }} onClick={() => {
+                const uploadUrl = import.meta.env.VITE_UPLOAD_URL;
+                if (!uploadUrl) {
+                    alert(".env에 환경변수를 설정해주세요, uploadUrl");
+                    return;
+                }
+
+                const uploadData = scene.toJSON();
+                const file = compressObjectToFile(uploadData, "latest");
+                const fd = new FormData();
+                fd.append("file", file);
+
+                // latest 캐싱을 위한 hash
+                const uploadHash = objectHash(uploadData);
+                const hashData = {
+                    hash: uploadHash
+                };
+                // convert object to File:
+                const hashFile = compressObjectToFile(hashData, "latest-hash");
+                const hashFd = new FormData();
+                hashFd.append("file", hashFile);
+                fetch(uploadUrl, {
+                    method: "POST",
+                    body: hashFd
+                }).then(() => {
+                    // 해시부터 업로드하고
+                    fetch(uploadUrl, {
+                        method: "POST",
+                        body: fd
+                    }).then(res => res.json()).then(() => {
+                        // 그 다음에 파일업로드
+                        alert("업로드 완료");
+                    });
+                })
+
+            }}>씬 업로드</button>
         </section>
         <section style={{ width: "100%" }}>
             <strong>환경맵</strong>

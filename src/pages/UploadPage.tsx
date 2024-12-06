@@ -4,6 +4,7 @@ import { FileInfo } from '../types';
 import { useNavigate } from 'react-router-dom';
 import { formatNumber } from '../scripts/utils';
 import useFilelist from '../scripts/useFilelist';
+import FileInfoList from '../components/FileInfoList';
 
 const sourceAtom = atom<{
     name: string;
@@ -57,12 +58,6 @@ const useDragAndDrop = () => {
         handleDragLeave,
         handleDrop,
     }
-}
-
-const FileInfoList = ({ filelist }: { filelist: FileInfo[] }) => {
-    return <ul>{filelist.map((fileinfo, i) => {
-        return <li style={{ fontSize: 12, marginBottom: 3 }} key={"filelist" + fileinfo.fileUrl}>{i + 1}. {fileinfo.filename} ({formatNumber(fileinfo.fileSize / (1024 * 1024))}mb) - {new Date(fileinfo.uploadDate).toLocaleString()}</li>
-    })}</ul>
 }
 
 function Upload() {
@@ -137,8 +132,8 @@ function Upload() {
                 <div style={{ marginTop: 20, marginBottom: 16 }}>파일목록</div>
                 <div style={{ width: "80%", display: "grid", gridTemplateColumns: "1fr 1fr" }}>
                     <div>모델</div><div>환경맵</div>
-                    <FileInfoList filelist={models || []} />
-                    <FileInfoList filelist={envs || []} />
+                    <FileInfoList filelist={models} />
+                    <FileInfoList filelist={envs} />
                 </div>
             </>
                 : <div style={{ color: "lightgray" }}>파일리스트를 불러오는 중...</div>}
