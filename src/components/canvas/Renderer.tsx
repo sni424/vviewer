@@ -12,8 +12,10 @@ import SelectBox from './SelectBox';
 import { getIntersects, saveScene } from '../../scripts/utils';
 import Gizmo from './Gizmo';
 import GlobalContrast from './GlobalContrast';
+import useStats from '../../scripts/useStats';
 
 function Renderer() {
+    useStats();
     const threeExports = useThree();
     const sources = useAtomValue(sourceAtom);
     const setLoadHistoryAtom = useSetAtom(loadHistoryAtom);
@@ -160,9 +162,9 @@ function RendererContainer() {
             }
 
             // ctrl s
-            if(e.ctrlKey && e.key.toLowerCase() === "s"){
+            if (e.ctrlKey && e.key.toLowerCase() === "s") {
                 e.preventDefault();
-                saveScene(scene).then(()=>{
+                saveScene(scene).then(() => {
                     alert("저장 완료")
                 })
             }

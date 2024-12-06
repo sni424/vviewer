@@ -16,7 +16,7 @@ class CustomEffect extends Effect {
   
           vec3 adjustContrast(vec3 color, float contrast) {
             // Sigmoid-based contrast adjustment
-            contrast = contrast + 0.8;
+            contrast = contrast*0.8 + 0.8;
             color = clamp(color, 0.0, 1.0); // Ensure color stays in [0, 1]
             color = (color - 0.5) * contrast + 0.5; // Scale and re-center color
             color = smoothstep(0.0, 1.0, color);   // Smooth results using a sigmoid-like function

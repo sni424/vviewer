@@ -7,8 +7,10 @@ import { OrbitControls } from '@react-three/drei';
 import { threeExportsAtom } from '../../scripts/atoms';
 import EnvironmentMap from '../canvas/EnvironmentMap';
 import GlobalContrast from '../canvas/GlobalContrast';
+import useStats from '../../scripts/useStats';
 
 const Renderer = () => {
+    useStats();
     const setThreeExports = useSetAtom(threeExportsAtom);
     const threeExports = useThree();
 
