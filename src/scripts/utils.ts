@@ -4,6 +4,8 @@ import { get, set } from 'idb-keyval';
 import { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import * as THREE from "./VTHREE";
 import pako from 'pako';
+import { FileInfo } from '../types';
+import objectHash from 'object-hash';
 
 
 export const groupInfo = (group: THREE.Group | { scene: THREE.Group } | THREE.Scene | THREE.Object3D) => {
@@ -177,5 +179,26 @@ export async function decompressFileToObject<T = any>(url: string): Promise<T> {
     return fetch(url).then(res => res.arrayBuffer()).then(buffer => {
         const decompressed = pako.ungzip(buffer, { to: 'string' });
         return JSON.parse(decompressed) as T
+    })
+}
+
+export async function cached(file: FileInfo): Promise<boolean> {
+    return get(objectHash(file)).then(data => {
+        return Boolean(data);
+    })
+}
+
+export async function loadFile(file: FileInfo): Promise<Blob> {
+    const hash = objectHash(file);
+    return get(hash).then(data => {
+        if (!data) {
+            return fetch(file.fileUrl).then(res => res.blob()).then(data => {
+                return set(hash, data).then(_ => {
+                    debugger;
+                    return data
+                });
+            })
+        }
+        return data;
     })
 }

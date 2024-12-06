@@ -1,4 +1,4 @@
-import { Route, Routes } from 'react-router-dom';
+import { Route, Routes, useNavigate } from 'react-router-dom';
 import ViewerPage from "./ViewerPage";
 import UploadPage from './UploadPage';
 import { Env, envAtom, useEnvParams } from '../scripts/atoms';
@@ -9,6 +9,22 @@ import MobilePage from './MobilePage';
 
 
 const MyRoutes = () => {
+  // if width less than 800, route to "/mobile"
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const checkWidth = () => {
+      if (window.innerWidth < 800) {
+        navigate("/mobile");
+      }
+    }
+    checkWidth();
+  }, [
+
+  ]);
+
+
+
   return <Routes>
     <Route path="/" element={<ViewerPage />} />
     <Route path="/upload" element={<UploadPage />} />

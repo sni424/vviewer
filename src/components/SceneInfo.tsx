@@ -146,7 +146,7 @@ const SceneInfo = () => {
                         e.stopPropagation();
                     }}>
                         {!filelist ? "로딩중..." : <div>
-                            <ul>{filelist.map((file, index) => {
+                            <ul>{filelist.models.map((file, index) => {
                                 return <li onClick={() => {
                                     cacheLoadModel(file.fileUrl).then(blob => {
                                         const url = URL.createObjectURL(blob);
@@ -278,7 +278,7 @@ const SceneInfo = () => {
                         setEnv({ select: "custom", url: e.target.value });
                     }}>
                         <option value={__UNDEFINED__}>선택</option>
-                        {filelist?.filter(fileinfo => fileinfo.filename.endsWith(".hdr") || fileinfo.filename.endsWith("exr")).map(fileinfo => {
+                        {filelist.envs.map(fileinfo => {
                             return <option key={`customenvmap-${fileinfo.fileUrl}`} value={fileinfo.fileUrl}>{fileinfo.filename}</option>
                         }
                         )}

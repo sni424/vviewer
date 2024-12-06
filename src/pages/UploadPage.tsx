@@ -108,8 +108,7 @@ function Upload() {
         }}>Uploading...</div>
     }
 
-    const models = filelist?.filter(fileinfo => fileinfo.filename.endsWith(".gltf") || fileinfo.filename.endsWith(".glb"));
-    const envs = filelist?.filter(fileinfo => fileinfo.filename.endsWith(".hdr") || fileinfo.filename.endsWith(".exr"));
+
 
     return (
         <div style={{
@@ -130,10 +129,13 @@ function Upload() {
             <a style={{ marginBottom: 16 }} href={"/"}>돌아가기</a>
             {filelist ? <>
                 <div style={{ marginTop: 20, marginBottom: 16 }}>파일목록</div>
+                {/* <div style={{ width: "80%", display: "grid", gridTemplateColumns: "1fr 1fr 1fr" }}> */}
                 <div style={{ width: "80%", display: "grid", gridTemplateColumns: "1fr 1fr" }}>
+                    {/* <div>모델</div><div>환경맵</div><div>씬</div> */}
                     <div>모델</div><div>환경맵</div>
-                    <FileInfoList filelist={models} />
-                    <FileInfoList filelist={envs} />
+                    <FileInfoList filelist={filelist.models} />
+                    <FileInfoList filelist={filelist.envs} />
+                    {/* <FileInfoList filelist={filelist.scenes} /> */}
                 </div>
             </>
                 : <div style={{ color: "lightgray" }}>파일리스트를 불러오는 중...</div>}
