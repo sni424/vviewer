@@ -1,4 +1,3 @@
-import { useFrame } from "@react-three/fiber";
 import { useEffect, useRef } from "react";
 import Stats from "stats.js";
 
@@ -11,19 +10,24 @@ const useStats = () => {
         // document.body.append(statsRef.current.domElement);
         document.body.append(statsRef.current.dom);
 
+        let frame = 0;
+        const animate = () => {
+            if (statsRef.current) {
+                statsRef.current.update();
+            }
+            frame = requestAnimationFrame(animate);
+        };
+        frame = requestAnimationFrame(animate);
+
         return () => {
             if (statsRef.current) {
                 statsRef.current.dom.remove();
             }
             statsRef.current = null;
+
+            cancelAnimationFrame(frame);
         }
     }, []);
-
-    useFrame(() => {
-        if (statsRef.current) {
-            statsRef.current.update();
-        }
-    });
 }
 
 export default useStats;
