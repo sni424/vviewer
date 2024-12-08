@@ -111,4 +111,8 @@ export const filelistAtom = atom<{
     models: FileInfo[],
     envs: FileInfo[],
     scenes: FileInfo[],
-}>({ all:[], models: [], envs: [], scenes: [] });
+}>({ all: [], models: [], envs: [], scenes: [] });
+
+export const globalToneMappingAtom = atom<boolean>(false);
+
+export const globalSaturationCheckAtom = atom<boolean>(false);

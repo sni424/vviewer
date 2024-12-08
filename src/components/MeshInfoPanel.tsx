@@ -44,7 +44,7 @@ const ObjectView = ({ object }: { object: THREE.Object3D }) => {
     </div>
 }
 
-function InfoPanel() {
+function MeshInfoPanel() {
     const [selecteds, setSelecteds] = useAtom(selectedAtom);
     const threeExports = useAtomValue(threeExportsAtom);
     const materialSelected = useAtomValue(materialSelectedAtom);
@@ -112,4 +112,4 @@ function InfoPanel() {
     )
 }
 
-export default InfoPanel
+export default MeshInfoPanel

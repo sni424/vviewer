@@ -1,4 +1,3 @@
-import React, { useMemo } from 'react';
 import { EffectComposer } from '@react-three/postprocessing';
 import { Uniform } from 'three';
 import { extend } from '@react-three/fiber';
@@ -6,7 +5,7 @@ import { Effect, BlendFunction } from 'postprocessing';
 import { useAtomValue } from 'jotai';
 import { globalContrastAtom } from '../../scripts/atoms';
 
-class CustomEffect extends Effect {
+class GlobalContrastEffect extends Effect {
     constructor({ contrast = 1.5 } = {}) {
         super(
             'CustomEffect',
@@ -44,7 +43,7 @@ class CustomEffect extends Effect {
 }
 
 // Extend the custom effect
-extend({ CustomEffect });
+extend({ GlobalContrastEffect });
 
 const GlobalContrast = () => {
     const { on, value: globalContrastValue } = useAtomValue(globalContrastAtom);
@@ -53,7 +52,7 @@ const GlobalContrast = () => {
         return null;
     }
 
-    const customEffect = new CustomEffect({ contrast: globalContrastValue })
+    const customEffect = new GlobalContrastEffect({ contrast: globalContrastValue })
 
     return <EffectComposer>
         <primitive object={customEffect} />

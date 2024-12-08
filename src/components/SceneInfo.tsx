@@ -1,7 +1,7 @@
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import useFiles from '../scripts/useFiles';
 import { cacheLoadModel, compressObjectToFile, formatNumber, groupInfo, loadScene, saveScene, toNthDigit } from '../scripts/utils';
-import { cameraMatrixAtom, cameraModeAtom, envAtom, globalContrastAtom, selectedAtom, sourceAtom, threeExportsAtom, useEnvParams, useModal } from '../scripts/atoms';
+import { cameraMatrixAtom, cameraModeAtom, envAtom, globalContrastAtom, globalSaturationCheckAtom, selectedAtom, sourceAtom, threeExportsAtom, useEnvParams, useModal } from '../scripts/atoms';
 import { useEffect, useState } from 'react';
 import { get, set } from 'idb-keyval';
 import { Euler, Quaternion, THREE, Vector3 } from '../scripts/VTHREE';
@@ -106,6 +106,7 @@ const SceneInfo = () => {
     const setSource = useSetAtom(sourceAtom);
     const [globalContrast, setGlobalContrast] = useAtom(globalContrastAtom)
     const { on: globalContrastOn, value: globalContrastValue } = globalContrast;
+    const [globalSaturationCheckOn, setGlobalSaturationCheck] = useAtom(globalSaturationCheckAtom);
 
     if (!threeExports) {
         return null;
@@ -337,6 +338,13 @@ const SceneInfo = () => {
                     setGlobalContrast({ on: true, value: parseFloat(e.target.value) });
                 }} />}
 
+            </div>
+            <div>
+                <strong>새츄레이션보기</strong>
+                <input type="checkbox" checked={globalSaturationCheckOn} onChange={(e) => {
+                    setGlobalSaturationCheck(e.target.checked);
+                }
+                } />
             </div>
         </section>
 

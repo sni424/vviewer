@@ -6,7 +6,7 @@ import SceneInfo from '../components/SceneInfo';
 import useFiles from '../scripts/useFiles';
 import SceneTree from '../components/SceneTree';
 import RendererContainer from '../components/canvas/Renderer';
-import InfoPanel from '../components/InfoPanel';
+import MeshInfoPanel from '../components/MeshInfoPanel';
 import MaterialPanelContainer from '../components/MaterialPanel';
 import Modal from '../components/Modal';
 import { Scene, THREE } from '../scripts/VTHREE';
@@ -275,7 +275,7 @@ const ViewerPage = () => {
         </div>
         {/* <ControlPanel></ControlPanel> */}
         <MaterialPanelContainer></MaterialPanelContainer>
-        <InfoPanel></InfoPanel>
+        <MeshInfoPanel></MeshInfoPanel>
         <Modal></Modal>
         <Loading />
     </div>

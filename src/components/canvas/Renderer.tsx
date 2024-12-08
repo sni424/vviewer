@@ -13,6 +13,7 @@ import { getIntersects, saveScene } from '../../scripts/utils';
 import Gizmo from './Gizmo';
 import GlobalContrast from './GlobalContrast';
 import useStats from '../../scripts/useStats';
+import GlobalSaturationCheck from './GlobalBurndown';
 
 function Renderer() {
     useStats();
@@ -94,6 +95,7 @@ function Renderer() {
             <GizmoViewport name='GizmoHelper' axisColors={['red', 'green', 'blue']} labelColor="black" />
         </GizmoHelper>
         <GlobalContrast></GlobalContrast>
+        <GlobalSaturationCheck></GlobalSaturationCheck>
     </>
 }
 
