@@ -1,5 +1,5 @@
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
-import { materialSelectedAtom, selectedAtom, threeExportsAtom, treeScrollToAtom } from "../scripts/atoms";
+import { materialSelectedAtom, selectedAtom, threeExportsAtom, treeScrollToAtom, treeSearchAtom } from "../scripts/atoms";
 import { useEffect, useRef, useState } from "react";
 import { THREE } from "../scripts/VTHREE";
 
@@ -46,12 +46,14 @@ const RecursiveNode = ({ data, depth = 0 }: { data: THREE.Object3D, depth: numbe
     const threeExports = useAtomValue(threeExportsAtom);
     const containerRef = useRef<HTMLDivElement>(null);
     const [scrollTo, setScrollTo] = useAtom(treeScrollToAtom);
+    const searchValue = useAtomValue(treeSearchAtom)?.trim().toLowerCase();
 
     const type = data.type as "Scene" | "Mesh" | "Group" | "Object3D" | "BoxHelper";
 
     const [open, setOpen] = useState(["Scene", "Object3D", "Group"].includes(type) ? true : false);
     const openable = type === "Group" || type === "Object3D" || type === "Mesh";
     const [hidden, setHidden] = useState(data.visible ? false : true);
+
 
     useEffect(() => {
         if (!scrollTo || !containerRef.current) {
@@ -71,6 +73,8 @@ const RecursiveNode = ({ data, depth = 0 }: { data: THREE.Object3D, depth: numbe
     if (type === "BoxHelper" || !threeExports) {
         return null;
     }
+
+
 
     const thisSelected = selecteds.includes(data.uuid);
 
@@ -103,6 +107,8 @@ const RecursiveNode = ({ data, depth = 0 }: { data: THREE.Object3D, depth: numbe
 
         return retval;
     })()
+
+
 
     return <div ref={containerRef} style={{ width: "100%", paddingLeft: depth * 4, fontSize: 12, marginTop: 2 }}>
         <div style={{
@@ -175,8 +181,111 @@ const RecursiveNode = ({ data, depth = 0 }: { data: THREE.Object3D, depth: numbe
     </div >
 }
 
+const SearchBar = () => {
+    // const [value, setValue] = useAtom(treeSearchAtom);
+    const [value, setValue] = useState("");
+    const setTreeSearch = useSetAtom(treeSearchAtom);
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        console.log(value);
+        setTreeSearch(value);
+    }
+    return <div style={{ width: "100%", padding: "0px 10px", boxSizing: "border-box" }}>
+        <form onSubmit={handleSubmit} style={{ display: "flex" }}>
+            <input style={{ flex: 1, minWidth: 0 }} type="text" value={value} onChange={e => {
+                setValue(e.target.value);
+            }}></input>
+            <button style={{ fontSize: 11 }} type="submit">검색</button>
+            <button style={{ fontSize: 11 }} type="button" onClick={() => {
+                setValue("");
+                setTreeSearch(undefined);
+            }}>초기화</button>
+        </form>
+
+    </div>
+}
+
+const SearchResultList = ({ data, label }: { data: THREE.Object3D[]; label: string; }) => {
+    const [selecteds, setSelecteds] = useAtom(selectedAtom);
+
+
+    return <div style={{ marginBottom: 12 }}>
+        <strong>{label}</strong>
+        {data.length > 0 ? <ul>
+            {data.map((obj, index) => {
+                const thisSelected = selecteds.includes(obj.uuid);
+                return <li style={{
+                    fontSize: 11,
+                    cursor: "pointer",
+                    backgroundColor: thisSelected ? "#bbb" : undefined,
+                }}
+                    key={"search-list-item-" + label.replace(" ", "-") + obj.uuid}
+                    onClick={e => {
+                        if (e.ctrlKey) {
+                            if (selecteds.includes(obj.uuid)) {
+                                setSelecteds(selecteds.filter(uuid => uuid !== obj.uuid));
+                            } else {
+                                setSelecteds([...selecteds, obj.uuid]);
+                            }
+                        } else {
+                            setSelecteds([obj.uuid]);
+                        }
+                    }}
+                >{index + 1}. {obj.name.trim().length === 0 ? "<이름없음>" : obj.name}</li>
+            })}
+        </ul> : <div style={{ fontSize: 12, color: "#444" }}>결과 없음</div>}
+    </div>
+}
+
+const SearchResults = () => {
+    const threeExports = useAtomValue(threeExportsAtom);
+    const query = useAtomValue(treeSearchAtom)?.trim().toLowerCase();
+
+    if (!threeExports || !query || query.length === 0) {
+        return null;
+    }
+    console.log("SearchResults", query);
+
+    const { scene } = threeExports;
+    const types: THREE.Object3D[] = [];
+    const names: THREE.Object3D[] = [];
+    const ids: THREE.Object3D[] = [];
+
+    scene.traverse(obj => {
+        // 1. typeSearch
+        if (query === (obj.type).toLowerCase()) {
+            types.push(obj);
+        }
+
+        // 2. id search
+        if (obj.uuid.includes(query)) {
+            ids.push(obj);
+        }
+
+        // 3. name search
+        if (obj.name.toLowerCase().includes(query)) {
+            names.push(obj);
+        }
+    })
+
+    console.log({
+        types,
+        names,
+        ids
+    })
+
+    return <div style={{ display: "flex", flexDirection: "column" }}>
+        <SearchResultList data={types} label="타입 검색"></SearchResultList>
+        <SearchResultList data={names} label="이름 검색"></SearchResultList>
+        <SearchResultList data={ids} label="ID 검색"></SearchResultList>
+    </div>
+}
+
 const SceneTree = () => {
     const threeExports = useAtomValue(threeExportsAtom);
+    const searchTree = useAtomValue(treeSearchAtom)?.trim().toLowerCase();
+    const hasSearchQuery = searchTree && (searchTree.length > 0);
 
     if (!threeExports) {
         return null;
@@ -185,7 +294,11 @@ const SceneTree = () => {
     const { scene } = threeExports;
 
     // return <ObjectViewer data={scene}></ObjectViewer>
-    return <div style={{ width: "100%", padding: 8, height: "100%", overflow: "auto" }}> <RecursiveNode data={scene} depth={0}></RecursiveNode></div>
+    return <div style={{ width: "100%", padding: 8, height: "100%", overflow: "auto" }}>
+        <SearchBar></SearchBar>
+        {hasSearchQuery ? <SearchResults></SearchResults> : <RecursiveNode data={scene} depth={0} />}
+
+    </div>
 }
 
 export default SceneTree;
