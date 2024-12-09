@@ -1,7 +1,7 @@
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import useFiles from '../scripts/useFiles';
 import { cacheLoadModel, compressObjectToFile, formatNumber, groupInfo, loadScene, saveScene, toNthDigit } from '../scripts/utils';
-import { cameraMatrixAtom, cameraModeAtom, envAtom, globalContrastAtom, globalSaturationCheckAtom, globalToneMappingAtom, selectedAtom, sourceAtom, threeExportsAtom, useEnvParams, useModal } from '../scripts/atoms';
+import { cameraMatrixAtom, cameraModeAtom, envAtom, globalContrastAtom, globalSaturationCheckAtom, selectedAtom, sourceAtom, threeExportsAtom, useEnvParams, useModal } from '../scripts/atoms';
 import { useEffect, useState } from 'react';
 import { get, set } from 'idb-keyval';
 import { Euler, Quaternion, THREE, Vector3 } from '../scripts/VTHREE';
@@ -108,7 +108,6 @@ const SceneInfo = () => {
     const [globalContrast, setGlobalContrast] = useAtom(globalContrastAtom)
     const { on: globalContrastOn, value: globalContrastValue } = globalContrast;
     const [globalSaturationCheckOn, setGlobalSaturationCheck] = useAtom(globalSaturationCheckAtom);
-    const [globalToneMappingOn, setGlobalToneMapping] = useAtom(globalToneMappingAtom);
 
     if (!threeExports) {
         return null;
@@ -329,7 +328,7 @@ const SceneInfo = () => {
             </>}
         </section>
 
-        <section style={{ marginTop: 16 }}>
+        <section style={{ marginTop: 16, fontSize:13, display:"flex", flexDirection:"column", gap:6 }}>
             <div>
                 <strong>대비</strong>
                 <input type="checkbox" checked={globalContrastOn} onChange={(e) => {
@@ -345,13 +344,6 @@ const SceneInfo = () => {
                 <strong>새츄레이션보기</strong>
                 <input type="checkbox" checked={globalSaturationCheckOn} onChange={(e) => {
                     setGlobalSaturationCheck(e.target.checked);
-                }
-                } />
-            </div>
-            <div>
-                <strong>톤매핑</strong>
-                <input type="checkbox" checked={globalToneMappingOn} onChange={(e) => {
-                    setGlobalToneMapping(e.target.checked);
                 }
                 } />
             </div>

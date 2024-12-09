@@ -113,8 +113,6 @@ export const filelistAtom = atom<{
     scenes: FileInfo[],
 }>({ all: [], models: [], envs: [], scenes: [] });
 
-export const globalToneMappingAtom = atom<boolean>(false);
-
 export const globalSaturationCheckAtom = atom<boolean>(false);
 
 export const globalGlAtom = atom<GLProps>({
