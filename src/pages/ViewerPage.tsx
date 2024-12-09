@@ -10,14 +10,13 @@ import MeshInfoPanel from '../components/MeshInfoPanel';
 import MaterialPanelContainer from '../components/MaterialPanel';
 import Modal from '../components/Modal';
 import { Scene, THREE } from '../scripts/VTHREE';
+import ProbeInfo from '../components/ProbeInfo.tsx';
 
 declare global {
     interface Map<K, V> {
         reduce<T>(callback: (accumulator: T, value: V, key: K, map: Map<K, V>) => T, initialValue: T): T;
     }
 }
-
-
 
 Map.prototype.reduce = function <K, V, T>(
     this: Map<K, V>,
@@ -31,7 +30,7 @@ Map.prototype.reduce = function <K, V, T>(
     return accumulator;
 };
 
-const Tabs = ["scene", "tree"] as const;
+const Tabs = ["scene", "tree", "probe"] as const;
 type Tab = typeof Tabs[number];
 
 
@@ -66,7 +65,7 @@ const ThePanel = () => {
             minHeight: 0,
         }}>
             {
-                tab === "scene" ? <SceneInfo /> : <SceneTree></SceneTree>
+                tab === "scene" ? <SceneInfo /> : tab === "tree" ?  <SceneTree></SceneTree> : <ProbeInfo/>
             }
         </div>
     </div>

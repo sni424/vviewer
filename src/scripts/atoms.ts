@@ -4,6 +4,8 @@ import { THREE } from "./VTHREE";
 import React from "react";
 import { set } from "idb-keyval";
 import { FileInfo, GLProps } from "../types";
+import ReflectionProbe from './ReflectionProbe.ts';
+import {OrbitControls} from 'three-stdlib'
 
 export const sourceAtom = atom<{ name: string; url: string; file: File }[]>([]);
 export const loadHistoryAtom = atom<Map<string, { name: string; start: number; end: number; file: File, uuid: string; }>>(new Map());
@@ -127,3 +129,8 @@ export const globalGlAtom = atom<GLProps>({
     depth: true,
     failIfMajorPerformanceCaveat: false,
 });
+
+// REFLECTION PROBES
+export const ProbeAtom = atom<ReflectionProbe[]>([]);
+export const showProbeAtom = atom<boolean>(true);
+export const orbitControlsAtom = atom<OrbitControls>();

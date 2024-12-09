@@ -4,7 +4,16 @@ import VGLTFLoader from '../../scripts/VGLTFLoader';
 import { useEffect, useRef } from 'react';
 import { Scene, Texture, THREE } from '../../scripts/VTHREE';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
-import { cameraMatrixAtom, globalGlAtom, loadHistoryAtom, materialSelectedAtom, selectedAtom, sourceAtom, threeExportsAtom } from '../../scripts/atoms';
+import {
+    cameraMatrixAtom,
+    globalGlAtom,
+    loadHistoryAtom,
+    materialSelectedAtom,
+    orbitControlsAtom,
+    selectedAtom,
+    sourceAtom,
+    threeExportsAtom,
+} from '../../scripts/atoms';
 import { TransformControlsPlane } from 'three/examples/jsm/Addons.js';
 import { __UNDEFINED__ } from '../../Constants';
 import MyEnvironment from './EnvironmentMap';
@@ -15,15 +24,19 @@ import GlobalContrast from './GlobalContrast';
 import useStats from '../../scripts/useStats';
 import GlobalSaturationCheck from './GlobalBurndown';
 import GlobalToneMapping from './GlobalToneMapping';
+import {OrbitControls as OrbitControlsImpl} from 'three-stdlib';
 
 function Renderer() {
     useStats();
+    const orbitControlsRef = useRef<OrbitControlsImpl>();
     const threeExports = useThree();
     const sources = useAtomValue(sourceAtom);
     const setLoadHistoryAtom = useSetAtom(loadHistoryAtom);
     const setThreeExportsAtom = useSetAtom(threeExportsAtom);
     const { scene, camera } = threeExports;
     const setCameraAtom = useSetAtom(cameraMatrixAtom);
+    const setOrbitControls = useSetAtom(orbitControlsAtom);
+    
 
     useEffect(() => {
         setThreeExportsAtom(threeExports);
@@ -43,8 +56,14 @@ function Renderer() {
         emptyEnvironment.needsUpdate = true;
         scene.environment = emptyEnvironment;
         // scene.environment = 
-
+        
     }, []);
+    
+    useEffect(() => {
+        if (orbitControlsRef.current) {
+            setOrbitControls(orbitControlsRef.current);
+        }
+    }, [orbitControlsRef.current]);
 
     useEffect(() => {
 
@@ -80,7 +99,7 @@ function Renderer() {
         <boxGeometry args={[1, 1, 1]} />
         <meshStandardMaterial color="hotpink" />
       </mesh> */}
-        <OrbitControls makeDefault onChange={e => {
+        <OrbitControls ref={orbitControlsRef} makeDefault onChange={e => {
             const matrix = e?.target.object.matrix.clone()
             setCameraAtom(matrix);
         }} />
@@ -91,12 +110,12 @@ function Renderer() {
             name='GizmoHelper'
             alignment="bottom-right" // widget alignment within scene
             margin={[80, 80]} // widget margins (X, Y)
-
+        
         >
             <GizmoViewport name='GizmoHelper' axisColors={['red', 'green', 'blue']} labelColor="black" />
         </GizmoHelper>
         <GlobalContrast></GlobalContrast>
-        {/* <GlobalToneMapping></GlobalToneMapping> */}
+         {/*<GlobalToneMapping></GlobalToneMapping> */}
         <GlobalSaturationCheck></GlobalSaturationCheck>
     </>
 }
@@ -213,7 +232,8 @@ function RendererContainer() {
                 //     toneMappingExposure: 1,
                 //     toneMappingWhitePoint: 1
                 // }}
-                gl={gl}
+                // gl={gl}
+                gl={{antialias: true}}
                 onMouseDown={() => {
                     lastClickRef.current = Date.now();
                 }}

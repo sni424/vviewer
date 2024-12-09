@@ -28,6 +28,10 @@ const ObjectView = ({ object }: { object: THREE.Object3D }) => {
             {Object.keys(object.userData).length > 0 && <div style={{ fontSize: 11 }}>유저데이터
                 <div style={{ fontSize: 10 }}>
                     {Object.entries(object.userData as Record<string, any>).map(([key, value]) => {
+                        
+                        if (key === 'probe') {
+                            return null;
+                        }
                         return <div style={{ paddingLeft: 8 }} key={`info-${object.uuid}-${key}`}>{key}: {JSON.stringify(value).replace(/\"/g, "")}</div>
                     })}
                 </div>

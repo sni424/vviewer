@@ -37,7 +37,7 @@ const LightmapSection = ({ mat }: { mat: THREE.MeshStandardMaterial }) => {
                     mat.needsUpdate = true;
                 }}>+1</button></div>
                 <div style={{ width: "100%" }}>
-                    <input type="range" min={0} max={1} step={0.01} value={lightMapIntensity ?? 1} onChange={(e) => {
+                    <input type="range" min={0} max={10} step={0.01} value={lightMapIntensity ?? 1} onChange={(e) => {
                         mat.lightMapIntensity = parseFloat(e.target.value);
                         setLightMapIntensity(mat.lightMapIntensity);
                     }}></input>
