@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { THREE } from "../scripts/VTHREE";
+import { useModal } from "../scripts/atoms";
 
 interface MapPreviewProps {
     material: THREE.MeshStandardMaterial;
@@ -11,6 +12,7 @@ interface MapPreviewProps {
 const MapPreview: React.FC<MapPreviewProps> = ({ material, width, height, mapKey }) => {
     const [mapSrc, setMapSrc] = useState<string | null>(null);
     const texture = material[mapKey as keyof THREE.MeshStandardMaterial] as THREE.Texture;
+    const { openModal, closeModal } = useModal();
 
     useEffect(() => {
         if (texture && texture.image) {
@@ -36,9 +38,31 @@ const MapPreview: React.FC<MapPreviewProps> = ({ material, width, height, mapKey
     }, [texture]);
 
     return <div style={{ width: mapSrc ? (width ?? 60) : undefined, height: mapSrc ? (height ?? 60) : undefined, backgroundClip: "gray", borderRadius: 8 }}>
-        {mapSrc && <img style={{ width: "100%", height: "100%", objectFit: "contain" }} src={mapSrc} alt="Light Map Preview" />}
+        {mapSrc && <img style={{ cursor: "pointer", width: "100%", height: "100%", objectFit: "contain" }} src={mapSrc} alt="Light Map Preview" onClick={() => {
+            openModal(() => {
+                return <div style={{
+                    maxHeight: 800,
+                    maxWidth: 800,
+                    display: "flex",
+                    justifyContent: "center",
+                    alignItems: "center",
+                    padding: 20, boxSizing: "border-box"
+                }}
+                    onKeyDown={(e) => {
+                        e.stopPropagation();
+                        closeModal();
+                    }}
+                >
+                    <img src={mapSrc} alt="Light Map Preview" style={{
+                        width:"100%",
+                        height:"100%",
+                        objectFit: "contain"
+                    }} />
+                </div>
+            })
+        }} />}
         {!mapSrc && "없음"}
-    </div>
+    </div >
 };
 
 export default MapPreview;
