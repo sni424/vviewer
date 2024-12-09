@@ -3,7 +3,7 @@ import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { THREE } from "./VTHREE";
 import React from "react";
 import { set } from "idb-keyval";
-import { FileInfo } from "../types";
+import { FileInfo, GLProps } from "../types";
 
 export const sourceAtom = atom<{ name: string; url: string; file: File }[]>([]);
 export const loadHistoryAtom = atom<Map<string, { name: string; start: number; end: number; file: File, uuid: string; }>>(new Map());
@@ -116,3 +116,14 @@ export const filelistAtom = atom<{
 export const globalToneMappingAtom = atom<boolean>(false);
 
 export const globalSaturationCheckAtom = atom<boolean>(false);
+
+export const globalGlAtom = atom<GLProps>({
+    antialias: true,
+    alpha: true,
+    premultipliedAlpha: true,
+    stencil: false,
+    preserveDrawingBuffer: false,
+    powerPreference: "high-performance",
+    depth: true,
+    failIfMajorPerformanceCaveat: false,
+});

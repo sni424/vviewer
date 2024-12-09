@@ -4,7 +4,7 @@ import VGLTFLoader from '../../scripts/VGLTFLoader';
 import { useEffect, useRef } from 'react';
 import { Scene, Texture, THREE } from '../../scripts/VTHREE';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
-import { cameraMatrixAtom, loadHistoryAtom, materialSelectedAtom, selectedAtom, sourceAtom, threeExportsAtom } from '../../scripts/atoms';
+import { cameraMatrixAtom, globalGlAtom, loadHistoryAtom, materialSelectedAtom, selectedAtom, sourceAtom, threeExportsAtom } from '../../scripts/atoms';
 import { TransformControlsPlane } from 'three/examples/jsm/Addons.js';
 import { __UNDEFINED__ } from '../../Constants';
 import MyEnvironment from './EnvironmentMap';
@@ -14,6 +14,7 @@ import Gizmo from './Gizmo';
 import GlobalContrast from './GlobalContrast';
 import useStats from '../../scripts/useStats';
 import GlobalSaturationCheck from './GlobalBurndown';
+import GlobalToneMapping from './GlobalToneMapping';
 
 function Renderer() {
     useStats();
@@ -95,6 +96,7 @@ function Renderer() {
             <GizmoViewport name='GizmoHelper' axisColors={['red', 'green', 'blue']} labelColor="black" />
         </GizmoHelper>
         <GlobalContrast></GlobalContrast>
+        {/* <GlobalToneMapping></GlobalToneMapping> */}
         <GlobalSaturationCheck></GlobalSaturationCheck>
     </>
 }
@@ -104,6 +106,7 @@ function RendererContainer() {
     const threeExports = useAtomValue(threeExportsAtom);
     const [selected, setSelected] = useAtom(selectedAtom);
     const setMaterialSelected = useSetAtom(materialSelectedAtom);
+    const gl = useAtomValue(globalGlAtom);
     const lastClickRef = useRef<number>(0);
 
     useEffect(() => {
@@ -179,13 +182,38 @@ function RendererContainer() {
     }, [threeExports, selected]);
 
 
-
+    console.log(gl);
     return (
         <div style={{
             width: "100%",
             height: "100%",
         }}>
             <Canvas
+                // gl={{
+                //     antialias: true,
+                //     alpha: true,
+                //     powerPreference: "high-performance",
+                //     stencil: false,
+                //     depth: true,
+                //     logarithmicDepthBuffer: true,
+                //     premultipliedAlpha: false,
+                //     preserveDrawingBuffer: true,
+                //     autoClear: false,
+                //     autoClearColor: false,
+                //     autoClearDepth: false,
+                //     autoClearStencil: false,
+                //     extensions: null,
+                //     forceContextLoss: false,
+                //     maxLights: 4,
+                //     physicallyCorrectLights: false,
+                //     pixelRatio: 1,
+                //     precision: "highp",
+                //     shadowMapType: THREE.PCFSoftShadowMap,
+                //     toneMapping: THREE.LinearToneMapping,
+                //     toneMappingExposure: 1,
+                //     toneMappingWhitePoint: 1
+                // }}
+                gl={gl}
                 onMouseDown={() => {
                     lastClickRef.current = Date.now();
                 }}

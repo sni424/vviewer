@@ -1,7 +1,7 @@
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import useFiles from '../scripts/useFiles';
 import { cacheLoadModel, compressObjectToFile, formatNumber, groupInfo, loadScene, saveScene, toNthDigit } from '../scripts/utils';
-import { cameraMatrixAtom, cameraModeAtom, envAtom, globalContrastAtom, globalSaturationCheckAtom, selectedAtom, sourceAtom, threeExportsAtom, useEnvParams, useModal } from '../scripts/atoms';
+import { cameraMatrixAtom, cameraModeAtom, envAtom, globalContrastAtom, globalSaturationCheckAtom, globalToneMappingAtom, selectedAtom, sourceAtom, threeExportsAtom, useEnvParams, useModal } from '../scripts/atoms';
 import { useEffect, useState } from 'react';
 import { get, set } from 'idb-keyval';
 import { Euler, Quaternion, THREE, Vector3 } from '../scripts/VTHREE';
@@ -10,6 +10,7 @@ import { useNavigate } from 'react-router-dom';
 import useFilelist from '../scripts/useFilelist';
 import { __UNDEFINED__ } from '../Constants';
 import objectHash from 'object-hash';
+import GlobalRenderOptions from './canvas/GlobalRenderOptions';
 
 const useEnvUrl = () => {
     const [envUrl, setEnvUrl] = useState<string | null>(null);
@@ -107,6 +108,7 @@ const SceneInfo = () => {
     const [globalContrast, setGlobalContrast] = useAtom(globalContrastAtom)
     const { on: globalContrastOn, value: globalContrastValue } = globalContrast;
     const [globalSaturationCheckOn, setGlobalSaturationCheck] = useAtom(globalSaturationCheckAtom);
+    const [globalToneMappingOn, setGlobalToneMapping] = useAtom(globalToneMappingAtom);
 
     if (!threeExports) {
         return null;
@@ -346,6 +348,14 @@ const SceneInfo = () => {
                 }
                 } />
             </div>
+            <div>
+                <strong>톤매핑</strong>
+                <input type="checkbox" checked={globalToneMappingOn} onChange={(e) => {
+                    setGlobalToneMapping(e.target.checked);
+                }
+                } />
+            </div>
+            <GlobalRenderOptions></GlobalRenderOptions>
         </section>
 
         <section style={{ marginTop: 16 }}>

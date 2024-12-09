@@ -245,3 +245,50 @@ export type ModelFile = {
   elapsed: number;
   hash: string;
 }
+
+import { THREE } from "./scripts/VTHREE";
+export declare type GLProps = {
+  toneMapping?: THREE.ToneMapping;
+  toneMappingExposure?: number;
+
+  // WebGLRenderer.d.ts
+  /**
+     * default is false.
+     */
+  alpha?: boolean | undefined;
+
+  /**
+   * default is true.
+   */
+  premultipliedAlpha?: boolean | undefined;
+
+  /**
+   * default is false.
+   */
+  antialias?: boolean | undefined;
+
+  /**
+   * default is false.
+   */
+  stencil?: boolean | undefined;
+
+  /**
+   * default is false.
+   */
+  preserveDrawingBuffer?: boolean | undefined;
+
+  /**
+   * Can be "high-performance", "low-power" or "default"
+   */
+  powerPreference?: WebGLPowerPreference | undefined;
+
+  /**
+   * default is true.
+   */
+  depth?: boolean | undefined;
+
+  /**
+   * default is false.
+   */
+  failIfMajorPerformanceCaveat?: boolean | undefined;
+};
