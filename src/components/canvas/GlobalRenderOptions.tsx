@@ -39,7 +39,7 @@ const Range = (props: { label: string; propKey: keyof GLProps, min: number; max:
     const { label, propKey, min, max, step = (max - min) / 100. } = props;
     return <div style={{ fontSize: 11, paddingLeft: 6 }}>
         <strong>{label}</strong>
-        <input type='range' value={gl[propKey]} min={min} max={max} step={step} onChange={(e) => {
+        <input type='range' value={gl[propKey] as any} min={min} max={max} step={step} onChange={(e) => {
             updateGl(propKey, e.target.value);
         }}></input>
         <span>{gl[propKey]}</span>
@@ -51,7 +51,7 @@ const Dropdown = (props: { label: string; propKey: keyof GLProps, options: { nam
     const { label, propKey, options, transformer } = props;
     return <div style={{ fontSize: 11, paddingLeft: 6 }}>
         <strong>{label}</strong>
-        <select value={gl[propKey]} onChange={(e) => {
+        <select value={gl[propKey] as any} onChange={(e) => {
             updateGl(propKey, transformer?.(e.target.value) ?? e.target.value);
         }}>
             {options.map((option) => {
