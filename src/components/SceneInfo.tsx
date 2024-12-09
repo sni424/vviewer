@@ -205,7 +205,7 @@ const SceneInfo = () => {
                     <select
                         value={env.select}
                         onChange={(e) => {
-                            setEnv({ select: e.target.value as "none" | "preset" | "custom" | "url" });
+                            setEnv(prev => ({ select: e.target.value as "none" | "preset" | "custom" | "url", rotation: prev.rotation }));
                         }}>
                         <option value="none">없음</option>
                         <option value="preset">프리셋</option>
@@ -256,7 +256,7 @@ const SceneInfo = () => {
                     marginTop: 4,
                 }}>
                     <select value={env.url ?? __UNDEFINED__} onChange={e => {
-                        setEnv({ select: "custom", url: e.target.value });
+                        setEnv(prev => ({ select: "custom", url: e.target.value, rotation: prev.rotation }));
                     }}>
                         <option value={__UNDEFINED__}>선택</option>
                         {filelist.envs.map(fileinfo => {
@@ -286,7 +286,7 @@ const SceneInfo = () => {
                     }}></input>
                     <button onClick={() => {
                         if (envUrl) {
-                            setEnv({ select: "custom", url: envUrl });
+                            setEnv(prev => ({ select: "custom", url: envUrl, rotation: prev.rotation }));
                             set("envUrl", envUrl);
                         } else {
                             alert("URL을 입력해주세요.");
@@ -305,6 +305,29 @@ const SceneInfo = () => {
                     </div>
                 </div>
             </>}
+            {env.select !== "none" && <div style={{ width: "100%", marginLeft: 8, fontSize: 11 }}>
+                <button style={{fontSize:11}} onClick={() => {
+                    setEnv(prev => ({ ...prev, rotation: { x: 0, y: 0, z: 0 } }));
+                }}>회전리셋</button>
+                <div>
+                    X : <input type="range" min={-Math.PI} max={Math.PI} step={0.01} value={env.rotation?.x ?? 0} onChange={(e) => {
+                        setEnv(prev => ({ ...prev, rotation: { x: parseFloat(e.target.value), y: prev.rotation?.y ?? 0, z: prev.rotation?.z ?? 0 } }));
+                    }}></input>
+                    {toNthDigit(((env.rotation?.x ?? 0) / Math.PI) * 90, 2)}
+                </div>
+                <div>
+                    Y : <input type="range" min={-Math.PI} max={Math.PI} step={0.01} value={env.rotation?.y ?? 0} onChange={(e) => {
+                        setEnv(prev => ({ ...prev, rotation: { x: prev.rotation?.x ?? 0, y: parseFloat(e.target.value), z: prev.rotation?.z ?? 0 } }));
+                    }}></input>
+                    {toNthDigit(((env.rotation?.y ?? 0) / Math.PI) * 90, 2)}
+                </div>
+                <div>
+                    Z : <input type="range" min={-Math.PI} max={Math.PI} step={0.01} value={env.rotation?.z ?? 0} onChange={(e) => {
+                        setEnv(prev => ({ ...prev, rotation: { x: prev.rotation?.x ?? 0, y: prev.rotation?.y ?? 0, z: parseFloat(e.target.value) } }));
+                    }}></input>
+                    {toNthDigit(((env.rotation?.z ?? 0) / Math.PI) * 90, 2)}
+                </div>
+            </div>}
         </section>
 
         <section style={{ marginTop: 16, fontSize: 13, display: "flex", flexDirection: "column", gap: 6 }}>

@@ -15,9 +15,14 @@ export type Env = {
     preset?: "apartment" | "city" | "dawn" | "forest" | "lobby" | "night" | "park" | "studio" | "sunset" | "warehouse";
     url?: string;
     intensity?: number;
+    rotation?: {
+        x: number;
+        y: number;
+        z: number;
+    }
 };
 // export const envAtom = atom<Env>({ select: "none" });
-export const envAtom = atom<Env>({ select: "none" });
+export const envAtom = atom<Env>({ select: "none", rotation: { x: 0, y: 0, z: 0 } });
 export const cameraMatrixAtom = atom<THREE.Matrix4>();
 export const cameraModeAtom = atom<"perspective" | "iso">("perspective");
 
