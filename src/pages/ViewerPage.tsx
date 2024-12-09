@@ -95,7 +95,7 @@ const useModelDragAndDrop = () => {
 
         if (event.dataTransfer.files && event.dataTransfer.files.length > 0) {
 
-            const acceptedExtensions = ['.gltf', '.glb', ".json"];
+            const acceptedExtensions = ['.gltf', '.glb', ".json", "png"];
             const files = Array.from(event.dataTransfer.files);
 
             // Filter files by .gltf and .glb extensions
@@ -104,14 +104,29 @@ const useModelDragAndDrop = () => {
             );
 
             if (filteredFiles.length === 0) {
-                alert("Only .gltf and .glb, .json files are accepted.");
+                alert("Only .gltf and .glb, .json, .png files are accepted.");
                 return;
             }
 
             const gltfs = filteredFiles.filter(file => file.name.toLowerCase().endsWith(".gltf") || file.name.toLowerCase().endsWith(".glb"));;
+            const lightmaps = filteredFiles.filter(file => file.name.toLowerCase().endsWith(".png"));
 
-            const fileUrls = gltfs.map((file) => ({ name: file.name, url: URL.createObjectURL(file), file }));
+            const fileUrls = gltfs.map((file) => {
+                const retval = { name: file.name, url: URL.createObjectURL(file), file, lightmap: undefined as File | undefined };
+                const filenameWithoutExtension = file.name.split(".")[0];
+                // 모델명_Lightmap.png인 경우도 있고 모델명.png인 경우도 있다
+                const lightmap = lightmaps.find(lightmap => {
+                    const lightmapeName = lightmap.name.split(".")[0];
+                    return filenameWithoutExtension === lightmapeName || filenameWithoutExtension + "_Lightmap" === lightmapeName;
+                });
+                if (lightmap) {
+                    retval.lightmap = lightmap;
+                }
+                return retval;
+            });
             setSourceUrls(fileUrls);
+
+
 
             if (threeExports) {
                 const jsons = filteredFiles.filter(file => file.name.toLowerCase().endsWith(".json"));

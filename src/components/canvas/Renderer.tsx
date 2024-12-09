@@ -49,7 +49,7 @@ function Renderer() {
     useEffect(() => {
 
         sources.forEach(source => {
-            const { name, url, file } = source;
+            const { name, url, file, lightmap } = source;
             // setLoadingsAtom(loadings => [...loadings, source]);
             setLoadHistoryAtom(history => {
                 const newHistory = new Map(history);
@@ -60,7 +60,21 @@ function Renderer() {
 
             new VGLTFLoader().loadAsync(url).then(gltf => {
                 gltf.scene.name = name + "-" + gltf.scene.name;
+
+                if (lightmap) {
+                    const texture = new THREE.TextureLoader().load(URL.createObjectURL(lightmap));
+                    texture.flipY = !texture.flipY;
+                    texture.channel = 1;
+                    texture.needsUpdate = true;
+                    gltf.scene.traverse(obj => {
+                        if (obj.type === "Mesh") {
+                            ((obj as THREE.Mesh).material as THREE.MeshStandardMaterial).lightMap = texture;
+                            ((obj as THREE.Mesh).material as THREE.MeshStandardMaterial).needsUpdate = true;
+                        }
+                    })
+                }
                 scene.add(gltf.scene);
+
                 // revoke object url
                 URL.revokeObjectURL(url);
                 setLoadHistoryAtom(history => {

@@ -5,7 +5,7 @@ import React from "react";
 import { set } from "idb-keyval";
 import { FileInfo, GLProps } from "../types";
 
-export const sourceAtom = atom<{ name: string; url: string; file: File }[]>([]);
+export const sourceAtom = atom<{ name: string; url: string; file: File; lightmap?: File; }[]>([]);
 export const loadHistoryAtom = atom<Map<string, { name: string; start: number; end: number; file: File, uuid: string; }>>(new Map());
 export const threeExportsAtom = atom<RootState>();
 
