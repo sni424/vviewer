@@ -400,6 +400,9 @@ const materialOnBeforeCompileFunction = (pos: THREE.Vector3, size: THREE.Vector3
 
 function useBoxProjectedEnvMap(shader: THREE.WebGLProgramParametersWithUniforms, envMapPosition: THREE.Vector3, envMapSize: THREE.Vector3) {
     // defines
+    if(!shader.defines){
+        debugger;
+    }
     shader.defines.BOX_PROJECTED_ENV_MAP = true;
     
     // uniforms

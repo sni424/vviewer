@@ -5,9 +5,10 @@ import React from "react";
 import { set } from "idb-keyval";
 import { FileInfo, GLProps } from "../types";
 import ReflectionProbe from './ReflectionProbe.ts';
-import {OrbitControls} from 'three-stdlib'
+import { OrbitControls } from 'three-stdlib'
+import { DEFAULT_COLOR_TEMPERATURE } from "../Constants";
 
-export const sourceAtom = atom<{ name: string; url: string; file: File }[]>([]);
+export const sourceAtom = atom<{ name: string; url: string; file: File; lightmap?: File; }[]>([]);
 export const loadHistoryAtom = atom<Map<string, { name: string; start: number; end: number; file: File, uuid: string; }>>(new Map());
 export const threeExportsAtom = atom<RootState>();
 
@@ -16,9 +17,14 @@ export type Env = {
     preset?: "apartment" | "city" | "dawn" | "forest" | "lobby" | "night" | "park" | "studio" | "sunset" | "warehouse";
     url?: string;
     intensity?: number;
+    rotation?: {
+        x: number;
+        y: number;
+        z: number;
+    }
 };
 // export const envAtom = atom<Env>({ select: "none" });
-export const envAtom = atom<Env>({ select: "none" });
+export const envAtom = atom<Env>({ select: "none", rotation: { x: 0, y: 0, z: 0 } });
 export const cameraMatrixAtom = atom<THREE.Matrix4>();
 export const cameraModeAtom = atom<"perspective" | "iso">("perspective");
 
@@ -83,7 +89,7 @@ export const sceneAnalysisAtom = atom<{
     maxTriangleInMesh: number;
 }>();
 
-export const benchmarkAtom = atom<{
+export type BenchMark = {
     start?: number;
     end?: number;
     downloadStart?: number;
@@ -92,7 +98,8 @@ export const benchmarkAtom = atom<{
     parseEnd?: number;
     sceneAddStart?: number;
     sceneAddEnd?: number;
-}>({});
+};
+export const benchmarkAtom = atom<BenchMark>({});
 
 export const useBenchmark = () => {
     const benchmark = useAtomValue(benchmarkAtom);
@@ -115,9 +122,15 @@ export const filelistAtom = atom<{
     scenes: FileInfo[],
 }>({ all: [], models: [], envs: [], scenes: [] });
 
-export const globalToneMappingAtom = atom<boolean>(false);
-
 export const globalSaturationCheckAtom = atom<boolean>(false);
+
+export const globalColorTemperatureAtom = atom<{
+    on: boolean;
+    value: number;
+}>({
+    on: false,
+    value: DEFAULT_COLOR_TEMPERATURE
+});
 
 export const globalGlAtom = atom<GLProps>({
     antialias: true,
@@ -134,3 +147,10 @@ export const globalGlAtom = atom<GLProps>({
 export const ProbeAtom = atom<ReflectionProbe[]>([]);
 export const showProbeAtom = atom<boolean>(true);
 export const orbitControlsAtom = atom<OrbitControls>();
+export const treeScrollToAtom = atom<string | null>(null);
+
+export const Tabs = ["scene", "tree", "probe"] as const;
+export type Tab = typeof Tabs[number];
+export const panelTabAtom = atom<Tab>("scene");
+
+export const treeSearchAtom = atom<string | undefined>();

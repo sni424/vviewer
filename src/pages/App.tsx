@@ -1,6 +1,6 @@
 import { Route, Routes, useNavigate } from 'react-router-dom';
 import ViewerPage from "./ViewerPage";
-import UploadPage from './UploadPage';
+import UploadPage from '../components/UploadModal';
 import { Env, envAtom, useEnvParams } from '../scripts/atoms';
 import { useEffect, useState } from 'react';
 import { get } from 'idb-keyval';
@@ -27,7 +27,7 @@ const MyRoutes = () => {
 
   return <Routes>
     <Route path="/" element={<ViewerPage />} />
-    <Route path="/upload" element={<UploadPage />} />
+    {/* <Route path="/upload" element={<UploadPage />} /> */}
     <Route path="/test" element={<TestPage />} />
     <Route path="/mobile" element={<MobilePage />} />
   </Routes>

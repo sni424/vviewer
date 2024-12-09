@@ -1,13 +1,19 @@
 import React, { useState } from 'react'
-import { materialSelectedAtom, selectedAtom, threeExportsAtom, useModal } from '../scripts/atoms';
-import { useAtom, useAtomValue } from 'jotai';
+import { materialSelectedAtom, panelTabAtom, selectedAtom, threeExportsAtom, treeScrollToAtom, useModal } from '../scripts/atoms';
+import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import { THREE } from '../scripts/VTHREE';
 import { groupInfo } from '../scripts/utils';
 import ApplyLightMapComponent from './ApplyLightMapComponent';
 
-const ObjectView = ({ object }: { object: THREE.Object3D }) => {
+const MeshView = ({ object, index }: { object: THREE.Object3D; index: number }) => {
 
     const info = groupInfo(object);
+    const [selectedMaterial, setSelectedMaterial] = useAtom(materialSelectedAtom);
+    const currentMat = (((object as THREE.Mesh)?.material) as THREE.MeshStandardMaterial);
+    const isSelectedMaterialThisMesh = currentMat && (selectedMaterial?.uuid === currentMat?.uuid);
+    const setSelecteds = useSetAtom(selectedAtom);
+    const setTab = useSetAtom(panelTabAtom);
+    const setTreeScrollTo = useSetAtom(treeScrollToAtom);
 
     return <div style={{
         width: "100%",
@@ -17,7 +23,28 @@ const ObjectView = ({ object }: { object: THREE.Object3D }) => {
     }}
         key={"infodetail-" + object.uuid}
     >
-        <div style={{ fontSize: 13 }}>{object.name.length === 0 ? "이름없음" : object.name} - {object.type}</div>
+        <div>
+
+        </div>
+        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12 }}><div>
+            {index + 1}. <span style={{ textDecoration: "underline" }}>{object.name.length === 0 ? "이름없음" : object.name}</span></div>
+        </div>
+        {/* <div style={{ display: "grid" }}> */}
+        <div>
+            <button style={{ fontSize: 11 }} onClick={() => {
+                setSelecteds([object.uuid]);
+            }}>단일선택</button>
+            <button style={{ fontSize: 11 }} onClick={() => {
+                setSelecteds(prev => prev.filter(uuid => uuid !== object.uuid));
+            }}>제외</button>
+            <button style={{ fontSize: 11 }} onClick={() => {
+                setTab("tree");
+                setTreeScrollTo(object.uuid);
+            }}>트리에서 보기</button>
+            {currentMat && <button style={{ fontSize: 11 }} onClick={() => {
+                setSelectedMaterial((object as THREE.Mesh).material as THREE.Material);
+            }} disabled={isSelectedMaterialThisMesh}>{isSelectedMaterialThisMesh ? "재질선택됨" : "재질"}</button>}
+        </div>
         <div style={{
             display: "flex",
             flexDirection: "column",
@@ -37,9 +64,12 @@ const ObjectView = ({ object }: { object: THREE.Object3D }) => {
                 </div>
             </div>}
 
-            {info.meshCount > 0 && <div style={{ fontSize: 11 }}>메쉬 {info.meshCount}개</div>}
-            {info.triangleCount > 0 && <div style={{ fontSize: 11 }}>삼각형 {info.triangleCount}개</div>}
-            {info.vertexCount > 0 && <div style={{ fontSize: 11 }}>버텍스 {info.vertexCount}개</div>}
+            <div style={{ fontSize: 11 }}>
+                {info.meshCount > 0 && <div >메쉬 {info.meshCount}개</div>}
+                {info.triangleCount > 0 && <div>삼각형 {info.triangleCount}개</div>}
+                {info.vertexCount > 0 && <div>버텍스 {info.vertexCount}개</div>}
+            </div>
+
 
 
 
@@ -67,7 +97,7 @@ function MeshInfoPanel() {
             bottom: 10,
             left: 10,
             maxHeight: materialSelected ? "calc(50% - 20px)" : "calc(100% - 20px)",
-            width: 240,
+            width: 300,
             backgroundColor: "#bbbbbb99",
             padding: 8,
             borderRadius: 8,
@@ -84,10 +114,10 @@ function MeshInfoPanel() {
                 display: "grid",
                 gridTemplateColumns: "1fr 1fr",
             }}>
-                <button style={{fontSize:11}} onClick={() => {
+                <button style={{ fontSize: 11 }} onClick={() => {
                     openModal(<ApplyLightMapComponent /> as any);
                 }}> 라이트맵 일괄적용</button >
-                <button style={{fontSize:11}} onClick={() => {
+                <button style={{ fontSize: 11 }} onClick={() => {
                     setSelecteds(prev => {
                         return prev.filter(uuid => {
                             const found = scene.getObjectByProperty("uuid", uuid);
@@ -101,12 +131,12 @@ function MeshInfoPanel() {
             </div>
 
             {
-                selecteds.map(selected => {
+                selecteds.map((selected, index) => {
                     const found = scene.getObjectByProperty("uuid", selected);
                     if (!found) {
                         return null;
                     }
-                    return <ObjectView key={`info-object-${found.uuid}`} object={found}></ObjectView>
+                    return <MeshView key={`info-object-${found.uuid}`} object={found} index={index}></MeshView>
                 })
             }
             < div style={{ position: "absolute", top: 5, right: 5, fontSize: 12, fontWeight: "bold", cursor: "pointer" }} onClick={() => {

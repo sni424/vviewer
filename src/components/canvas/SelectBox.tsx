@@ -83,7 +83,7 @@ const SelectBox = () => {
                 deletes.push(obj);
             }
         })
-        console.log("Deletes length : ", deletes.length);
+        // console.log("Deletes length : ", deletes.length);
         scene.remove(...deletes);
         return;
     }
