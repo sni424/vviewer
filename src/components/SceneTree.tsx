@@ -1,11 +1,12 @@
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
-import { materialSelectedAtom, selectedAtom, threeExportsAtom } from "../scripts/atoms";
-import { useState } from "react";
+import { materialSelectedAtom, selectedAtom, threeExportsAtom, treeScrollToAtom } from "../scripts/atoms";
+import { useEffect, useRef, useState } from "react";
 import { THREE } from "../scripts/VTHREE";
 
 const MeshChildren = ({ data }: { data: THREE.Mesh }) => {
     const material = data.material as THREE.Material;
     const [mat, setMaterialSelected] = useAtom(materialSelectedAtom);
+
     return <div style={{
         paddingLeft: 28,
         display: "flex",
@@ -43,6 +44,8 @@ const RecursiveNode = ({ data, depth = 0 }: { data: THREE.Object3D, depth: numbe
 
     const [selecteds, setSelecteds] = useAtom(selectedAtom);
     const threeExports = useAtomValue(threeExportsAtom);
+    const containerRef = useRef<HTMLDivElement>(null);
+    const [scrollTo, setScrollTo] = useAtom(treeScrollToAtom);
 
     const type = data.type as "Scene" | "Mesh" | "Group" | "Object3D" | "BoxHelper";
 
@@ -50,13 +53,65 @@ const RecursiveNode = ({ data, depth = 0 }: { data: THREE.Object3D, depth: numbe
     const openable = type === "Group" || type === "Object3D" || type === "Mesh";
     const [hidden, setHidden] = useState(data.visible ? false : true);
 
-    if (type === "BoxHelper") {
+    useEffect(() => {
+        if (!scrollTo || !containerRef.current) {
+            return;
+        }
+
+        if (scrollTo === data.uuid) {
+            containerRef.current.scrollIntoView({ behavior: "smooth" });
+        }
+
+        // 한 번 스크롤하고 나면 초기화
+        setScrollTo(null);
+
+    }, [scrollTo]);
+
+
+    if (type === "BoxHelper" || !threeExports) {
         return null;
     }
 
+    const thisSelected = selecteds.includes(data.uuid);
 
-    return <div style={{ width: "100%", paddingLeft: depth * 4, fontSize: 12, marginTop: 2 }}>
-        <div style={{ width: "100%", display: "flex", justifyContent: "space-between", textAlign: "center", backgroundColor: selecteds.includes(data.uuid) ? "#bbb" : undefined }}>
+    // 비싼 재귀지만 개발단이니 진행
+
+    const { scene } = threeExports;
+    const childSelected = (() => {
+        if (thisSelected) {
+            return false;
+        }
+
+        const object: THREE.Object3D | undefined = scene.getObjectByProperty("uuid", data.uuid);
+        if (!object) {
+            return false;
+        }
+        let retval = false;
+        const recursivelyCheck = (object: THREE.Object3D) => {
+            object.children.forEach(child => {
+                if (retval) {
+                    return;
+                }
+                if (selecteds.includes(child.uuid)) {
+                    retval = true;
+                    return;
+                }
+                recursivelyCheck(child);
+            })
+        }
+        recursivelyCheck(object);
+
+        return retval;
+    })()
+
+    return <div ref={containerRef} style={{ width: "100%", paddingLeft: depth * 4, fontSize: 12, marginTop: 2 }}>
+        <div style={{
+            width: "100%",
+            display: "flex",
+            justifyContent: "space-between",
+            textAlign: "center",
+            backgroundColor: thisSelected ? "#bbb" : (childSelected ? "#cdcdcd" : undefined),
+        }}>
             <div style={{ flex: 1, minWidth: 0, display: "flex", justifyContent: "start" }}>
                 <div style={{
                     transform: open ? "rotate(90deg)" : "rotate(0deg)",
@@ -68,9 +123,11 @@ const RecursiveNode = ({ data, depth = 0 }: { data: THREE.Object3D, depth: numbe
                     if (openable) {
                         setOpen(!open);
                     }
-                }}>&gt;</div> <div style={{
+                }}>&gt;</div>
+                <div style={{
                     width: "calc(100% - 16px)",
-                    color: data.name.length === 0 ? "#666" : "#000", cursor: "pointer",
+                    color: data.name.length === 0 ? "#666" : "#000",
+                    cursor: "pointer",
                     // single line with ellipsis
                     overflow: "hidden",
                     textOverflow: "ellipsis",
@@ -120,6 +177,7 @@ const RecursiveNode = ({ data, depth = 0 }: { data: THREE.Object3D, depth: numbe
 
 const SceneTree = () => {
     const threeExports = useAtomValue(threeExportsAtom);
+
     if (!threeExports) {
         return null;
     }

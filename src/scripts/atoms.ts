@@ -134,3 +134,9 @@ export const globalGlAtom = atom<GLProps>({
     depth: true,
     failIfMajorPerformanceCaveat: false,
 });
+
+export const treeScrollToAtom = atom<string | null>(null);
+
+export const Tabs = ["scene", "tree"] as const;
+export type Tab = typeof Tabs[number];
+export const panelTabAtom = atom<Tab>("scene");

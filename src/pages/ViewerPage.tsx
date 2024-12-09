@@ -1,7 +1,7 @@
 import React from 'react';
-import { atom, useAtomValue, useSetAtom } from 'jotai';
+import { atom, useAtom, useAtomValue, useSetAtom } from 'jotai';
 import { useState } from 'react';
-import { loadHistoryAtom, modalAtom, sourceAtom, threeExportsAtom, useModal } from '../scripts/atoms';
+import { loadHistoryAtom, modalAtom, panelTabAtom, sourceAtom, Tabs, threeExportsAtom, useModal } from '../scripts/atoms';
 import SceneInfo from '../components/SceneInfo';
 import useFiles from '../scripts/useFiles';
 import SceneTree from '../components/SceneTree';
@@ -31,15 +31,9 @@ Map.prototype.reduce = function <K, V, T>(
     return accumulator;
 };
 
-const Tabs = ["scene", "tree"] as const;
-type Tab = typeof Tabs[number];
-
-
 const ThePanel = () => {
     const loadHistory = useAtomValue(loadHistoryAtom);
-    const [tab, setTab] = useState<Tab>(
-        "scene"
-    );
+    const [tab, setTab] = useAtom(panelTabAtom)
 
     return <div style={{
         width: "100%",

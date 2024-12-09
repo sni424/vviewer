@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { materialSelectedAtom, selectedAtom, threeExportsAtom, useModal } from '../scripts/atoms';
+import { materialSelectedAtom, panelTabAtom, selectedAtom, threeExportsAtom, treeScrollToAtom, useModal } from '../scripts/atoms';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import { THREE } from '../scripts/VTHREE';
 import { groupInfo } from '../scripts/utils';
@@ -12,6 +12,8 @@ const MeshView = ({ object, index }: { object: THREE.Object3D; index: number }) 
     const currentMat = (((object as THREE.Mesh)?.material) as THREE.MeshStandardMaterial);
     const isSelectedMaterialThisMesh = currentMat && (selectedMaterial?.uuid === currentMat?.uuid);
     const setSelecteds = useSetAtom(selectedAtom);
+    const setTab = useSetAtom(panelTabAtom);
+    const setTreeScrollTo = useSetAtom(treeScrollToAtom);
 
     return <div style={{
         width: "100%",
@@ -35,6 +37,10 @@ const MeshView = ({ object, index }: { object: THREE.Object3D; index: number }) 
             <button style={{ fontSize: 11 }} onClick={() => {
                 setSelecteds(prev => prev.filter(uuid => uuid !== object.uuid));
             }}>제외</button>
+            <button style={{ fontSize: 11 }} onClick={() => {
+                setTab("tree");
+                setTreeScrollTo(object.uuid);
+            }}>트리에서 보기</button>
             {currentMat && <button style={{ fontSize: 11 }} onClick={() => {
                 setSelectedMaterial((object as THREE.Mesh).material as THREE.Material);
             }} disabled={isSelectedMaterialThisMesh}>{isSelectedMaterialThisMesh ? "재질선택됨" : "재질"}</button>}
