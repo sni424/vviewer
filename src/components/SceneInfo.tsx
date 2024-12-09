@@ -11,6 +11,7 @@ import useFilelist from '../scripts/useFilelist';
 import { __UNDEFINED__ } from '../Constants';
 import objectHash from 'object-hash';
 import GlobalRenderOptions from './canvas/GlobalRenderOptions';
+import UploadPage from '../pages/UploadPage';
 
 const useEnvUrl = () => {
     const [envUrl, setEnvUrl] = useState<string | null>(null);
@@ -140,35 +141,11 @@ const SceneInfo = () => {
                 })
             }}>GLTF 내보내기</button>
             <button style={{ fontSize: 10 }} onClick={() => {
-                navigate("/upload");
-            }}>업로드하러가기</button>
-            <button style={{ fontSize: 10 }} onClick={() => {
-                openModal(
-                    () => <div style={{ backgroundColor: "white", padding: 16, borderRadius: 8 }} onClick={(e) => {
-                        e.stopPropagation();
-                    }}>
-                        {!filelist ? "로딩중..." : <div>
-                            <ul>{filelist.models.map((file, index) => {
-                                return <li onClick={() => {
-                                    cacheLoadModel(file.fileUrl).then(blob => {
-                                        const url = URL.createObjectURL(blob);
-                                        const fileFromBlob = new File([blob], file.filename);
-                                        setSource([{ url, name: file.filename, file: fileFromBlob }]);
-                                        closeModal?.();
-                                    })
-                                }} style={{
-                                    fontSize: 12,
-                                    cursor: "pointer"
-                                }} key={`loadfile=${file.fileUrl}`}>{index + 1}. {file.filename} ({formatNumber(file.fileSize / (1024 * 1024))}mb)</li>
-                            })}</ul>
-                        </div>
-                        }
-                        <button onClick={(e) => {
-                            e.stopPropagation();
-                            closeModal?.()
-                        }}>close</button>
-                    </div>);
-            }}>모델 추가</button>
+                // navigate("/upload");
+                openModal(() => <div style={{ width: "80%", height: "80%", backgroundColor: "#ffffffcc", padding: 16, borderRadius: 8, boxSizing: "border-box", position:"relative" }}>
+                    <UploadPage></UploadPage>
+                </div>)
+            }}>모델추가&업로드</button>
             <button style={{ fontSize: 10 }} onClick={() => { saveScene(scene) }}>씬 저장</button>
             <button style={{ fontSize: 10 }} onClick={() => {
                 loadScene().then(loaded => {
@@ -328,7 +305,7 @@ const SceneInfo = () => {
             </>}
         </section>
 
-        <section style={{ marginTop: 16, fontSize:13, display:"flex", flexDirection:"column", gap:6 }}>
+        <section style={{ marginTop: 16, fontSize: 13, display: "flex", flexDirection: "column", gap: 6 }}>
             <div>
                 <strong>대비</strong>
                 <input type="checkbox" checked={globalContrastOn} onChange={(e) => {

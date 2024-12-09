@@ -12,7 +12,7 @@ const FileInfoList = ({ filelist = [], containerStyle = {}, itemStyle = {}, item
                 setIsCached(isCached);
             });
         }, []);
-        return <li style={{ fontSize: 12, marginBottom: 3, ...itemStyle }} key={"filelist" + fileinfo.fileUrl} {...itemProps} data-fileinfo={JSON.stringify(fileinfo)}>{i + 1}. {fileinfo.filename} ({formatNumber(fileinfo.fileSize / (1024 * 1024))}mb) - {new Date(fileinfo.uploadDate).toLocaleString()} {isCached && <span style={{fontWeight:"bold"}}>(캐시됨)</span>}</li>
+        return <li style={{ fontSize: 12, marginBottom: 3, ...itemStyle }} key={"filelist" + fileinfo.fileUrl} {...itemProps} data-fileinfo={JSON.stringify(fileinfo)}>{i + 1}. {fileinfo.filename} ({formatNumber(fileinfo.fileSize / (1024 * 1024))}mb) - {new Date(fileinfo.uploadDate).toLocaleString()} {isCached && <span style={{ fontWeight: "bold" }}>(캐시됨)</span>}</li>
     })}</ul>
 }
 

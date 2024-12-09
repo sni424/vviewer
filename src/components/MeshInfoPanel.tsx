@@ -9,7 +9,9 @@ const MeshView = ({ object, index }: { object: THREE.Object3D; index: number }) 
 
     const info = groupInfo(object);
     const [selectedMaterial, setSelectedMaterial] = useAtom(materialSelectedAtom);
-    const isSelectedMaterialThisMesh = selectedMaterial?.uuid === (((object as THREE.Mesh).material) as THREE.MeshStandardMaterial).uuid;
+    const currentMat = (((object as THREE.Mesh)?.material) as THREE.MeshStandardMaterial);
+    const isSelectedMaterialThisMesh = currentMat && (selectedMaterial?.uuid === currentMat?.uuid);
+    const setSelecteds = useSetAtom(selectedAtom);
 
     return <div style={{
         width: "100%",
@@ -24,9 +26,18 @@ const MeshView = ({ object, index }: { object: THREE.Object3D; index: number }) 
         </div>
         <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12 }}><div>
             {index + 1}. <span style={{ textDecoration: "underline" }}>{object.name.length === 0 ? "이름없음" : object.name}</span></div>
-            <button onClick={() => {
+        </div>
+        {/* <div style={{ display: "grid" }}> */}
+        <div>
+            <button style={{ fontSize: 11 }} onClick={() => {
+                setSelecteds([object.uuid]);
+            }}>단일선택</button>
+            <button style={{ fontSize: 11 }} onClick={() => {
+                setSelecteds(prev => prev.filter(uuid => uuid !== object.uuid));
+            }}>제외</button>
+            {currentMat && <button style={{ fontSize: 11 }} onClick={() => {
                 setSelectedMaterial((object as THREE.Mesh).material as THREE.Material);
-            }} disabled={isSelectedMaterialThisMesh}>{isSelectedMaterialThisMesh ? "선택됨":"재질"}</button>
+            }} disabled={isSelectedMaterialThisMesh}>{isSelectedMaterialThisMesh ? "재질선택됨" : "재질"}</button>}
         </div>
         <div style={{
             display: "flex",
@@ -76,7 +87,7 @@ function MeshInfoPanel() {
             bottom: 10,
             left: 10,
             maxHeight: materialSelected ? "calc(50% - 20px)" : "calc(100% - 20px)",
-            width: 240,
+            width: 300,
             backgroundColor: "#bbbbbb99",
             padding: 8,
             borderRadius: 8,

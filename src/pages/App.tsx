@@ -27,7 +27,7 @@ const MyRoutes = () => {
 
   return <Routes>
     <Route path="/" element={<ViewerPage />} />
-    <Route path="/upload" element={<UploadPage />} />
+    {/* <Route path="/upload" element={<UploadPage />} /> */}
     <Route path="/test" element={<TestPage />} />
     <Route path="/mobile" element={<MobilePage />} />
   </Routes>

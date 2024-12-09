@@ -31,17 +31,15 @@ function Renderer() {
         const mat = camera.matrix.clone();
         setCameraAtom(mat);
 
-
-
-        const emptyEnvironment = new Texture();
-        const img = new ImageData(1, 1);
-        img.data[0] = 255;
-        img.data[1] = 0;
-        img.data[2] = 0;
-        emptyEnvironment.colorSpace = "sRGB";
-        emptyEnvironment.image = img;
-        emptyEnvironment.needsUpdate = true;
-        scene.environment = emptyEnvironment;
+        // const emptyEnvironment = new Texture();
+        // const img = new ImageData(1, 1);
+        // img.data[0] = 255;
+        // img.data[1] = 0;
+        // img.data[2] = 0;
+        // emptyEnvironment.colorSpace = "sRGB";
+        // emptyEnvironment.image = img;
+        // emptyEnvironment.needsUpdate = true;
+        // scene.environment = emptyEnvironment;
         // scene.environment = 
 
     }, []);
@@ -195,8 +193,6 @@ function RendererContainer() {
         }
     }, [threeExports, selected]);
 
-
-    console.log(gl);
     return (
         <div style={{
             width: "100%",
