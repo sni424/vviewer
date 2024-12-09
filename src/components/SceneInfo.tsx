@@ -1,6 +1,6 @@
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import useFiles from '../scripts/useFiles';
-import { compressObjectToFile, formatNumber, groupInfo, loadScene, saveScene, toNthDigit } from '../scripts/utils';
+import { cached, compressObjectToFile, formatNumber, groupInfo, loadLatest, loadScene, saveScene, toNthDigit } from '../scripts/utils';
 import { cameraMatrixAtom, cameraModeAtom, envAtom, globalColorTemperatureAtom, globalContrastAtom, globalSaturationCheckAtom, selectedAtom, sourceAtom, threeExportsAtom, useEnvParams, useModal } from '../scripts/atoms';
 import { useEffect, useState } from 'react';
 import { get, set } from 'idb-keyval';
@@ -100,6 +100,7 @@ const SceneInfo = () => {
     const [env, setEnv] = useEnvParams();
     const threeExports = useAtomValue(threeExportsAtom);
     const [envUrl, setEnvUrl] = useEnvUrl();
+    const [hasSaved, setHasSaved] = useState(false);
 
     const [selecteds, setSelecteds] = useAtom(selectedAtom);
     const { openModal, closeModal } = useModal();
@@ -111,6 +112,14 @@ const SceneInfo = () => {
     const [globalSaturationCheckOn, setGlobalSaturationCheck] = useAtom(globalSaturationCheckAtom);
     const [globalColorTemperature, setGlobalColorTemperature] = useAtom(globalColorTemperatureAtom)
     const { on: globalColorTemperatureOn, value: globalColorTemperatureValue } = globalColorTemperature;
+
+    useEffect(() => {
+        get("savedScene").then(val => {
+            if (val) {
+                setHasSaved(true);
+            }
+        })
+    }, []);
 
     if (!threeExports) {
         return null;
@@ -148,19 +157,20 @@ const SceneInfo = () => {
                     <UploadPage></UploadPage>
                 </div>)
             }}>모델추가&업로드</button>
-            <button style={{ fontSize: 10 }} onClick={() => { saveScene(scene) }}>씬 저장</button>
+            <button style={{ fontSize: 10 }} onClick={() => { saveScene(scene) }}>씬 저장(Ctrl S)</button>
             <button style={{ fontSize: 10 }} onClick={() => {
                 loadScene().then(loaded => {
                     if (loaded) {
                         scene.removeFromParent();
                         scene.add(loaded);
                     }
-
+                }).catch(() => {
+                    alert("씬 불러오기 실패");
                 })
-            }}>씬 불러오기</button>
+            }} disabled={!hasSaved}>씬 불러오기 Ctrl L</button>
             <button style={{ fontSize: 10 }} onClick={() => {
                 saveString(JSON.stringify(scene.toJSON(), null, 2), `scene-${new Date().toISOString()}.json`);
-            }}>씬 내보내기</button>
+            }}>씬 json으로 내보내기</button>
             <button style={{ fontSize: 10 }} onClick={() => {
                 const uploadUrl = import.meta.env.VITE_UPLOAD_URL;
                 if (!uploadUrl) {
@@ -197,6 +207,12 @@ const SceneInfo = () => {
                 })
 
             }}>씬 업로드</button>
+            <button onClick={() => {
+                loadLatest({ threeExports }).catch(e => {
+                    console.error(e);
+                    alert("최신 업로드 불러오기 실패");
+                })
+            }}>업로드한 씬 불러오기</button>
         </section>
         <section style={{ width: "100%" }}>
             <strong>환경맵</strong>
@@ -306,7 +322,7 @@ const SceneInfo = () => {
                 </div>
             </>}
             {env.select !== "none" && <div style={{ width: "100%", marginLeft: 8, fontSize: 11 }}>
-                <button style={{fontSize:11}} onClick={() => {
+                <button style={{ fontSize: 11 }} onClick={() => {
                     setEnv(prev => ({ ...prev, rotation: { x: 0, y: 0, z: 0 } }));
                 }}>회전리셋</button>
                 <div>

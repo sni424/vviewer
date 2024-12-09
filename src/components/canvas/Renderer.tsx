@@ -4,11 +4,11 @@ import VGLTFLoader from '../../scripts/VGLTFLoader';
 import { useEffect, useRef } from 'react';
 import { Scene, Texture, THREE } from '../../scripts/VTHREE';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
-import { cameraMatrixAtom, globalGlAtom, loadHistoryAtom, materialSelectedAtom, selectedAtom, sourceAtom, threeExportsAtom } from '../../scripts/atoms';
+import { cameraMatrixAtom, globalGlAtom, loadHistoryAtom, materialSelectedAtom, selectedAtom, sourceAtom, threeExportsAtom, treeScrollToAtom } from '../../scripts/atoms';
 import { __UNDEFINED__ } from '../../Constants';
 import MyEnvironment from './EnvironmentMap';
 import SelectBox from './SelectBox';
-import { getIntersects, saveScene } from '../../scripts/utils';
+import { getIntersects, loadScene, saveScene } from '../../scripts/utils';
 import GlobalContrast from './GlobalContrast';
 import useStats from '../../scripts/useStats';
 import GlobalSaturationCheck from './GlobalSaturationCheck';
@@ -116,6 +116,7 @@ function RendererContainer() {
     const threeExports = useAtomValue(threeExportsAtom);
     const [selected, setSelected] = useAtom(selectedAtom);
     const setMaterialSelected = useSetAtom(materialSelectedAtom);
+    const setScrollTo = useSetAtom(treeScrollToAtom);
     const gl = useAtomValue(globalGlAtom);
     const lastClickRef = useRef<number>(0);
 
@@ -130,6 +131,7 @@ function RendererContainer() {
             if (e.key === "Escape") {
                 setSelected([]);
                 setMaterialSelected(null);
+                setScrollTo(null);
                 return;
             }
             if (e.ctrlKey && e.key.toLowerCase() === "a") {
@@ -143,17 +145,6 @@ function RendererContainer() {
                 });
                 setSelected(everyObject);
                 return;
-            }
-
-            if (e.key.toLowerCase() === "a") {
-                // get all objects in scene
-                const everyObject: string[] = [];
-                scene.traverse(obj => {
-                    if (obj.type === "BoxHelper") {
-                        return;
-                    }
-                    everyObject.push(obj.uuid);
-                });
             }
 
             if (e.key === "Delete") {
@@ -174,6 +165,7 @@ function RendererContainer() {
                 const { gl } = threeExports;
                 gl.renderLists.dispose()
                 setSelected([]);
+                return;
             }
 
             // ctrl s
@@ -181,6 +173,21 @@ function RendererContainer() {
                 e.preventDefault();
                 saveScene(scene).then(() => {
                     alert("저장 완료")
+                })
+                return;
+            }
+
+            // ctrl l
+            if (e.ctrlKey && (e.key.toLowerCase() === "l")) {
+                e.preventDefault();
+                loadScene().then(loaded => {
+                    if (loaded) {
+                        scene.removeFromParent();
+                        scene.add(loaded);
+                        alert("로드 완료")
+                    }
+                }).catch(e => {
+                    alert("로드 실패")
                 })
             }
         }
@@ -248,11 +255,13 @@ function RendererContainer() {
                                 }
                                 if (intersects[0].object.type === "Mesh") {
                                     setMaterialSelected((intersects[0].object as THREE.Mesh).material as THREE.Material);
+                                    setScrollTo(intersects[0].object.uuid);
                                 }
                                 return [...selected, intersects[0].object.uuid];
                             });
                         } else {
                             setSelected([intersects[0].object.uuid]);
+                            setScrollTo(intersects[0].object.uuid);
                             if (intersects[0].object.type === "Mesh") {
                                 setMaterialSelected((intersects[0].object as THREE.Mesh).material as THREE.Material);
                             }

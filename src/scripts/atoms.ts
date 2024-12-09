@@ -87,7 +87,7 @@ export const sceneAnalysisAtom = atom<{
     maxTriangleInMesh: number;
 }>();
 
-export const benchmarkAtom = atom<{
+export type BenchMark = {
     start?: number;
     end?: number;
     downloadStart?: number;
@@ -96,7 +96,8 @@ export const benchmarkAtom = atom<{
     parseEnd?: number;
     sceneAddStart?: number;
     sceneAddEnd?: number;
-}>({});
+};
+export const benchmarkAtom = atom<BenchMark>({});
 
 export const useBenchmark = () => {
     const benchmark = useAtomValue(benchmarkAtom);
@@ -146,4 +147,4 @@ export const Tabs = ["scene", "tree"] as const;
 export type Tab = typeof Tabs[number];
 export const panelTabAtom = atom<Tab>("scene");
 
-export const treeSearchAtom = atom<string|undefined>();
+export const treeSearchAtom = atom<string | undefined>();

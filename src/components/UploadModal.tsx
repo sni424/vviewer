@@ -127,9 +127,9 @@ function Upload() {
         >
             <div style={{ marginBottom: 16 }}>
                 드래그&드랍으로 파일 업로드
-                <button onClick={() => {
+                <button style={{marginLeft:20}} onClick={() => {
                     closeModal();
-                }}>끄기</button>
+                }}>창 닫기</button>
             </div>
             {filelist ? <>
                 <div style={{ marginTop: 20, marginBottom: 16 }}>파일목록</div>
