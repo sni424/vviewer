@@ -4,12 +4,15 @@ import { materialSelectedAtom, selectedAtom, threeExportsAtom } from '../scripts
 import { THREE } from '../scripts/VTHREE';
 import { toNthDigit } from '../scripts/utils';
 import useLightMapDragAndDrop from '../scripts/useLightMapDragAndDrop';
-import LightMapPreview from './LightMapPreview';
+import MapPreview from './MapPreview';
 
 const LightmapSection = ({ mat }: { mat: THREE.MeshStandardMaterial }) => {
     const { isDragging, handleDrop, handleDragOver, handleDragLeave } = useLightMapDragAndDrop(mat);
     const [lightMapIntensity, setLightMapIntensity] = useState(mat.lightMapIntensity);
     const [lightmapChannel, setLightmapChannel] = useState<number>(mat.lightMap?.channel ?? 0);
+    const [roughness, setRoughness] = useState(mat.roughness);
+    const [metalness, setMetalness] = useState(mat.metalness);
+
     useEffect(() => {
         if (mat.lightMap) {
             console.log("Changing mat lightmap, channel", mat.lightMap.channel, ", uuid:", mat.uuid.substring(0, 5));
@@ -18,33 +21,71 @@ const LightmapSection = ({ mat }: { mat: THREE.MeshStandardMaterial }) => {
     }, [mat.uuid, lightmapChannel]);
 
     return <section style={{ display: "flex", flexDirection: "column" }}>
-        <div style={{ display: "flex", flexDirection: "column", border: "1px solid gray", padding: 8, borderRadius: 8, boxSizing: "border-box", cursor: isDragging ? "copy" : undefined }}
+        <div style={{ display: "flex", flexDirection: "column", border: "1px solid gray", padding: 8, borderRadius: 8, boxSizing: "border-box", cursor: isDragging ? "copy" : undefined, fontSize: 13 }}
             onDrop={handleDrop}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
         >
-            <div>Lightmap : {mat.lightMap === null ? "없음" : mat.lightMap.name ?? "이름없음"}</div>
-            {mat.lightMap && <div>
-                <LightMapPreview material={mat}></LightMapPreview>
-                <div>Intensity: {lightMapIntensity}</div>
-                <div key={`lmchannel-` + mat.uuid}>Channel: {lightmapChannel} <button onClick={() => {
-                    setLightmapChannel(prev => Math.max(prev - 1, 0));
-                    mat.lightMap!.channel = Math.max(mat.lightMap!.channel - 1, 0);
-                    mat.needsUpdate = true;
-                }}>-1</button><button onClick={() => {
-                    setLightmapChannel(prev => prev + 1);
-                    mat.lightMap!.channel = mat.lightMap!.channel + 1
-                    mat.needsUpdate = true;
-                }}>+1</button></div>
-                <div style={{ width: "100%" }}>
-                    <input type="range" min={0} max={1} step={0.01} value={lightMapIntensity ?? 1} onChange={(e) => {
-                        mat.lightMapIntensity = parseFloat(e.target.value);
-                        setLightMapIntensity(mat.lightMapIntensity);
-                    }}></input>
-                    <span style={{ marginLeft: 8, fontSize: 12 }}>Intensity : {toNthDigit(lightMapIntensity ?? 1, 2)}</span>
 
+            <div style={{ marginBottom: 12 }}>
+                <strong>Lightmap : {mat.lightMap === null ? "없음" : mat.lightMap.name ?? "이름없음"}</strong>
+                {mat.lightMap && <div>
+                    <MapPreview material={mat} mapKey="lightMap"></MapPreview>
+                    <div>Intensity: {lightMapIntensity}</div>
+                    <div key={`lmchannel-` + mat.uuid}>Channel: {lightmapChannel} <button onClick={() => {
+                        setLightmapChannel(prev => Math.max(prev - 1, 0));
+                        mat.lightMap!.channel = Math.max(mat.lightMap!.channel - 1, 0);
+                        mat.needsUpdate = true;
+                    }}>-1</button><button onClick={() => {
+                        setLightmapChannel(prev => prev + 1);
+                        mat.lightMap!.channel = mat.lightMap!.channel + 1
+                        mat.needsUpdate = true;
+                    }}>+1</button></div>
+                    <div style={{ width: "100%" }}>
+                        <input type="range" min={0} max={1} step={0.01} value={lightMapIntensity ?? 1} onChange={(e) => {
+                            mat.lightMapIntensity = parseFloat(e.target.value);
+                            setLightMapIntensity(mat.lightMapIntensity);
+                        }}></input>
+                        <span style={{ marginLeft: 8, fontSize: 12 }}>Intensity : {toNthDigit(lightMapIntensity ?? 1, 2)}</span>
+
+                    </div>
+                </div>}
+            </div>
+
+            <div style={{ width: "100%", display: "grid", gridTemplateColumns: "1fr 1fr", rowGap:12 }}>
+                <div>
+                    <strong>Diffuse</strong>
+                    <MapPreview material={mat} mapKey="map"></MapPreview>
                 </div>
-            </div>}
+                <div>
+                    <strong>Normal</strong>
+                    <MapPreview material={mat} mapKey="normalMap"></MapPreview>
+                </div>
+                <div>
+                    <span><strong>Roughness</strong> : {toNthDigit(roughness, 2)}</span>
+                    <MapPreview material={mat} mapKey="roughnessMap"></MapPreview>
+                    <input type="range" min={0} max={1} step={0.01} value={roughness} onChange={(e) => {
+                        const value = parseFloat(e.target.value);
+                        mat.roughness = value;
+                        mat.needsUpdate = true;
+                        setRoughness(value);
+                    }} />
+                </div>
+                <div>
+                    <span><strong>Metalness</strong> : {toNthDigit(metalness, 2)}</span>
+                    <MapPreview material={mat} mapKey="metalnessMap"></MapPreview>
+                    <input type="range" min={0} max={1} step={0.01} value={metalness} onChange={(e) => {
+                        const value = parseFloat(e.target.value);
+                        mat.metalness = value;
+                        mat.needsUpdate = true;
+                        setMetalness(value);
+                    }} />
+                </div>
+                <div>
+                    <strong>AO</strong>
+                    <MapPreview material={mat} mapKey="aoMap"></MapPreview>
+                </div>
+            </div>
             {/* <LightMapPreview ></LightMapPreview> */}
         </div>
         {/* {Object.entries(mat).map(([key, value]) => {
