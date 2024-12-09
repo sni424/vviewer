@@ -71,20 +71,6 @@ export const toNthDigit = (num: number, digit: number): string => {
 
 }
 
-export const cacheLoadModel = async (url: string): Promise<Blob> => {
-    return get(url).then(data => {
-        if (!data) {
-            return fetch(url).then(res => res.blob()).then(data => {
-                return set(url, data).then(_ => {
-                    return data
-                })
-            })
-        }
-        return data;
-    })
-}
-
-
 export const getIntersects = (
     e: React.MouseEvent,
     threeExports: RootState | null,
@@ -194,7 +180,6 @@ export async function loadFile(file: FileInfo): Promise<Blob> {
         if (!data) {
             return fetch(file.fileUrl).then(res => res.blob()).then(data => {
                 return set(hash, data).then(_ => {
-                    debugger;
                     return data
                 });
             })

@@ -5,16 +5,14 @@ import { useEffect, useRef } from 'react';
 import { Scene, Texture, THREE } from '../../scripts/VTHREE';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import { cameraMatrixAtom, globalGlAtom, loadHistoryAtom, materialSelectedAtom, selectedAtom, sourceAtom, threeExportsAtom } from '../../scripts/atoms';
-import { TransformControlsPlane } from 'three/examples/jsm/Addons.js';
 import { __UNDEFINED__ } from '../../Constants';
 import MyEnvironment from './EnvironmentMap';
 import SelectBox from './SelectBox';
 import { getIntersects, saveScene } from '../../scripts/utils';
-import Gizmo from './Gizmo';
 import GlobalContrast from './GlobalContrast';
 import useStats from '../../scripts/useStats';
-import GlobalSaturationCheck from './GlobalBurndown';
-import GlobalToneMapping from './GlobalToneMapping';
+import GlobalSaturationCheck from './GlobalSaturationCheck';
+import GlobalColorTemperature from './GlobalColorTemperature';
 
 function Renderer() {
     useStats();
@@ -108,7 +106,7 @@ function Renderer() {
             <GizmoViewport name='GizmoHelper' axisColors={['red', 'green', 'blue']} labelColor="black" />
         </GizmoHelper>
         <GlobalContrast></GlobalContrast>
-        {/* <GlobalToneMapping></GlobalToneMapping> */}
+        <GlobalColorTemperature></GlobalColorTemperature>
         <GlobalSaturationCheck></GlobalSaturationCheck>
     </>
 }

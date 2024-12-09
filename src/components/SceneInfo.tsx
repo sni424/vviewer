@@ -1,17 +1,17 @@
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import useFiles from '../scripts/useFiles';
-import { cacheLoadModel, compressObjectToFile, formatNumber, groupInfo, loadScene, saveScene, toNthDigit } from '../scripts/utils';
-import { cameraMatrixAtom, cameraModeAtom, envAtom, globalContrastAtom, globalSaturationCheckAtom, selectedAtom, sourceAtom, threeExportsAtom, useEnvParams, useModal } from '../scripts/atoms';
+import { compressObjectToFile, formatNumber, groupInfo, loadScene, saveScene, toNthDigit } from '../scripts/utils';
+import { cameraMatrixAtom, cameraModeAtom, envAtom, globalColorTemperatureAtom, globalContrastAtom, globalSaturationCheckAtom, selectedAtom, sourceAtom, threeExportsAtom, useEnvParams, useModal } from '../scripts/atoms';
 import { useEffect, useState } from 'react';
 import { get, set } from 'idb-keyval';
 import { Euler, Quaternion, THREE, Vector3 } from '../scripts/VTHREE';
 import { GLTFExporter } from 'three/examples/jsm/Addons.js';
 import { useNavigate } from 'react-router-dom';
 import useFilelist from '../scripts/useFilelist';
-import { __UNDEFINED__ } from '../Constants';
+import { __UNDEFINED__, DEFAULT_COLOR_TEMPERATURE } from '../Constants';
 import objectHash from 'object-hash';
 import GlobalRenderOptions from './canvas/GlobalRenderOptions';
-import UploadPage from '../pages/UploadPage';
+import UploadPage from './UploadModal';
 
 const useEnvUrl = () => {
     const [envUrl, setEnvUrl] = useState<string | null>(null);
@@ -109,6 +109,8 @@ const SceneInfo = () => {
     const [globalContrast, setGlobalContrast] = useAtom(globalContrastAtom)
     const { on: globalContrastOn, value: globalContrastValue } = globalContrast;
     const [globalSaturationCheckOn, setGlobalSaturationCheck] = useAtom(globalSaturationCheckAtom);
+    const [globalColorTemperature, setGlobalColorTemperature] = useAtom(globalColorTemperatureAtom)
+    const { on: globalColorTemperatureOn, value: globalColorTemperatureValue } = globalColorTemperature;
 
     if (!threeExports) {
         return null;
@@ -142,7 +144,7 @@ const SceneInfo = () => {
             }}>GLTF 내보내기</button>
             <button style={{ fontSize: 10 }} onClick={() => {
                 // navigate("/upload");
-                openModal(() => <div style={{ width: "80%", height: "80%", backgroundColor: "#ffffffcc", padding: 16, borderRadius: 8, boxSizing: "border-box", position:"relative" }}>
+                openModal(() => <div style={{ width: "80%", height: "80%", backgroundColor: "#ffffffcc", padding: 16, borderRadius: 8, boxSizing: "border-box", position: "relative" }}>
                     <UploadPage></UploadPage>
                 </div>)
             }}>모델추가&업로드</button>
@@ -323,6 +325,19 @@ const SceneInfo = () => {
                     setGlobalSaturationCheck(e.target.checked);
                 }
                 } />
+            </div>
+            <div>
+                <div>
+                    <strong>색온도</strong>{globalColorTemperatureOn && <span>: {globalColorTemperatureValue}K </span>}
+                </div>
+
+                <input type="checkbox" checked={globalColorTemperatureOn} onChange={(e) => {
+                    setGlobalColorTemperature({ on: e.target.checked, value: globalColorTemperatureValue ?? DEFAULT_COLOR_TEMPERATURE });
+                }
+                } />
+                {globalColorTemperatureOn && <input type="range" min={3000} max={10000} step={10} value={globalColorTemperatureValue ?? DEFAULT_COLOR_TEMPERATURE} onChange={(e) => {
+                    setGlobalColorTemperature({ on: true, value: parseInt(e.target.value) });
+                }} />}
             </div>
             <GlobalRenderOptions></GlobalRenderOptions>
         </section>

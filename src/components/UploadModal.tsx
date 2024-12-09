@@ -1,9 +1,9 @@
 import { atom, useAtom, useAtomValue, useSetAtom } from 'jotai';
 import React, { useEffect, useState } from 'react'
 import { FileInfo } from '../types';
-import { cacheLoadModel, formatNumber } from '../scripts/utils';
+import { formatNumber, loadFile } from '../scripts/utils';
 import useFilelist from '../scripts/useFilelist';
-import FileInfoList from '../components/FileInfoList';
+import FileInfoList from './FileInfoList';
 import { sourceAtom, useModal } from '../scripts/atoms';
 
 const uploadSourceAtom = atom<{
@@ -141,8 +141,7 @@ function Upload() {
                         {
                             onClick: (e) => {
                                 const file = JSON.parse(e.currentTarget.getAttribute("data-fileinfo")!) as FileInfo;
-                                console.log(file)
-                                cacheLoadModel(file.fileUrl).then(blob => {
+                                loadFile(file).then(blob => {
                                     console.log("loaded")
                                     const url = URL.createObjectURL(blob);
                                     const fileFromBlob = new File([blob], file.filename);

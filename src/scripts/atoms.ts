@@ -4,6 +4,7 @@ import { THREE } from "./VTHREE";
 import React from "react";
 import { set } from "idb-keyval";
 import { FileInfo, GLProps } from "../types";
+import { DEFAULT_COLOR_TEMPERATURE } from "../Constants";
 
 export const sourceAtom = atom<{ name: string; url: string; file: File; lightmap?: File; }[]>([]);
 export const loadHistoryAtom = atom<Map<string, { name: string; start: number; end: number; file: File, uuid: string; }>>(new Map());
@@ -114,6 +115,14 @@ export const filelistAtom = atom<{
 }>({ all: [], models: [], envs: [], scenes: [] });
 
 export const globalSaturationCheckAtom = atom<boolean>(false);
+
+export const globalColorTemperatureAtom = atom<{
+    on: boolean;
+    value: number;
+}>({
+    on: false,
+    value: DEFAULT_COLOR_TEMPERATURE
+});
 
 export const globalGlAtom = atom<GLProps>({
     antialias: true,

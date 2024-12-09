@@ -1,6 +1,6 @@
 import { Route, Routes, useNavigate } from 'react-router-dom';
 import ViewerPage from "./ViewerPage";
-import UploadPage from './UploadPage';
+import UploadPage from '../components/UploadModal';
 import { Env, envAtom, useEnvParams } from '../scripts/atoms';
 import { useEffect, useState } from 'react';
 import { get } from 'idb-keyval';
