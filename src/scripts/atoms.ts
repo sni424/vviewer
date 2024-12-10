@@ -200,7 +200,7 @@ export const globalGlAtom = atom<GLProps>({
 
 export const treeScrollToAtom = atom<string | null>(null);
 
-export const Tabs = ['scene', 'tree', 'hotspot'] as const;
+export const Tabs = ['scene', 'tree'] as const;
 export type Tab = (typeof Tabs)[number];
 export const panelTabAtom = atom<Tab>('scene');
 
@@ -220,7 +220,7 @@ export const cameraSettingAtom = atom({
 
 //orbit세팅
 export const orbitSettingAtom = atom({
-  autoRotate: true,
+  autoRotate: !true,
   enable: false,
 });
 
