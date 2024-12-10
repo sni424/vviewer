@@ -298,6 +298,7 @@ const SceneTree = () => {
 
     const { scene } = threeExports;
 
+
     // return <ObjectViewer data={scene}></ObjectViewer>
     return <div style={{ width: "100%", padding: 8, height: "100%", overflow: "auto" }}>
         <SearchBar></SearchBar>
