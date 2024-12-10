@@ -1,13 +1,44 @@
 import type { RootState } from '@react-three/fiber';
-import { atom, useAtom, useAtomValue, useSetAtom } from 'jotai';
+import { atom, createStore, useAtom, useAtomValue, useSetAtom, WritableAtom } from 'jotai';
 import { THREE, Vector3 } from './VTHREE';
 import React from 'react';
 import { set } from 'idb-keyval';
 import { FileInfo, GLProps } from '../types';
 import { DEFAULT_COLOR_TEMPERATURE } from '../Constants';
 
+type AtomArgType<T> = T | ((prev: T) => T);
+export type Store = ReturnType<typeof createStore>;
+export const defaultStore = createStore();
+
+// 훅 내부가 아닌 일반 함수에서 전달받아서 사용하기 위헤 store.get
+// 사용방법: const [atom, getAtom, setAtom] = createAtomCombo<타입>(초기값?, store?);
+// 이렇게 선언된 atom은 컴포넌트에서 useAtom(atom) 형태로도 사용 가능하다
+// 예를 들면 EditorFlowChannelHandler.ts 참조
+export const createAtomCombo = <T = any>(
+  initalValue?: T,
+  store?: Store,
+): [
+    WritableAtom<T, unknown[], unknown>,
+    () => T | undefined,
+    (arg: AtomArgType<T>) => void,
+  ] => {
+  const dstStore = store ?? defaultStore;
+  // @ts-ignore
+  const theAtom = atom<T>(initalValue);
+  return [
+    theAtom,
+    (() => dstStore.get(theAtom)) as () => T | undefined,
+    ((arg: AtomArgType<T>) => dstStore.set(theAtom, arg)) as (
+      arg: AtomArgType<T>,
+    ) => void,
+  ];
+};
+
+// export type MapDst = 'lightmap' | 'emissivemap' | 'envmap'; // hdr적용은 추후 필요하면 추가
+export type MapDst = 'lightmap' | 'emissivemap';
+export type ModelSource = { name: string; url: string; file: File; map?: File, mapDst?: MapDst };
 export const sourceAtom = atom<
-  { name: string; url: string; file: File; lightmap?: File }[]
+  ModelSource[]
 >([]);
 export const loadHistoryAtom = atom<
   Map<
@@ -20,16 +51,16 @@ export const threeExportsAtom = atom<RootState>();
 export type Env = {
   select: 'none' | 'preset' | 'custom' | 'url';
   preset?:
-    | 'apartment'
-    | 'city'
-    | 'dawn'
-    | 'forest'
-    | 'lobby'
-    | 'night'
-    | 'park'
-    | 'studio'
-    | 'sunset'
-    | 'warehouse';
+  | 'apartment'
+  | 'city'
+  | 'dawn'
+  | 'forest'
+  | 'lobby'
+  | 'night'
+  | 'park'
+  | 'studio'
+  | 'sunset'
+  | 'warehouse';
   url?: string;
   intensity?: number;
   rotation?: {
@@ -94,9 +125,11 @@ export const GizmoModes = ['translate', 'rotate', 'scale'] as const;
 export type GizmoMode = (typeof GizmoModes)[number];
 export const mouseModeAtom = atom<'select' | GizmoMode>('select');
 
-export const globalContrastAtom = atom<{ on: boolean; value: number }>({
+// 값은 -1.0 ~ 1.0
+export const globalBrightnessContrastAtom = atom<{ on: boolean; brightnessValue: number; contrastValue: number }>({
   on: false,
-  value: 0,
+  brightnessValue: 0,
+  contrastValue: 0,
 });
 
 export const sceneAnalysisAtom = atom<{
@@ -107,7 +140,7 @@ export const sceneAnalysisAtom = atom<{
   maxTriangleInMesh: number;
 }>();
 
-export const benchmarkAtom = atom<{
+export type BenchMark = {
   start?: number;
   end?: number;
   downloadStart?: number;
@@ -116,7 +149,8 @@ export const benchmarkAtom = atom<{
   parseEnd?: number;
   sceneAddStart?: number;
   sceneAddEnd?: number;
-}>({});
+};
+export const benchmarkAtom = atom<BenchMark>({});
 
 export const useBenchmark = () => {
   const benchmark = useAtomValue(benchmarkAtom);

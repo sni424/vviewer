@@ -1,19 +1,20 @@
-import { GizmoHelper, GizmoViewport, OrbitControls, } from '@react-three/drei'
+import { Effects, GizmoHelper, GizmoViewport, OrbitControls, } from '@react-three/drei'
 import { Canvas, RootState, useThree } from '@react-three/fiber'
 import VGLTFLoader from '../../scripts/VGLTFLoader';
 import { useEffect, useRef, useState } from 'react';
 import { Scene, Texture, THREE } from '../../scripts/VTHREE';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
-import { cameraMatrixAtom, globalGlAtom, loadHistoryAtom, materialSelectedAtom, selectedAtom, sourceAtom, threeExportsAtom } from '../../scripts/atoms';
+import { cameraMatrixAtom, globalGlAtom, loadHistoryAtom, materialSelectedAtom, selectedAtom, sourceAtom, threeExportsAtom, treeScrollToAtom } from '../../scripts/atoms';
 import { __UNDEFINED__ } from '../../Constants';
 import MyEnvironment from './EnvironmentMap';
 import SelectBox from './SelectBox';
-import { getIntersects, saveScene } from '../../scripts/utils';
+import { getIntersects, loadScene, saveScene } from '../../scripts/utils';
 import GlobalContrast from './GlobalContrast';
 import useStats from '../../scripts/useStats';
 import GlobalSaturationCheck from './GlobalSaturationCheck';
 import GlobalColorTemperature from './GlobalColorTemperature';
 import UnifiedCameraControls from '../camera/UnifiedCameraControls';
+import PostProcess from './PostProcess';
 
 function Renderer() {
     useStats();
@@ -47,7 +48,7 @@ function Renderer() {
     useEffect(() => {
 
         sources.forEach(source => {
-            const { name, url, file, lightmap } = source;
+            const { name, url, file, map, mapDst } = source;
             // setLoadingsAtom(loadings => [...loadings, source]);
             setLoadHistoryAtom(history => {
                 const newHistory = new Map(history);
@@ -59,15 +60,29 @@ function Renderer() {
             new VGLTFLoader().loadAsync(url).then(gltf => {
                 gltf.scene.name = name + "-" + gltf.scene.name;
 
-                if (lightmap) {
-                    const texture = new THREE.TextureLoader().load(URL.createObjectURL(lightmap));
+                if (map) {
+                    const texture = new THREE.TextureLoader().load(URL.createObjectURL(map));
                     texture.flipY = !texture.flipY;
                     texture.channel = 1;
                     texture.needsUpdate = true;
-                    gltf.scene.traverse(obj => {
+                    gltf.scene.traverse((obj) => {
                         if (obj.type === "Mesh") {
-                            ((obj as THREE.Mesh).material as THREE.MeshStandardMaterial).lightMap = texture;
-                            ((obj as THREE.Mesh).material as THREE.MeshStandardMaterial).needsUpdate = true;
+                            const material = ((obj as THREE.Mesh).material as THREE.MeshStandardMaterial);
+                            if (!material) {
+                                (obj as THREE.Mesh).material = new THREE.MeshStandardMaterial();
+                            }
+                            if (mapDst === "lightmap" || !mapDst) {
+                                material.lightMap = texture;
+                            } else if (mapDst === "emissivemap") {
+                                //three.js 특성상 emissiveMap을 적용하려면 emissive를 설정해야함
+                                material.emissive = new THREE.Color(0xffffff);
+                                material.emissiveMap = texture;
+                                material.emissiveIntensity = 0.5;
+                            } else {
+                                throw new Error("Invalid mapDst @Renderer");
+                            }
+
+                            material.needsUpdate = true;
                         }
                     })
                 }
@@ -96,7 +111,7 @@ function Renderer() {
             const matrix = e?.target.object.matrix.clone()
             setCameraAtom(matrix);
         }} /> */}
-        <UnifiedCameraControls glbModel={model} />
+        <UnifiedCameraControls />
         <MyEnvironment></MyEnvironment>
         <SelectBox></SelectBox>
         {/* <Gizmo></Gizmo> */}
@@ -108,9 +123,7 @@ function Renderer() {
         >
             <GizmoViewport name='GizmoHelper' axisColors={['red', 'green', 'blue']} labelColor="black" />
         </GizmoHelper>
-        <GlobalContrast></GlobalContrast>
-        <GlobalColorTemperature></GlobalColorTemperature>
-        <GlobalSaturationCheck></GlobalSaturationCheck>
+        <PostProcess></PostProcess>
     </>
 }
 
@@ -119,6 +132,7 @@ function RendererContainer() {
     const threeExports = useAtomValue(threeExportsAtom);
     const [selected, setSelected] = useAtom(selectedAtom);
     const setMaterialSelected = useSetAtom(materialSelectedAtom);
+    const setScrollTo = useSetAtom(treeScrollToAtom);
     const gl = useAtomValue(globalGlAtom);
     const lastClickRef = useRef<number>(0);
     const mouseDownPosition = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
@@ -136,6 +150,7 @@ function RendererContainer() {
             if (e.key === "Escape") {
                 setSelected([]);
                 setMaterialSelected(null);
+                setScrollTo(null);
                 return;
             }
             if (e.ctrlKey && e.key.toLowerCase() === "a") {
@@ -149,17 +164,6 @@ function RendererContainer() {
                 });
                 setSelected(everyObject);
                 return;
-            }
-
-            if (e.key.toLowerCase() === "a") {
-                // get all objects in scene
-                const everyObject: string[] = [];
-                scene.traverse(obj => {
-                    if (obj.type === "BoxHelper") {
-                        return;
-                    }
-                    everyObject.push(obj.uuid);
-                });
             }
 
             if (e.key === "Delete") {
@@ -180,6 +184,7 @@ function RendererContainer() {
                 const { gl } = threeExports;
                 gl.renderLists.dispose()
                 setSelected([]);
+                return;
             }
 
             // ctrl s
@@ -187,6 +192,21 @@ function RendererContainer() {
                 e.preventDefault();
                 saveScene(scene).then(() => {
                     alert("저장 완료")
+                })
+                return;
+            }
+
+            // ctrl l
+            if (e.ctrlKey && (e.key.toLowerCase() === "l")) {
+                e.preventDefault();
+                loadScene().then(loaded => {
+                    if (loaded) {
+                        scene.removeFromParent();
+                        scene.add(loaded);
+                        alert("로드 완료")
+                    }
+                }).catch(e => {
+                    alert("로드 실패")
                 })
             }
         }
@@ -266,11 +286,13 @@ function RendererContainer() {
                                 }
                                 if (intersects[0].object.type === "Mesh") {
                                     setMaterialSelected((intersects[0].object as THREE.Mesh).material as THREE.Material);
+                                    setScrollTo(intersects[0].object.uuid);
                                 }
                                 return [...selected, intersects[0].object.uuid];
                             });
                         } else {
                             setSelected([intersects[0].object.uuid]);
+                            setScrollTo(intersects[0].object.uuid);
                             if (intersects[0].object.type === "Mesh") {
                                 setMaterialSelected((intersects[0].object as THREE.Mesh).material as THREE.Material);
                             }

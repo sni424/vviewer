@@ -2,28 +2,6 @@ import React, { useEffect } from 'react'
 import { modalAtom, useModal } from '../scripts/atoms';
 import { useAtomValue } from 'jotai';
 
-function isClassComponent(component: any) {
-    return (
-        typeof component === 'function' &&
-        !!component.prototype.isReactComponent
-    )
-}
-
-function isFunctionComponent(component: any) {
-    return (
-        typeof component === 'function' &&
-        String(component).includes('return React.createElement')
-    )
-}
-
-function isReactComponent(component: any) {
-    return (
-        isClassComponent(component) ||
-        isFunctionComponent(component)
-    )
-}
-
-
 function Modal() {
     const Content = useAtomValue(modalAtom);
     const { closeModal } = useModal();

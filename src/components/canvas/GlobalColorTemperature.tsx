@@ -3,7 +3,7 @@ import { Uniform } from 'three';
 import { extend } from '@react-three/fiber';
 import { Effect, BlendFunction } from 'postprocessing';
 import { useAtomValue } from 'jotai';
-import { globalColorTemperatureAtom, globalContrastAtom, globalSaturationCheckAtom } from '../../scripts/atoms';
+import { globalColorTemperatureAtom, globalBrightnessContrastAtom, globalSaturationCheckAtom } from '../../scripts/atoms';
 
 const colorTemperatureShader = /* glsl */`
     uniform sampler2D tDiffuse;

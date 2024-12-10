@@ -46,7 +46,7 @@ const RecursiveNode = ({ data, depth = 0 }: { data: THREE.Object3D, depth: numbe
     const threeExports = useAtomValue(threeExportsAtom);
     const containerRef = useRef<HTMLDivElement>(null);
     const [scrollTo, setScrollTo] = useAtom(treeScrollToAtom);
-    const searchValue = useAtomValue(treeSearchAtom)?.trim().toLowerCase();
+    const scrollToThis = Boolean(scrollTo) && (scrollTo === data.uuid);
 
     const type = data.type as "Scene" | "Mesh" | "Group" | "Object3D" | "BoxHelper";
 
@@ -61,11 +61,14 @@ const RecursiveNode = ({ data, depth = 0 }: { data: THREE.Object3D, depth: numbe
         }
 
         if (scrollTo === data.uuid) {
-            containerRef.current.scrollIntoView({ behavior: "smooth" });
+            // 뷰 안에 있으면 스크롤을 따로 하지 않는다
+            if (containerRef.current.getBoundingClientRect().top < 0 || containerRef.current.getBoundingClientRect().bottom > window.innerHeight) {
+                containerRef.current.scrollIntoView();
+            }
         }
 
         // 한 번 스크롤하고 나면 초기화
-        setScrollTo(null);
+        // setScrollTo(null);
 
     }, [scrollTo]);
 
@@ -116,7 +119,7 @@ const RecursiveNode = ({ data, depth = 0 }: { data: THREE.Object3D, depth: numbe
             display: "flex",
             justifyContent: "space-between",
             textAlign: "center",
-            backgroundColor: thisSelected ? "#bbb" : (childSelected ? "#cdcdcd" : undefined),
+            backgroundColor: scrollToThis ? "orange" : (thisSelected ? "#bbb" : (childSelected ? "#cdcdcd" : undefined)),
         }}>
             <div style={{ flex: 1, minWidth: 0, display: "flex", justifyContent: "start" }}>
                 <div style={{
@@ -147,9 +150,11 @@ const RecursiveNode = ({ data, depth = 0 }: { data: THREE.Object3D, depth: numbe
                             setSelecteds(selecteds.filter(uuid => uuid !== data.uuid));
                         } else {
                             setSelecteds([...selecteds, data.uuid]);
+                            setScrollTo(data.uuid);
                         }
                     } else {
                         setSelecteds([data.uuid]);
+                        setScrollTo(data.uuid);
                     }
 
 

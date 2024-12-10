@@ -1,7 +1,13 @@
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import useFiles from '../scripts/useFiles';
+<<<<<<< HEAD
 import { compressObjectToFile, formatNumber, groupInfo, loadScene, saveScene, toNthDigit } from '../scripts/utils';
 import { cameraMatrixAtom, globalColorTemperatureAtom, globalContrastAtom, globalSaturationCheckAtom, orbitSettingAtom, selectedAtom, sourceAtom, threeExportsAtom, useEnvParams, useModal } from '../scripts/atoms';
+=======
+import { cached, compressObjectToFile, formatNumber, groupInfo, loadLatest, loadScene, saveScene, toNthDigit } from '../scripts/utils';
+
+import { buttonActionAtom, cameraMatrixAtom, cameraModeAtom, envAtom, globalColorTemperatureAtom, globalBrightnessContrastAtom, globalSaturationCheckAtom, selectedAtom, sourceAtom, threeExportsAtom, useEnvParams, useModal } from '../scripts/atoms';
+>>>>>>> 84bc0fcaca5ff948ea24926e9509359fd77e830f
 import { useEffect, useState } from 'react';
 import { get, set } from 'idb-keyval';
 import { Euler, Quaternion, THREE, Vector3 } from '../scripts/VTHREE';
@@ -113,17 +119,26 @@ const SceneInfo = () => {
     const [env, setEnv] = useEnvParams();
     const threeExports = useAtomValue(threeExportsAtom);
     const [envUrl, setEnvUrl] = useEnvUrl();
+    const [hasSaved, setHasSaved] = useState(false);
 
     const [selecteds, setSelecteds] = useAtom(selectedAtom);
     const { openModal, closeModal } = useModal();
     const navigate = useNavigate();
     const { filelist, loading } = useFilelist();
     const setSource = useSetAtom(sourceAtom);
-    const [globalContrast, setGlobalContrast] = useAtom(globalContrastAtom)
-    const { on: globalContrastOn, value: globalContrastValue } = globalContrast;
+    const [brightnessContrast, setGlobalContrast] = useAtom(globalBrightnessContrastAtom)
+    const { on: brightnessContrastOn, brightnessValue, contrastValue } = brightnessContrast;
     const [globalSaturationCheckOn, setGlobalSaturationCheck] = useAtom(globalSaturationCheckAtom);
     const [globalColorTemperature, setGlobalColorTemperature] = useAtom(globalColorTemperatureAtom)
     const { on: globalColorTemperatureOn, value: globalColorTemperatureValue } = globalColorTemperature;
+
+    useEffect(() => {
+        get("savedScene").then(val => {
+            if (val) {
+                setHasSaved(true);
+            }
+        })
+    }, []);
 
     if (!threeExports) {
         return null;
@@ -161,19 +176,20 @@ const SceneInfo = () => {
                     <UploadPage></UploadPage>
                 </div>)
             }}>모델추가&업로드</button>
-            <button style={{ fontSize: 10 }} onClick={() => { saveScene(scene) }}>씬 저장</button>
+            <button style={{ fontSize: 10 }} onClick={() => { saveScene(scene) }}>씬 저장(Ctrl S)</button>
             <button style={{ fontSize: 10 }} onClick={() => {
                 loadScene().then(loaded => {
                     if (loaded) {
                         scene.removeFromParent();
                         scene.add(loaded);
                     }
-
+                }).catch(() => {
+                    alert("씬 불러오기 실패");
                 })
-            }}>씬 불러오기</button>
+            }} disabled={!hasSaved}>씬 불러오기 Ctrl L</button>
             <button style={{ fontSize: 10 }} onClick={() => {
                 saveString(JSON.stringify(scene.toJSON(), null, 2), `scene-${new Date().toISOString()}.json`);
-            }}>씬 내보내기</button>
+            }}>씬 json으로 내보내기</button>
             <button style={{ fontSize: 10 }} onClick={() => {
                 const uploadUrl = import.meta.env.VITE_UPLOAD_URL;
                 if (!uploadUrl) {
@@ -210,6 +226,12 @@ const SceneInfo = () => {
                 })
 
             }}>씬 업로드</button>
+            <button onClick={() => {
+                loadLatest({ threeExports }).catch(e => {
+                    console.error(e);
+                    alert("최신 업로드 불러오기 실패");
+                })
+            }}>업로드한 씬 불러오기</button>
         </section>
         <section style={{ width: "100%" }}>
             <strong>환경맵</strong>
@@ -333,7 +355,7 @@ const SceneInfo = () => {
                         setEnv(prev => ({ ...prev, rotation: { x: prev.rotation?.x ?? 0, y: parseFloat(e.target.value), z: prev.rotation?.z ?? 0 } }));
                     }}></input>
                     {toNthDigit(((env.rotation?.y ?? 0) / Math.PI) * 90, 2)}
-                </div>
+                </div>z
                 <div>
                     Z : <input type="range" min={-Math.PI} max={Math.PI} step={0.01} value={env.rotation?.z ?? 0} onChange={(e) => {
                         setEnv(prev => ({ ...prev, rotation: { x: prev.rotation?.x ?? 0, y: prev.rotation?.y ?? 0, z: parseFloat(e.target.value) } }));
@@ -345,14 +367,30 @@ const SceneInfo = () => {
 
         <section style={{ marginTop: 16, fontSize: 13, display: "flex", flexDirection: "column", gap: 6 }}>
             <div>
-                <strong>대비</strong>
-                <input type="checkbox" checked={globalContrastOn} onChange={(e) => {
-                    setGlobalContrast({ on: e.target.checked, value: globalContrastValue ?? 1 });
+                <strong>밝기/대비</strong>
+                <input type="checkbox" checked={brightnessContrastOn} onChange={(e) => {
+                    console.log(e.target.checked);
+                    setGlobalContrast(prev => ({ ...prev, on: e.target.checked }));
                 }
                 } />
-                {globalContrastOn && <input type="range" min={0} max={1} step={0.005} value={globalContrastValue ?? 1} onChange={(e) => {
-                    setGlobalContrast({ on: true, value: parseFloat(e.target.value) });
-                }} />}
+                {brightnessContrastOn && <>
+                    <div style={{ paddingLeft: 12, boxSizing: "border-box", width: "100%" }}>
+                        <div>밝기 : {brightnessValue ?? 0} <button style={{ fontSize: 11 }} onClick={() => {
+                            setGlobalContrast(prev => ({ ...prev, brightnessValue: 0 }));
+                        }}>초기화</button></div>
+                        <input style={{ width: "100%" }} type="range" min={-1} max={1} step={0.01} value={brightnessValue ?? 0} onChange={(e) => {
+                            setGlobalContrast(prev => ({ ...prev, brightnessValue: parseFloat(e.target.value) }));
+                        }} />
+                        <div>대비 : {contrastValue ?? 0} <button style={{ fontSize: 11 }} onClick={() => {
+                            setGlobalContrast(prev => ({ ...prev, contrastValue: 0 }));
+                        }}>초기화</button></div>
+                        <input style={{ width: "100%" }} type="range" min={-1} max={1} step={0.01} value={contrastValue ?? 0} onChange={(e) => {
+                            setGlobalContrast(prev => ({ ...prev, contrastValue: parseFloat(e.target.value) }));
+                        }} />
+
+                    </div>
+
+                </>}
 
             </div>
             <div>
@@ -362,7 +400,7 @@ const SceneInfo = () => {
                 }
                 } />
             </div>
-            <div>
+            {/* <div>
                 <div>
                     <strong>색온도</strong>{globalColorTemperatureOn && <span>: {globalColorTemperatureValue}K </span>}
                 </div>
@@ -374,8 +412,8 @@ const SceneInfo = () => {
                 {globalColorTemperatureOn && <input type="range" min={3000} max={10000} step={10} value={globalColorTemperatureValue ?? DEFAULT_COLOR_TEMPERATURE} onChange={(e) => {
                     setGlobalColorTemperature({ on: true, value: parseInt(e.target.value) });
                 }} />}
-            </div>
-            <GlobalRenderOptions></GlobalRenderOptions>
+            </div> */}
+            {/* <GlobalRenderOptions></GlobalRenderOptions> */}
         </section>
 
         <section style={{ marginTop: 16 }}>
