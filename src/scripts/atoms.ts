@@ -200,21 +200,61 @@ export const globalGlAtom = atom<GLProps>({
 
 export const treeScrollToAtom = atom<string | null>(null);
 
-export const Tabs = ['scene', 'tree'] as const;
+export const Tabs = ['scene', 'tree', "hotspot"] as const;
 export type Tab = (typeof Tabs)[number];
 export const panelTabAtom = atom<Tab>('scene');
 
 export const treeSearchAtom = atom<string | undefined>();
 
 //카메라 정보값
-export const lastCameraPositionInfoAtom = atom({
-  position: new Vector3(0, 0, 0),
+export const lastCameraInfoAtom = atom({
+  position: new Vector3(0, 1, 0),
   direction: new Vector3(0, 1, -1),
   target: new Vector3(0, 1, -1),
 });
 
-//action
-export const buttonActionAtom = atom({
+export const cameraSettingAtom = atom({
+  moveSpeed: 1,
   isoView: false,
-  autoRotate: true,
+});
+
+//orbit세팅
+export const orbitSettingAtom = atom({
+  autoRotate: !true,
+  enable: false,
+});
+
+
+export enum LookType {
+  None = "None",
+  VERY_LOW_CONTRAST = 'Very Low Contrast',
+  LOW_CONTRAST = 'Low Contrast',
+  MEDIUM_CONTRAST = 'Medium Contrast',
+  HIGH_CONTRAST = 'High Contrast',
+  VERY_HIGH_CONTRAST = 'Very High Contrast'
+}
+export enum ViewTransform {
+  Standard = "Standard",
+  KhronosPBRNeutral = "KhronosPBRNeutral",
+  AgX = "AgX",
+  Filmic = "Filmic",
+  FilmicLog = "FilmicLog",
+  FalseColor = "FalseColor",
+  Raw = "Raw",
+}
+
+
+export type ColorManagement = {
+  exposure: number;
+  gamma: number;
+  look: LookType;
+  viewTransform: ViewTransform;
+};
+export const globalColorManagementAtom = atom<{ on: boolean; value: ColorManagement }>({
+  on: false, value: {
+    exposure: 1.0,
+    gamma: 1.0,
+    look: LookType.HIGH_CONTRAST,
+    viewTransform: ViewTransform.Raw,
+  }
 });
