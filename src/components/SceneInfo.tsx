@@ -1,13 +1,8 @@
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import useFiles from '../scripts/useFiles';
-<<<<<<< HEAD
-import { compressObjectToFile, formatNumber, groupInfo, loadScene, saveScene, toNthDigit } from '../scripts/utils';
-import { cameraMatrixAtom, globalColorTemperatureAtom, globalContrastAtom, globalSaturationCheckAtom, orbitSettingAtom, selectedAtom, sourceAtom, threeExportsAtom, useEnvParams, useModal } from '../scripts/atoms';
-=======
 import { cached, compressObjectToFile, formatNumber, groupInfo, loadLatest, loadScene, saveScene, toNthDigit } from '../scripts/utils';
 
-import { buttonActionAtom, cameraMatrixAtom, cameraModeAtom, envAtom, globalColorTemperatureAtom, globalBrightnessContrastAtom, globalSaturationCheckAtom, selectedAtom, sourceAtom, threeExportsAtom, useEnvParams, useModal } from '../scripts/atoms';
->>>>>>> 84bc0fcaca5ff948ea24926e9509359fd77e830f
+import { cameraMatrixAtom, globalColorTemperatureAtom, globalBrightnessContrastAtom, globalSaturationCheckAtom, selectedAtom, sourceAtom, threeExportsAtom, useEnvParams, useModal } from '../scripts/atoms';
 import { useEffect, useState } from 'react';
 import { get, set } from 'idb-keyval';
 import { Euler, Quaternion, THREE, Vector3 } from '../scripts/VTHREE';
