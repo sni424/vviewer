@@ -1,7 +1,7 @@
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import useFiles from '../scripts/useFiles';
 import { compressObjectToFile, formatNumber, groupInfo, loadScene, saveScene, toNthDigit } from '../scripts/utils';
-import { buttonActionAtom, cameraMatrixAtom, cameraModeAtom, envAtom, globalColorTemperatureAtom, globalContrastAtom, globalSaturationCheckAtom, selectedAtom, sourceAtom, threeExportsAtom, useEnvParams, useModal } from '../scripts/atoms';
+import { cameraMatrixAtom, globalColorTemperatureAtom, globalContrastAtom, globalSaturationCheckAtom, orbitSettingAtom, selectedAtom, sourceAtom, threeExportsAtom, useEnvParams, useModal } from '../scripts/atoms';
 import { useEffect, useState } from 'react';
 import { get, set } from 'idb-keyval';
 import { Euler, Quaternion, THREE, Vector3 } from '../scripts/VTHREE';
@@ -54,7 +54,6 @@ function saveArrayBuffer(buffer: ArrayBuffer, filename: string) {
 const CameraInfoSection = () => {
     const threeExports = useAtomValue(threeExportsAtom);
     const cameraMatrix = useAtomValue(cameraMatrixAtom);
-    const setIsoButton = useSetAtom(buttonActionAtom)
     if (!threeExports) {
         return null;
     }
@@ -64,8 +63,6 @@ const CameraInfoSection = () => {
     const rotation = new Quaternion();
     const scale = new Vector3();
     cameraMatrix?.decompose(position, rotation, scale);
-    const rotationEuler = new Euler().setFromQuaternion(rotation);
-
 
     return (
         <section style={{ marginTop: 16 }}>
@@ -81,43 +78,30 @@ const CameraInfoSection = () => {
                 <option value="iso">아이소</option>
             </select> */}
 
-
-            <div>Position</div>
-            {/* <div style={{ paddingLeft: 8 }}>X: {toNthDigit(position.x, 4)}</div>
+            <div style={{ display: "flex", alignItems: "center", gap: "15px" }}>
+                <div>Position
+                    {/* <div style={{ paddingLeft: 8 }}>X: {toNthDigit(position.x, 4)}</div>
             <div style={{ paddingLeft: 8 }}>Y: {toNthDigit(position.y, 4)}</div>
             <div style={{ paddingLeft: 8 }}>Z: {toNthDigit(position.z, 4)}</div> */}
 
-            <div style={{ paddingLeft: 8 }}>X: {camera.position.x.toFixed(2)}</div>
-            <div style={{ paddingLeft: 8 }}>Y: {camera.position.y.toFixed(2)}</div>
-            <div style={{ paddingLeft: 8 }}>Z: {camera.position.z.toFixed(2)}</div>
-            <div>Rotation</div>
-            {/* <div style={{ paddingLeft: 8 }}>X: {toNthDigit(rotationEuler.x, 4)}</div>
+                    <div style={{ paddingLeft: 8 }}>X:
+                        {camera.position.x.toFixed(2)}
+                    </div>
+                    <div style={{ paddingLeft: 8 }}>Y:
+                        {camera.position.y.toFixed(2)}
+                    </div>
+                    <div style={{ paddingLeft: 8 }}>Z:
+                        {camera.position.z.toFixed(2)}
+                    </div>
+                </div>
+                <div>Rotation
+                    {/* <div style={{ paddingLeft: 8 }}>X: {toNthDigit(rotationEuler.x, 4)}</div>
             <div style={{ paddingLeft: 8 }}>Y: {toNthDigit(rotationEuler.y, 4)}</div>
             <div style={{ paddingLeft: 8 }}>Z: {toNthDigit(rotationEuler.z, 4)}</div> */}
-            <div style={{ paddingLeft: 8 }}>X: {camera.rotation.x.toFixed(2)}</div>
-            <div style={{ paddingLeft: 8 }}>Y: {camera.rotation.y.toFixed(2)}</div>
-            <div style={{ paddingLeft: 8 }}>Z: {camera.rotation.z.toFixed(2)}</div>
-            <div>
-                <label >isoView</label>
-                <input type="checkbox" id="isoView" name="isoView" onChange={e => {
-                    setIsoButton(pre => ({
-                        ...pre,
-                        isoView: e.target.checked
-                    }))
-                }} />
-
-            </div>
-            <div>
-                <label >autoRotate</label>
-                <input type="checkbox" id="autoRotate" name="autoRotate"
-                    defaultChecked
-                    onChange={e => {
-                        setIsoButton(pre => ({
-                            ...pre,
-                            autoRotate: e.target.checked
-                        }))
-                    }} />
-
+                    <div style={{ paddingLeft: 8 }}>X: {camera.rotation.x.toFixed(2)}</div>
+                    <div style={{ paddingLeft: 8 }}>Y: {camera.rotation.y.toFixed(2)}</div>
+                    <div style={{ paddingLeft: 8 }}>Z: {camera.rotation.z.toFixed(2)}</div>
+                </div>
             </div>
         </section>
     )
