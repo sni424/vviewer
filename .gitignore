@@ -23,5 +23,5 @@ dist-ssr
 *.sln
 *.sw?
 
-deploy.bat
 package-lock.json
+deploy.bat

@@ -3,41 +3,32 @@ import { useThree } from '@react-three/fiber';
 import gsap from 'gsap';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import React, { useEffect, useRef, useState } from 'react';
-import * as THREE from 'three';
-import { buttonActionAtom, cameraMatrixAtom, lastCameraPositionInfoAtom } from '../../scripts/atoms';
+import { cameraMatrixAtom, cameraSettingAtom, lastCameraInfoAtom, orbitSettingAtom } from '../../scripts/atoms';
+import { Quaternion, Scene, THREE, Vector3 } from '../../scripts/VTHREE';
 
 
 // Props 타입 정의
 interface UnifiedCameraControlsProps {
-    //카메라 이동속도
-    moveSpeed?: number;
     //회전 속도
     rotationSpeed?: number;
     //회전 감속 속도
     inertia?: number;
-    //아이소뷰
-    isoView?: boolean
-    //3d모델
-    glbModel?: any
     //처음 카메라 위치
     baseCameraPosition?: number[]
 }
 
 
 const UnifiedCameraControls: React.FC<UnifiedCameraControlsProps> = ({
-    moveSpeed = 1,
     rotationSpeed = 0.002,
-    inertia = 0.95,
-    isoView = false,
-    glbModel,
+    inertia = 0.9,
 }) => {
+
     const { camera, raycaster, pointer, scene } = useThree();
     //카메라 회전 boolean
-    const [isRotate, setRotate] = useState<boolean>(false);
+    const isRotateRef = useRef(false);
     //카메라 이동 애니메이션 작동 여부
     const [cameraAction, setCameraAction] = useState<boolean>(false);
-    //orbit카메라 enable
-    const [isOrbit, setOrbit] = useState(false)
+
     //이전 마우스 위치값 useState쓰면 이동할때마다 리렌더링 되어 ref로 변경
     const previousMousePosition = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
     // 마지막 회전 속도 저장
@@ -52,11 +43,42 @@ const UnifiedCameraControls: React.FC<UnifiedCameraControlsProps> = ({
     const prevTapTime = useRef<number>(0);
     //orbitControl
     const orbit = useRef<any>(null)
+
+    //
+    const cameraSetting = useAtomValue(cameraSettingAtom)
     //카메라 정보값 갱신
     const setCameraAtom = useSetAtom(cameraMatrixAtom);
     //마지막 카메라 정보값 isoView갔다가 walkView로 갈때 사용
-    const [lastCameraInfo, setLastCameraInfo] = useAtom(lastCameraPositionInfoAtom)
-    const buttonAction = useAtomValue(buttonActionAtom)
+    const [lastCameraInfo, setLastCameraInfo] = useAtom(lastCameraInfoAtom)
+    //orbit카메라 세팅
+    const [orbitSetting, setOrbitSetting] = useAtom(orbitSettingAtom)
+
+
+    // 카메라 이동 및 회전시 카메라 데이터 저장장
+    const updateCameraInfo = () => {
+        // 카메라의 방향 벡터
+        const direction = camera.getWorldDirection(new THREE.Vector3()).clone();
+
+        // 목표 좌표 계산 (카메라 위치 + 방향 벡터)
+        const target = camera.position.clone().add(direction);
+        // 마지막 카메라 정보 업데이트
+        setLastCameraInfo(pre => ({
+            ...pre,
+            position: camera.position.clone(),
+            target
+        }))
+    };
+
+    // OrbitControls 관련 설정 함수
+    const updateOrbitTarget = (target: THREE.Vector3) => {
+        if (orbit.current) {
+            orbit.current.target.set(target.x, target.y, target.z);
+            orbit.current.update();
+        }
+    };
+
+
+
     // 마우스 드래그로 카메라 회전
     const moveCameraRotation = (deltaX: number, deltaY: number): void => {
         velocity.current = { x: deltaX * rotationSpeed, y: deltaY * rotationSpeed };
@@ -76,24 +98,15 @@ const UnifiedCameraControls: React.FC<UnifiedCameraControlsProps> = ({
         camera.quaternion.multiplyQuaternions(camera.quaternion, quaternionY);
         // 카메라의 월드 변환 행렬 업데이트
         camera.updateMatrixWorld(true);
-        // 카메라의 방향 벡터
-        const direction = camera.getWorldDirection(new THREE.Vector3()).clone();
 
-        // 목표 좌표 계산 (카메라 위치 + 방향 벡터)
-        const target = camera.position.clone().add(direction);
-        setCameraAtom(camera.matrix.clone())
-        // 마지막 카메라 정보 업데이트
-        setLastCameraInfo(pre => ({
-            ...pre,
-            direction, // 방향 벡터
-            target,    // 목표 좌표
-        }));
     };
 
     // 관성 효과 적용
     const applyInertia = (): void => {
+
         // 회전 중이 아니고, 현재 회전 속도가 특정 임계값(0.001)보다 클 경우에만 관성 적용
-        if (!isRotate && (Math.abs(velocity.current.x) > 0.001 || Math.abs(velocity.current.y) > 0.001)) {
+        if (!isRotateRef.current && (Math.abs(velocity.current.x) > 0.001 || Math.abs(velocity.current.y) > 0.001)) {
+
             // 회전 속도에 관성을 곱해 점점 줄어들도록 설정
             velocity.current.x *= inertia;
             velocity.current.y *= inertia;
@@ -110,6 +123,9 @@ const UnifiedCameraControls: React.FC<UnifiedCameraControlsProps> = ({
             camera.quaternion.multiplyQuaternions(quaternionX, camera.quaternion);
             // 카메라의 업데이트된 쿼터니언에 Y축 회전 추가로 적용
             camera.quaternion.multiplyQuaternions(camera.quaternion, quaternionY);
+
+            camera.updateMatrixWorld(true);
+            updateCameraInfo()
             // 다음 프레임에서 applyInertia를 호출하여 관성을 지속적으로 적용
             requestAnimationFrame(applyInertia);
         }
@@ -131,11 +147,7 @@ const UnifiedCameraControls: React.FC<UnifiedCameraControlsProps> = ({
             duration,
             ease: 'power2.out',
             onUpdate: () => {
-
-                setLastCameraInfo(pre => ({
-                    ...pre,
-                    position: camera.position.clone()
-                }))
+                updateCameraInfo()
             },
             onComplete: () => {
                 console.log('Camera movement complete.');
@@ -143,58 +155,10 @@ const UnifiedCameraControls: React.FC<UnifiedCameraControlsProps> = ({
         });
     };
 
-    //마우스 클릭 눌렀을때 이벤트
-    const handleMouseDown = (event: MouseEvent): void => {
-        //회전 true
-        setRotate(true);
-        //마우스 위치값 설정
-        previousMousePosition.current = { x: event.clientX, y: event.clientY };
-    };
 
-    //마우스 이동 이벤트
-    const handleMouseMove = (event: MouseEvent): void => {
-        if (isRotate) {
-            //현재 마우스 위치와 이전 마우스 위치 차이
-            const deltaX = event.clientX - previousMousePosition.current.x;
-            const deltaY = event.clientY - previousMousePosition.current.y;
-            //카메라 회전 함수
-            moveCameraRotation(deltaX, deltaY);
-            //마우스 위치값 변경
-            previousMousePosition.current = { x: event.clientX, y: event.clientY };
-        }
-    };
-    //마우스 클릭 땠을때 이벤트
-    const handleMouseUp = (): void => {
-        //회전 멈춤
-        setRotate(false);
-        //감속 하면서 멈추는 함수
-        applyInertia();
-    };
-
-    //모바일 터치땠을때 이벤트
-    const handleTouchEnd = (): void => {
-        //현재 시간
-        const currentTime = Date.now();
-        // 이전 터치 이벤트와 현재 터치 이벤트 사이의 시간 간격
-        const tapInterval = currentTime - prevTapTime.current;
-        // 터치 간격이 300ms 미만이면 더블 탭으로 간주
-        if (tapInterval < 300 && tapInterval > 0) {
-            //raycaster 설정
-            raycaster.setFromCamera(pointer, camera);
-            // 광선과 씬의 객체들과의 교차점을 확인
-            const intersects = raycaster.intersectObjects(scene.children, true);
-            if (intersects.length > 0) {
-                // 교차된 첫 번째 객체의 좌표를 기준으로 카메라 이동
-                moveCameraPosition(intersects[0].point);
-
-            }
-        }
-        // 마지막 터치 이벤트 시간 갱신
-        prevTapTime.current = currentTime;
-    };
-
-    //pc에서 카메라 이동 함수
+    //pc에서 카메라 위치 이동 함수
     const animateCameraMovement = (currentTime: number): void => {
+
         //시간에 따라 일정한 속도를 유지하기위해 현재 프레임과 이전 프레임 사이의 시간을 구한다.
         const deltaTime = prevFrameTime.current
             ? (currentTime - (prevFrameTime.current || 0)) / 1000
@@ -227,15 +191,10 @@ const UnifiedCameraControls: React.FC<UnifiedCameraControlsProps> = ({
         if (moveDirection.length() > 0) {
             const movement = moveDirection.clone()
                 .normalize()
-                .multiplyScalar(moveSpeed * deltaTime);
+                .multiplyScalar(cameraSetting.moveSpeed * deltaTime);
             camera.position.add(movement);
             camera.updateProjectionMatrix();
-
-            setCameraAtom(camera.matrix.clone())
-            setLastCameraInfo(pre => ({
-                ...pre,
-                position: camera.position.clone()
-            }))
+            updateCameraInfo()
         }
 
         if (cameraAction) {
@@ -243,7 +202,8 @@ const UnifiedCameraControls: React.FC<UnifiedCameraControlsProps> = ({
         }
     };
 
-    const switchCamera = (position, target, cameraFov) => {
+    //isoView walkView 변환
+    const switchCamera = (position: Vector3, target: Vector3, cameraFov: number) => {
         // 카메라 위치 애니메이션
         gsap.to(camera.position, {
             x: position.x,
@@ -254,26 +214,16 @@ const UnifiedCameraControls: React.FC<UnifiedCameraControlsProps> = ({
             onUpdate: function () {
                 // OrbitControls와 동기화
                 camera.lookAt(target.x, target.y, target.z);
-                if (orbit.current) {
-                    orbit.current.target.set(target.x, target.y, target.z);
-                    orbit.current.update();
-                }
+                updateOrbitTarget(target)
 
             },
             onComplete: () => {
                 camera.lookAt(target.x, target.y, target.z);
-                // if (buttonAction.isoView) {
-                //     console.log("  orbit.current", orbit.current, buttonAction.autoRotate)
-                //     orbit.current.autoRotate = buttonAction.autoRotate
-                // }
-                if (orbit.current) {
-                    orbit.current.target.set(target.x, target.y, target.z);
-                    orbit.current.update();
-                }
+                updateOrbitTarget(target)
                 console.log("Camera position updated:", camera);
             },
         });
-        if (!buttonAction.isoView) {
+        if (!cameraSetting.isoView) {
             gsap.to(camera, {
                 fov: cameraFov,
                 duration: 3, // FOV가 변경되는 시간
@@ -307,12 +257,63 @@ const UnifiedCameraControls: React.FC<UnifiedCameraControlsProps> = ({
 
     useEffect(() => {
         const element = document.getElementById('canvasDiv');
-        if (element) {
-            element.addEventListener('mousedown', handleMouseDown);
-            element.addEventListener('mousemove', handleMouseMove);
-            element.addEventListener('mouseup', handleMouseUp);
-            element.addEventListener('touchend', handleTouchEnd);
-        }
+        if (!element) return;
+
+        //마우스 클릭 눌렀을때 이벤트
+        const handleMouseDown = (event: MouseEvent): void => {
+            //회전 true
+            isRotateRef.current = true;
+            //마우스 위치값 설정
+            previousMousePosition.current = { x: event.clientX, y: event.clientY };
+        };
+
+        //마우스 이동 이벤트
+        const handleMouseMove = (event: MouseEvent): void => {
+            if (isRotateRef.current) {
+                //현재 마우스 위치와 이전 마우스 위치 차이
+                const deltaX = event.clientX - previousMousePosition.current.x;
+                const deltaY = event.clientY - previousMousePosition.current.y;
+                //카메라 회전 함수
+                moveCameraRotation(deltaX, deltaY);
+                //마우스 위치값 변경
+                previousMousePosition.current = { x: event.clientX, y: event.clientY };
+            }
+        };
+        //마우스 클릭 땠을때 이벤트
+        const handleMouseUp = (): void => {
+            //회전 멈춤
+            isRotateRef.current = false
+            //감속 하면서 멈추는 함수
+            applyInertia();
+        };
+
+        //모바일 터치땠을때 이벤트
+        const handleTouchEnd = (): void => {
+            //현재 시간
+            const currentTime = Date.now();
+            // 이전 터치 이벤트와 현재 터치 이벤트 사이의 시간 간격
+            const tapInterval = currentTime - prevTapTime.current;
+            // 터치 간격이 300ms 미만이면 더블 탭으로 간주
+            if (tapInterval < 300 && tapInterval > 0) {
+                //raycaster 설정
+                raycaster.setFromCamera(pointer, camera);
+                // 광선과 씬의 객체들과의 교차점을 확인
+                const intersects = raycaster.intersectObjects(scene.children, true);
+                if (intersects.length > 0) {
+                    // 교차된 첫 번째 객체의 좌표를 기준으로 카메라 이동
+                    moveCameraPosition(intersects[0].point);
+
+                }
+            }
+            // 마지막 터치 이벤트 시간 갱신
+            prevTapTime.current = currentTime;
+        };
+
+        element.addEventListener('mousedown', handleMouseDown);
+        element.addEventListener('mousemove', handleMouseMove);
+        element.addEventListener('mouseup', handleMouseUp);
+        element.addEventListener('touchend', handleTouchEnd);
+
 
         return () => {
             if (element) {
@@ -322,13 +323,15 @@ const UnifiedCameraControls: React.FC<UnifiedCameraControlsProps> = ({
                 element.removeEventListener('touchend', handleTouchEnd);
             }
         };
-    }, [isRotate]);
+    }, []);
+
+
 
 
     useEffect(() => {
         if (cameraAction) {
             // 카메라 이동 애니메이션이 활성화되었을 때
-            if (!animationFrameId.current) {
+            if (!animationFrameId.current && !orbitSetting.enable) {
                 // 이전 프레임 시간을 초기화
                 prevFrameTime.current = null;
                 // `animateCameraMovement`를 애니메이션 루프로 실행
@@ -346,42 +349,73 @@ const UnifiedCameraControls: React.FC<UnifiedCameraControlsProps> = ({
 
     useEffect(() => {
 
-        if (glbModel) {
-            const boundingBox = new THREE.Box3().setFromObject(glbModel);
+        if (scene && scene.children.length > 0) {
+            // const group = new THREE.Group()
+            // scene.traverse((child: THREE.Object3D) => {
+            //     // 타입 단언 사용
+            //     if ((child as THREE.Mesh).isMesh) {
+            //         const clone = child.clone();
+            //         // 부모 변환을 적용하여 월드 좌표 기준으로 위치, 회전, 스케일 업데이트
+            //         clone.applyMatrix4(child.matrixWorld);
+            //         group.add(clone);
+            //     }
+            // });
+            const boundingBox = new THREE.Box3().setFromObject(scene);
             const size = boundingBox.getSize(new THREE.Vector3()); // 모델 크기
             const center = boundingBox.getCenter(new THREE.Vector3()); // 모델 중심
 
-            if (buttonAction.isoView) {
-                setOrbit(true);
-                const position = {
-                    x: center.x + size.x,
-                    y: center.y + size.y * 8,
-                    z: center.z + size.z,
-                };
-                camera.fov = 25
-                camera.updateProjectionMatrix();
+            if (cameraSetting.isoView) {
+                setOrbitSetting(pre => ({
+                    ...pre,
+                    enable: true
+                }))
+                const position = new THREE.Vector3(
+                    center.x + size.x,
+                    center.y + size.y * 4,
+                    center.z + size.z
+                );
+                if (camera instanceof THREE.PerspectiveCamera) {
+                    camera.fov = 25;
+                    camera.updateProjectionMatrix();
+                }
                 // 카메라 전환
-                switchCamera(position, { x: center.x, y: center.y, z: center.z }, 25);
+                switchCamera(position, center, 25);
             } else {
-                setOrbit(false);
-                console.log("lastCameraInfo", lastCameraInfo.direction)
+                setOrbitSetting(pre => ({
+                    ...pre,
+                    enable: false
+                }))
+
                 switchCamera(
-                    { x: lastCameraInfo.position.x, y: lastCameraInfo.position.y, z: lastCameraInfo.position.z },
-                    { x: lastCameraInfo.target.x, y: lastCameraInfo.target.y, z: lastCameraInfo.target.z }, 75
+                    lastCameraInfo.position,
+                    lastCameraInfo.target, 75
                 );
 
             }
         }
-    }, [buttonAction.isoView, glbModel]);
+    }, [cameraSetting.isoView]);
+
+
+    // isoView가 아닌 상태에서 OrbitControls이 활성화 되면 이전 바라보던 방향으로 설정
+    useEffect(() => {
+        if (orbitSetting.enable && !cameraSetting.isoView && orbit.current) {
+            updateOrbitTarget(lastCameraInfo.target)
+        }
+    }, [orbitSetting.enable])
 
 
 
     return <OrbitControls ref={orbit} makeDefault
-        autoRotate={buttonAction.autoRotate}
-        enabled={isOrbit}
+        autoRotate={orbitSetting.autoRotate}
+        enabled={orbitSetting.enable}
         onChange={e => {
-            const matrix = e?.target.object.matrix.clone()
-            setCameraAtom(matrix);
+            if (!cameraSetting.isoView) {
+                const matrix = e?.target.object.matrix.clone()
+                setCameraAtom(matrix);
+                if (orbitSetting.enable) {
+                    updateCameraInfo()
+                }
+            }
         }}
     />;
 };

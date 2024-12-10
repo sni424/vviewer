@@ -107,11 +107,11 @@ function Renderer() {
         <boxGeometry args={[1, 1, 1]} />
         <meshStandardMaterial color="hotpink" />
       </mesh> */}
-        <OrbitControls makeDefault onChange={e => {
+        {/* <OrbitControls makeDefault onChange={e => {
             const matrix = e?.target.object.matrix.clone()
             setCameraAtom(matrix);
-        }} />
-        {/* <UnifiedCameraControls isoView={false} glbModel={model} /> */}
+        }} /> */}
+        <UnifiedCameraControls />
         <MyEnvironment></MyEnvironment>
         <SelectBox></SelectBox>
         {/* <Gizmo></Gizmo> */}
@@ -135,6 +135,9 @@ function RendererContainer() {
     const setScrollTo = useSetAtom(treeScrollToAtom);
     const gl = useAtomValue(globalGlAtom);
     const lastClickRef = useRef<number>(0);
+    const mouseDownPosition = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+    // 드래그로 간주할 최소 거리
+    const dragThreshold = 5;
 
     useEffect(() => {
         if (!threeExports) {
@@ -247,8 +250,10 @@ function RendererContainer() {
                 //     toneMappingWhitePoint: 1
                 // }}
                 gl={gl}
-                onMouseDown={() => {
+                onMouseDown={(e) => {
                     lastClickRef.current = Date.now();
+                    // 마우스 다운 시 위치 저장
+                    mouseDownPosition.current = { x: e.clientX, y: e.clientY };
                 }}
                 onMouseUp={(e) => {
 
@@ -256,7 +261,15 @@ function RendererContainer() {
                         return;
                     }
 
-                    if (Date.now() - lastClickRef.current > 200) {
+                    // 마우스 업 시 이동 거리 계산
+                    const xGap = Math.abs(e.clientX - mouseDownPosition.current.x);
+                    const yGap = Math.abs(e.clientY - mouseDownPosition.current.y);
+
+
+
+                    // 이동 거리가 임계값 이상이면 드래그로 간주
+                    if (xGap > dragThreshold ||
+                        yGap > dragThreshold || Date.now() - lastClickRef.current > 200) {
                         return;
                     }
 

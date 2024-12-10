@@ -207,16 +207,21 @@ export const panelTabAtom = atom<Tab>('scene');
 export const treeSearchAtom = atom<string | undefined>();
 
 //카메라 정보값
-export const lastCameraPositionInfoAtom = atom({
-  position: new Vector3(0, 0, 0),
+export const lastCameraInfoAtom = atom({
+  position: new Vector3(0, 1, 0),
   direction: new Vector3(0, 1, -1),
   target: new Vector3(0, 1, -1),
 });
 
-//action
-export const buttonActionAtom = atom({
+export const cameraSettingAtom = atom({
+  moveSpeed: 1,
   isoView: false,
+});
+
+//orbit세팅
+export const orbitSettingAtom = atom({
   autoRotate: true,
+  enable: false,
 });
 
 
