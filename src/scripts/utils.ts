@@ -7,6 +7,7 @@ import pako from 'pako';
 import { FileInfo } from '../types';
 import objectHash from 'object-hash';
 import { BenchMark } from './atoms';
+import { RGBELoader } from 'three/examples/jsm/Addons.js';
 
 
 export const groupInfo = (group: THREE.Group | { scene: THREE.Group } | THREE.Scene | THREE.Object3D) => {
@@ -302,3 +303,19 @@ export const loadLatest = async ({
         })
     }
 }
+
+
+export const loadHDRTexture = (path: string): Promise<THREE.Texture> => {
+    return new Promise((resolve, reject) => {
+        const loader = new RGBELoader();
+        loader.load(
+            path,
+            (texture) => {
+                texture.mapping = THREE.EquirectangularReflectionMapping;
+                resolve(texture);
+            },
+            undefined,
+            (error) => reject(error)
+        );
+    });
+};

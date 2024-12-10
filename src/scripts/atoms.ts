@@ -34,7 +34,8 @@ export const createAtomCombo = <T = any>(
   ];
 };
 
-export type MapDst = 'lightmap' | 'emissivemap' | 'envmap';
+// export type MapDst = 'lightmap' | 'emissivemap' | 'envmap'; // hdr적용은 추후 필요하면 추가
+export type MapDst = 'lightmap' | 'emissivemap';
 export type ModelSource = { name: string; url: string; file: File; map?: File, mapDst?: MapDst };
 export const sourceAtom = atom<
   ModelSource[]

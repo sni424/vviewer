@@ -73,11 +73,10 @@ function Renderer() {
                             if (mapDst === "lightmap" || !mapDst) {
                                 material.lightMap = texture;
                             } else if (mapDst === "emissivemap") {
+                                //three.js 특성상 emissiveMap을 적용하려면 emissive를 설정해야함
                                 material.emissive = new THREE.Color(0xffffff);
                                 material.emissiveMap = texture;
                                 material.emissiveIntensity = 0.5;
-                            } else if (mapDst === "envmap") {
-                                material.envMap = texture;
                             } else {
                                 throw new Error("Invalid mapDst @Renderer");
                             }

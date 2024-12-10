@@ -15,6 +15,11 @@ const MapPreview: React.FC<MapPreviewProps> = ({ material, width, height, matKey
     const { openModal, closeModal } = useModal();
 
     useEffect(() => {
+        if(mapKey === "envMap"){
+            // HDR이미지를 보여줄 수가 없다
+            return;
+        }
+
         const previewCanvasId = "map-preview-canvas";
         if (texture && texture.image) {
 
@@ -49,8 +54,16 @@ const MapPreview: React.FC<MapPreviewProps> = ({ material, width, height, matKey
         }
     }, [texture]);
 
+    if(mapKey==="envMap"){
+        if(texture){
+            return <div style={{fontSize:11, color:"#555"}}>envMap표시불가</div>
+        } else {
+            return <div>없음</div>
+        }
+    }
+
     return <div style={{ width: (mapSrc !== null) ? (width ?? 60) : undefined, height: (mapSrc !== null) ? (height ?? 60) : undefined, backgroundClip: "gray", borderRadius: 8 }}>
-        {mapSrc && <img style={{ cursor: "pointer", width: "100%", height: "100%", objectFit: "contain" }} src={mapSrc} alt="Light Map Preview" onClick={() => {
+        {mapSrc && <img style={{ cursor: "pointer", width: "100%", height: "100%", objectFit: "contain" }} src={mapSrc} alt={`${mapKey} preview`} onClick={() => {
             openModal(() => {
                 return <div style={{
                     maxHeight: 800,

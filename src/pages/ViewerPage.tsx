@@ -84,7 +84,7 @@ const MapSelectModal = ({ gltfs, inputMaps, closeModal }: { closeModal?: () => a
         }}>
             <option value="lightmap">라이트맵</option>
             <option value="emissivemap">이미시브</option>
-            <option value="envmap">Env맵</option>
+            {/* <option value="envmap">Env맵</option> */}
         </select>
 
         <div style={{ justifyContent: "end", width: "100%", display: "flex", marginTop: 12 }}>
@@ -180,13 +180,10 @@ const useModelDragAndDrop = () => {
 
             // 이미지파일이 있으면 Lightmap에 넣을지 Emissive에 넣을지 등을 선택해야한다.
             const hasMaps = inputMaps.length > 0;
-            console.log("inputMaps:", inputMaps)
 
             // 2. 모델 + 이미지
             if (hasMaps) {
-                console.log("hasMaps");
                 openModal((props) => <MapSelectModal {...props} gltfs={gltfs} inputMaps={inputMaps} />);
-
             } else {
                 // 3. 모델만
                 const fileUrls = gltfs.map((file) => ({ name: file.name, url: URL.createObjectURL(file), file }));
