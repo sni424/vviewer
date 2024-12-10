@@ -1,7 +1,7 @@
 import React from 'react';
 import { atom, useAtom, useAtomValue, useSetAtom } from 'jotai';
 import { useState } from 'react';
-import { loadHistoryAtom, MapDst, modalAtom, ModelSource, panelTabAtom, sourceAtom, Tabs, threeExportsAtom, useModal } from '../scripts/atoms';
+import { loadHistoryAtom, MapDst, modalAtom, ModelSource, panelTabAtom, sourceAtom, Tab, Tabs, threeExportsAtom, useModal } from '../scripts/atoms';
 import SceneInfo from '../components/SceneInfo';
 import useFiles from '../scripts/useFiles';
 import SceneTree from '../components/SceneTree';
@@ -10,6 +10,7 @@ import MeshInfoPanel from '../components/MeshInfoPanel';
 import MaterialPanelContainer from '../components/MaterialPanel';
 import Modal from '../components/Modal';
 import { Scene, THREE } from '../scripts/VTHREE';
+import HotSpotPanel from '../components/HotSpotPanel';
 
 declare global {
     interface Map<K, V> {
@@ -35,6 +36,13 @@ const ThePanel = () => {
     const loadHistory = useAtomValue(loadHistoryAtom);
     const [tab, setTab] = useAtom(panelTabAtom)
 
+    const tabMap: { [key in Tab]: React.ReactNode } = {
+        scene: <SceneInfo />,
+        tree: <SceneTree></SceneTree>,
+        hotspot: <HotSpotPanel></HotSpotPanel>
+
+    };
+
     return <div style={{
         width: "100%",
         height: "100%",
@@ -59,9 +67,7 @@ const ThePanel = () => {
             flex: 1,
             minHeight: 0,
         }}>
-            {
-                tab === "scene" ? <SceneInfo /> : <SceneTree></SceneTree>
-            }
+            {tabMap[tab]}
         </div>
     </div>
 }
