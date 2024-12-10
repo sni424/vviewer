@@ -1,4 +1,4 @@
-import { GizmoHelper, GizmoViewport, OrbitControls, } from '@react-three/drei'
+import { Effects, GizmoHelper, GizmoViewport, OrbitControls, } from '@react-three/drei'
 import { Canvas, RootState, useThree } from '@react-three/fiber'
 import VGLTFLoader from '../../scripts/VGLTFLoader';
 import { useEffect, useRef, useState } from 'react';
@@ -14,6 +14,7 @@ import useStats from '../../scripts/useStats';
 import GlobalSaturationCheck from './GlobalSaturationCheck';
 import GlobalColorTemperature from './GlobalColorTemperature';
 import UnifiedCameraControls from '../camera/UnifiedCameraControls';
+import PostProcess from './PostProcess';
 
 function Renderer() {
     useStats();
@@ -122,9 +123,7 @@ function Renderer() {
         >
             <GizmoViewport name='GizmoHelper' axisColors={['red', 'green', 'blue']} labelColor="black" />
         </GizmoHelper>
-        <GlobalContrast></GlobalContrast>
-        <GlobalColorTemperature></GlobalColorTemperature>
-        <GlobalSaturationCheck></GlobalSaturationCheck>
+        <PostProcess></PostProcess>
     </>
 }
 

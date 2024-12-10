@@ -3,7 +3,7 @@ import { Uniform } from 'three';
 import { extend } from '@react-three/fiber';
 import { Effect, BlendFunction } from 'postprocessing';
 import { useAtomValue } from 'jotai';
-import { globalContrastAtom } from '../../scripts/atoms';
+import { globalBrightnessContrastAtom } from '../../scripts/atoms';
 
 class GlobalContrastEffect extends Effect {
     constructor({ contrast = 1.5 } = {}) {
@@ -46,7 +46,7 @@ class GlobalContrastEffect extends Effect {
 extend({ GlobalContrastEffect });
 
 const GlobalContrast = () => {
-    const { on, value: globalContrastValue } = useAtomValue(globalContrastAtom);
+    const { contrastOn: on, contrastValue: globalContrastValue } = useAtomValue(globalBrightnessContrastAtom);
 
     if (!on) {
         return null;

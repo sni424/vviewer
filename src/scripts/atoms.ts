@@ -125,9 +125,11 @@ export const GizmoModes = ['translate', 'rotate', 'scale'] as const;
 export type GizmoMode = (typeof GizmoModes)[number];
 export const mouseModeAtom = atom<'select' | GizmoMode>('select');
 
-export const globalContrastAtom = atom<{ on: boolean; value: number }>({
+// 값은 -1.0 ~ 1.0
+export const globalBrightnessContrastAtom = atom<{ on: boolean; brightnessValue: number; contrastValue: number }>({
   on: false,
-  value: 0,
+  brightnessValue: 0,
+  contrastValue: 0,
 });
 
 export const sceneAnalysisAtom = atom<{

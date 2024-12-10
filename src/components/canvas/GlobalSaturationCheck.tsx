@@ -3,7 +3,7 @@ import { Uniform } from 'three';
 import { extend } from '@react-three/fiber';
 import { Effect, BlendFunction } from 'postprocessing';
 import { useAtomValue } from 'jotai';
-import { globalContrastAtom, globalSaturationCheckAtom } from '../../scripts/atoms';
+import { globalBrightnessContrastAtom, globalSaturationCheckAtom } from '../../scripts/atoms';
 
 const shader = /* glsl */`
     uniform sampler2D tDiffuse;
@@ -11,24 +11,40 @@ const shader = /* glsl */`
 
     void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor) {
         vec4 color = texture2D(tDiffuse, uv);
+
+        // 배경
+        if(color.a < 0.01){
+            // draw grid using the coordinate of screen
+            if(mod(gl_FragCoord.x, 50.0) < 1.0 || mod(gl_FragCoord.y, 50.0) < 1.0){
+                color.rgb = vec3(0.8);
+            } else {
+                color.rgb = vec3(0.9);
+            }
+
+
+            outputColor = vec4(color.rgb, 1.0);
+
+            return;
+        }
+
+        color.rgb = vec3(0.5, 0.5, 0.5);
         
-        // color.rgb = adjustContrast(color.rgb, uContrast); // Apply contrast adjustment
-        if(color.r <= 1.0){
+        if(inputColor.r <= 1.0){
             color.r = 0.0;
         } else {
             color.r = 1.0;
         }
-        if(color.g <= 1.0){
+        if(inputColor.g <= 1.0){
             color.g = 0.0;
         }else {
             color.g = 1.0;
         }
-        if(color.b <= 1.0){
+        if(inputColor.b <= 1.0){
             color.b = 0.0;
         } else {
             color.b = 1.0;
         }
-
+        
         outputColor = vec4(color.rgb, color.a);
     }
 `;
@@ -59,9 +75,7 @@ const GlobalSaturationCheck = () => {
 
     const customEffect = new GlobalSaturactionCheckEffect()
 
-    return <EffectComposer>
-        <primitive object={customEffect} />
-    </EffectComposer>
+    return <primitive object={customEffect} />
 
 }
 
