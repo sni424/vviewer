@@ -9,7 +9,7 @@ class GlobalContrastEffect extends Effect {
     constructor({ contrast = 1.5 } = {}) {
         super(
             'CustomEffect',
-            `
+            /*glsl */`
           uniform sampler2D tDiffuse;
           uniform float uContrast;
   

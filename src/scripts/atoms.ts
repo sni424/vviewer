@@ -1,10 +1,39 @@
 import type { RootState } from '@react-three/fiber';
-import { atom, useAtom, useAtomValue, useSetAtom } from 'jotai';
+import { atom, createStore, useAtom, useAtomValue, useSetAtom, WritableAtom } from 'jotai';
 import { THREE, Vector3 } from './VTHREE';
 import React from 'react';
 import { set } from 'idb-keyval';
 import { FileInfo, GLProps } from '../types';
 import { DEFAULT_COLOR_TEMPERATURE } from '../Constants';
+
+type AtomArgType<T> = T | ((prev: T) => T);
+export type Store = ReturnType<typeof createStore>;
+export const defaultStore = createStore();
+
+// 훅 내부가 아닌 일반 함수에서 전달받아서 사용하기 위헤 store.get
+// 사용방법: const [atom, getAtom, setAtom] = createAtomCombo<타입>(초기값?, store?);
+// 이렇게 선언된 atom은 컴포넌트에서 useAtom(atom) 형태로도 사용 가능하다
+// 예를 들면 EditorFlowChannelHandler.ts 참조
+export const createAtomCombo = <T = any>(
+  initalValue?: T,
+  store?: Store,
+): [
+    WritableAtom<T, unknown[], unknown>,
+    () => T | undefined,
+    (arg: AtomArgType<T>) => void,
+  ] => {
+  const dstStore = store ?? defaultStore;
+  // @ts-ignore
+  const theAtom = atom<T>(initalValue);
+  return [
+    theAtom,
+    (() => dstStore.get(theAtom)) as () => T | undefined,
+    ((arg: AtomArgType<T>) => dstStore.set(theAtom, arg)) as (
+      arg: AtomArgType<T>,
+    ) => void,
+  ];
+};
+
 
 export const sourceAtom = atom<
   { name: string; url: string; file: File; lightmap?: File }[]
@@ -20,16 +49,16 @@ export const threeExportsAtom = atom<RootState>();
 export type Env = {
   select: 'none' | 'preset' | 'custom' | 'url';
   preset?:
-    | 'apartment'
-    | 'city'
-    | 'dawn'
-    | 'forest'
-    | 'lobby'
-    | 'night'
-    | 'park'
-    | 'studio'
-    | 'sunset'
-    | 'warehouse';
+  | 'apartment'
+  | 'city'
+  | 'dawn'
+  | 'forest'
+  | 'lobby'
+  | 'night'
+  | 'park'
+  | 'studio'
+  | 'sunset'
+  | 'warehouse';
   url?: string;
   intensity?: number;
   rotation?: {
@@ -108,14 +137,14 @@ export const sceneAnalysisAtom = atom<{
 }>();
 
 export type BenchMark = {
-    start?: number;
-    end?: number;
-    downloadStart?: number;
-    downloadEnd?: number;
-    parseStart?: number;
-    parseEnd?: number;
-    sceneAddStart?: number;
-    sceneAddEnd?: number;
+  start?: number;
+  end?: number;
+  downloadStart?: number;
+  downloadEnd?: number;
+  parseStart?: number;
+  parseEnd?: number;
+  sceneAddStart?: number;
+  sceneAddEnd?: number;
 };
 export const benchmarkAtom = atom<BenchMark>({});
 

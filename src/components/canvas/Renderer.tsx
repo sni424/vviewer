@@ -92,11 +92,11 @@ function Renderer() {
         <boxGeometry args={[1, 1, 1]} />
         <meshStandardMaterial color="hotpink" />
       </mesh> */}
-        {/* <OrbitControls makeDefault onChange={e => {
+        <OrbitControls makeDefault onChange={e => {
             const matrix = e?.target.object.matrix.clone()
             setCameraAtom(matrix);
-        }} /> */}
-        <UnifiedCameraControls isoView={false} glbModel={model} />
+        }} />
+        {/* <UnifiedCameraControls isoView={false} glbModel={model} /> */}
         <MyEnvironment></MyEnvironment>
         <SelectBox></SelectBox>
         {/* <Gizmo></Gizmo> */}
