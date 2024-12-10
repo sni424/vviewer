@@ -47,7 +47,7 @@ function Renderer() {
     useEffect(() => {
 
         sources.forEach(source => {
-            const { name, url, file, lightmap } = source;
+            const { name, url, file, map, mapDst } = source;
             // setLoadingsAtom(loadings => [...loadings, source]);
             setLoadHistoryAtom(history => {
                 const newHistory = new Map(history);
@@ -59,15 +59,30 @@ function Renderer() {
             new VGLTFLoader().loadAsync(url).then(gltf => {
                 gltf.scene.name = name + "-" + gltf.scene.name;
 
-                if (lightmap) {
-                    const texture = new THREE.TextureLoader().load(URL.createObjectURL(lightmap));
+                if (map) {
+                    const texture = new THREE.TextureLoader().load(URL.createObjectURL(map));
                     texture.flipY = !texture.flipY;
                     texture.channel = 1;
                     texture.needsUpdate = true;
-                    gltf.scene.traverse(obj => {
+                    gltf.scene.traverse((obj) => {
                         if (obj.type === "Mesh") {
-                            ((obj as THREE.Mesh).material as THREE.MeshStandardMaterial).lightMap = texture;
-                            ((obj as THREE.Mesh).material as THREE.MeshStandardMaterial).needsUpdate = true;
+                            const material = ((obj as THREE.Mesh).material as THREE.MeshStandardMaterial);
+                            if (!material) {
+                                (obj as THREE.Mesh).material = new THREE.MeshStandardMaterial();
+                            }
+                            if (mapDst === "lightmap" || !mapDst) {
+                                material.lightMap = texture;
+                            } else if (mapDst === "emissivemap") {
+                                material.emissive = new THREE.Color(0xffffff);
+                                material.emissiveMap = texture;
+                                material.emissiveIntensity = 0.5;
+                            } else if (mapDst === "envmap") {
+                                material.envMap = texture;
+                            } else {
+                                throw new Error("Invalid mapDst @Renderer");
+                            }
+
+                            material.needsUpdate = true;
                         }
                     })
                 }

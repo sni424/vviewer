@@ -34,9 +34,10 @@ export const createAtomCombo = <T = any>(
   ];
 };
 
-
+export type MapDst = 'lightmap' | 'emissivemap' | 'envmap';
+export type ModelSource = { name: string; url: string; file: File; map?: File, mapDst?: MapDst };
 export const sourceAtom = atom<
-  { name: string; url: string; file: File; lightmap?: File }[]
+  ModelSource[]
 >([]);
 export const loadHistoryAtom = atom<
   Map<
