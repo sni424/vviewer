@@ -12,18 +12,9 @@ const shader = /* glsl */`
     void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor) {
         vec4 color = texture2D(tDiffuse, uv);
 
-        // 배경
+        // 배경은 다 까만색으로
         if(color.a < 0.01){
-            // draw grid using the coordinate of screen
-            if(mod(gl_FragCoord.x, 50.0) < 1.0 || mod(gl_FragCoord.y, 50.0) < 1.0){
-                color.rgb = vec3(0.8);
-            } else {
-                color.rgb = vec3(0.9);
-            }
-
-
-            outputColor = vec4(color.rgb, 1.0);
-
+            outputColor = vec4(vec3(0.0), 1.0);
             return;
         }
 

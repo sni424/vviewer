@@ -411,7 +411,7 @@ const SceneInfo = () => {
                 }
                 } />
             </div>
-            <div>
+            {/* <div>
                 <div>
                     <strong>색온도</strong>{globalColorTemperatureOn && <span>: {globalColorTemperatureValue}K </span>}
                 </div>
@@ -423,8 +423,8 @@ const SceneInfo = () => {
                 {globalColorTemperatureOn && <input type="range" min={3000} max={10000} step={10} value={globalColorTemperatureValue ?? DEFAULT_COLOR_TEMPERATURE} onChange={(e) => {
                     setGlobalColorTemperature({ on: true, value: parseInt(e.target.value) });
                 }} />}
-            </div>
-            <GlobalRenderOptions></GlobalRenderOptions>
+            </div> */}
+            {/* <GlobalRenderOptions></GlobalRenderOptions> */}
         </section>
 
         <section style={{ marginTop: 16 }}>
