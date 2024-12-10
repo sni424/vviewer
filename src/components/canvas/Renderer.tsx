@@ -1,7 +1,7 @@
 import { GizmoHelper, GizmoViewport, OrbitControls, } from '@react-three/drei'
 import { Canvas, RootState, useThree } from '@react-three/fiber'
 import VGLTFLoader from '../../scripts/VGLTFLoader';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Scene, Texture, THREE } from '../../scripts/VTHREE';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import { cameraMatrixAtom, globalGlAtom, loadHistoryAtom, materialSelectedAtom, selectedAtom, sourceAtom, threeExportsAtom, treeScrollToAtom } from '../../scripts/atoms';
@@ -13,6 +13,7 @@ import GlobalContrast from './GlobalContrast';
 import useStats from '../../scripts/useStats';
 import GlobalSaturationCheck from './GlobalSaturationCheck';
 import GlobalColorTemperature from './GlobalColorTemperature';
+import UnifiedCameraControls from '../camera/UnifiedCameraControls';
 
 function Renderer() {
     useStats();
@@ -22,6 +23,7 @@ function Renderer() {
     const setThreeExportsAtom = useSetAtom(threeExportsAtom);
     const { scene, camera } = threeExports;
     const setCameraAtom = useSetAtom(cameraMatrixAtom);
+    const [model, setModel] = useState<any>(null)
 
     useEffect(() => {
         setThreeExportsAtom(threeExports);
@@ -70,7 +72,7 @@ function Renderer() {
                     })
                 }
                 scene.add(gltf.scene);
-
+                setModel(gltf.scene)
                 // revoke object url
                 URL.revokeObjectURL(url);
                 setLoadHistoryAtom(history => {
@@ -90,10 +92,11 @@ function Renderer() {
         <boxGeometry args={[1, 1, 1]} />
         <meshStandardMaterial color="hotpink" />
       </mesh> */}
-        <OrbitControls makeDefault onChange={e => {
+        {/* <OrbitControls makeDefault onChange={e => {
             const matrix = e?.target.object.matrix.clone()
             setCameraAtom(matrix);
-        }} />
+        }} /> */}
+        <UnifiedCameraControls isoView={false} glbModel={model} />
         <MyEnvironment></MyEnvironment>
         <SelectBox></SelectBox>
         {/* <Gizmo></Gizmo> */}
@@ -199,10 +202,12 @@ function RendererContainer() {
     }, [threeExports, selected]);
 
     return (
-        <div style={{
-            width: "100%",
-            height: "100%",
-        }}>
+        <div
+            id='canvasDiv'
+            style={{
+                width: "100%",
+                height: "100%",
+            }}>
             <Canvas
                 // gl={{
                 //     antialias: true,
