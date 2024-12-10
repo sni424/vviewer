@@ -200,7 +200,7 @@ export const globalGlAtom = atom<GLProps>({
 
 export const treeScrollToAtom = atom<string | null>(null);
 
-export const Tabs = ['scene', 'tree'] as const;
+export const Tabs = ['scene', 'tree', 'hotspot'] as const;
 export type Tab = (typeof Tabs)[number];
 export const panelTabAtom = atom<Tab>('scene');
 
@@ -217,4 +217,39 @@ export const lastCameraPositionInfoAtom = atom({
 export const buttonActionAtom = atom({
   isoView: false,
   autoRotate: true,
+});
+
+
+export enum LookType {
+  None = "None",
+  VERY_LOW_CONTRAST = 'Very Low Contrast',
+  LOW_CONTRAST = 'Low Contrast',
+  MEDIUM_CONTRAST = 'Medium Contrast',
+  HIGH_CONTRAST = 'High Contrast',
+  VERY_HIGH_CONTRAST = 'Very High Contrast'
+}
+export enum ViewTransform {
+  Standard = "Standard",
+  KhronosPBRNeutral = "KhronosPBRNeutral",
+  AgX = "AgX",
+  Filmic = "Filmic",
+  FilmicLog = "FilmicLog",
+  FalseColor = "FalseColor",
+  Raw = "Raw",
+}
+
+
+export type ColorManagement = {
+  exposure: number;
+  gamma: number;
+  look: LookType;
+  viewTransform: ViewTransform;
+};
+export const globalColorManagementAtom = atom<{ on: boolean; value: ColorManagement }>({
+  on: false, value: {
+    exposure: 1.0,
+    gamma: 1.0,
+    look: LookType.HIGH_CONTRAST,
+    viewTransform: ViewTransform.Raw,
+  }
 });
