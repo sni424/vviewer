@@ -1,24 +1,24 @@
 import { clear } from "idb-keyval";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
-import { envAtom, filelistAtom, globalContrastAtom, openLoaderAtom } from "../../scripts/atoms";
+import { envAtom, filelistAtom, globalBrightnessContrastAtom, openLoaderAtom } from "../../scripts/atoms";
 import { toNthDigit } from "../../scripts/utils";
 import { useRef, useState } from "react";
 import { __UNDEFINED__ } from "../../Constants";
 import useFilelist from "../../scripts/useFilelist";
 
 const ContrastController = () => {
-    const [globalContrast, setGlobalContrast] = useAtom(globalContrastAtom);
-    const { on: globalContrastOn, value: globalContrastValue } = globalContrast;
+    const [globalContrast, setGlobalContrast] = useAtom(globalBrightnessContrastAtom);
+    const { contrastOn: globalContrastOn, contrastValue: globalContrastValue } = globalContrast;
 
     return <section style={{ marginTop: 16 }}>
         <div>
             <strong>대비</strong>
             <input type="checkbox" checked={globalContrastOn} onChange={(e) => {
-                setGlobalContrast({ on: e.target.checked, value: globalContrastValue ?? 1 });
+                setGlobalContrast({ contrastOn: e.target.checked, contrastValue: globalContrastValue ?? 1 });
             }
             } />
             {globalContrastOn && <input type="range" min={0} max={1} step={0.005} value={globalContrastValue ?? 1} onChange={(e) => {
-                setGlobalContrast({ on: true, value: parseFloat(e.target.value) });
+                setGlobalContrast({ contrastOn: true, contrastValue: parseFloat(e.target.value) });
             }} />}
 
         </div>

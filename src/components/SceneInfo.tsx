@@ -1,17 +1,8 @@
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import useFiles from '../scripts/useFiles';
-import {
-    cached,
-    compressObjectToFile,
-    formatNumber,
-    groupInfo,
-    isProbeMesh, isTransformControlOrChild,
-    loadLatest,
-    loadScene,
-    saveScene,
-    toNthDigit,
-} from '../scripts/utils';
-import { cameraMatrixAtom, cameraModeAtom, envAtom, globalColorTemperatureAtom, globalContrastAtom, globalSaturationCheckAtom, selectedAtom, sourceAtom, threeExportsAtom, useEnvParams, useModal } from '../scripts/atoms';
+import { cached, compressObjectToFile, formatNumber, groupInfo, isProbeMesh, isTransformControlOrChild, loadLatest, loadScene, saveScene, toNthDigit } from '../scripts/utils';
+
+import { cameraMatrixAtom, globalColorTemperatureAtom, globalBrightnessContrastAtom, globalSaturationCheckAtom, selectedAtom, sourceAtom, threeExportsAtom, useEnvParams, useModal, globalColorManagementAtom, LookType, ViewTransform } from '../scripts/atoms';
 import { useEffect, useState } from 'react';
 import { get, set } from 'idb-keyval';
 import { Euler, Quaternion, THREE, Vector3 } from '../scripts/VTHREE';
@@ -64,21 +55,20 @@ function saveArrayBuffer(buffer: ArrayBuffer, filename: string) {
 const CameraInfoSection = () => {
     const threeExports = useAtomValue(threeExportsAtom);
     const cameraMatrix = useAtomValue(cameraMatrixAtom);
-
     if (!threeExports) {
         return null;
     }
 
-    const { scene } = threeExports;
+    const { scene, camera } = threeExports;
     const position = new Vector3();
     const rotation = new Quaternion();
     const scale = new Vector3();
     cameraMatrix?.decompose(position, rotation, scale);
-    const rotationEuler = new Euler().setFromQuaternion(rotation);
 
-    <section style={{ marginTop: 16 }}>
-        <strong>카메라</strong>
-        {/* <select
+    return (
+        <section style={{ marginTop: 16 }}>
+            <strong>카메라</strong>
+            {/* <select
                 style={{ textTransform: "capitalize" }}
                 value={cameraMode}
                 onChange={(e) => {
@@ -89,19 +79,33 @@ const CameraInfoSection = () => {
                 <option value="iso">아이소</option>
             </select> */}
 
+            <div style={{ display: "flex", alignItems: "center", gap: "15px" }}>
+                <div>Position
+                    {/* <div style={{ paddingLeft: 8 }}>X: {toNthDigit(position.x, 4)}</div>
+            <div style={{ paddingLeft: 8 }}>Y: {toNthDigit(position.y, 4)}</div>
+            <div style={{ paddingLeft: 8 }}>Z: {toNthDigit(position.z, 4)}</div> */}
 
-        <div>Position</div>
-        <div style={{ paddingLeft: 8 }}>X: {toNthDigit(position.x, 4)}</div>
-        <div style={{ paddingLeft: 8 }}>Y: {toNthDigit(position.y, 4)}</div>
-        <div style={{ paddingLeft: 8 }}>Z: {toNthDigit(position.z, 4)}</div>
-
-        <div>Rotation</div>
-        <div style={{ paddingLeft: 8 }}>X: {toNthDigit(rotationEuler.x, 4)}</div>
-        <div style={{ paddingLeft: 8 }}>Y: {toNthDigit(rotationEuler.y, 4)}</div>
-        <div style={{ paddingLeft: 8 }}>Z: {toNthDigit(rotationEuler.z, 4)}</div>
-
-
-    </section>
+                    <div style={{ paddingLeft: 8 }}>X:
+                        {camera.position.x.toFixed(2)}
+                    </div>
+                    <div style={{ paddingLeft: 8 }}>Y:
+                        {camera.position.y.toFixed(2)}
+                    </div>
+                    <div style={{ paddingLeft: 8 }}>Z:
+                        {camera.position.z.toFixed(2)}
+                    </div>
+                </div>
+                <div>Rotation
+                    {/* <div style={{ paddingLeft: 8 }}>X: {toNthDigit(rotationEuler.x, 4)}</div>
+            <div style={{ paddingLeft: 8 }}>Y: {toNthDigit(rotationEuler.y, 4)}</div>
+            <div style={{ paddingLeft: 8 }}>Z: {toNthDigit(rotationEuler.z, 4)}</div> */}
+                    <div style={{ paddingLeft: 8 }}>X: {camera.rotation.x.toFixed(2)}</div>
+                    <div style={{ paddingLeft: 8 }}>Y: {camera.rotation.y.toFixed(2)}</div>
+                    <div style={{ paddingLeft: 8 }}>Z: {camera.rotation.z.toFixed(2)}</div>
+                </div>
+            </div>
+        </section>
+    )
 }
 
 const SceneInfo = () => {
@@ -117,11 +121,12 @@ const SceneInfo = () => {
     const navigate = useNavigate();
     const { filelist, loading } = useFilelist();
     const setSource = useSetAtom(sourceAtom);
-    const [globalContrast, setGlobalContrast] = useAtom(globalContrastAtom)
-    const { on: globalContrastOn, value: globalContrastValue } = globalContrast;
+    const [brightnessContrast, setGlobalContrast] = useAtom(globalBrightnessContrastAtom)
+    // const { on: brightnessContrastOn, brightnessValue, contrastValue } = brightnessContrast;
     const [globalSaturationCheckOn, setGlobalSaturationCheck] = useAtom(globalSaturationCheckAtom);
     const [globalColorTemperature, setGlobalColorTemperature] = useAtom(globalColorTemperatureAtom)
-    const { on: globalColorTemperatureOn, value: globalColorTemperatureValue } = globalColorTemperature;
+    const [cm, setCm] = useAtom(globalColorManagementAtom);
+    const { on: cmOn, value: cmValue } = cm;
 
     useEffect(() => {
         get("savedScene").then(val => {
@@ -346,7 +351,7 @@ const SceneInfo = () => {
                         setEnv(prev => ({ ...prev, rotation: { x: prev.rotation?.x ?? 0, y: parseFloat(e.target.value), z: prev.rotation?.z ?? 0 } }));
                     }}></input>
                     {toNthDigit(((env.rotation?.y ?? 0) / Math.PI) * 90, 2)}
-                </div>
+                </div>z
                 <div>
                     Z : <input type="range" min={-Math.PI} max={Math.PI} step={0.01} value={env.rotation?.z ?? 0} onChange={(e) => {
                         setEnv(prev => ({ ...prev, rotation: { x: prev.rotation?.x ?? 0, y: prev.rotation?.y ?? 0, z: parseFloat(e.target.value) } }));
@@ -357,17 +362,33 @@ const SceneInfo = () => {
         </section>
 
         <section style={{ marginTop: 16, fontSize: 13, display: "flex", flexDirection: "column", gap: 6 }}>
-            <div>
-                <strong>대비</strong>
-                <input type="checkbox" checked={globalContrastOn} onChange={(e) => {
-                    setGlobalContrast({ on: e.target.checked, value: globalContrastValue ?? 1 });
+            {/* <div>
+                <strong>밝기/대비</strong>
+                <input type="checkbox" checked={brightnessContrastOn} onChange={(e) => {
+                    console.log(e.target.checked);
+                    setGlobalContrast(prev => ({ ...prev, on: e.target.checked }));
                 }
                 } />
-                {globalContrastOn && <input type="range" min={0} max={1} step={0.005} value={globalContrastValue ?? 1} onChange={(e) => {
-                    setGlobalContrast({ on: true, value: parseFloat(e.target.value) });
-                }} />}
+                {brightnessContrastOn && <>
+                    <div style={{ paddingLeft: 12, boxSizing: "border-box", width: "100%" }}>
+                        <div>밝기 : {brightnessValue ?? 0} <button style={{ fontSize: 11 }} onClick={() => {
+                            setGlobalContrast(prev => ({ ...prev, brightnessValue: 0 }));
+                        }}>초기화</button></div>
+                        <input style={{ width: "100%" }} type="range" min={-1} max={1} step={0.01} value={brightnessValue ?? 0} onChange={(e) => {
+                            setGlobalContrast(prev => ({ ...prev, brightnessValue: parseFloat(e.target.value) }));
+                        }} />
+                        <div>대비 : {contrastValue ?? 0} <button style={{ fontSize: 11 }} onClick={() => {
+                            setGlobalContrast(prev => ({ ...prev, contrastValue: 0 }));
+                        }}>초기화</button></div>
+                        <input style={{ width: "100%" }} type="range" min={-1} max={1} step={0.01} value={contrastValue ?? 0} onChange={(e) => {
+                            setGlobalContrast(prev => ({ ...prev, contrastValue: parseFloat(e.target.value) }));
+                        }} />
 
-            </div>
+                    </div>
+
+                </>}
+
+            </div> */}
             <div>
                 <strong>새츄레이션보기</strong>
                 <input type="checkbox" checked={globalSaturationCheckOn} onChange={(e) => {
@@ -376,6 +397,73 @@ const SceneInfo = () => {
                 } />
             </div>
             <div>
+                <strong>Color Management</strong>
+                <input type="checkbox" checked={cmOn} onChange={(e) => {
+                    setCm(prev => ({ ...prev, on: e.target.checked }));
+                }
+                } />
+                {cmOn && <div>
+                    <div style={{ width: "100%" }}>
+                        Exposure : <div style={{ maxWidth: 40 }}>{toNthDigit(cmValue.exposure, 2)}</div> <input type="range" min={0.0} max={3} step={0.01} value={cmValue.exposure} onChange={e => {
+                            setCm(prev => ({
+                                ...prev, value: {
+                                    ...prev.value,
+                                    exposure: parseFloat(e.target.value)
+                                }
+                            }))
+                        }} />
+                    </div>
+                    <div style={{ width: "100%" }}>
+                        Gamma : <div style={{ maxWidth: 40 }}>{toNthDigit(cmValue.gamma, 2)}</div> <input type="range" min={0.0} max={3} step={0.01} value={cmValue.gamma} onChange={e => {
+                            setCm(prev => ({
+                                ...prev, value: {
+                                    ...prev.value,
+                                    gamma: parseFloat(e.target.value)
+                                }
+                            }))
+                        }} />
+                    </div>
+                    <div>
+                        <strong>Contrast</strong> :
+                        <select value={cmValue.look} onChange={e => {
+                            setCm(prev => ({
+                                ...prev, value: {
+                                    ...prev.value,
+                                    look: e.target.value as LookType
+                                }
+                            }))
+                        }}>
+                            <option value={LookType.VERY_HIGH_CONTRAST}>Very High</option>
+                            <option value={LookType.HIGH_CONTRAST}>High</option>
+                            <option value={LookType.MEDIUM_CONTRAST}>Medium</option>
+                            <option value={LookType.LOW_CONTRAST}>Low</option>
+                            <option value={LookType.VERY_LOW_CONTRAST}>Very Low</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <strong>View Transform</strong> :
+                        <select value={cmValue.viewTransform} onChange={e => {
+                            setCm(prev => ({
+                                ...prev, value: {
+                                    ...prev.value,
+                                    viewTransform: e.target.value as ViewTransform
+                                }
+                            }))
+                        }}>
+                            <option value={ViewTransform.Standard}>Standard</option>
+                            <option value={ViewTransform.KhronosPBRNeutral}>KhronosPBRNeutral</option>
+                            <option value={ViewTransform.AgX}>AgX</option>
+                            <option value={ViewTransform.Filmic}>Filmic</option>
+                            <option value={ViewTransform.FilmicLog}>FilmicLog</option>
+                            <option value={ViewTransform.FalseColor}>FalseColor</option>
+                            <option value={ViewTransform.Raw}>Raw</option>
+                        </select>
+                    </div>
+
+                </div>}
+            </div>
+            {/* <div>
                 <div>
                     <strong>색온도</strong>{globalColorTemperatureOn && <span>: {globalColorTemperatureValue}K </span>}
                 </div>
@@ -387,8 +475,8 @@ const SceneInfo = () => {
                 {globalColorTemperatureOn && <input type="range" min={3000} max={10000} step={10} value={globalColorTemperatureValue ?? DEFAULT_COLOR_TEMPERATURE} onChange={(e) => {
                     setGlobalColorTemperature({ on: true, value: parseInt(e.target.value) });
                 }} />}
-            </div>
-            <GlobalRenderOptions></GlobalRenderOptions>
+            </div> */}
+            {/* <GlobalRenderOptions></GlobalRenderOptions> */}
         </section>
 
         <section style={{ marginTop: 16 }}>

@@ -1,7 +1,7 @@
-import { GizmoHelper, GizmoViewport, OrbitControls, } from '@react-three/drei'
+import { Effects, GizmoHelper, GizmoViewport, OrbitControls, } from '@react-three/drei'
 import { Canvas, RootState, useThree } from '@react-three/fiber'
 import VGLTFLoader from '../../scripts/VGLTFLoader';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Scene, Texture, THREE } from '../../scripts/VTHREE';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import {
@@ -25,6 +25,8 @@ import useStats from '../../scripts/useStats';
 import { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
 import GlobalColorTemperature from './GlobalColorTemperature';
 import GlobalSaturationCheck from './GlobalSaturationCheck';
+import UnifiedCameraControls from '../camera/UnifiedCameraControls';
+import PostProcess from './PostProcess';
 
 function Renderer() {
     useStats();
@@ -37,6 +39,7 @@ function Renderer() {
     const setCameraAtom = useSetAtom(cameraMatrixAtom);
     const setOrbitControls = useSetAtom(orbitControlsAtom);
 
+    const [model, setModel] = useState<any>(null)
 
     useEffect(() => {
         setThreeExportsAtom(threeExports);
@@ -66,7 +69,7 @@ function Renderer() {
     useEffect(() => {
 
         sources.forEach(source => {
-            const { name, url, file, lightmap } = source;
+            const { name, url, file, map, mapDst } = source;
             // setLoadingsAtom(loadings => [...loadings, source]);
             setLoadHistoryAtom(history => {
                 const newHistory = new Map(history);
@@ -78,20 +81,34 @@ function Renderer() {
             new VGLTFLoader().loadAsync(url).then(gltf => {
                 gltf.scene.name = name + "-" + gltf.scene.name;
 
-                if (lightmap) {
-                    const texture = new THREE.TextureLoader().load(URL.createObjectURL(lightmap));
+                if (map) {
+                    const texture = new THREE.TextureLoader().load(URL.createObjectURL(map));
                     texture.flipY = !texture.flipY;
                     texture.channel = 1;
                     texture.needsUpdate = true;
-                    gltf.scene.traverse(obj => {
+                    gltf.scene.traverse((obj) => {
                         if (obj.type === "Mesh") {
-                            ((obj as THREE.Mesh).material as THREE.MeshStandardMaterial).lightMap = texture;
-                            ((obj as THREE.Mesh).material as THREE.MeshStandardMaterial).needsUpdate = true;
+                            const material = ((obj as THREE.Mesh).material as THREE.MeshStandardMaterial);
+                            if (!material) {
+                                (obj as THREE.Mesh).material = new THREE.MeshStandardMaterial();
+                            }
+                            if (mapDst === "lightmap" || !mapDst) {
+                                material.lightMap = texture;
+                            } else if (mapDst === "emissivemap") {
+                                //three.js 특성상 emissiveMap을 적용하려면 emissive를 설정해야함
+                                material.emissive = new THREE.Color(0xffffff);
+                                material.emissiveMap = texture;
+                                material.emissiveIntensity = 0.5;
+                            } else {
+                                throw new Error("Invalid mapDst @Renderer");
+                            }
+
+                            material.needsUpdate = true;
                         }
                     })
                 }
                 scene.add(gltf.scene);
-
+                setModel(gltf.scene)
                 // revoke object url
                 URL.revokeObjectURL(url);
                 setLoadHistoryAtom(history => {
@@ -111,11 +128,11 @@ function Renderer() {
         <boxGeometry args={[1, 1, 1]} />
         <meshStandardMaterial color="hotpink" />
       </mesh> */}
-        {/*<ReflectionProbe />*/}
-        <OrbitControls ref={orbitControlsRef} makeDefault onChange={e => {
+        {/* <OrbitControls makeDefault onChange={e => {
             const matrix = e?.target.object.matrix.clone()
             setCameraAtom(matrix);
-        }} />
+        }} /> */}
+        <UnifiedCameraControls />
         <MyEnvironment></MyEnvironment>
         <SelectBox></SelectBox>
         {/* <Gizmo></Gizmo> */}
@@ -131,6 +148,7 @@ function Renderer() {
         {/*<GlobalToneMapping></GlobalToneMapping> */}
         <GlobalColorTemperature></GlobalColorTemperature>
         <GlobalSaturationCheck></GlobalSaturationCheck>
+        <PostProcess></PostProcess>
     </>
 }
 
@@ -144,6 +162,9 @@ function RendererContainer() {
     const lastClickRef = useRef<number>(0);
     const cameraLayer = new THREE.Layers();
     cameraLayer.enableAll();
+    const mouseDownPosition = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+    // 드래그로 간주할 최소 거리
+    const dragThreshold = 5;
 
     useEffect(() => {
         if (!threeExports) {
@@ -224,10 +245,12 @@ function RendererContainer() {
     }, [threeExports, selected]);
 
     return (
-        <div style={{
-            width: "100%",
-            height: "100%",
-        }}>
+        <div
+            id='canvasDiv'
+            style={{
+                width: "100%",
+                height: "100%",
+            }}>
             <Canvas
                 // gl={{
                 //     antialias: true,
@@ -256,8 +279,10 @@ function RendererContainer() {
                 // gl={gl}
                 gl={{ antialias: true }}
                 camera={{layers: cameraLayer}}
-                onMouseDown={() => {
+                onMouseDown={(e) => {
                     lastClickRef.current = Date.now();
+                    // 마우스 다운 시 위치 저장
+                    mouseDownPosition.current = { x: e.clientX, y: e.clientY };
                 }}
                 onMouseUp={(e) => {
 
@@ -265,7 +290,15 @@ function RendererContainer() {
                         return;
                     }
 
-                    if (Date.now() - lastClickRef.current > 200) {
+                    // 마우스 업 시 이동 거리 계산
+                    const xGap = Math.abs(e.clientX - mouseDownPosition.current.x);
+                    const yGap = Math.abs(e.clientY - mouseDownPosition.current.y);
+
+
+
+                    // 이동 거리가 임계값 이상이면 드래그로 간주
+                    if (xGap > dragThreshold ||
+                        yGap > dragThreshold || Date.now() - lastClickRef.current > 200) {
                         return;
                     }
 
