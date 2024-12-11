@@ -2,6 +2,8 @@ import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { materialSelectedAtom, selectedAtom, threeExportsAtom, treeScrollToAtom, treeSearchAtom } from "../scripts/atoms";
 import { useEffect, useRef, useState } from "react";
 import { THREE } from "../scripts/VTHREE";
+import { TransformControls } from 'three-stdlib';
+import { isProbeMesh, isTransformControlOrChild } from '../scripts/utils.ts';
 
 const MeshChildren = ({ data }: { data: THREE.Mesh }) => {
     const material = data.material as THREE.Material;
@@ -110,7 +112,11 @@ const RecursiveNode = ({ data, depth = 0 }: { data: THREE.Object3D, depth: numbe
 
         return retval;
     })()
-
+    
+    
+    if (isProbeMesh(data) || isTransformControlOrChild(data)) {
+        return null;
+    }
 
 
     return <div ref={containerRef} style={{ width: "100%", paddingLeft: depth * 4, fontSize: 12, marginTop: 2 }}>
@@ -259,6 +265,7 @@ const SearchResults = () => {
     const materials: THREE.Material[] = [];
 
     scene.traverse(obj => {
+        
         // 1. typeSearch
         if (query === (obj.type).toLowerCase()) {
             types.push(obj);

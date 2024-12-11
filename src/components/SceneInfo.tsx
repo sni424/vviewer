@@ -1,6 +1,16 @@
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import useFiles from '../scripts/useFiles';
-import { cached, compressObjectToFile, formatNumber, groupInfo, loadLatest, loadScene, saveScene, toNthDigit } from '../scripts/utils';
+import {
+    cached,
+    compressObjectToFile,
+    formatNumber,
+    groupInfo,
+    isProbeMesh, isTransformControlOrChild,
+    loadLatest,
+    loadScene,
+    saveScene,
+    toNthDigit,
+} from '../scripts/utils';
 import { cameraMatrixAtom, cameraModeAtom, envAtom, globalColorTemperatureAtom, globalContrastAtom, globalSaturationCheckAtom, selectedAtom, sourceAtom, threeExportsAtom, useEnvParams, useModal } from '../scripts/atoms';
 import { useEffect, useState } from 'react';
 import { get, set } from 'idb-keyval';
@@ -415,11 +425,11 @@ const SceneInfo = () => {
                         return null;
                     }
                     
-                    if (child.userData.isProbeMesh) {
+                    if (isProbeMesh(child)) {
                         return null;
                     }
                     
-                    if (child.userData.isTransformControl) {
+                    if (isTransformControlOrChild(child)) {
                         return null;
                     }
 

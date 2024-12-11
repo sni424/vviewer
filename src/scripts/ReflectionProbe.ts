@@ -92,11 +92,13 @@ export default class ReflectionProbe {
         
         const translateControls = new TransformControls(camera, this.renderer.domElement);
         translateControls.userData.isTransformControls = true;
+        translateControls.userData.isProbeMesh = true;
         translateControls.setMode('translate');
         translateControls.setSize(0.7);
         translateControls.showY = false;
         const scaleControls = new TransformControls(camera, this.renderer.domElement);
         scaleControls.userData.isTransformControls = true;
+        scaleControls.userData.isProbeMesh = true;
         scaleControls.setMode('scale');
         scaleControls.setSize(0.5);
         scaleControls.showY = false;
@@ -430,6 +432,7 @@ function createMeshFromBox(box: THREE.Box3, serializedId: string) {
     meshBox.setFromCenterAndSize(new THREE.Vector3(0, 0, 0), new THREE.Vector3(1, 1, 1));
     const boxHelper = new THREE.Box3Helper(meshBox, '#00deff');
     boxHelper.layers.set(REFLECTION_BOX_LAYER);
+    boxHelper.userData.isProbeMesh = true;
     mesh.add(boxHelper);
     return mesh;
 }
