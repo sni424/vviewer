@@ -3,7 +3,7 @@ import { atom, createStore, useAtom, useAtomValue, useSetAtom, WritableAtom } fr
 import { THREE, Vector3 } from './VTHREE';
 import React from 'react';
 import { set } from 'idb-keyval';
-import { FileInfo, GLProps } from '../types';
+import { FileInfo, GLProps, View, ViewportOption } from '../types';
 import { DEFAULT_COLOR_TEMPERATURE } from '../Constants';
 
 type AtomArgType<T> = T | ((prev: T) => T);
@@ -264,3 +264,38 @@ export const globalColorManagementAtom = atom<{ on: boolean; value: ColorManagem
 // export const testCameraPosAtom = atom<[number, number]>();
 export const [mainCameraPosAtom, getTestCameraPos, setTestCameraPos] = createAtomCombo<[number, number]>();
 export const mainCameraProjectedAtom = atom<[number, number]>();
+
+export const _threeExportsAtom = atom<Partial<{ [key in View]: RootState }>>({});
+
+export const viewportOptionAtom = atom<{
+  [key in View]: ViewportOption;
+}>({
+  [View.Shared]: {},
+  [View.Main]: {},
+  [View.Top]: {},
+  [View.Front]: {},
+  [View.Right]: {},
+  [View.Back]: {},
+  [View.Left]: {},
+  [View.Bottom]: {},
+});
+
+export const useViewportOption = (view: View = View.Shared) => {
+  const [options, setOptions] = useAtom(viewportOptionAtom);
+  const getOption = (_view: View = view) => {
+    return options[_view];
+  }
+  const setOption = (option: ViewportOption, _view: View = view) => {
+    setOptions((prev) => {
+      return {
+        ...prev,
+        [_view]: option
+      }
+    });
+  }
+
+  return {
+    getOption,
+    setOption
+  }
+}

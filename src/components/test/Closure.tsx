@@ -334,7 +334,7 @@ const TheScene = () => {
 
         }} />
         <Environment files={"https://vra-configurator-dev.s3.ap-northeast-2.amazonaws.com/models/dancing_hall_1k.hdr"}>
-        </Environment>;</>
+        </Environment></>
 }
 
 function isPointOnLineSegment(p: Point2D, v1: Point2D, v2: Point2D): boolean {
@@ -346,7 +346,21 @@ function isPointOnLineSegment(p: Point2D, v1: Point2D, v2: Point2D): boolean {
     return dotProduct <= squaredLength; // After the segment
 }
 
+function isPointInsidePolygons(point: Point2D, polygons: Point2D[][]): number | undefined {
+    // return index of the first polygon that contains the point, or undefined when not found
+    for (let i = 0; i < polygons.length; i++) {
+        if (isPointInsidePolygon(point, polygons[i])) {
+            return i;
+        }
+    }
+
+}
+
 function isPointInsidePolygon(point: Point2D, polygon: Point2D[]): boolean {
+    if (polygon.length < 3) {
+        return false;
+    }
+
     let count = 0;
     const { x, z } = point;
 
@@ -383,11 +397,6 @@ const Closure: React.FC = () => {
                 camera={{ position: [5, 5, 5], fov: 50 }}
                 onCreated={({ gl }) => gl.setClearColor('#a0a0a0')}
             >
-
-                {/* <gridHelper args={[20, 20, 0xff0000, 'teal']} />
-                <gridHelper args={[20, 20, 0xff0000, 'teal']} rotation={[Math.PI / 2, 0, 0]} />
-                <gridHelper args={[20, 20, 0xff0000, 'teal']} rotation={[0, 0, Math.PI / 2]} /> */}
-                <Grid></Grid>
                 <TheScene></TheScene>
                 <mesh position={[0, 0, 0]}>
                     <sphereGeometry args={[0.1, 32, 32]} />

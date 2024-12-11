@@ -1,9 +1,11 @@
-import { Canvas, useFrame, useThree } from '@react-three/fiber'
-import React, { useEffect, useRef } from 'react'
+import { Canvas, RootState, useFrame, useThree } from '@react-three/fiber'
+import React, { useEffect, useMemo, useRef } from 'react'
 import { THREE } from '../../scripts/VTHREE';
 import { getTestCameraPos, mainCameraPosAtom, mainCameraProjectedAtom, threeExportsAtom } from '../../scripts/atoms';
 import { useAtomValue, useSetAtom } from 'jotai';
-import { OrbitControls } from 'three/examples/jsm/Addons.js';
+import { OrbitControls as OrbitControlsImpl } from 'three/examples/jsm/Addons.js';
+import { Box, OrbitControls, OrthographicCamera, PerspectiveCamera } from '@react-three/drei';
+import Grid from './Grid';
 
 function TopView() {
     const threeExports = useAtomValue(threeExportsAtom);
@@ -11,7 +13,7 @@ function TopView() {
     const canvasRef = React.useRef<HTMLCanvasElement>(null);
     const orthoCameraRef = useRef<THREE.OrthographicCamera>()
     const topviewRenderer = useRef<THREE.WebGLRenderer>()
-    const orbitControls = useRef<OrbitControls>()
+    const orbitControls = useRef<OrbitControlsImpl>()
     const testCameraPos = useAtomValue(mainCameraPosAtom);
     const setMainCameraProjected = useSetAtom(mainCameraProjectedAtom);
     // const testCameraPosRef = useRef<[number, number]>();
@@ -54,7 +56,7 @@ function TopView() {
             0.1,         // near
             1000         // far
         )
-        orbitControls.current = new OrbitControls(orthoCameraRef.current, canvasRef.current);
+        orbitControls.current = new OrbitControlsImpl(orthoCameraRef.current, canvasRef.current);
 
         orthoCameraRef.current.position.set(0, 10, 0);
         orthoCameraRef.current.rotation.set(-Math.PI / 2, 0, 0);
@@ -118,5 +120,80 @@ function TopView() {
     )
 }
 
+const Renderer_ = ({ threeExports }: { threeExports: RootState }) => {
+    const topviewExports = useThree();
+    const camRef = useRef<THREE.OrthographicCamera>();
+    const orbitRef = useRef<OrbitControlsImpl>();
 
-export default TopView
+    const mat = new THREE.MeshStandardMaterial();
+    mat.side = THREE.DoubleSide;
+
+    useEffect(() => {
+        // const { camera } = topviewExports;
+        // camera.position.set(0, 10, 0);
+        // console.log("uef", camera);
+        // console.log(topviewExports)
+        // setTimeout(() => {
+        //     // console.log("uef", camRef.current);
+        //     console.log("uef", orbitRef.current);
+        //     const cam = camRef.current!;
+        //     const orbit = orbitRef.current!;
+        //     // cam.zoom = 0.5;
+        //     cam.position.set(0, 100, 0);
+        //     // cam.zoom = 0.5
+        //     // cam.lookAt(0, 0, 0);
+        //     // cam.updateProjectionMatrix();
+        //     orbit.target.set(0, 1, 0);
+        //     // orbit.update();
+        //     // orbit.object.position.set(0, 20, 0);
+        //     // orbit.position0.set(0, 20, 0);
+        //     orbit.update();
+        // }, 1000)
+    }, []);
+
+    return <>
+        <OrthographicCamera
+            ref={camRef}
+            name='OO_'
+            makeDefault
+            // args={[-11, 11, 11, -11, 0.1, 1000]}
+            position={new THREE.Vector3(0, 10)}
+            rotation={new THREE.Euler(-Math.PI / 2, 0, 0)}
+            zoom={9}
+            near={0.1}
+            far={100}
+        />
+
+        {/* <OrbitControls camera={cameraRef.current}></OrbitControls> */}
+        {/* <OrbitControls ref={orbitRef} makeDefault target={[0, 0, 0]} enableRotate={false}></OrbitControls> */}
+        {/* <OrbitControls ></OrbitControls> */}
+
+        {/* <Box material={mat} layers={1}></Box> */}
+        <Grid layers={1}></Grid>
+        {/* <Renderer_></Renderer_> */}
+    </>
+}
+
+const TopView_ = () => {
+    const threeExports = useAtomValue(threeExportsAtom);
+
+    if (!threeExports) {
+        return null;
+    }
+
+    const { scene } = threeExports;
+
+    return <Canvas
+        // camera={new THREE.OrthographicCamera()}
+        scene={scene} onCreated={({ gl, camera }) => {
+            gl.setClearColor(0x303030);
+            console.log("here", camera);
+            camera.layers.disable(0);
+            camera.layers.enable(1);
+        }}>
+        <Renderer_ threeExports={threeExports}></Renderer_>
+    </Canvas>
+}
+
+
+export default TopView_

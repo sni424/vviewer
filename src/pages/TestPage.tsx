@@ -1,11 +1,7 @@
-import React from 'react'
-import Closure from '../components/test/Closure'
-import TopView from '../components/canvas/TopView'
+import ViewportTest from '../components/canvas/ViewportTest';
 
 function TestPage() {
-    return (
-        <Closure></Closure>
-    )
+    return <ViewportTest></ViewportTest>
 }
 
 export default TestPage

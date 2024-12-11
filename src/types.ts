@@ -292,3 +292,27 @@ export declare type GLProps = {
    */
   failIfMajorPerformanceCaveat?: boolean | undefined;
 };
+
+
+// Layer로 켜고끄기
+export enum View {
+  Shared = 0, // 기본 Scene에 존재하는 모든 값
+  Main = 1,   // Main Scene에만 존재
+  Top = 2,    // Top Scene에만 존재
+  Front = 3,
+  Right = 4,
+  Back = 5,
+  Left = 6,
+  Bottom = 7,
+};
+
+export type GridOption = {
+  size?: number;
+  divisions?: number;
+  colorCenterLine?: number;
+  colorGrid?: number;
+};
+
+export type ViewportOption = {
+  grid?: GridOption;
+};
