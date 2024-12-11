@@ -10,6 +10,14 @@ const CUBE_CAMERA_LAYER = 10;
 
 export type ReflectionProbeResolutions = 256 | 512 | 1024 | 2048;
 
+type ReflectionProbeJSON = {
+    id: string;
+    center: number[];
+    size: number[];
+    resolution: ReflectionProbeResolutions;
+    createFrom: 'probe.toJSON()'
+}
+
 export default class ReflectionProbe {
     // SCENE PROPERTIES
     private readonly renderer: THREE.WebGLRenderer;
@@ -17,7 +25,7 @@ export default class ReflectionProbe {
     private readonly orbitControls: OrbitControls;
     // RENDER PROPERTIES
     private pmremGenerator: THREE.PMREMGenerator;
-    private readonly renderTarget: THREE.WebGLCubeRenderTarget;
+    private renderTarget: THREE.WebGLCubeRenderTarget;
     private cubeCamera: THREE.CubeCamera;
     private cubeCameraNear: number = 0.1; // CubeCamera Near
     private cubeCameraFar: number = 1000; // CubeCamera 의 Far
@@ -25,17 +33,20 @@ export default class ReflectionProbe {
     // RENDER MEASURES
     private center: THREE.Vector3 = DEFAULT_POSITION;
     private size: THREE.Vector3 = DEFAULT_SIZE;
-    private readonly box: THREE.Box3 = new THREE.Box3().setFromCenterAndSize(this.center, this.size);
+    private box: THREE.Box3;
     // RESULT OBJECTS
-    private boxMesh: THREE.Mesh;
+    private readonly boxMesh: THREE.Mesh;
     private reflectionProbeSphere: THREE.Mesh;
     private effectedMeshes: THREE.Mesh[] = [];
     private readonly translateControls: TransformControls<THREE.Camera>;
     private readonly scaleControls: TransformControls<THREE.Camera>;
     // PRIORITY PROPERTIES
-    private readonly serializedId: string = v4();
+    private serializedId: string = v4();
+    // Out Interaction Property
+    private showProbe: boolean = true;
+    private showControls: boolean = true;
     
-    constructor(renderer: THREE.WebGLRenderer, scene: THREE.Scene, camera: THREE.Camera, orbitControls?: OrbitControls, resolution?: ReflectionProbeResolutions) {
+    constructor(renderer: THREE.WebGLRenderer, scene: THREE.Scene, camera: THREE.Camera, orbitControls: OrbitControls, resolution?: ReflectionProbeResolutions) {
         this.renderer = renderer;
         this.pmremGenerator = new THREE.PMREMGenerator(renderer);
         this.scene = scene;
@@ -55,6 +66,15 @@ export default class ReflectionProbe {
             generateMipmaps: false,
         });
         
+        const { height, center } = getBoxHeight(scene);
+        
+        console.log({ height, center });
+        
+        this.size.setY(height);
+        this.center.setY(center);
+        
+        this.box = new THREE.Box3().setFromCenterAndSize(this.center, this.size);
+        
         // Create Cube Camera
         const cubeCamera = new THREE.CubeCamera(this.cubeCameraNear, this.cubeCameraFar, this.renderTarget);
         cubeCamera.layers.enableAll();
@@ -62,7 +82,7 @@ export default class ReflectionProbe {
         cubeCamera.update(this.renderer, this.scene);
         
         // Create Sphere Mesh
-        const sphereMesh = createProbeSphere(cubeCamera);
+        const sphereMesh = createProbeSphere();
         sphereMesh.scale.set(1 / this.size.x, 1 / this.size.y, 1 / this.size.z);
         sphereMesh.material.envMap = this.getTexture();
         sphereMesh.userData.probe = this;
@@ -71,35 +91,40 @@ export default class ReflectionProbe {
         boxMesh.add(sphereMesh);
         
         const translateControls = new TransformControls(camera, this.renderer.domElement);
+        translateControls.userData.isTransformControls = true;
+        translateControls.setMode('translate');
+        translateControls.setSize(0.7);
+        translateControls.showY = false;
         const scaleControls = new TransformControls(camera, this.renderer.domElement);
+        scaleControls.userData.isTransformControls = true;
         scaleControls.setMode('scale');
         scaleControls.setSize(0.5);
+        scaleControls.showY = false;
         
         translateControls.addEventListener('dragging-changed', (event) => {
-            if (orbitControls) {
-                orbitControls.enabled = !event.value;
+            if (this.orbitControls) {
+                this.orbitControls.enabled = !event.value;
             }
         });
         
         scaleControls.addEventListener('dragging-changed', (event) => {
-            if (orbitControls) {
-                orbitControls.enabled = !event.value;
-            }
-        })
-        
-        
-        translateControls.addEventListener('change', (event) => {
-            if (this.boxMesh) {
-                this.updateCameraPosition(this.boxMesh.position);
+            if (this.orbitControls) {
+                this.orbitControls.enabled = !event.value;
             }
         });
         
-        scaleControls.addEventListener('change', (event) => {
+        
+        translateControls.addEventListener('objectChange', (event) => {
             if (this.boxMesh) {
-                this.reflectionProbeSphere.scale.set(1 / this.boxMesh.scale.x, 1 / this.boxMesh.scale.y, 1 / this.boxMesh.scale.z);
-                this.updateCameraPosition(this.boxMesh.position);
+                this.setCenterAndSize(this.boxMesh.position, this.boxMesh.scale);
             }
-        })
+        });
+        
+        scaleControls.addEventListener('objectChange', (event) => {
+            if (this.boxMesh) {
+                this.setCenterAndSize(this.boxMesh.position, this.boxMesh.scale);
+            }
+        });
         
         translateControls.attach(boxMesh);
         scaleControls.attach(boxMesh);
@@ -111,8 +136,34 @@ export default class ReflectionProbe {
         this.scaleControls = scaleControls;
     }
     
+    addToScene() {
+        console.log('adding : ', this.boxMesh);
+        this.scene.add(this.boxMesh, this.translateControls, this.scaleControls);
+        this.updateCameraPosition(this.boxMesh.position);
+    }
+    
+    removeFromScene() {
+        this.boxMesh.removeFromParent();
+        this.translateControls.removeFromParent();
+        this.scaleControls.removeFromParent();
+        this.resetEffectedMeshes();
+    }
+    
     getControls() {
         return { translateControls: this.translateControls, scaleControls: this.scaleControls };
+    }
+    
+    setControlsVisible(visible: boolean) {
+        this.translateControls.showX = visible;
+        this.translateControls.showZ = visible;
+        this.scaleControls.showX = visible;
+        this.scaleControls.showZ = visible;
+        
+        return this;
+    }
+    
+    getEffectedMeshes() {
+        return this.effectedMeshes;
     }
     
     setResolution(resolution: ReflectionProbeResolutions) {
@@ -125,7 +176,6 @@ export default class ReflectionProbe {
     }
     
     setFromObject(object: THREE.Object3D) {
-        console.log('set From Object : ', object);
         if (object) {
             this.setCenterAndSize(getMeshCenterPosition(object), getMeshSize(object));
         } else {
@@ -158,8 +208,14 @@ export default class ReflectionProbe {
         this.updateSphere();
     }
     
-    updateBox() {
+    updateBox(recursive?: boolean) {
         this.box.setFromCenterAndSize(this.center, this.size);
+        if (recursive) {
+            this.updateBoxMesh();
+        }
+    }
+    
+    updateBoxMesh() {
         this.boxMesh.position.copy(this.center);
         this.boxMesh.scale.copy(this.size);
     }
@@ -177,9 +233,10 @@ export default class ReflectionProbe {
     resetEffectedMeshes() {
         // 기존 Probe에 엮인 메시의 envMap 초기화
         this.effectedMeshes.forEach(mesh => {
-            const material = mesh.material;
+            const material = mesh.material as THREE.Material;
             if ('envMap' in material) {
-                mesh.material.envMap = null;
+                material.envMap = null;
+                material.needsUpdate = true;
             }
         });
     }
@@ -202,6 +259,7 @@ export default class ReflectionProbe {
             }
         });
         
+        this.effectedMeshes = meshInBox;
         
         // envMap 적용
         const envMap = this.getTexture();
@@ -255,6 +313,89 @@ export default class ReflectionProbe {
         const cubeTexture = this.renderTarget.texture;
         return this.pmremGenerator.fromCubemap(cubeTexture).texture;
     }
+    
+    toJSON(): ReflectionProbeJSON {
+        return {
+            id: this.serializedId,
+            center: this.center.toArray(),
+            size: this.size.toArray(),
+            resolution: this.resolution,
+            createFrom: 'probe.toJSON()'
+        };
+    }
+    
+    fromJSON(json: ReflectionProbeJSON) {
+        this.serializedId = json.id;
+        this.center = new THREE.Vector3().fromArray(json.center);
+        this.size = new THREE.Vector3().fromArray(json.size);
+        this.resolution = json.resolution;
+        
+        // Update RenderTarget & CubeCamera
+        this.renderTarget = new THREE.WebGLCubeRenderTarget(this.resolution, {
+            format: THREE.RGBFormat,
+            generateMipmaps: false,
+        });
+        const cubeCamera = new THREE.CubeCamera(this.cubeCameraNear, this.cubeCameraFar, this.renderTarget);
+        cubeCamera.layers.enableAll();
+        cubeCamera.layers.disable(REFLECTION_BOX_LAYER);
+        cubeCamera.update(this.renderer, this.scene);
+        this.cubeCamera = cubeCamera;
+        
+        this.boxMesh.userData.probeId = json.id;
+        this.updateBoxMesh();
+        return this;
+    }
+    
+    getShowProbe() {
+        return this.showProbe;
+    }
+    
+    getShowControls(){
+        return this.showControls;
+    }
+    
+    setShowProbe(showProbe: boolean) {
+        this.showProbe = showProbe;
+        this.setControlsVisible(this.showProbe && this.showControls);
+    }
+    
+    setShowControls(showControls: boolean) {
+        this.showControls = showControls;
+        this.setControlsVisible(this.showProbe && this.showControls);
+    }
+}
+
+function getBoxHeight(scene: THREE.Scene) {
+    const defaultHeight = 1;
+    const defaultCenter = 0.5;
+    let minY = Infinity;
+    let maxY = -Infinity;
+    
+    scene.traverse((child) => {
+        if (child.type === 'Mesh' && !child.userData.isProbeMesh) {
+            const object = child as THREE.Mesh;
+            object.geometry.computeBoundingBox();
+            
+            const boundingBox = object.geometry.boundingBox;
+            
+            if (boundingBox) {
+                const boxMin = boundingBox.min.clone().applyMatrix4(object.matrixWorld);
+                const boxMax = boundingBox.max.clone().applyMatrix4(object.matrixWorld);
+                
+                minY = Math.min(minY, boxMin.y);
+                maxY = Math.max(maxY, boxMax.y);
+            }
+        }
+    });
+    
+    const heightY = maxY - minY;
+    const centerY = (maxY - minY) / 2
+    
+    
+    return {
+        height: heightY > 0 ? heightY : defaultHeight,
+        center: centerY > 0 ? centerY : defaultCenter,
+    };
 }
 
 function createMeshFromBox(box: THREE.Box3, serializedId: string) {
@@ -286,8 +427,7 @@ function createMeshFromBox(box: THREE.Box3, serializedId: string) {
     mesh.scale.copy(size);
     
     const meshBox = new THREE.Box3();
-    meshBox.setFromCenterAndSize(center, new THREE.Vector3(1, 1, 1));
-    
+    meshBox.setFromCenterAndSize(new THREE.Vector3(0, 0, 0), new THREE.Vector3(1, 1, 1));
     const boxHelper = new THREE.Box3Helper(meshBox, '#00deff');
     boxHelper.layers.set(REFLECTION_BOX_LAYER);
     mesh.add(boxHelper);
@@ -327,7 +467,7 @@ function getMeshSize(mesh: THREE.Object3D) {
     return vector;
 }
 
-function createProbeSphere(cubeCamera: THREE.CubeCamera) {
+function createProbeSphere() {
     const geometry = new THREE.SphereGeometry(0.5, 32, 16);
     
     const material = new THREE.MeshStandardMaterial({
@@ -338,7 +478,6 @@ function createProbeSphere(cubeCamera: THREE.CubeCamera) {
     });
     const mesh = new THREE.Mesh(geometry, material);
     mesh.userData.isProbeMesh = true;
-    mesh.userData.followingCameraUuid = cubeCamera.uuid;
     return mesh;
 }
 
@@ -400,8 +539,8 @@ const materialOnBeforeCompileFunction = (pos: THREE.Vector3, size: THREE.Vector3
 
 function useBoxProjectedEnvMap(shader: THREE.WebGLProgramParametersWithUniforms, envMapPosition: THREE.Vector3, envMapSize: THREE.Vector3) {
     // defines
-    if(!shader.defines){
-        debugger;
+    if (!shader.defines) {
+        shader.defines = {};
     }
     shader.defines.BOX_PROJECTED_ENV_MAP = true;
     

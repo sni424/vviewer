@@ -111,6 +111,7 @@ function Renderer() {
         <boxGeometry args={[1, 1, 1]} />
         <meshStandardMaterial color="hotpink" />
       </mesh> */}
+        {/*<ReflectionProbe />*/}
         <OrbitControls ref={orbitControlsRef} makeDefault onChange={e => {
             const matrix = e?.target.object.matrix.clone()
             setCameraAtom(matrix);
@@ -141,6 +142,8 @@ function RendererContainer() {
     const setScrollTo = useSetAtom(treeScrollToAtom);
     const gl = useAtomValue(globalGlAtom);
     const lastClickRef = useRef<number>(0);
+    const cameraLayer = new THREE.Layers();
+    cameraLayer.enableAll();
 
     useEffect(() => {
         if (!threeExports) {
@@ -252,6 +255,7 @@ function RendererContainer() {
                 // }}
                 // gl={gl}
                 gl={{ antialias: true }}
+                camera={{layers: cameraLayer}}
                 onMouseDown={() => {
                     lastClickRef.current = Date.now();
                 }}
@@ -283,10 +287,12 @@ function RendererContainer() {
                                 return [...selected, intersects[0].object.uuid];
                             });
                         } else {
-                            setSelected([intersects[0].object.uuid]);
-                            setScrollTo(intersects[0].object.uuid);
-                            if (intersects[0].object.type === "Mesh") {
-                                setMaterialSelected((intersects[0].object as THREE.Mesh).material as THREE.Material);
+                            if (!intersects[0].object.userData.isProbeMesh) {
+                                setSelected([intersects[0].object.uuid]);
+                                setScrollTo(intersects[0].object.uuid);
+                                if (intersects[0].object.type === "Mesh") {
+                                    setMaterialSelected((intersects[0].object as THREE.Mesh).material as THREE.Material);
+                                }
                             }
                         }
 

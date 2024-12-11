@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react';
 import { materialSelectedAtom, panelTabAtom, selectedAtom, threeExportsAtom, treeScrollToAtom, useModal } from '../scripts/atoms';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import { THREE } from '../scripts/VTHREE';
@@ -83,7 +83,6 @@ function MeshInfoPanel() {
     const threeExports = useAtomValue(threeExportsAtom);
     const materialSelected = useAtomValue(materialSelectedAtom);
     const { openModal, closeModal } = useModal();
-
 
     if (selecteds.length === 0 || !threeExports) {
         return null;

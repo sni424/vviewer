@@ -79,7 +79,7 @@ const SelectBox = () => {
             // if (obj.userData.boxhelper) {
             //     deletes.push(obj);
             // }
-            if (obj.type === "BoxHelper") {
+            if (obj.type === "BoxHelper" || obj.type === "Box3Helper") {
                 deletes.push(obj);
             }
         })

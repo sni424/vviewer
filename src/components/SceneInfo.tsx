@@ -414,6 +414,14 @@ const SceneInfo = () => {
                     if (child.type === "BoxHelper") {
                         return null;
                     }
+                    
+                    if (child.userData.isProbeMesh) {
+                        return null;
+                    }
+                    
+                    if (child.userData.isTransformControl) {
+                        return null;
+                    }
 
                     const info = groupInfo(child);
                     if (info.nodeCount === 0) {

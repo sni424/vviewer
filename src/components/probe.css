@@ -26,17 +26,19 @@
 
 }
 
-.probe .deleteButton {
-    border: none;
-    background: transparent;
-}
-
 .probe {
     cursor: pointer;
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    width: 33%;
+    width: 100%;
+}
+
+.probe .on-off {
+    margin-left: 0.5rem;
+}
+
+.probe .deleteButton {
+    margin-left: auto;
 }
 
 .probe .probeId {

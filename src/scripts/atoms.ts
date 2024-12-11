@@ -148,6 +148,7 @@ export const ProbeAtom = atom<ReflectionProbe[]>([]);
 export const showProbeAtom = atom<boolean>(true);
 export const orbitControlsAtom = atom<OrbitControls>();
 export const treeScrollToAtom = atom<string | null>(null);
+export const selectedProbeAtom = atom<string | null>(null);
 
 export const Tabs = ["scene", "tree", "probe"] as const;
 export type Tab = typeof Tabs[number];
