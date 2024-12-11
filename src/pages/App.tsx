@@ -18,7 +18,7 @@ const MyRoutes = () => {
         navigate("/mobile");
       }
     }
-    checkWidth();
+    // checkWidth();
   }, [
 
   ]);

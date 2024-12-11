@@ -5,9 +5,10 @@ import { Environment, OrbitControls } from '@react-three/drei';
 import { LineGeometry } from 'three/examples/jsm/Addons.js';
 
 import * as THREE from 'three';
-import { threeExportsAtom } from '../../scripts/atoms';
-import { useSetAtom } from 'jotai';
+import { mainCameraPosAtom, mainCameraProjectedAtom, threeExportsAtom } from '../../scripts/atoms';
+import { atom, useAtom, useAtomValue, useSetAtom } from 'jotai';
 import TopView from '../canvas/TopView';
+import Grid from '../canvas/Grid';
 
 type Point = { x: number, y: number };
 
@@ -29,7 +30,7 @@ const sampleTests: Point[] = [
     { x: 2, y: 3 }
 ];
 
-function isPointOnLineSegment(p: Point, v1: Point, v2: Point): boolean {
+function _isPointOnLineSegment(p: Point, v1: Point, v2: Point): boolean {
     const crossProduct = (p.y - v1.y) * (v2.x - v1.x) - (p.x - v1.x) * (v2.y - v1.y);
     if (Math.abs(crossProduct) > 1e-10) return false; // Not on the line
     const dotProduct = (p.x - v1.x) * (v2.x - v1.x) + (p.y - v1.y) * (v2.y - v1.y);
@@ -38,7 +39,7 @@ function isPointOnLineSegment(p: Point, v1: Point, v2: Point): boolean {
     return dotProduct <= squaredLength; // After the segment
 }
 
-function isPointInsidePolygon(point: Point, polygon: Point[]): boolean {
+function _isPointInsidePolygon(point: Point, polygon: Point[]): boolean {
     let count = 0;
     const { x, y } = point;
 
@@ -47,7 +48,7 @@ function isPointInsidePolygon(point: Point, polygon: Point[]): boolean {
         const vertex2 = polygon[(i + 1) % polygon.length];
 
         // Check if the point lies exactly on the edge
-        if (isPointOnLineSegment(point, vertex1, vertex2)) {
+        if (_isPointOnLineSegment(point, vertex1, vertex2)) {
             return true; // Point is on the edge
         }
 
@@ -67,7 +68,7 @@ function _TestPage() {
     return (
         <div>
             {sampleTests.map((test, i) => {
-                return <div>{i + 1}. {isPointInsidePolygon(test, samplePoints) ? "true" : "false"}</div>
+                return <div>{i + 1}. {_isPointInsidePolygon(test, samplePoints) ? "true" : "false"}</div>
             })}
         </div>
     )
@@ -84,13 +85,36 @@ interface Point2D {
     z: number;
 }
 
-/**
- * Create a mesh from an array of {x, z} points, with minY and maxY as height bounds.
- * @param points Array of {x, z} points to create the mesh along the XZ plane.
- * @param minY The minimum Y-coordinate for the vertical extent of the mesh.
- * @param maxY The maximum Y-coordinate for the vertical extent of the mesh.
- * @returns A Three.js Mesh object.
- */
+export function createClosedConcaveSurface(
+    points: Point2D[],
+    y: number
+): THREE.Mesh {
+
+    if (points.length < 3) {
+        throw new Error('At least three points are required to create a closed surface.');
+    }
+
+    // xz 평면에서 생성했지만 shape은 xy기준으로 생성되므로
+    // 생성 수 마지막에 geometry.rotateX(Math.PI / 2)를 호출하여 xz평면으로 변환
+
+    const shape = new THREE.Shape();
+    shape.moveTo(points[0].x, points[0].z);
+    points.slice(1).forEach(point => {
+        shape.lineTo(point.x, point.z);
+    });
+    shape.closePath();
+
+
+    const geometry = new THREE.ShapeGeometry(shape);
+    geometry.rotateX(Math.PI / 2);
+
+    // 이 때 바깥쪽을 보고 있으므로 Material에서 더블사이드로 설정
+    const material = new THREE.MeshStandardMaterial({ color: 0x44aa88, side: THREE.DoubleSide });
+    const mesh = new THREE.Mesh(geometry, material);
+
+    return mesh;
+}
+
 export function createMeshesFromPoints(
     points: Point2D[],
     minY: number,
@@ -141,27 +165,29 @@ export function createMeshesFromPoints(
     const verticalSurfaces = createMesh(createBufferGeometry(verticalVertices, verticalIndices));
 
     // Bottom face
-    const bottomVertices: number[] = [];
-    const bottomIndices: number[] = [];
-    points.forEach((point) => {
-        bottomVertices.push(point.x, minY, point.z);
-    });
-    // bottomVertices.push(0, minY, 0);
-    points.forEach((_, i) => {
-        bottomIndices.push(0, i, (i + 1) % points.length);
-    });
-    const bottomFace = createMesh(createBufferGeometry(bottomVertices, bottomIndices));
+    // const bottomVertices: number[] = [];
+    // const bottomIndices: number[] = [];
+    // points.forEach((point) => {
+    //     bottomVertices.push(point.x, minY, point.z);
+    // });
+    // // bottomVertices.push(0, minY, 0);
+    // points.forEach((_, i) => {
+    //     bottomIndices.push(0, i, (i + 1) % points.length);
+    // });
+    // const bottomFace = createMesh(createBufferGeometry(bottomVertices, bottomIndices));
+    const bottomFace = createClosedConcaveSurface(points, minY);
 
     // Top face
-    const topVertices: number[] = [];
-    const topIndices: number[] = [];
-    points.forEach((point) => {
-        topVertices.push(point.x, maxY, point.z);
-    });
-    points.forEach((_, i) => {
-        topIndices.push(0, (i + 1) % points.length, i);
-    });
-    const topFace = createMesh(createBufferGeometry(topVertices, topIndices));
+    // const topVertices: number[] = [];
+    // const topIndices: number[] = [];
+    // points.forEach((point) => {
+    //     topVertices.push(point.x, maxY, point.z);
+    // });
+    // points.forEach((_, i) => {
+    //     topIndices.push(0, (i + 1) % points.length, i);
+    // });
+    // const topFace = createMesh(createBufferGeometry(topVertices, topIndices));
+    const topFace = createClosedConcaveSurface(points, maxY);
 
     // Closure face (connect last point back to first point)
     const closureVertices: number[] = [];
@@ -211,9 +237,12 @@ const Marker: React.FC<MarkerProps> = ({ position }) => {
     const { verticalSurfaces, bottomFace, topFace, closureFace } = createMeshesFromPoints(points, minY, maxY);
     verticalSurfaces.material = new THREE.MeshStandardMaterial({ color: 0x0000ff });
     verticalSurfaces.material.side = THREE.DoubleSide;
+    (verticalSurfaces.material as THREE.MeshStandardMaterial).wireframe = true;
     bottomFace.material = new THREE.MeshStandardMaterial({ color: 0xff0000 });
+    bottomFace.material.side = THREE.DoubleSide;
     // (bottomFace.material as THREE.MeshStandardMaterial).wireframe = true;
     topFace.material = new THREE.MeshStandardMaterial({ color: 0xff0000 });
+    topFace.material.side = THREE.DoubleSide;
     // (topFace.material as THREE.MeshStandardMaterial).wireframe = true;
     topFace.material.transparent = true;
     topFace.material.opacity = 0.5
@@ -226,20 +255,21 @@ const Marker: React.FC<MarkerProps> = ({ position }) => {
         <mesh>
             <primitive object={bottomFace} />
         </mesh>
-        {/* <mesh>
+        <mesh>
             <primitive object={topFace} />
-        </mesh> */}
+        </mesh>
         <mesh>
             <primitive object={closureFace} />
         </mesh>
     </>
 };
+
+const markerPositionAtom = atom<[number, number, number][]>([]);
+
 const XZPlane: React.FC = () => {
     const meshRef = useRef<Mesh>(null);
-    const { camera, raycaster, mouse } = useThree();
-    const [markerPosition, setMarkerPosition] = useState<[number, number, number][]>([
-        // [0, 0, 0]
-    ]);
+    const { raycaster } = useThree();
+    const [markerPosition, setMarkerPosition] = useAtom(markerPositionAtom);
 
     const handlePointerDown = (event: any) => {
         event.stopPropagation();
@@ -268,9 +298,14 @@ const XZPlane: React.FC = () => {
     );
 };
 
+const isInsideAtom = atom<boolean>(false);
+
 const TheScene = () => {
     const threeExports = useThree();
     const setThreeExports = useSetAtom(threeExportsAtom);
+    const markerPosition = useAtomValue(markerPositionAtom);
+    const setIsInside = useSetAtom(isInsideAtom);
+    const setCameraPosAtom = useSetAtom(mainCameraPosAtom);
 
     useEffect(() => {
         setThreeExports(threeExports);
@@ -280,29 +315,79 @@ const TheScene = () => {
         <ambientLight intensity={0.5} />
         <pointLight position={[10, 10, 10]} />
         <XZPlane />
-        <OrbitControls />
+        <OrbitControls makeDefault onChange={e => {
+            const pos = e?.target.object.position;
+            if (!pos) {
+                return;
+            }
+
+
+            const x = pos.x;
+            const z = pos.z;
+            // setCameraPosAtom([x,z]);
+            setCameraPosAtom(pos);
+            // console.log(x, z)
+            const markers = markerPosition.map(([x, y, z]) => ({ x, z }));
+            const isInside = isPointInsidePolygon({ x, z }, markers);
+            setIsInside(isInside);
+
+
+        }} />
         <Environment files={"https://vra-configurator-dev.s3.ap-northeast-2.amazonaws.com/models/dancing_hall_1k.hdr"}>
         </Environment>;</>
+}
+
+function isPointOnLineSegment(p: Point2D, v1: Point2D, v2: Point2D): boolean {
+    const crossProduct = (p.z - v1.z) * (v2.x - v1.x) - (p.x - v1.x) * (v2.z - v1.z);
+    if (Math.abs(crossProduct) > 1e-10) return false; // Not on the line
+    const dotProduct = (p.x - v1.x) * (v2.x - v1.x) + (p.z - v1.z) * (v2.z - v1.z);
+    if (dotProduct < 0) return false; // Before the segment
+    const squaredLength = (v2.x - v1.x) ** 2 + (v2.z - v1.z) ** 2;
+    return dotProduct <= squaredLength; // After the segment
+}
+
+function isPointInsidePolygon(point: Point2D, polygon: Point2D[]): boolean {
+    let count = 0;
+    const { x, z } = point;
+
+    for (let i = 0; i < polygon.length; i++) {
+        const vertex1 = polygon[i];
+        const vertex2 = polygon[(i + 1) % polygon.length];
+
+        // Check if the point lies exactly on the edge
+        if (isPointOnLineSegment(point, vertex1, vertex2)) {
+            return true; // Point is on the edge
+        }
+
+        if ((vertex1.z > z) !== (vertex2.z > z)) {
+            const intersectX = (vertex2.x - vertex1.x) * (z - vertex1.z) / (vertex2.z - vertex1.z) + vertex1.x;
+            if (x < intersectX) {
+                count++;
+            }
+        }
+    }
+
+    return count % 2 === 1; // Odd number of crossings = inside
 }
 
 
 const Closure: React.FC = () => {
     const [canvasX, setCanvasX] = useState(0);
+    const isInside = useAtomValue(isInsideAtom);
+    const mainCameraProjected = useAtomValue(mainCameraProjectedAtom);
 
-    useEffect(() => {
-        const anim = () => {
-            requestAnimationFrame(anim);
-            setCanvasX(100+100 * Math.sin(Date.now()/500));
-        };
-        // requestAnimationFrame(anim);
-    }, []);
 
     return (
-        <div style={{ width: "100vw", height: "100vh", position: "relative" }}>
+        <div style={{ width: "100dvw", height: "100dvh", position: "relative" }}>
             <Canvas
                 camera={{ position: [5, 5, 5], fov: 50 }}
                 onCreated={({ gl }) => gl.setClearColor('#a0a0a0')}
             >
+
+                {/* <gridHelper args={[20, 20, 0xff0000, 'teal']} />
+                <gridHelper args={[20, 20, 0xff0000, 'teal']} rotation={[Math.PI / 2, 0, 0]} />
+                <gridHelper args={[20, 20, 0xff0000, 'teal']} rotation={[0, 0, Math.PI / 2]} /> */}
+                <Grid></Grid>
                 <TheScene></TheScene>
                 <mesh position={[0, 0, 0]}>
                     <sphereGeometry args={[0.1, 32, 32]} />
@@ -322,12 +407,24 @@ const Closure: React.FC = () => {
                     </mesh>
                 })}
             </Canvas>
-            <div style={{ width: 200, height: 300, position: "absolute", top: 10, left: 10, zIndex: 20, backgroundColor: "red", transform: `translate(${canvasX}px, 0px)` }}>
+            <div style={{ width: 200, height: 200, position: "absolute", top: 10, left: 10, zIndex: 20, backgroundColor: "red", transform: `translate(${canvasX}px, 0px)`, overflow: "hidden" }}>
                 {/* <Canvas>
                     <TopView></TopView>
                 </Canvas> */}
                 <TopView></TopView>
+                {mainCameraProjected && <div style={{
+                    position: "absolute",
+                    width: 10,
+                    height: 10,
+                    top: 0, left: 0,
+                    backgroundColor: "red",
+                    borderRadius: "50%",
+                    border: "1px solid white",
+                    transform: `translate(${mainCameraProjected[0]}px, ${mainCameraProjected[1]}px
+                    )`
+                }}></div>}
             </div>
+            <div style={{ position: "absolute", top: 10, right: 10, padding: 8, backgroundColor: isInside ? "green" : "red", color: "white" }}>Is Inside : {isInside ? "O" : "X"}</div>
         </div>
 
     );

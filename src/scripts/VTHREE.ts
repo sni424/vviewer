@@ -20,7 +20,7 @@ declare module 'three' {
   }
 
   interface Vector3 {
-    screenPosition(camera: THREE.Camera): { x: number; y: number };
+    screenPosition(camera: THREE.Camera, width?: number, height?: number): { x: number; y: number };
     inCameraView(camera: THREE.Camera): boolean;
 
     // 카메라와 점 사이의 물체
@@ -62,14 +62,16 @@ declare module 'three' {
   }
 }
 
-THREE.Vector3.prototype.screenPosition = function (camera) {
-  const vector = this.project(camera);
-  const width = window.innerWidth;
-  const height = window.innerHeight;
+THREE.Vector3.prototype.screenPosition = function (camera, inputWidth, inputHeight) {
+  const vector = this.clone().project(camera);
+  const width = inputWidth ?? window.innerWidth;
+  const height = inputHeight ?? window.innerHeight;
 
   // Convert NDC to screen space (0,0 is the top-left corner)
   const screenX = ((vector.x + 1) * width) / 2;
   const screenY = ((-vector.y + 1) * height) / 2; // Invert Y axis for screen space
+
+  // console.log({ width, height, screenX, screenY, x: vector.x, y: vector.y });
   return {
     x: screenX,
     y: screenY,
