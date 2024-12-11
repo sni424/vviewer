@@ -255,6 +255,13 @@ const UnifiedCameraControls: React.FC<UnifiedCameraControlsProps> = ({
             window.removeEventListener('keyup', handleKeyUp);
         };
     }, []);
+    
+    useEffect(() => {
+        console.log('orbitRef Current Updated : ', orbit.current);
+        if (orbit.current) {
+            setOrbitControls(orbit.current)
+        }
+    }, [orbit.current]);
 
     useEffect(() => {
         const element = document.getElementById('canvasDiv');
@@ -401,7 +408,6 @@ const UnifiedCameraControls: React.FC<UnifiedCameraControlsProps> = ({
     useEffect(() => {
         if (orbitSetting.enable && !cameraSetting.isoView && orbit.current) {
             updateOrbitTarget(lastCameraInfo.target)
-            setOrbitControls(orbit.current)
         }
     }, [orbitSetting.enable])
 

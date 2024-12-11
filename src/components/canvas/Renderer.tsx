@@ -30,14 +30,12 @@ import PostProcess from './PostProcess';
 
 function Renderer() {
     useStats();
-    const orbitControlsRef = useRef<OrbitControlsImpl>(null);
     const threeExports = useThree();
     const sources = useAtomValue(sourceAtom);
     const setLoadHistoryAtom = useSetAtom(loadHistoryAtom);
     const setThreeExportsAtom = useSetAtom(threeExportsAtom);
     const { scene, camera } = threeExports;
     const setCameraAtom = useSetAtom(cameraMatrixAtom);
-    const setOrbitControls = useSetAtom(orbitControlsAtom);
 
     const [model, setModel] = useState<any>(null)
 
@@ -59,12 +57,6 @@ function Renderer() {
         // scene.environment = 
 
     }, []);
-
-    useEffect(() => {
-        if (orbitControlsRef.current) {
-            setOrbitControls(orbitControlsRef.current);
-        }
-    }, [orbitControlsRef.current]);
 
     useEffect(() => {
 
@@ -277,7 +269,7 @@ function RendererContainer() {
                 //     toneMappingWhitePoint: 1
                 // }}
                 // gl={gl}
-                gl={{ antialias: true }}
+                gl={gl}
                 camera={{layers: cameraLayer}}
                 onMouseDown={(e) => {
                     lastClickRef.current = Date.now();

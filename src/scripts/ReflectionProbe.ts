@@ -1,6 +1,8 @@
 import * as THREE from './VTHREE.ts';
 import { v4 } from 'uuid';
 import { OrbitControls, TransformControls } from 'three-stdlib';
+import { useSetAtom } from 'jotai';
+import { orbitSettingAtom } from './atoms.ts';
 
 const DEFAULT_RESOLUTION: ReflectionProbeResolutions = 256;
 const DEFAULT_POSITION: THREE.Vector3 = new THREE.Vector3(0, 0, 0);
@@ -46,11 +48,13 @@ export default class ReflectionProbe {
     private showProbe: boolean = true;
     private showControls: boolean = true;
     
-    constructor(renderer: THREE.WebGLRenderer, scene: THREE.Scene, camera: THREE.Camera, orbitControls: OrbitControls, resolution?: ReflectionProbeResolutions) {
+    constructor(renderer: THREE.WebGLRenderer, scene: THREE.Scene, camera: THREE.Camera, orbitControls: OrbitControls, setOrbitEnabled: (b: boolean) => void, resolution?: ReflectionProbeResolutions) {
         this.renderer = renderer;
         this.pmremGenerator = new THREE.PMREMGenerator(renderer);
         this.scene = scene;
         this.orbitControls = orbitControls;
+        
+        console.log('Probe Camera detected : ', camera, orbitControls)
         
         if (!camera.layers.isEnabled(CUBE_CAMERA_LAYER)) {
             camera.layers.enableAll();
@@ -79,7 +83,6 @@ export default class ReflectionProbe {
         const cubeCamera = new THREE.CubeCamera(this.cubeCameraNear, this.cubeCameraFar, this.renderTarget);
         cubeCamera.layers.enableAll();
         cubeCamera.layers.disable(REFLECTION_BOX_LAYER);
-        cubeCamera.update(this.renderer, this.scene);
         
         // Create Sphere Mesh
         const sphereMesh = createProbeSphere();
@@ -104,15 +107,14 @@ export default class ReflectionProbe {
         scaleControls.showY = false;
         
         translateControls.addEventListener('dragging-changed', (event) => {
-            if (this.orbitControls) {
-                this.orbitControls.enabled = !event.value;
-            }
+            setOrbitEnabled(!event.value);
         });
         
         scaleControls.addEventListener('dragging-changed', (event) => {
-            if (this.orbitControls) {
-                this.orbitControls.enabled = !event.value;
-            }
+            // if (this.orbitControls) {
+            //     this.orbitControls.enabled = !event.value;
+            // }
+            setOrbitEnabled(!event.value);
         });
         
         
@@ -279,30 +281,43 @@ export default class ReflectionProbe {
     
     onBeforeCubeCameraUpdate() {
         const scene = this.scene;
-        const transformControls = scene.children.filter(child => {
-            return child.isTransformControls;
-        });
         
-        transformControls.forEach(child => {
+        const filterCondition = (object: THREE.Object3D) => {
+            return (object.isTransformControls || object.userData.isTransformControls) && object.visible;
+        };
+        
+        const filteredObjects = scene.children.filter(filterCondition);
+        
+        filteredObjects.forEach(child => {
             child.visible = false;
         });
         
-        return transformControls;
+        return filteredObjects;
     }
     
-    onAfterCubeCameraUpdate(transformControls: THREE.Object3D[]) {
-        transformControls.forEach(child => {
+    onAfterCubeCameraUpdate(filteredObjects: THREE.Object3D[]) {
+        filteredObjects.forEach(child => {
             child.visible = true;
         });
     }
     
     renderCamera() {
-        // Before render
-        const transformControls = this.onBeforeCubeCameraUpdate();
+        // Before render => Set No Render Objects Invisible
+        const filteredObjects = this.onBeforeCubeCameraUpdate();
+        // Set Original WebGLRenderer.autoClear value
+        const rendererOriginalAutoClearValue = this.renderer.autoClear;
+        // force Update WebGLRenderer.autoClear value to true
+        this.renderer.autoClear = true;
+        // Update Cube Camera
         this.cubeCamera.update(this.renderer, this.scene);
+        // reset to WebGLRenderer.autoClear value to original
+        this.renderer.autoClear = rendererOriginalAutoClearValue;
+        // Apply envMap to ReflectionProbe Sphere
         this.reflectionProbeSphere.material.envMap = this.getTexture();
+        // Apply Box In Box projected Meshes
         this.updateObjectChildrenEnv();
-        this.onAfterCubeCameraUpdate(transformControls);
+        // After Render => set No Render Objects Visible
+        this.onAfterCubeCameraUpdate(filteredObjects);
     }
     
     updateCameraPosition(position: THREE.Vector3) {
@@ -322,7 +337,7 @@ export default class ReflectionProbe {
             center: this.center.toArray(),
             size: this.size.toArray(),
             resolution: this.resolution,
-            createFrom: 'probe.toJSON()'
+            createFrom: 'probe.toJSON()',
         };
     }
     
@@ -352,7 +367,7 @@ export default class ReflectionProbe {
         return this.showProbe;
     }
     
-    getShowControls(){
+    getShowControls() {
         return this.showControls;
     }
     
@@ -391,7 +406,7 @@ function getBoxHeight(scene: THREE.Scene) {
     });
     
     const heightY = maxY - minY;
-    const centerY = (maxY - minY) / 2
+    const centerY = (maxY - minY) / 2;
     
     
     return {

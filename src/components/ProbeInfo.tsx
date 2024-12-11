@@ -1,5 +1,5 @@
-import { useAtom, useAtomValue } from 'jotai';
-import { orbitControlsAtom, ProbeAtom, showProbeAtom, threeExportsAtom } from '../scripts/atoms.ts';
+import { useAtom, useAtomValue, useSetAtom } from 'jotai';
+import { orbitControlsAtom, orbitSettingAtom, ProbeAtom, showProbeAtom, threeExportsAtom } from '../scripts/atoms.ts';
 import ReflectionProbe from '../scripts/ReflectionProbe.ts';
 import './probe.css';
 import React, { useEffect, useState } from 'react';
@@ -9,16 +9,28 @@ const ProbeInfo = () => {
     const threeExports = useAtomValue(threeExportsAtom);
     const [probes, setProbes] = useAtom<ReflectionProbe[]>(ProbeAtom);
     const orbitControls = useAtomValue(orbitControlsAtom);
+    const [orbitSetting, setOrbitSetting] = useAtom(orbitSettingAtom);
     
+    function setOrbitEnabled(enabled: boolean) {
+        setOrbitSetting((pre) => {
+            return {...pre, enable: enabled};
+        })
+    }
     
     if (!threeExports) {
         return null;
     }
     
+    useEffect(() => {
+        console.log('orbitSetting Changed : ', orbitSetting);
+    }, [orbitSetting]);
+    
+    
+    
     const { scene, gl, camera } = threeExports;
     
     function addProbe() {
-        const probe = new ReflectionProbe(gl, scene, camera, orbitControls);
+        const probe = new ReflectionProbe(gl, scene, camera, orbitControls, setOrbitEnabled);
         probe.addToScene();
         setProbes(prev => [...prev, probe]);
     }
@@ -57,6 +69,13 @@ export const ProbeComponent = ({ probe }: { probe: ReflectionProbe }) => {
     const [probes, setProbes] = useAtom<ReflectionProbe[]>(ProbeAtom);
     const [showProbe, setShowProbe] = useState<boolean>(probe.getShowProbe());
     const [showControls, setShowControls] = useState<boolean>(probe.getShowControls());
+    const setOrbitSetting = useSetAtom(orbitSettingAtom);
+    
+    function setOrbitEnabled(enabled: boolean) {
+        setOrbitSetting((pre) => {
+            return {...pre, enable: enabled};
+        })
+    }
     
     if (!threeExports || !orbitControls) {
         return (
@@ -94,7 +113,7 @@ export const ProbeComponent = ({ probe }: { probe: ReflectionProbe }) => {
         json.id = v4();
         json.center[0] = json.center[0] + 1;
         json.center[2] = json.center[2] + 1;
-        const newProbe = new ReflectionProbe(gl, scene, camera, orbitControls).fromJSON(json);
+        const newProbe = new ReflectionProbe(gl, scene, camera, orbitControls, setOrbitEnabled).fromJSON(json);
         newProbe.addToScene();
         setProbes((prev) => [...prev, newProbe]);
         console.log(scene);
