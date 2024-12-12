@@ -1,6 +1,7 @@
 import * as THREE from 'three';
-import { Matrix4Array } from '../types';
+import { Matrix4Array, View } from '../types';
 import { TransformControlsPlane } from 'three/examples/jsm/Addons.js';
+import { RootState } from '@react-three/fiber';
 
 export interface ThreeUserData {
   otherUserCamera?: boolean;
@@ -205,3 +206,33 @@ THREE.Object3D.prototype.traverse = function (callback: (node: THREE.Object3D) =
 
 export * from 'three';
 export { THREE };
+
+
+declare global {
+  interface Window {
+      getThree: (view: View) => RootState | undefined;
+      setThree: (view: View, state: RootState) => RootState;
+      threeStore: { [key in View]: RootState | undefined };
+  }
+}
+
+
+window.threeStore = {
+  [View.Shared]: undefined,
+  [View.Main]: undefined,
+  [View.Top]: undefined,
+  [View.Front]: undefined,
+  [View.Right]: undefined,
+  [View.Back]: undefined,
+  [View.Left]: undefined,
+  [View.Bottom]: undefined,
+}
+
+window.setThree = (view: View, state: RootState) => {
+  window.threeStore[view] = state;
+  return state;
+}
+
+window.getThree = (view: View) => {
+  return window.threeStore[view];
+}

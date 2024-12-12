@@ -1,63 +1,67 @@
-import React, { useEffect, useRef } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import useViewport, { DefaultCameraPositions, useThreeAtom } from '../../scripts/useViewport';
 import { Box, Environment, OrbitControls, OrthographicCamera } from '@react-three/drei';
 import { View } from '../../types';
 import { THREE } from '../../scripts/VTHREE';
-import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { cameraFar, Vector3, vertexColor } from 'three/webgpu';
+import { Canvas, CanvasProps, RootState, useFrame, useThree } from '@react-three/fiber';
 import { useAtomValue, useSetAtom } from 'jotai';
-import { frontThreeAtom, sharedThreeAtom, Threes } from '../../scripts/atoms';
+import { Threes } from '../../scripts/atoms';
+import Grid from './Grid';
+import { OrbitControls as OrbitControlsImpl } from 'three/examples/jsm/Addons.js';
 
-const TopRenderer = () => {
+
+const ViewportRenderer = (view: View) => ({ children }: {
+    children?: React.ReactNode
+}) => {
     const localThreeExports = useThree();
-    const sharedExports = useAtomValue(Threes[View.Shared]);
-    const setThree = useSetAtom(Threes[View.Top]);
 
     useEffect(() => {
-        setThree(localThreeExports);
+        const { camera, gl } = localThreeExports;
+        const orbitControls = new OrbitControlsImpl(camera, gl.domElement);
+        localThreeExports.controls = orbitControls;
+        window.setThree(view, localThreeExports);
     }, [localThreeExports]);
 
+    const { position, zoom } = DefaultCameraPositions[View.Top];
+
+
+
     return <>
-        <OrthographicCamera makeDefault position={[0, 0, 10]} zoom={20} />
-        <OrbitControls></OrbitControls>
+        <OrthographicCamera makeDefault position={position} zoom={zoom} />
+        {/* <OrbitControls></OrbitControls> */}
+        {children}
     </>
 }
 
-const TopViewport = () => {
-    // const viewport = useViewport(View.Top);
-    const view = View.Top;
+const Viewport = (view: View) => ({ children, onCreated, ...rest }: {
+    children?: React.ReactNode,
+    onCreated?: CanvasProps["onCreated"],
+    rest?: CanvasProps
+}) => {
     const sharedExports = useAtomValue(Threes[View.Shared]);
-    const localExports = useAtomValue(Threes[view]);
-
+    const Renderer = ViewportRenderer(view);
+    // const localThreeExports = useAtomValue(Threes[view]);
+    // const Renderer = useMemo(() => ViewportRenderer(view), [localThreeExports]);
 
     if (!sharedExports) {
         return null;
     }
 
+    return <Canvas id={`canvas-${view}`} scene={sharedExports.scene} {...rest} onCreated={state => {
+        const { camera } = state;
+        camera.layers.enable(view);
+        const { position, zoom, up } = DefaultCameraPositions[view];
+        camera.position.set(position[0], position[1], position[2]);
+        camera.zoom = zoom;
+        // camera.rotation.set(0, 0, 0);
+        camera.lookAt(0, 0, 0);
+        camera.up = new THREE.Vector3(up[0], up[1], up[2]);
+        camera.updateProjectionMatrix();
 
-    return <div style={{
-        width: "100%",
-        height: "100%",
-        position: "relative",
+        onCreated?.(state);
     }}>
-
-        <Canvas scene={sharedExports.scene}>
-            <TopRenderer />
-        </Canvas>
-        <div style={{ position: "absolute", top: 3, left: 3, padding: 4, backgroundColor: "#202020", color: "white", cursor: "pointer" }}
-            onClick={() => {
-                if (localExports) {
-                    const { camera } = localExports;
-
-                    // camera.position.set(0, 0, 100);
-                    camera.position.addScalar(1);
-                    // camera.zoom = camera.zoom + 20;
-                    camera.updateProjectionMatrix();
-                    console.log("top fixview", camera.uuid);
-                }
-            }}
-        >Top</div>
-    </div>
+        <Renderer>{children}</Renderer>
+    </Canvas>
 }
 
 
@@ -79,8 +83,143 @@ const MainRender = () => {
     </>
 }
 
+const useThreeExports = (view: View) => {
+    const [threeExports, setThreeExports] = useState<RootState | undefined>(undefined);
+    useEffect(() => {
+        const int = setInterval(() => {
+            const found = window.getThree(view);
+            if (found) {
+                setThreeExports(found);
+                clearInterval(int);
+            }
+        }, 50);
+
+        return () => {
+            clearInterval(int);
+        }
+    }, []);
+
+    return threeExports;
+}
+
+
+const ViewName: { [key in View]: string } = {
+    [View.Shared]: "Shared",
+    [View.Main]: "Main",
+    [View.Top]: "Top",
+    [View.Front]: "Front",
+    [View.Right]: "Right",
+    [View.Back]: "Back",
+    [View.Left]: "Left",
+    [View.Bottom]: "Bottom",
+} as const;
+
+const ViewController = (view: View) => ({ children }: {
+    children?: React.ReactNode
+}) => {
+    const localThreeExports = useThreeExports(view);
+    if (!localThreeExports) {
+        return null;
+    }
+
+    const { camera, scene, controls } = localThreeExports;
+
+    return <div style={{
+        position: "absolute",
+        top: 0,
+        left: 0,
+    }}>
+        <div>
+            <span style={{
+                backgroundColor: "black",
+                color: "white",
+                cursor: "pointer"
+            }}
+                onClick={() => {
+                    console.log(controls)
+
+
+                    // camera.position.set(p[0], p[1], p[2]);
+                    // camera.zoom = zoom;
+                    // camera.rotation.set(0, 0, 0);
+                    // camera.lookAt(0, 0, 0);
+                    // camera.up = new THREE.Vector3(0, 0, -1);
+
+                    const { position: p, zoom, up } = DefaultCameraPositions[view];
+                    camera.position.set(p[0], p[1], p[2]);
+                    camera.zoom = zoom;
+                    camera.rotation.set(0, 0, 0);
+                    camera.lookAt(0, 0, 0);
+                    camera.up = new THREE.Vector3(up[0], up[1], up[2]);
+                    
+                    camera.updateProjectionMatrix();
+
+                    if(controls instanceof OrbitControlsImpl){
+                        controls.target.set(0, 0, 0);
+                        controls.update();
+                    } 
+
+                }}
+            >{ViewName[view]}</span>
+            <button style={{ width: 16, height: 16, fontSize: 12 }} onClick={() => {
+                const { camera } = localThreeExports;
+                camera.zoom *= 0.85;
+                camera.updateProjectionMatrix();
+            }}>-</button>
+            <button style={{ width: 16, height: 16, fontSize: 12 }} onClick={() => {
+                const { camera } = localThreeExports;
+                camera.zoom *= 1.15;
+                camera.updateProjectionMatrix();
+            }}>+</button>
+        </div>
+        {children}
+    </div>
+}
+
+const TopView = ({
+    children
+}: {
+    children?: React.ReactNode
+
+}) => {
+    const view = View.Top;
+    const TheCanvas = Viewport(view);
+    const TopViewController = ViewController(view);
+
+    return <>
+        <TheCanvas onCreated={state => {
+            state.camera.layers.enable(view);
+        }}>
+            <Grid layers={view}></Grid>
+            {children}
+        </TheCanvas>
+        <TopViewController></TopViewController>
+    </>
+}
+
+
+const FrontView = ({
+    children
+}: {
+    children?: React.ReactNode
+
+}) => {
+    const view = View.Front;
+    const TheCanvas = Viewport(view);
+    const TopViewController = ViewController(view);
+
+    return <>
+        <TheCanvas>
+            <Grid layers={view} axis='xy'></Grid>
+            {children}
+        </TheCanvas>
+        <TopViewController></TopViewController>
+    </>
+}
+
 function ViewportTest() {
     const sharedExports = useAtomValue(Threes[View.Shared]);
+
 
     return (
         <div style={{
@@ -97,27 +236,30 @@ function ViewportTest() {
                 position: "absolute",
                 top: 10,
                 left: 10,
-                backgroundColor: "lightgray",
-                boxSizing: "border-box"
+                backgroundColor: "efefef",
+                boxSizing: "border-box",
+                border: "1px solid #3f3f3fdd",
+
             }}>
-                <TopViewport></TopViewport>
+                <TopView></TopView>
             </div>
-            {/* <div style={{
+            <div style={{
                 width: 200,
                 height: 200,
                 position: "absolute",
                 top: 10,
                 left: 220,
-                backgroundColor: "lightgray",
-                boxSizing: "border-box"
+                backgroundColor: "efefef",
+                boxSizing: "border-box",
+                border: "1px solid #3f3f3fdd",
             }}>
-                <FrontViewport></FrontViewport>
-            </div> */}
+                <FrontView></FrontView>
+            </div>
             <div style={{
                 position: "absolute",
                 left: 10,
                 bottom: 10,
-                backgroundColor: "lightgray",
+                backgroundColor: "#efefef",
             }}>
                 <div>
                     <button onClick={() => {

@@ -1,13 +1,12 @@
 import { GridHelperProps } from '@react-three/fiber'
-import React from 'react'
+import { Grid as GridDrei } from '@react-three/drei';
+
 
 export type GridAxis = "xz" | "xy" | "yz"
-function Grid({ axis = "xz", size = 20, ...rest }: { axis?: GridAxis, size?: number; rest?: GridHelperProps }) {
+function Grid({ axis = "xz", size = 10, layers, ...rest }: { axis?: GridAxis, size?: number; layers?: number, rest?: GridHelperProps }) {
     const rotation = axis === "xz" ? [0, 0, 0] : axis === "xy" ? [Math.PI / 2, 0, 0] : [0, 0, Math.PI / 2]
 
-    return (
-        <gridHelper rotation={rotation} args={[size, size, 0xff0000cc, 'lightgray']} {...rest} />
-    )
+    return <GridDrei cellSize={size * 0.2} sectionSize={size} cellThickness={0.5} sectionThickness={0.75} cellColor={"black"} sectionColor={"#1050ff"} infiniteGrid fadeDistance={300} layers={layers} rotation={rotation} {...rest}></GridDrei>
 }
 
 export default Grid

@@ -49,43 +49,52 @@ const MainViewport = ({ children, onCreated, ...rest }: ViewportProps) => {
 
 const CameraDistance = 300;
 
-export const DefaultCameraPositions: { [key in View]: { position: [number, number, number]; zoom: number } } = {
+export const DefaultCameraPositions: { [key in View]: { position: [number, number, number]; zoom: number, up:[number, number, number] } } = {
     [View.Shared]: {
         position: [CameraDistance, CameraDistance, CameraDistance],
-        zoom: 20
+        zoom: 10,
+        up: [0, 1, 0],
     },
     [View.Main]: {
         position: [CameraDistance, CameraDistance, CameraDistance],
-        zoom: 20
+        zoom: 10,
+        up: [0, 1, 0],
+
     },
     [View.Top]: {
         position: [0, CameraDistance, 0],
-        zoom: 20
+        zoom: 10,
+        up: [0, 0, -1],
     },
 
     [View.Front]: {
         position: [0, 0, CameraDistance],
-        zoom: 20
+        zoom: 10,
+        up: [0, 1, 0],
     },
 
     [View.Right]: {
         position: [CameraDistance, 0, 0],
-        zoom: 20
+        zoom: 10,
+        up: [0, 1, 0],
     },
 
     [View.Left]: {
         position: [-CameraDistance, 0, 0],
-        zoom: 20
+        zoom: 10,
+        up: [0, 1, 0],
     },
 
     [View.Back]: {
         position: [0, 0, -CameraDistance],
-        zoom: 20
+        zoom: 10,
+        up: [0, 1, 0],
     },
 
     [View.Bottom]: {
         position: [0, -CameraDistance, 0],
-        zoom: 20
+        zoom: 10,
+        up: [0, 0, 1],
     }
 
 } as const;
