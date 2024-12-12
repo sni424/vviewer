@@ -314,5 +314,6 @@ export type GridOption = {
 };
 
 export type ViewportOption = {
-  grid?: GridOption;
+  show?: boolean,
+  grid?: boolean;
 };

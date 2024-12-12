@@ -11,8 +11,9 @@ import MaterialPanelContainer from '../components/MaterialPanel';
 import Modal from '../components/Modal';
 import HotSpotPanel from '../components/HotSpotPanel';
 import { Quaternion, Scene, THREE, Vector3 } from '../scripts/VTHREE';
-import { View } from '../types';
-import { FrontView, TopView } from '../components/canvas/ViewportTest';
+// import { FrontView, TopView } from '../components/canvas/Viewport';
+import FloatingTopView from '../components/canvas/FloatingTopView';
+import FloatingFrontView from '../components/canvas/FloatingFrontView';
 
 declare global {
     interface Map<K, V> {
@@ -523,33 +524,22 @@ const ViewerPage = () => {
         <MeshInfoPanel></MeshInfoPanel>
         <Modal></Modal>
         <Loading />
-        <div style={{
-            width: 200,
-            height: 200,
-            position: "absolute",
-            top: 10,
-            left: 10,
-            backgroundColor: "efefef",
-            boxSizing: "border-box",
-            border: "1px solid #3f3f3fdd",
-
-        }}>
-            <TopView></TopView>
-        </div>
-        <div style={{
+        <FloatingTopView></FloatingTopView>
+        <FloatingFrontView></FloatingFrontView>
+        {/* <div style={{
             width: 200,
             height: 200,
             position: "absolute",
             top: 10,
             left: 220,
-            backgroundColor: "efefef",
+            backgroundColor: "#f6f6f6",
             boxSizing: "border-box",
             border: "1px solid #3f3f3fdd",
 
         }}>
             <FrontView></FrontView>
-        </div>
-    </div>
+        </div> */}
+    </div >
 }
 
 export default ViewerPage;

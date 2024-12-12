@@ -303,21 +303,38 @@ export const viewportOptionAtom = atom<{
 });
 
 export const useViewportOption = (view: View = View.Shared) => {
+  
   const [options, setOptions] = useAtom(viewportOptionAtom);
-  const getOption = (_view: View = view) => {
-    return options[_view];
-  }
-  const setOption = (option: ViewportOption, _view: View = view) => {
-    setOptions((prev) => {
+
+  const getOption = options[view] as ViewportOption;
+
+  // 알아서 머지하도록 설정
+  const setOption = (option: ViewportOption | ((prev: ViewportOption) => ViewportOption), _view: View = view) => {
+    return setOptions((prev) => {
+      if (typeof option === "function") {
+        const setStateAction = option as ((prev: ViewportOption) => ViewportOption);
+        return {
+          ...prev,
+          [_view]: {
+            ...prev[_view],
+            ...(setStateAction)(prev[_view])
+          }
+        }
+      }
+
       return {
         ...prev,
-        [_view]: option
+        [_view]: {
+          ...prev[_view],
+          ...option
+        }
       }
     });
   }
 
   return {
     getOption,
-    setOption
+    setOption,
+    allOptions: options
   }
 }

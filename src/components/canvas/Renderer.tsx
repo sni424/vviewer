@@ -11,6 +11,7 @@ import SelectBox from './SelectBox';
 import { getIntersects, loadScene, saveScene } from '../../scripts/utils';
 import UnifiedCameraControls from '../camera/UnifiedCameraControls';
 import PostProcess from './PostProcess';
+import { useSetThreeExports } from './Viewport';
 
 function Renderer() {
     // useStats();
@@ -18,7 +19,8 @@ function Renderer() {
     const sources = useAtomValue(sourceAtom);
     const setLoadHistoryAtom = useSetAtom(loadHistoryAtom);
     const setThreeExportsAtom = useSetAtom(threeExportsAtom);
-    const setSharedExports = useSetAtom(sharedThreeAtom);
+    // const setSharedExports = useSetAtom(sharedThreeAtom);
+    const setSharedExports = useSetThreeExports();
     const { scene, camera } = threeExports;
     const setCameraAtom = useSetAtom(cameraMatrixAtom);
     const [model, setModel] = useState<any>(null)
@@ -29,6 +31,7 @@ function Renderer() {
         const mat = camera.matrix.clone();
         setCameraAtom(mat);
         setSharedExports(threeExports);
+        // setSharedExports(threeExports);
 
         // const emptyEnvironment = new Texture();
         // const img = new ImageData(1, 1);
