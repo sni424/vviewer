@@ -23,7 +23,7 @@ const UnifiedCameraControls: React.FC<UnifiedCameraControlsProps> = ({
     inertia = 0.9,
 }) => {
 
-    const { camera, raycaster, pointer, scene } = useThree();
+    const { camera, raycaster, pointer, scene, get } = useThree();
     //카메라 회전 boolean
     const isRotateRef = useRef(false);
     //카메라 이동 애니메이션 작동 여부
@@ -81,6 +81,7 @@ const UnifiedCameraControls: React.FC<UnifiedCameraControlsProps> = ({
 
     // 마우스 드래그로 카메라 회전
     const moveCameraRotation = (deltaX: number, deltaY: number): void => {
+        const camera = get().camera;
         velocity.current = { x: deltaX * rotationSpeed, y: deltaY * rotationSpeed };
 
         // X축과 Y축 회전을 위한 쿼터니언 생성
@@ -103,6 +104,7 @@ const UnifiedCameraControls: React.FC<UnifiedCameraControlsProps> = ({
 
     // 관성 효과 적용
     const applyInertia = (): void => {
+        const camera = get().camera;
 
         // 회전 중이 아니고, 현재 회전 속도가 특정 임계값(0.001)보다 클 경우에만 관성 적용
         if (!isRotateRef.current && (Math.abs(velocity.current.x) > 0.001 || Math.abs(velocity.current.y) > 0.001)) {
@@ -134,6 +136,8 @@ const UnifiedCameraControls: React.FC<UnifiedCameraControlsProps> = ({
     //모바일 새로운 위치로 카메라 이동
     const moveCameraPosition = (newVector: THREE.Vector3): void => {
         //현재 카메라 위치와 새로운 벡터 위치의 사이의 거리를 구함
+        const camera = get().camera;
+
         const distance = camera.position.distanceTo(newVector);
         //애니메이션 속도 설정
         const duration =
@@ -160,6 +164,7 @@ const UnifiedCameraControls: React.FC<UnifiedCameraControlsProps> = ({
     const animateCameraMovement = (currentTime: number): void => {
 
         //시간에 따라 일정한 속도를 유지하기위해 현재 프레임과 이전 프레임 사이의 시간을 구한다.
+        const camera = get().camera;
         const deltaTime = prevFrameTime.current
             ? (currentTime - (prevFrameTime.current || 0)) / 1000
             : 0;

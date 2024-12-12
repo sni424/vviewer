@@ -1,27 +1,24 @@
-import { Effects, GizmoHelper, GizmoViewport, OrbitControls, } from '@react-three/drei'
+import { Effects, GizmoHelper, GizmoViewport, OrbitControls, View, } from '@react-three/drei'
 import { Canvas, RootState, useThree } from '@react-three/fiber'
 import VGLTFLoader from '../../scripts/VGLTFLoader';
 import { useEffect, useRef, useState } from 'react';
 import { Scene, Texture, THREE } from '../../scripts/VTHREE';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
-import { cameraMatrixAtom, globalGlAtom, loadHistoryAtom, materialSelectedAtom, selectedAtom, sourceAtom, threeExportsAtom, treeScrollToAtom } from '../../scripts/atoms';
+import { cameraMatrixAtom, globalGlAtom, loadHistoryAtom, materialSelectedAtom, selectedAtom, sharedThreeAtom, sourceAtom, threeExportsAtom, Threes, treeScrollToAtom } from '../../scripts/atoms';
 import { __UNDEFINED__ } from '../../Constants';
 import MyEnvironment from './EnvironmentMap';
 import SelectBox from './SelectBox';
 import { getIntersects, loadScene, saveScene } from '../../scripts/utils';
-import GlobalContrast from './GlobalContrast';
-import useStats from '../../scripts/useStats';
-import GlobalSaturationCheck from './GlobalSaturationCheck';
-import GlobalColorTemperature from './GlobalColorTemperature';
 import UnifiedCameraControls from '../camera/UnifiedCameraControls';
 import PostProcess from './PostProcess';
 
 function Renderer() {
-    useStats();
+    // useStats();
     const threeExports = useThree();
     const sources = useAtomValue(sourceAtom);
     const setLoadHistoryAtom = useSetAtom(loadHistoryAtom);
     const setThreeExportsAtom = useSetAtom(threeExportsAtom);
+    const setSharedExports = useSetAtom(sharedThreeAtom);
     const { scene, camera } = threeExports;
     const setCameraAtom = useSetAtom(cameraMatrixAtom);
     const [model, setModel] = useState<any>(null)
@@ -31,6 +28,7 @@ function Renderer() {
         camera.position.set(1, 1, 1);
         const mat = camera.matrix.clone();
         setCameraAtom(mat);
+        setSharedExports(threeExports);
 
         // const emptyEnvironment = new Texture();
         // const img = new ImageData(1, 1);

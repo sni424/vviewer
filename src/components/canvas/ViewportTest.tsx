@@ -176,7 +176,7 @@ const ViewController = (view: View) => ({ children }: {
     </div>
 }
 
-const TopView = ({
+export const TopView = ({
     children
 }: {
     children?: React.ReactNode
@@ -198,7 +198,7 @@ const TopView = ({
 }
 
 
-const FrontView = ({
+export const FrontView = ({
     children
 }: {
     children?: React.ReactNode

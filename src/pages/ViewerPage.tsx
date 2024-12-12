@@ -11,13 +11,14 @@ import MaterialPanelContainer from '../components/MaterialPanel';
 import Modal from '../components/Modal';
 import HotSpotPanel from '../components/HotSpotPanel';
 import { Quaternion, Scene, THREE, Vector3 } from '../scripts/VTHREE';
+import { View } from '../types';
+import { FrontView, TopView } from '../components/canvas/ViewportTest';
 
 declare global {
     interface Map<K, V> {
         reduce<T>(callback: (accumulator: T, value: V, key: K, map: Map<K, V>) => T, initialValue: T): T;
     }
 }
-
 
 
 Map.prototype.reduce = function <K, V, T>(
@@ -169,6 +170,17 @@ const CameraPanel = () => {
                                 boxSizing: "border-box",
                                 width: "100%"
                             }}>
+                                <button onClick={() => {
+                                    threeExports.set(state => {
+                                        const perCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 2000);
+                                        perCam.position.set(1, 200, 1);
+                                        perCam.updateProjectionMatrix();
+                                        return {
+                                            ...state,
+                                            camera: perCam
+                                        }
+                                    })
+                                }}>카메라변경</button>
                                 <label>카메라 높이</label>
                                 <input
                                     style={{
@@ -511,6 +523,32 @@ const ViewerPage = () => {
         <MeshInfoPanel></MeshInfoPanel>
         <Modal></Modal>
         <Loading />
+        <div style={{
+            width: 200,
+            height: 200,
+            position: "absolute",
+            top: 10,
+            left: 10,
+            backgroundColor: "efefef",
+            boxSizing: "border-box",
+            border: "1px solid #3f3f3fdd",
+
+        }}>
+            <TopView></TopView>
+        </div>
+        <div style={{
+            width: 200,
+            height: 200,
+            position: "absolute",
+            top: 10,
+            left: 220,
+            backgroundColor: "efefef",
+            boxSizing: "border-box",
+            border: "1px solid #3f3f3fdd",
+
+        }}>
+            <FrontView></FrontView>
+        </div>
     </div>
 }
 
