@@ -123,7 +123,7 @@ const CameraPanel = () => {
                             , fontSize: "14px"
                         }}>
                             <div>
-                                <label >isoView</label>
+                                <label>isoView </label>
                                 <input type="checkbox" id="isoView" name="isoView" onChange={e => {
 
                                     setCameraSetting(pre => ({
@@ -133,7 +133,7 @@ const CameraPanel = () => {
                                 }} />
                             </div>
                             <div>
-                                <label >isOrbit</label>
+                                <label>orbit enabled </label>
                                 <input type="checkbox" id="autoRotate" name="autoRotate"
                                     checked={isOrbit.enable}
                                     onChange={e => {
@@ -148,7 +148,7 @@ const CameraPanel = () => {
                                     }} />
                             </div>
                             <div>
-                                <label >autoRotate</label>
+                                <label>autoRotate </label>
                                 <input type="checkbox" id="autoRotate" name="autoRotate"
                                     defaultChecked
                                     onChange={e => {

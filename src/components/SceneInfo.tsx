@@ -256,6 +256,7 @@ const SceneInfo = () => {
                         value={env.preset}
                         onChange={(e) => {
                             setEnv({ ...env, preset: e.target.value as "apartment" | "city" | "dawn" | "forest" | "lobby" | "night" | "park" | "studio" | "sunset" | "warehouse" });
+                            
                         }}>
                         <option value="apartment">아파트</option>
                         <option value="city">도시</option>

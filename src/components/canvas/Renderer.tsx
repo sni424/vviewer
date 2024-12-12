@@ -9,7 +9,6 @@ import {
     globalGlAtom,
     loadHistoryAtom,
     materialSelectedAtom,
-    orbitControlsAtom,
     selectedAtom,
     sourceAtom,
     threeExportsAtom,
@@ -132,7 +131,6 @@ function Renderer() {
             name='GizmoHelper'
             alignment="bottom-right" // widget alignment within scene
             margin={[80, 80]} // widget margins (X, Y)
-
         >
             <GizmoViewport name='GizmoHelper' axisColors={['red', 'green', 'blue']} labelColor="black" />
         </GizmoHelper>

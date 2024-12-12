@@ -1,8 +1,6 @@
 import * as THREE from './VTHREE.ts';
 import { v4 } from 'uuid';
-import { OrbitControls, TransformControls } from 'three-stdlib';
-import { useSetAtom } from 'jotai';
-import { orbitSettingAtom } from './atoms.ts';
+import { TransformControls } from 'three-stdlib';
 
 const DEFAULT_RESOLUTION: ReflectionProbeResolutions = 256;
 const DEFAULT_POSITION: THREE.Vector3 = new THREE.Vector3(0, 0, 0);
@@ -20,11 +18,12 @@ type ReflectionProbeJSON = {
     createFrom: 'probe.toJSON()'
 }
 
+type Modes = 'box' | 'sphere'
+
 export default class ReflectionProbe {
     // SCENE PROPERTIES
     private readonly renderer: THREE.WebGLRenderer;
     private readonly scene: THREE.Scene;
-    private readonly orbitControls: OrbitControls;
     // RENDER PROPERTIES
     private pmremGenerator: THREE.PMREMGenerator;
     private renderTarget: THREE.WebGLCubeRenderTarget;
@@ -47,14 +46,12 @@ export default class ReflectionProbe {
     // Out Interaction Property
     private showProbe: boolean = true;
     private showControls: boolean = true;
+    private modes: Modes = 'box';
     
-    constructor(renderer: THREE.WebGLRenderer, scene: THREE.Scene, camera: THREE.Camera, orbitControls: OrbitControls, setOrbitEnabled: (b: boolean) => void, resolution?: ReflectionProbeResolutions) {
+    constructor(renderer: THREE.WebGLRenderer, scene: THREE.Scene, camera: THREE.Camera, resolution?: ReflectionProbeResolutions) {
         this.renderer = renderer;
         this.pmremGenerator = new THREE.PMREMGenerator(renderer);
         this.scene = scene;
-        this.orbitControls = orbitControls;
-        
-        console.log('Probe Camera detected : ', camera, orbitControls)
         
         if (!camera.layers.isEnabled(CUBE_CAMERA_LAYER)) {
             camera.layers.enableAll();
@@ -71,8 +68,6 @@ export default class ReflectionProbe {
         });
         
         const { height, center } = getBoxHeight(scene);
-        
-        console.log({ height, center });
         
         this.size.setY(height);
         this.center.setY(center);
@@ -107,25 +102,34 @@ export default class ReflectionProbe {
         scaleControls.showY = false;
         
         translateControls.addEventListener('dragging-changed', (event) => {
-            setOrbitEnabled(!event.value);
+            document.dispatchEvent(new CustomEvent('control-dragged', { detail: { moving: event.value } }));
         });
         
         scaleControls.addEventListener('dragging-changed', (event) => {
-            // if (this.orbitControls) {
-            //     this.orbitControls.enabled = !event.value;
-            // }
-            setOrbitEnabled(!event.value);
+            document.dispatchEvent(new CustomEvent('control-dragged', { detail: { moving: event.value } }));
         });
         
         
         translateControls.addEventListener('objectChange', (event) => {
             if (this.boxMesh) {
+                const detail = {
+                    uuid: this.boxMesh.uuid,
+                    type: 'position',
+                    position: this.boxMesh.position.clone(),
+                };
+                document.dispatchEvent(new CustomEvent('probeMesh-changed', { detail }));
                 this.setCenterAndSize(this.boxMesh.position, this.boxMesh.scale);
             }
         });
         
         scaleControls.addEventListener('objectChange', (event) => {
             if (this.boxMesh) {
+                const detail = {
+                    uuid: this.boxMesh.uuid,
+                    type: 'scale',
+                    scale: this.boxMesh.scale.clone(),
+                };
+                document.dispatchEvent(new CustomEvent('probeMesh-changed', { detail }));
                 this.setCenterAndSize(this.boxMesh.position, this.boxMesh.scale);
             }
         });
@@ -385,6 +389,7 @@ export default class ReflectionProbe {
 function getBoxHeight(scene: THREE.Scene) {
     const defaultHeight = 1;
     const defaultCenter = 0.5;
+    const heightCorrection = 0.1;
     let minY = Infinity;
     let maxY = -Infinity;
     
@@ -408,10 +413,12 @@ function getBoxHeight(scene: THREE.Scene) {
     const heightY = maxY - minY;
     const centerY = (maxY - minY) / 2;
     
+    const resultHeight = heightY > 0 ? heightY : defaultHeight;
+    const resultCenter = centerY > 0 ? centerY : defaultCenter;
     
     return {
-        height: heightY > 0 ? heightY : defaultHeight,
-        center: centerY > 0 ? centerY : defaultCenter,
+        height: resultHeight + heightCorrection,
+        center: resultCenter + heightCorrection / 2,
     };
 }
 

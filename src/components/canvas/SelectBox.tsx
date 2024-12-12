@@ -124,6 +124,7 @@ const SelectBox = () => {
         }
         const helper = new THREE.BoxHelper(selectedObject, 0xff0000);
         helper.userData.boxhelper = true;
+        helper.layers.set(5);
         scene.add(helper);
     });
 
