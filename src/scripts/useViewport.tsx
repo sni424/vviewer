@@ -1,63 +1,167 @@
-import { useAtom } from "jotai";
+import { useAtom, useAtomValue } from "jotai";
 import { View } from "../types";
-import { _threeExportsAtom } from "./atoms";
-import { Canvas, CanvasProps, RootState } from "@react-three/fiber";
+import { sharedThreeAtom, Threes } from "./atoms";
+import { Canvas, CanvasProps, RootState, useFrame, useThree } from "@react-three/fiber";
+import { OrbitControls, OrthographicCamera } from "@react-three/drei";
+import { useCallback, useEffect, useMemo } from "react";
 
-export const useThreeExports = (view: View) => {
-    const [threeExports, setThreeExports] = useAtom(_threeExportsAtom);
-    const getExports = (_view: View = view) => {
-        return threeExports[_view];
-    }
-
-    const setExports = (exports: RootState, _view: View = view) => {
-        setThreeExports((prev) => {
-            return {
-                ...prev,
-                [_view]: exports
-            }
-        });
-    }
-
+export const useThreeAtom = (view: View) => {
+    const [threeValue, setThree] = useAtom(Threes[view]);
+    const sharedThreeValue = useAtomValue(sharedThreeAtom);
     return {
-        getExports,
-        setExports
+        sharedThreeValue,
+        threeValue,
+        setThree
     }
-};
+}
 
+export type ViewportProps = {
+    children?: React.ReactNode,
+    onCreated?: CanvasProps["onCreated"],
+    rest?: Omit<CanvasProps, "onCreated">
+}
 
-export default function useViewport(view: View = View.Shared) {
-    const { getExports, setExports } = useThreeExports(view);
-    const myExports = getExports(view);
-    const mainSceneExports = getExports(View.Shared);
+const MainViewportRenderer = () => {
+    const exports = useThree();
+    const { setThree } = useThreeAtom(View.Shared);
+    useEffect(() => {
+        console.log("main set called")
+        setThree(exports);
+    }, []);
 
-    if (view !== View.Shared && !mainSceneExports) {
-        return null;
+    // useFrame(()=>{
+    //     console.log("Main cam:", exports.camera.uuid);
+    // })
+
+    return <></>
+}
+
+const MainViewport = ({ children, onCreated, ...rest }: ViewportProps) => {
+    const view = View.Shared;
+
+    return (
+        <Canvas {...rest}>
+            <MainViewportRenderer></MainViewportRenderer>
+            {children}
+        </Canvas>
+    );
+}
+
+const CameraDistance = 300;
+
+export const DefaultCameraPositions: { [key in View]: { position: [number, number, number]; zoom: number } } = {
+    [View.Shared]: {
+        position: [CameraDistance, CameraDistance, CameraDistance],
+        zoom: 20
+    },
+    [View.Main]: {
+        position: [CameraDistance, CameraDistance, CameraDistance],
+        zoom: 20
+    },
+    [View.Top]: {
+        position: [0, CameraDistance, 0],
+        zoom: 20
+    },
+
+    [View.Front]: {
+        position: [0, 0, CameraDistance],
+        zoom: 20
+    },
+
+    [View.Right]: {
+        position: [CameraDistance, 0, 0],
+        zoom: 20
+    },
+
+    [View.Left]: {
+        position: [-CameraDistance, 0, 0],
+        zoom: 20
+    },
+
+    [View.Back]: {
+        position: [0, 0, -CameraDistance],
+        zoom: 20
+    },
+
+    [View.Bottom]: {
+        position: [0, -CameraDistance, 0],
+        zoom: 20
     }
 
-    const scene = view !== View.Shared ? mainSceneExports!.scene : undefined;
-    // if(view !== View.Shared){
-        console.log(view, scene?.children);
+} as const;
+
+const SubViewport = (view: View) => {
+    // const LocalRenderer = () => {
+    //     const _localExports = useThree();
+    //     const [threeExports, setThreeExports] = useAtom(_threeExportsAtom);
+    //     useEffect(() => {
+    //         if (!threeExports[view]) {
+    //             setThreeExports(prev => ({ ...prev, [view]: _localExports }));
+    //         }
+    //     }, [threeExports[view]])
+    //     // useFrame(() => {
+    //     //     const { camera } = _localExports;
+    //     //     console.log(camera.type, camera.uuid)
+    //     // });
+    //     return <></>
     // }
+    const Viewport = ({ children, onCreated, ...rest }: ViewportProps) => {
+        const { sharedThreeValue } = useThreeAtom(view);
+        // const myExports = getExports(view);
+        const sharedExports = sharedThreeValue;
+        if (!sharedExports) {
+            return null;
+        }
 
-    const Viewport = ({ children, onCreated, ...rest }: { children?: React.ReactNode, onCreated?: CanvasProps["onCreated"], rest?: Omit<CanvasProps, "onCreated"> }) => {
+        const { position, zoom } = DefaultCameraPositions[view];
+
         return (
-            <Canvas scene={scene} onCreated={rootState => {
-                if (!myExports) {
-                    setExports(rootState, view);
-                }
+            <Canvas scene={sharedExports.scene} onCreated={rootState => {
+                // if (!myExports) {
+                //     // setExports(rootState, view);
+                //     console.log("failed:", view);
+                // }
 
-                const { camera } = rootState;
-                camera.layers.enable(View.Shared);
-                camera.layers.enable(view);
+                // const { camera } = rootState;
+                // // console.log(view, camera);
+                // camera.layers.enable(View.Shared);
+                // camera.layers.enable(view);
+
+                // return onCreated?.(rootState);
 
             }} {...rest}>
+                {/* <OrthographicCamera makeDefault position={position} zoom={zoom} /> */}
+                {/* <OrthographicCamera makeDefault /> */}
+                {/* <OrbitControls enableRotate={!false}></OrbitControls> */}
+                {/* <LocalRenderer view={view} /> */}
                 {children}
             </Canvas>
         );
     }
+    return Viewport;
+}
+
+export default function useViewport(view: View = View.Shared) {
+    // console.log("drawing")
+    // const { threeExports } = useThreeExports(view);
+    // const mainSceneExports = getExports(View.Shared);
+    // const thisSceneExports = getExports(view);
+
+    let Viewport: React.FC<ViewportProps>;
+
+    if (view === View.Shared) {
+        Viewport = MainViewport;
+    } else {
+        Viewport = SubViewport(view);
+    }
+
+    // if (view === View.Front && thisSceneExports) {
+    //     console.log("FV", thisSceneExports.camera.uuid);
+    // }
 
     return {
-        threeExports: myExports,
-        Viewport
+        Viewport,
+        // mainSceneExports,
+        // sceneExports: thisSceneExports
     }
 }

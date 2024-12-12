@@ -1,5 +1,5 @@
 import type { RootState } from '@react-three/fiber';
-import { atom, createStore, useAtom, useAtomValue, useSetAtom, WritableAtom } from 'jotai';
+import { atom, createStore, PrimitiveAtom, useAtom, useAtomValue, useSetAtom, WritableAtom } from 'jotai';
 import { THREE, Vector3 } from './VTHREE';
 import React from 'react';
 import { set } from 'idb-keyval';
@@ -265,7 +265,29 @@ export const globalColorManagementAtom = atom<{ on: boolean; value: ColorManagem
 export const [mainCameraPosAtom, getTestCameraPos, setTestCameraPos] = createAtomCombo<[number, number]>();
 export const mainCameraProjectedAtom = atom<[number, number]>();
 
-export const _threeExportsAtom = atom<Partial<{ [key in View]: RootState }>>({});
+type WithInitialValue<Value> = {
+  init: Value;
+};;
+export type ThreeAtom = PrimitiveAtom<RootState | undefined> & WithInitialValue<RootState | undefined>;
+export const sharedThreeAtom = atom<RootState>();
+export const mainThreeAtom = atom<RootState>();
+export const topThreeAtom = atom<RootState>();
+export const frontThreeAtom = atom<RootState>();
+export const rightThreeAtom = atom<RootState>();
+export const backThreeAtom = atom<RootState>();
+export const leftThreeAtom = atom<RootState>();
+export const bottomThreeAtom = atom<RootState>();
+export const Threes: { [key in View]: ThreeAtom } = {
+  [View.Shared]: sharedThreeAtom,
+  [View.Main]: mainThreeAtom,
+  [View.Top]: topThreeAtom,
+  [View.Front]: frontThreeAtom,
+  [View.Right]: rightThreeAtom,
+  [View.Back]: backThreeAtom,
+  [View.Left]: leftThreeAtom,
+  [View.Bottom]: bottomThreeAtom,
+} as const;
+
 
 export const viewportOptionAtom = atom<{
   [key in View]: ViewportOption;
