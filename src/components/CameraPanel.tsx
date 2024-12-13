@@ -30,12 +30,23 @@ const CameraPanel = () => {
             const velocity = 0.1;
             if (e.key === " ") {
                 e.preventDefault();
-                const tooSoon = Date.now() - lastSpace.current < 50;
+                const tooSoon = Date.now() - lastSpace.current < 30;
                 if (tooSoon) {
                     return;
                 }
                 lastSpace.current = Date.now();
                 const newY = Number((posYRef.current + velocity).toFixed(2));
+                setPositionY(newY);
+            }
+
+            if (e.key.toLowerCase() === "c") {
+                e.preventDefault();
+                const tooSoon = Date.now() - lastSpace.current < 30;
+                if (tooSoon) {
+                    return;
+                }
+                lastSpace.current = Date.now();
+                const newY = Number((posYRef.current - velocity).toFixed(2));
                 setPositionY(newY);
             }
         }
