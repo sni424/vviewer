@@ -267,7 +267,7 @@ export const loadLatest = async ({
 
             const interval = setInterval(() => {
                 //@ts-ignore
-                const found = scene.getObjectByProperty("uuid", parsedScene.gltf.uuid);
+                const found = scene.getObjectByProperty("uuid", parsedScene.uuid);
                 if (found) {
                     // console.log("loaded", elapsed, "ms");
 
