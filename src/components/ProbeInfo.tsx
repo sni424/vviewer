@@ -190,8 +190,9 @@ export const ProbeMeshInfo = ({ mesh }: { mesh: THREE.Mesh }) => {
         });
         
         return () => {
-            document.removeEventListener('probeMesh-changed', () => {})
-        }
+            document.removeEventListener('probeMesh-changed', () => {
+            });
+        };
     }, []);
     
     function calculatePositionOffset(newScale: THREE.Vector3) {
@@ -202,8 +203,8 @@ export const ProbeMeshInfo = ({ mesh }: { mesh: THREE.Mesh }) => {
         const scaleDelta = new THREE.Vector3(
             newScale.x / originalScale.x,
             newScale.y / originalScale.y,
-            newScale.z / originalScale.z
-        )
+            newScale.z / originalScale.z,
+        );
         
         positionOffset.copy(originalPosition).multiply(scaleDelta).sub(originalPosition);
         
@@ -214,7 +215,7 @@ export const ProbeMeshInfo = ({ mesh }: { mesh: THREE.Mesh }) => {
             if (child.type === 'Mesh') {
                 child.scale.set(1 / newScale.x, 1 / newScale.y, 1 / newScale.z);
             }
-        })
+        });
     }
     
     useEffect(() => {
@@ -222,20 +223,21 @@ export const ProbeMeshInfo = ({ mesh }: { mesh: THREE.Mesh }) => {
     }, [positionX, positionY, positionZ]);
     
     return (
-        <div style={{marginTop: 8, paddingLeft: 8}}>
+        <div style={{ marginTop: 8, paddingLeft: 8 }}>
             <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
-                <span style={{ width: '120px', fontSize: '14px', marginRight: '8px' }}>박스 위치</span>
+                <span style={{ width: '120px', fontSize: '12px', marginRight: '8px' }}>박스 위치</span>
                 <input
                     type="number"
                     step="0.01"
                     value={positionX}
                     onChange={(event) => {
-                        setPositionX(Number(event.target.value));
+                        const value = Number(event.target.value);
+                        setPositionX(value);
                     }}
                     style={{
                         border: '1px solid gray',
-                        padding: '2px 6px',
-                        width: '50px',
+                        padding: '2px 4px',
+                        width: '60px',
                         marginLeft: '0',
                         fontSize: '12px',
                         textAlign: 'right',
@@ -246,12 +248,13 @@ export const ProbeMeshInfo = ({ mesh }: { mesh: THREE.Mesh }) => {
                     step="0.01"
                     value={positionY}
                     onChange={(event) => {
-                        setPositionY(Number(event.target.value));
+                        const value = Number(event.target.value);
+                        setPositionY(value);
                     }}
                     style={{
                         border: '1px solid gray',
-                        padding: '2px 0px',
-                        width: '50px',
+                        padding: '2px 4px',
+                        width: '60px',
                         marginLeft: 8,
                         fontSize: '12px',
                         textAlign: 'right',
@@ -262,12 +265,13 @@ export const ProbeMeshInfo = ({ mesh }: { mesh: THREE.Mesh }) => {
                     step="0.01"
                     value={positionZ}
                     onChange={(event) => {
-                        setPositionZ(Number(event.target.value));
+                        const value = Number(event.target.value);
+                        setPositionZ(value);
                     }}
                     style={{
                         border: '1px solid gray',
-                        padding: '2px 6px',
-                        width: '50px',
+                        padding: '2px 4px',
+                        width: '60px',
                         marginLeft: 8,
                         fontSize: '12px',
                         textAlign: 'right',
@@ -275,7 +279,7 @@ export const ProbeMeshInfo = ({ mesh }: { mesh: THREE.Mesh }) => {
                 />
             </div>
             <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
-                <span style={{ width: '120px', fontSize: '14px', marginRight: '8px' }}>박스 크기</span>
+                <span style={{ width: '120px', fontSize: '12px', marginRight: '8px' }}>박스 크기</span>
                 <input
                     type="number"
                     step="0.01"
@@ -283,12 +287,12 @@ export const ProbeMeshInfo = ({ mesh }: { mesh: THREE.Mesh }) => {
                     onChange={(event) => {
                         const value = Number(event.target.value);
                         calculatePositionOffset(new THREE.Vector3(value, scaleY, scaleZ));
-                        setScaleX(value)
+                        setScaleX(value);
                     }}
                     style={{
                         border: '1px solid gray',
-                        padding: '2px 6px',
-                        width: '50px',
+                        padding: '2px 4px',
+                        width: '60px',
                         marginLeft: '0',
                         fontSize: '12px',
                         textAlign: 'right',
@@ -305,8 +309,8 @@ export const ProbeMeshInfo = ({ mesh }: { mesh: THREE.Mesh }) => {
                     }}
                     style={{
                         border: '1px solid gray',
-                        padding: '2px 0px',
-                        width: '50px',
+                        padding: '2px 4px',
+                        width: '60px',
                         marginLeft: 8,
                         fontSize: '12px',
                         textAlign: 'right',
@@ -323,8 +327,8 @@ export const ProbeMeshInfo = ({ mesh }: { mesh: THREE.Mesh }) => {
                     }}
                     style={{
                         border: '1px solid gray',
-                        padding: '2px 6px',
-                        width: '50px',
+                        padding: '2px 4px',
+                        width: '60px',
                         marginLeft: 8,
                         fontSize: '12px',
                         textAlign: 'right',

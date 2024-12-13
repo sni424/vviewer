@@ -8,7 +8,7 @@ const DEFAULT_SIZE: THREE.Vector3 = new THREE.Vector3(4, 4, 4);
 const REFLECTION_BOX_LAYER = 5;
 const CUBE_CAMERA_LAYER = 10;
 
-export type ReflectionProbeResolutions = 256 | 512 | 1024 | 2048;
+export type ReflectionProbeResolutions = 128 | 256 | 512 | 1024 | 2048;
 
 type ReflectionProbeJSON = {
     id: string;
@@ -94,12 +94,14 @@ export default class ReflectionProbe {
         translateControls.setMode('translate');
         translateControls.setSize(0.7);
         translateControls.showY = false;
+        translateControls.setTranslationSnap(0.001);
         const scaleControls = new TransformControls(camera, this.renderer.domElement);
         scaleControls.userData.isTransformControls = true;
         scaleControls.userData.isProbeMesh = true;
         scaleControls.setMode('scale');
         scaleControls.setSize(0.5);
         scaleControls.showY = false;
+        scaleControls.setTranslationSnap(0.001);
         
         translateControls.addEventListener('dragging-changed', (event) => {
             document.dispatchEvent(new CustomEvent('control-dragged', { detail: { moving: event.value } }));
@@ -143,6 +145,10 @@ export default class ReflectionProbe {
         this.translateControls = translateControls;
         this.scaleControls = scaleControls;
     }
+    
+    // private setUpControls(camera: THREE.Camera, ): {scaleControls: TransformControls, translateControls: TransformControls} {
+    //
+    // }
     
     addToScene() {
         console.log('adding : ', this.boxMesh);
@@ -435,7 +441,7 @@ function createMeshFromBox(box: THREE.Box3, serializedId: string) {
     const surfaceMaterial = new THREE.MeshBasicMaterial({
         color: '#0077ff',
         transparent: true,
-        opacity: 0.2, // 반투명 설정,
+        opacity: 0.1, // 반투명 설정,
         side: THREE.DoubleSide,
         polygonOffset: true,
         polygonOffsetFactor: 1,
