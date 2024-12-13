@@ -24,6 +24,12 @@ button {
   background-color: #f5f5f5;
 }
 
+button:disabled,
+button:disabled:hover {
+  background-color: #d0d0d0;
+  color: #a0a0a0;
+}
+
 button:hover {
   background-color: #d0d0d0;
 }
