@@ -17,10 +17,9 @@ export function getAtomValue<T = any>(atom: PrimitiveAtom<T>): T {
   return store.get(atom);
 }
 
-export function setAtomValue<T = any>(atom: PrimitiveAtom<T>, value: T) {
+export function setAtomValue<T = any>(atom: PrimitiveAtom<T>, value: T|((prev: T) => T)) {
   const store = getDefaultStore();
   store.set(atom, value);
-  return value;
 }
 
 // 훅 내부가 아닌 일반 함수에서 전달받아서 사용하기 위헤 store.get

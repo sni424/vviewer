@@ -6,11 +6,17 @@ import { THREE } from '../../scripts/VTHREE';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import {
     cameraMatrixAtom,
+    cameraSettingAtom,
     globalGlAtom,
     loadHistoryAtom,
     materialSelectedAtom,
+    orbitSettingAtom,
+    panelTabAtom,
     selectedAtom,
+    setAtomValue,
     sourceAtom,
+    Tab,
+    Tabs,
     threeExportsAtom,
     treeScrollToAtom,
 } from '../../scripts/atoms';
@@ -24,6 +30,7 @@ import GlobalSaturationCheck from './GlobalSaturationCheck';
 import UnifiedCameraControls from '../camera/UnifiedCameraControls';
 import PostProcess from './PostProcess';
 import { useSetThreeExports } from './Viewport';
+import { getSettings } from '../../pages/useSettings';
 
 function Renderer() {
     // useStats();
@@ -157,6 +164,7 @@ function RendererContainer() {
     const mouseDownPosition = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
     // 드래그로 간주할 최소 거리
     const dragThreshold = 5;
+    const lastSpace = useRef<number>(0);
 
     useEffect(() => {
         if (!threeExports) {
@@ -215,6 +223,18 @@ function RendererContainer() {
                 return;
             }
 
+
+            // 자유이동 <-> OrbitControls
+            if (e.key.toLowerCase() === "q") {
+                e.preventDefault();
+                const { orbitSetting } = getSettings();
+                setAtomValue(orbitSettingAtom, (prev) => ({
+                    ...prev,
+                    enable: !orbitSetting.enable
+                }))
+                return;
+            }
+
             // ctrl l
             if (e.ctrlKey && (e.key.toLowerCase() === "l")) {
                 e.preventDefault();
@@ -227,7 +247,17 @@ function RendererContainer() {
                 }).catch(e => {
                     alert("로드 실패")
                 })
+                return;
             }
+
+            // ctrl + 숫자
+            const numberKey = parseInt(e.key);
+            if (e.ctrlKey && !isNaN(numberKey)) {
+                e.preventDefault();
+                setAtomValue(panelTabAtom, Tabs[numberKey - 1]);
+                return;
+            }
+
         }
 
         window.addEventListener("keydown", keyHandler);

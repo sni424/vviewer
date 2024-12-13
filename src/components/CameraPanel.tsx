@@ -7,13 +7,56 @@ import { Quaternion, THREE, Vector3 } from '../scripts/VTHREE';
 const CameraPanel = () => {
 
     const [isCameraPanel, setCameraPanel] = useState(true)
-    const [positionY, setPositionY] = useState<number>(0);
     const threeExports = useAtomValue(threeExportsAtom);
     const cameraMatrix = useAtomValue(cameraMatrixAtom);
     const [cameraSetting, setCameraSetting] = useAtom(cameraSettingAtom)
 
     const [isOrbit, setOrbit] = useAtom(orbitSettingAtom)
     const setLastCameraInfo = useSetAtom(lastCameraInfoAtom)
+
+    const [positionY, _setPositionY] = useState<number>(0);
+    const posYRef = React.useRef(0);
+    const setPositionY = (newY: number) => {
+        posYRef.current = newY;
+        return _setPositionY(newY);
+    }
+    const lastSpace = React.useRef(0);
+
+
+    useEffect(() => {
+        // space 입력 시 카메라 상승
+        const handleKeydown = (e) => {
+            // 카메라 y값 상승
+            const velocity = 0.1;
+            if (e.key === " ") {
+                e.preventDefault();
+                const tooSoon = Date.now() - lastSpace.current < 50;
+                if (tooSoon) {
+                    return;
+                }
+                lastSpace.current = Date.now();
+                const newY = Number((posYRef.current + velocity).toFixed(2));
+                setPositionY(newY);
+            }
+        }
+
+        window.addEventListener("keydown", handleKeydown);
+        return () => {
+            window.removeEventListener("keydown", handleKeydown);
+        }
+    }, []);
+
+    useEffect(() => {
+        if (!threeExports) {
+            return;
+        }
+        camera.position.y = positionY;
+        camera.updateProjectionMatrix();
+        setLastCameraInfo(pre => ({
+            ...pre,
+            position: camera.position.clone()
+        }))
+    }, [positionY]);
 
     // useEffect는 항상 최상위에서 호출되도록 함
     useEffect(() => {
@@ -33,16 +76,7 @@ const CameraPanel = () => {
     const scale = new Vector3();
     cameraMatrix?.decompose(position, rotation, scale);
 
-    const handleYChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const newY = Number(parseFloat(e.target.value).toFixed(2)) || 0;
-        setPositionY(newY);
-        camera.position.y = newY;
-        camera.updateProjectionMatrix();
-        setLastCameraInfo(pre => ({
-            ...pre,
-            position: camera.position.clone()
-        }))
-    };
+
 
     return (
         <div style={{
@@ -126,7 +160,10 @@ const CameraPanel = () => {
                                     }}
                                     type="number"
                                     value={positionY}
-                                    onChange={handleYChange}
+                                    onChange={e => {
+                                        const newY = Number(parseFloat(e.target.value).toFixed(2)) || 0;
+                                        setPositionY(newY);
+                                    }}
                                 />
                             </div>
                             <div style={{
