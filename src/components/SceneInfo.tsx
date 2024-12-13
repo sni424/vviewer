@@ -155,6 +155,9 @@ const SceneInfo = () => {
         gap: 12
     }}>
         <section style={{ width: "100%", display: "grid", gap: 8, gridTemplateColumns: "1fr 1fr 1fr" }}>
+            <button onClick={()=>{
+                navigate("/mobile");
+            }}>모바일</button>
             <button style={{ fontSize: 10 }} disabled={scene.children.length === 0} onClick={() => {
 
                 new GLTFExporter().parseAsync(threeExports.scene).then(result => {
