@@ -13,16 +13,9 @@ function FloatingTopView({
     const TheCanvas = Viewport(view);
     const TopViewController = ViewController(view);
     const [show, setShow] = useState(false);
-    const hide = ()=>setShow(false);
+    const hide = () => setShow(false);
 
-    return <div style={{
-        position: "absolute",
-        top: 10,
-        left: 10,
-        backgroundColor: "#f6f6f6aa",
-        boxSizing: "border-box",
-
-    }}>
+    return <>
         {!show && <button onClick={() => {
             setShow(true);
         }}>평면 보기</button>}
@@ -32,6 +25,7 @@ function FloatingTopView({
                 width: 200,
                 height: 200,
                 border: "1px solid #3f3f3fdd",
+                backgroundColor: "#f6f6f6aa",
             }}>
                 <TheCanvas onCreated={state => {
                     state.camera.layers.enable(view);
@@ -42,7 +36,7 @@ function FloatingTopView({
             </div>
         }
 
-    </div >
+    </>
 
 }
 

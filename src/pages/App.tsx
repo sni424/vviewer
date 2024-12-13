@@ -1,8 +1,7 @@
 import { Route, Routes, useNavigate } from 'react-router-dom';
 import ViewerPage from "./ViewerPage";
-import UploadPage from '../components/UploadModal';
-import { Env, envAtom, useEnvParams } from '../scripts/atoms';
-import { useEffect, useState } from 'react';
+import { Env, useEnvParams } from '../scripts/atoms';
+import { useEffect } from 'react';
 import { get } from 'idb-keyval';
 import TestPage from './TestPage';
 import MobilePage from './MobilePage';

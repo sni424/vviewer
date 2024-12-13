@@ -13,25 +13,16 @@ function FloatingFrontView({
     const TheCanvas = Viewport(view);
     const TopViewController = ViewController(view);
     const [show, setShow] = useState(false);
-    const hide = ()=>setShow(false);
+    const hide = () => setShow(false);
 
-    return <div style={{
-        position: "absolute",
-        top: 10,
-        left: 220,
-        backgroundColor: "#f6f6f6aa",
-        boxSizing: "border-box",
-
-    }}>
+    return <>
         {!show && <button onClick={() => {
             setShow(true);
         }}>정면 보기</button>}
 
         {
-            show && <div style={{
-                width: 200,
-                height: 200,
-                border: "1px solid #3f3f3fdd",
+            show && <div className='relative w-[200px] h-[200px] bg-[#f6f6f6]' style={{
+                border: "1px solid #3f3f3f",
             }}>
                 <TheCanvas onCreated={state => {
                     state.camera.layers.enable(view);
@@ -42,7 +33,7 @@ function FloatingFrontView({
             </div>
         }
 
-    </div >
+    </>
 
 }
 

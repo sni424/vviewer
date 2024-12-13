@@ -1,7 +1,11 @@
-import ViewportTest from '../components/canvas/ViewportTest';
+import React from 'react'
 
 function TestPage() {
-    return <ViewportTest></ViewportTest>
+  return (
+    <div>TestPage
+        <div className='font-bold'>sdf</div>
+    </div>
+  )
 }
 
 export default TestPage
