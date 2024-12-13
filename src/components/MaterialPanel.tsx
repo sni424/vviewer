@@ -51,7 +51,7 @@ const setMap = (material: THREE.MeshStandardMaterial, mapKey: string, texture: T
     } else if (dstKey === "aoMap") {
         material.aoMap = texture;
     } else {
-        throw new Error("Invalid mapKey @MaterialPanel.useMapDragAndDrop");
+        throw new Error("Invalid mapKey @MaterialPanel");
     }
     material.needsUpdate = true;
 }
@@ -160,9 +160,14 @@ const MapInfo = (props: MapInfoProps) => {
                         }} />
                     </div>
 
-                    <div style={{ width: 25 }}>
+                    {/* <div style={{ width: 25 }}>
                         {toNthDigit(materialRangeValue, 2)}
-                    </div>
+                    </div> */}
+                    <input style={{width:35, borderRadius:4}} type="number" min={materialMin} max={materialMax} step={materialStep} value={materialRangeValue} onChange={(e) => {
+                        const value = parseFloat(e.target.value);
+                        materialRange.onChange(value);
+                        setMaterialRangeValue(value);
+                    }} />
                 </div>
 
             )
@@ -181,9 +186,14 @@ const MapInfo = (props: MapInfoProps) => {
                             setTextureRangeValue(value);
                         }} />
                     </div>
-                    <div style={{ width: 25 }}>
+                    {/* <div style={{ width: 25 }}>
                         {toNthDigit(textureRangeValue, 2)}
-                    </div>
+                    </div> */}
+                    <input style={{width:35, borderRadius:4}} type="number" min={textureMin} max={textureMax} step={textureStep} value={textureRangeValue} onChange={(e) => {
+                        const value = parseFloat(e.target.value);
+                        textureRange.onChange(value);
+                        setTextureRangeValue(value);
+                    }} />
                 </div>
             )
 
