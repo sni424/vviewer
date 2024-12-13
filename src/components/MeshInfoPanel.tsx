@@ -115,7 +115,7 @@ function MeshInfoPanel() {
             }}>
                 <button style={{ fontSize: 11 }} onClick={() => {
                     openModal(<ApplyLightMapComponent /> as any);
-                }}> 라이트맵 일괄적용</button >
+                }}> 맵 일괄적용</button >
                 <button style={{ fontSize: 11 }} onClick={() => {
                     setSelecteds(prev => {
                         return prev.filter(uuid => {

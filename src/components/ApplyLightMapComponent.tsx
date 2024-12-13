@@ -13,6 +13,14 @@ const ApplyLightMapComponent = () => {
         return null;
     }
     const [lightmapChannel, setLightmapChannel] = useState(1);
+    const Dsts = {
+        lightmap: "라이트맵",
+        ao: "AO",
+        diffuse: "Diffuse",
+        emissive: "Emissive",
+        normal: "Normal",
+    } as const;
+    const [dst, setDst] = useState<keyof typeof Dsts>("lightmap");
 
     const { scene } = threeExports;
     const childrenMeshes: THREE.Mesh[] = [];
@@ -100,12 +108,21 @@ const ApplyLightMapComponent = () => {
             e.stopPropagation();
         }}
     >
-        <div style={{ fontSize: 20, fontWeight: "bold" }}>라이트맵 일괄적용</div>
+        <div style={{ fontSize: 20, fontWeight: "bold" }}>맵 일괄적용</div>
         <div style={{ fontSize: 12 }}>선택된 오브젝트 {selectedObjects.length}개의 하위 메쉬 {childrenMeshes.length}개에 라이트맵을 일괄적용합니다.</div>
 
-        <div style={{ fontSize: 20, margin: 40, width: "100%", textAlign: "center", fontWeight: "bold" }}>라이트맵 드래그 & 드랍</div>
+        <div style={{ fontSize: 20, margin: 40, width: "100%", textAlign: "center", fontWeight: "bold" }}>이미지 드래그 & 드랍</div>
+        <div>
+            <select onChange={e => {
+                setDst(e.target.value as keyof typeof Dsts);
+            }} value={dst}>
+                {Object.entries(Dsts).map(([key, value]) => {
+                    return <option key={key} value={key}>{value}</option>
+                })}
+            </select>
+        </div>
         {imageFile && <img src={URL.createObjectURL(imageFile)} style={{ width: "100%", height: 100, objectFit: "contain" }}></img>}
-        {imageFile && <div style={{width:"100%", textAlign:"center"}}>UV채널일괄적용 : {lightmapChannel} <button onClick={() => {
+        {imageFile && <div style={{ width: "100%", textAlign: "center" }}>UV채널일괄적용 : {lightmapChannel} <button onClick={() => {
             setLightmapChannel(prev => Math.max(prev - 1, 0));
         }}>-1</button><button onClick={() => {
             setLightmapChannel(prev => prev + 1);
@@ -122,9 +139,23 @@ const ApplyLightMapComponent = () => {
                 texture.needsUpdate = true;
 
                 childrenMeshes.forEach(mesh => {
-                    (mesh.material as THREE.MeshStandardMaterial).lightMap = texture;
+                    if (dst === "lightmap") {
+                        (mesh.material as THREE.MeshStandardMaterial).lightMap = texture;
 
+                    } else if (dst === "ao"){
+                        (mesh.material as THREE.MeshStandardMaterial).aoMap = texture;
+                        
+                    } else if (dst === "diffuse"){
+                        (mesh.material as THREE.MeshStandardMaterial).map = texture;
+                    } else if (dst === "emissive"){
+                        (mesh.material as THREE.MeshStandardMaterial).emissiveMap = texture;
+                    } else if (dst === "normal"){
+                        (mesh.material as THREE.MeshStandardMaterial).normalMap = texture;
+                    } else {
+                        throw new Error("Invalid dst");
+                    }
                     (mesh.material as THREE.MeshStandardMaterial).needsUpdate = true;
+
 
                 });
                 closeModal();
