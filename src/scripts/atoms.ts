@@ -263,7 +263,7 @@ export const globalColorManagementAtom = atom<{ on: boolean; value: ColorManagem
 });
 
 // export const testCameraPosAtom = atom<[number, number]>();
-export const [mainCameraPosAtom, getTestCameraPos, setTestCameraPos] = createAtomCombo<[number, number]>();
+export const [mainCameraPosAtom, getTestCameraPos, setTestCameraPos] = createAtomCombo<THREE.Vector3>();
 export const mainCameraProjectedAtom = atom<[number, number]>();
 
 type WithInitialValue<Value> = {

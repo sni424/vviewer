@@ -9,6 +9,7 @@ import { mainCameraPosAtom, mainCameraProjectedAtom, threeExportsAtom } from '..
 import { atom, useAtom, useAtomValue, useSetAtom } from 'jotai';
 import TopView from '../canvas/FloatingTopView';
 import Grid from '../canvas/Grid';
+import { useGetThreeExports, useSetThreeExports } from '../canvas/Viewport';
 
 type Point = { x: number, y: number };
 
@@ -303,12 +304,14 @@ const isInsideAtom = atom<boolean>(false);
 const TheScene = () => {
     const threeExports = useThree();
     const setThreeExports = useSetAtom(threeExportsAtom);
+    const setThree = useSetThreeExports();
     const markerPosition = useAtomValue(markerPositionAtom);
     const setIsInside = useSetAtom(isInsideAtom);
     const setCameraPosAtom = useSetAtom(mainCameraPosAtom);
 
     useEffect(() => {
         setThreeExports(threeExports);
+        setThree(threeExports);
     }, []);
 
     return <>
@@ -384,11 +387,40 @@ function isPointInsidePolygon(point: Point2D, polygon: Point2D[]): boolean {
     return count % 2 === 1; // Odd number of crossings = inside
 }
 
+const IsInside = () => {
+    const isInside = useAtomValue(isInsideAtom);
+    return <div style={{ position: "absolute", top: 10, right: 10, padding: 8, backgroundColor: isInside ? "green" : "red", color: "white" }}>Is Inside : {isInside ? "O" : "X"}</div>
+}
+
+const MainCamProjection = () => {
+    const mainCamPos = useAtomValue(mainCameraPosAtom);
+    const three = useGetThreeExports();
+
+    if (!mainCamPos || !three) {
+        return;
+    }
+    const { camera } = three;
+    const mainCameraProjected = mainCamPos.screenPosition(camera, 200, 200);
+    const { x, y } = mainCameraProjected;
+
+
+    return <>
+        {mainCameraProjected && <div style={{
+            position: "absolute",
+            width: 10,
+            height: 10,
+            top: 0, left: 0,
+            backgroundColor: "red",
+            borderRadius: "50%",
+            border: "1px solid white",
+            transform: `translate(${x}px, ${y}px
+        )`
+        }}></div>}
+    </>
+}
 
 const Closure: React.FC = () => {
     const [canvasX, setCanvasX] = useState(0);
-    const isInside = useAtomValue(isInsideAtom);
-    const mainCameraProjected = useAtomValue(mainCameraProjectedAtom);
 
 
     return (
@@ -416,24 +448,15 @@ const Closure: React.FC = () => {
                     </mesh>
                 })}
             </Canvas>
-            <div style={{ width: 200, height: 200, position: "absolute", top: 10, left: 10, zIndex: 20, backgroundColor: "red", transform: `translate(${canvasX}px, 0px)`, overflow: "hidden" }}>
+            <div style={{ position: "absolute", top: 10, left: 10, zIndex: 20, backgroundColor: "#c0c0c0", transform: `translate(${canvasX}px, 0px)`, overflow: "hidden" }}>
                 {/* <Canvas>
                     <TopView></TopView>
                 </Canvas> */}
                 <TopView></TopView>
-                {mainCameraProjected && <div style={{
-                    position: "absolute",
-                    width: 10,
-                    height: 10,
-                    top: 0, left: 0,
-                    backgroundColor: "red",
-                    borderRadius: "50%",
-                    border: "1px solid white",
-                    transform: `translate(${mainCameraProjected[0]}px, ${mainCameraProjected[1]}px
-                    )`
-                }}></div>}
+                <MainCamProjection></MainCamProjection>
+
             </div>
-            <div style={{ position: "absolute", top: 10, right: 10, padding: 8, backgroundColor: isInside ? "green" : "red", color: "white" }}>Is Inside : {isInside ? "O" : "X"}</div>
+            <IsInside />
         </div>
 
     );
