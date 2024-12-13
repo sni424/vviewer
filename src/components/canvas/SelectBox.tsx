@@ -76,10 +76,7 @@ const SelectBox = () => {
         const { scene } = threeExports;
         const deletes: THREE.Object3D[] = [];
         scene.traverse(obj => {
-            // if (obj.userData.boxhelper) {
-            //     deletes.push(obj);
-            // }
-            if (obj.type === "BoxHelper" || obj.type === "Box3Helper") {
+            if (obj.userData.boxhelper || obj.type === "BoxHelper" || obj.type === "Box3Helper") {
                 deletes.push(obj);
             }
         })
