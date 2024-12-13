@@ -48,8 +48,7 @@ const CameraPanel = () => {
         <div style={{
             position: "absolute",
             top: 0,
-            left: 0,
-            transform: "translate(-100%, 0)",
+            right: 0,
             maxWidth: 180,
         }}>
             {isCameraPanel ?
