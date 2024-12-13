@@ -4,6 +4,7 @@ import { loadHistoryAtom, panelTabAtom, Tab, Tabs } from '../scripts/atoms';
 import SceneInfo from '../components/SceneInfo';
 import SceneTree from '../components/SceneTree';
 import HotSpotPanel from '../components/HotSpotPanel';
+import ProbeInfo from './ProbeInfo';
 
 const ThePanel = () => {
     const loadHistory = useAtomValue(loadHistoryAtom);
@@ -12,6 +13,7 @@ const ThePanel = () => {
     const tabMap: { [key in Tab]: React.ReactNode } = {
         scene: <SceneInfo />,
         tree: <SceneTree></SceneTree>,
+        probe: <ProbeInfo></ProbeInfo>,
         hotspot: <HotSpotPanel></HotSpotPanel>
 
     };

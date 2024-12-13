@@ -1,14 +1,26 @@
-import { Effects, GizmoHelper, GizmoViewport, OrbitControls, View, } from '@react-three/drei'
-import { Canvas, RootState, useThree } from '@react-three/fiber'
+import { GizmoHelper, GizmoViewport, } from '@react-three/drei'
+import { Canvas, useThree } from '@react-three/fiber'
 import VGLTFLoader from '../../scripts/VGLTFLoader';
 import { useEffect, useRef, useState } from 'react';
-import { Scene, Texture, THREE } from '../../scripts/VTHREE';
+import { THREE } from '../../scripts/VTHREE';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
-import { cameraMatrixAtom, globalGlAtom, loadHistoryAtom, materialSelectedAtom, selectedAtom, sharedThreeAtom, sourceAtom, threeExportsAtom, Threes, treeScrollToAtom } from '../../scripts/atoms';
+import {
+    cameraMatrixAtom,
+    globalGlAtom,
+    loadHistoryAtom,
+    materialSelectedAtom,
+    selectedAtom,
+    sourceAtom,
+    threeExportsAtom,
+    treeScrollToAtom,
+} from '../../scripts/atoms';
 import { __UNDEFINED__ } from '../../Constants';
 import MyEnvironment from './EnvironmentMap';
 import SelectBox from './SelectBox';
 import { getIntersects, loadScene, saveScene } from '../../scripts/utils';
+import GlobalContrast from './GlobalContrast';
+import GlobalColorTemperature from './GlobalColorTemperature';
+import GlobalSaturationCheck from './GlobalSaturationCheck';
 import UnifiedCameraControls from '../camera/UnifiedCameraControls';
 import PostProcess from './PostProcess';
 import { useSetThreeExports } from './Viewport';
@@ -23,6 +35,7 @@ function Renderer() {
     const setSharedExports = useSetThreeExports();
     const { scene, camera } = threeExports;
     const setCameraAtom = useSetAtom(cameraMatrixAtom);
+
     const [model, setModel] = useState<any>(null)
 
     useEffect(() => {
@@ -120,10 +133,13 @@ function Renderer() {
             name='GizmoHelper'
             alignment="bottom-right" // widget alignment within scene
             margin={[80, 80]} // widget margins (X, Y)
-
         >
             <GizmoViewport name='GizmoHelper' axisColors={['red', 'green', 'blue']} labelColor="black" />
         </GizmoHelper>
+        <GlobalContrast></GlobalContrast>
+        {/*<GlobalToneMapping></GlobalToneMapping> */}
+        <GlobalColorTemperature></GlobalColorTemperature>
+        <GlobalSaturationCheck></GlobalSaturationCheck>
         <PostProcess></PostProcess>
     </>
 }
@@ -136,6 +152,8 @@ function RendererContainer() {
     const setScrollTo = useSetAtom(treeScrollToAtom);
     const gl = useAtomValue(globalGlAtom);
     const lastClickRef = useRef<number>(0);
+    const cameraLayer = new THREE.Layers();
+    cameraLayer.enableAll();
     const mouseDownPosition = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
     // 드래그로 간주할 최소 거리
     const dragThreshold = 5;
@@ -250,7 +268,9 @@ function RendererContainer() {
                 //     toneMappingExposure: 1,
                 //     toneMappingWhitePoint: 1
                 // }}
+                // gl={gl}
                 gl={gl}
+                camera={{ layers: cameraLayer }}
                 onMouseDown={(e) => {
                     lastClickRef.current = Date.now();
                     // 마우스 다운 시 위치 저장
@@ -292,10 +312,12 @@ function RendererContainer() {
                                 return [...selected, intersects[0].object.uuid];
                             });
                         } else {
-                            setSelected([intersects[0].object.uuid]);
-                            setScrollTo(intersects[0].object.uuid);
-                            if (intersects[0].object.type === "Mesh") {
-                                setMaterialSelected((intersects[0].object as THREE.Mesh).material as THREE.Material);
+                            if (!intersects[0].object.userData.isProbeMesh) {
+                                setSelected([intersects[0].object.uuid]);
+                                setScrollTo(intersects[0].object.uuid);
+                                if (intersects[0].object.type === "Mesh") {
+                                    setMaterialSelected((intersects[0].object as THREE.Mesh).material as THREE.Material);
+                                }
                             }
                         }
 

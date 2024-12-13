@@ -5,6 +5,7 @@ import React from 'react';
 import { set } from 'idb-keyval';
 import { FileInfo, GLProps, View, ViewportOption } from '../types';
 import { DEFAULT_COLOR_TEMPERATURE } from '../Constants';
+import ReflectionProbe from './ReflectionProbe.ts';
 
 type AtomArgType<T> = T | ((prev: T) => T);
 export type Store = ReturnType<typeof createStore>;
@@ -198,9 +199,11 @@ export const globalGlAtom = atom<GLProps>({
   failIfMajorPerformanceCaveat: false,
 });
 
+// REFLECTION PROBES
+export const ProbeAtom = atom<ReflectionProbe[]>([]);
 export const treeScrollToAtom = atom<string | null>(null);
 
-export const Tabs = ['scene', 'tree', "hotspot"] as const;
+export const Tabs = ['scene', 'tree', "probe", "hotspot"] as const;
 export type Tab = (typeof Tabs)[number];
 export const panelTabAtom = atom<Tab>('scene');
 
@@ -259,8 +262,6 @@ export const globalColorManagementAtom = atom<{ on: boolean; value: ColorManagem
   }
 });
 
-
-
 // export const testCameraPosAtom = atom<[number, number]>();
 export const [mainCameraPosAtom, getTestCameraPos, setTestCameraPos] = createAtomCombo<[number, number]>();
 export const mainCameraProjectedAtom = atom<[number, number]>();
@@ -303,7 +304,7 @@ export const viewportOptionAtom = atom<{
 });
 
 export const useViewportOption = (view: View = View.Shared) => {
-  
+
   const [options, setOptions] = useAtom(viewportOptionAtom);
 
   const getOption = options[view] as ViewportOption;

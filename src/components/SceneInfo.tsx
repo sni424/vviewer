@@ -1,6 +1,6 @@
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import useFiles from '../scripts/useFiles';
-import { cached, compressObjectToFile, formatNumber, groupInfo, loadLatest, loadScene, saveScene, toNthDigit } from '../scripts/utils';
+import { cached, compressObjectToFile, formatNumber, groupInfo, isProbeMesh, isTransformControlOrChild, loadLatest, loadScene, saveScene, toNthDigit } from '../scripts/utils';
 
 import { cameraMatrixAtom, globalColorTemperatureAtom, globalBrightnessContrastAtom, globalSaturationCheckAtom, selectedAtom, sourceAtom, threeExportsAtom, useEnvParams, useModal, globalColorManagementAtom, LookType, ViewTransform } from '../scripts/atoms';
 import { useEffect, useState } from 'react';
@@ -256,6 +256,7 @@ const SceneInfo = () => {
                         value={env.preset}
                         onChange={(e) => {
                             setEnv({ ...env, preset: e.target.value as "apartment" | "city" | "dawn" | "forest" | "lobby" | "night" | "park" | "studio" | "sunset" | "warehouse" });
+                            
                         }}>
                         <option value="apartment">아파트</option>
                         <option value="city">도시</option>
@@ -510,6 +511,14 @@ const SceneInfo = () => {
             <ul style={{ paddingLeft: 4, marginTop: 8 }}>
                 {scene.children.map((child, index) => {
                     if (child.type === "BoxHelper") {
+                        return null;
+                    }
+                    
+                    if (isProbeMesh(child)) {
+                        return null;
+                    }
+                    
+                    if (isTransformControlOrChild(child)) {
                         return null;
                     }
 

@@ -56,6 +56,7 @@ const _SelectBox = () => {
             return;
         }
         const helper = new THREE.BoxHelper(selectedObject, 0xff0000);
+        helper.layers.set(5);
         helper.userData.boxhelper = true;
         scene.add(helper);
     });
@@ -78,7 +79,7 @@ const SelectBox = () => {
             // if (obj.userData.boxhelper) {
             //     deletes.push(obj);
             // }
-            if (obj.type === "BoxHelper") {
+            if (obj.type === "BoxHelper" || obj.type === "Box3Helper") {
                 deletes.push(obj);
             }
         })
@@ -123,6 +124,7 @@ const SelectBox = () => {
         }
         const helper = new THREE.BoxHelper(selectedObject, 0xff0000);
         helper.userData.boxhelper = true;
+        helper.layers.set(5);
         scene.add(helper);
     });
 

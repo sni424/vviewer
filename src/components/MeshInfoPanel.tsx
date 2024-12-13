@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react';
 import { materialSelectedAtom, panelTabAtom, selectedAtom, threeExportsAtom, treeScrollToAtom, useModal } from '../scripts/atoms';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import { THREE } from '../scripts/VTHREE';
@@ -55,6 +55,10 @@ const MeshView = ({ object, index }: { object: THREE.Object3D; index: number }) 
             {Object.keys(object.userData).length > 0 && <div style={{ fontSize: 11 }}>유저데이터
                 <div style={{ fontSize: 10 }}>
                     {Object.entries(object.userData as Record<string, any>).map(([key, value]) => {
+                        
+                        if (key === 'probe') {
+                            return null;
+                        }
                         return <div style={{ paddingLeft: 8 }} key={`info-${object.uuid}-${key}`}>{key}: {JSON.stringify(value).replace(/\"/g, "")}</div>
                     })}
                 </div>
@@ -79,7 +83,6 @@ function MeshInfoPanel() {
     const threeExports = useAtomValue(threeExportsAtom);
     const materialSelected = useAtomValue(materialSelectedAtom);
     const { openModal, closeModal } = useModal();
-
 
     if (selecteds.length === 0 || !threeExports) {
         return null;

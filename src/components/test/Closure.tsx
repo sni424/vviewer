@@ -7,7 +7,7 @@ import { LineGeometry } from 'three/examples/jsm/Addons.js';
 import * as THREE from 'three';
 import { mainCameraPosAtom, mainCameraProjectedAtom, threeExportsAtom } from '../../scripts/atoms';
 import { atom, useAtom, useAtomValue, useSetAtom } from 'jotai';
-import TopView from '../canvas/TopView';
+import TopView from '../canvas/FloatingTopView';
 import Grid from '../canvas/Grid';
 
 type Point = { x: number, y: number };

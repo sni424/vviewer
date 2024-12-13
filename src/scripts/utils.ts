@@ -7,6 +7,7 @@ import pako from 'pako';
 import { FileInfo } from '../types';
 import objectHash from 'object-hash';
 import { BenchMark } from './atoms';
+import { TransformControls } from 'three-stdlib';
 import { RGBELoader } from 'three/examples/jsm/Addons.js';
 
 
@@ -127,6 +128,23 @@ export const saveScene = async (scene: THREE.Scene) => {
         })
 
     });
+}
+
+// Object 가 TransformControls 의 객체 중 일부인지?
+export const isTransformControlOrChild = (object: THREE.Object3D) => {
+    let current = object;
+    while (current) {
+        if (current instanceof TransformControls || current.userData.isTransformControls) {
+            return true; // Skip if it's part of TransformControls
+        }
+        current = current.parent;
+    }
+    return false;
+}
+
+// Object 가 Probe 의 Mesh 인지?
+export const isProbeMesh = (object: THREE.Object3D) => {
+    return object.userData.isProbeMesh !== undefined;
 }
 
 export const loadScene = async (): Promise<THREE.Object3D | undefined> => {

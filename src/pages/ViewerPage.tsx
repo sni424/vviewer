@@ -1,13 +1,10 @@
-import { useEffect, useRef } from 'react';
 import { useAtomValue, useSetAtom } from 'jotai';
-import { useState } from 'react';
 import { loadHistoryAtom, modalAtom, threeExportsAtom, } from '../scripts/atoms';
 import useFiles from '../scripts/useFiles';
 import RendererContainer from '../components/canvas/Renderer';
 import MeshInfoPanel from '../components/MeshInfoPanel';
 import MaterialPanelContainer from '../components/MaterialPanel';
 import Modal from '../components/Modal';
-
 import FloatingTopView from '../components/canvas/FloatingTopView';
 import FloatingFrontView from '../components/canvas/FloatingFrontView';
 import useModelDragAndDrop from '../scripts/useModelDragAndDrop';

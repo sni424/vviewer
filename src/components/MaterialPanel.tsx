@@ -204,7 +204,8 @@ const MapSection = ({ mat, forceUpdate }: { mat: THREE.MeshStandardMaterial; for
                     onChange: (value) => {
                         mat.lightMapIntensity = value;
                         mat.needsUpdate = true;
-                    }
+                    },
+                    max: 10
                 }}>
                 </MapInfo>
 
