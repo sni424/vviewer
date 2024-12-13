@@ -1,5 +1,5 @@
 import type { RootState } from '@react-three/fiber';
-import { atom, createStore, PrimitiveAtom, useAtom, useAtomValue, useSetAtom, WritableAtom } from 'jotai';
+import { atom, createStore, getDefaultStore, PrimitiveAtom, useAtom, useAtomValue, useSetAtom, WritableAtom } from 'jotai';
 import { THREE, Vector3 } from './VTHREE';
 import React from 'react';
 import { set } from 'idb-keyval';
@@ -9,7 +9,19 @@ import ReflectionProbe from './ReflectionProbe.ts';
 
 type AtomArgType<T> = T | ((prev: T) => T);
 export type Store = ReturnType<typeof createStore>;
-export const defaultStore = createStore();
+// export const defaultStore = createStore();
+export const defaultStore = getDefaultStore();
+
+export function getAtomValue<T = any>(atom: PrimitiveAtom<T>): T {
+  const store = getDefaultStore();
+  return store.get(atom);
+}
+
+export function setAtomValue<T = any>(atom: PrimitiveAtom<T>, value: T) {
+  const store = getDefaultStore();
+  store.set(atom, value);
+  return value;
+}
 
 // 훅 내부가 아닌 일반 함수에서 전달받아서 사용하기 위헤 store.get
 // 사용방법: const [atom, getAtom, setAtom] = createAtomCombo<타입>(초기값?, store?);
@@ -223,7 +235,7 @@ export const cameraSettingAtom = atom({
 
 //orbit세팅
 export const orbitSettingAtom = atom({
-  autoRotate: !true,
+  autoRotate: true,
   enable: false,
 });
 

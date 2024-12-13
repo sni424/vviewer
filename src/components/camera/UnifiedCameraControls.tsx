@@ -437,7 +437,7 @@ const UnifiedCameraControls: React.FC<UnifiedCameraControlsProps> = ({
                           autoRotate={orbitSetting.autoRotate}
                           enabled={orbitSetting.enable}
                           onChange={e => {
-                              console.log(e);
+                            //   console.log(e);
                               if (!cameraSetting.isoView) {
                                   const matrix = e?.target.object.matrix.clone();
                                   setCameraAtom(matrix);

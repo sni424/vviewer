@@ -5,19 +5,19 @@ import { useEffect } from 'react';
 import { get } from 'idb-keyval';
 import TestPage from './TestPage';
 import MobilePage from './MobilePage';
+import { loadSettings, saveSettings } from './useSettings';
 
 
 const MyRoutes = () => {
-  // if width less than 800, route to "/mobile"
   const navigate = useNavigate();
 
   useEffect(() => {
     const checkWidth = () => {
-      if (window.innerWidth < 800) {
+      if (window.innerWidth < 600) {
         navigate("/mobile");
       }
     }
-    // checkWidth();
+    checkWidth();
   }, [
 
   ]);
@@ -35,11 +35,17 @@ const MyRoutes = () => {
 function App() {
   const [_, setEnv] = useEnvParams();
   useEffect(() => {
-    get("envParam").then((env: Env | undefined) => {
-      if (env) {
-        setEnv(env);
-      }
-    })
+    loadSettings();
+
+    const settingSaver = () => {
+      console.log("here")
+      saveSettings();
+    }
+
+    addEventListener("beforeunload", settingSaver);
+    return () => {
+      removeEventListener("beforeunload", settingSaver);
+    }
   }, [
 
   ]);

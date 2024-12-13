@@ -68,7 +68,7 @@ const CameraPanel = () => {
                         }}>
                             <div>
                                 <label >isoView</label>
-                                <input type="checkbox" id="isoView" name="isoView" onChange={e => {
+                                <input type="checkbox" id="isoView" name="isoView" checked={cameraSetting.isoView} onChange={e => {
 
                                     setCameraSetting(pre => ({
                                         ...pre,
@@ -94,7 +94,7 @@ const CameraPanel = () => {
                             <div>
                                 <label >autoRotate</label>
                                 <input type="checkbox" id="autoRotate" name="autoRotate"
-                                    defaultChecked
+                                    checked={isOrbit.autoRotate}
                                     onChange={e => {
                                         setOrbit(pre => ({
                                             ...pre,

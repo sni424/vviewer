@@ -1,5 +1,5 @@
-import { useAtomValue, useSetAtom } from 'jotai';
-import { loadHistoryAtom, modalAtom, threeExportsAtom, } from '../scripts/atoms';
+import {  useAtomValue, useSetAtom } from 'jotai';
+import { loadHistoryAtom, modalAtom,threeExportsAtom, } from '../scripts/atoms';
 import useFiles from '../scripts/useFiles';
 import RendererContainer from '../components/canvas/Renderer';
 import MeshInfoPanel from '../components/MeshInfoPanel';
@@ -13,15 +13,13 @@ import CameraPanel from '../components/CameraPanel';
 
 
 function Loading() {
-    // const loadings = useAtomValue(loadingsAtom);
-    // const loadingHistory = useAtomValue(loadHistoryAtom);
     const files = useFiles();
     const { loadingFiles } = files;
     const hasLoading = loadingFiles.length > 0;
 
     return <>
         {hasLoading && <div style={{
-            // position: "absolute",
+            position: "absolute",
             top: 0,
             left: 0,
             width: "100%",
