@@ -25,7 +25,7 @@ const CameraPanel = () => {
 
     useEffect(() => {
         // space 입력 시 카메라 상승
-        const handleKeydown = (e) => {
+        const handleKeydown= (e:KeyboardEvent) => {
             // 카메라 y값 상승
             const velocity = 0.1;
             if (e.key === " ") {
@@ -40,6 +40,9 @@ const CameraPanel = () => {
             }
 
             if (e.key.toLowerCase() === "c") {
+                if(e.ctrlKey){
+                    return;
+                }
                 e.preventDefault();
                 const tooSoon = Date.now() - lastSpace.current < 30;
                 if (tooSoon) {

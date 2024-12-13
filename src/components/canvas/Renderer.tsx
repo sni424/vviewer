@@ -122,20 +122,16 @@ function Renderer() {
     }, [sources]);
 
     return <>
-        {/* <ambientLight />
-      <pointLight position={[10, 10, 10]} />
-      <mesh>
-        <boxGeometry args={[1, 1, 1]} />
-        <meshStandardMaterial color="hotpink" />
-      </mesh> */}
-        {/* <OrbitControls makeDefault onChange={e => {
-            const matrix = e?.target.object.matrix.clone()
-            setCameraAtom(matrix);
-        }} /> */}
         <UnifiedCameraControls />
         <MyEnvironment></MyEnvironment>
         <SelectBox></SelectBox>
         {/* <Gizmo></Gizmo> */}
+        <PostProcess></PostProcess>
+        <GlobalSaturationCheck></GlobalSaturationCheck>
+        {/* <GlobalContrast></GlobalContrast> */}
+        {/*<GlobalToneMapping></GlobalToneMapping> */}
+        {/* <GlobalColorTemperature></GlobalColorTemperature> */}
+        {/* 기즈모헬퍼는 제일 마지막에 렌더 */}
         <GizmoHelper
             name='GizmoHelper'
             alignment="bottom-right" // widget alignment within scene
@@ -143,11 +139,7 @@ function Renderer() {
         >
             <GizmoViewport name='GizmoHelper' axisColors={['red', 'green', 'blue']} labelColor="black" />
         </GizmoHelper>
-        <GlobalContrast></GlobalContrast>
-        {/*<GlobalToneMapping></GlobalToneMapping> */}
-        <GlobalColorTemperature></GlobalColorTemperature>
-        <GlobalSaturationCheck></GlobalSaturationCheck>
-        <PostProcess></PostProcess>
+
     </>
 }
 
