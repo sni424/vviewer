@@ -127,6 +127,7 @@ const SceneInfo = () => {
     const [globalColorTemperature, setGlobalColorTemperature] = useAtom(globalColorTemperatureAtom)
     const [cm, setCm] = useAtom(globalColorManagementAtom);
     const { on: cmOn, value: cmValue } = cm;
+    const [aoValue, setAoValue] = useState(0);
 
     useEffect(() => {
         get("savedScene").then(val => {
@@ -155,7 +156,7 @@ const SceneInfo = () => {
         gap: 12
     }}>
         <section style={{ width: "100%", display: "grid", gap: 8, gridTemplateColumns: "1fr 1fr 1fr" }}>
-            <button onClick={()=>{
+            <button onClick={() => {
                 navigate("/mobile");
             }}>모바일</button>
             <button style={{ fontSize: 10 }} disabled={scene.children.length === 0} onClick={() => {
@@ -232,6 +233,43 @@ const SceneInfo = () => {
                 })
             }}>업로드한 씬 불러오기</button>
         </section>
+        <section className='w-full'>
+            <strong>재질 일괄 설정</strong>
+            <div className='flex'>
+                <div className='mr-3'>AO</div>
+                <input className='flex-1 min-w-0' type="range" value={aoValue} onChange={e => {
+                    const allMeshes: THREE.Mesh[] = [];
+                    scene.traverse(child => {
+                        if (child instanceof THREE.Mesh) {
+                            allMeshes.push(child);
+                        }
+                    }
+                    )
+                    allMeshes.forEach(mesh => {
+                        //@ts-ignore
+                        mesh.material.aoMapIntensity = parseFloat(e.target.value);
+                    })
+                    setAoValue(parseFloat(e.target.value));
+                }} min={0} max={1} step={0.01} ></input>
+                <input type="number" value={aoValue} onChange={e => {
+                    const allMeshes: THREE.Mesh[] = [];
+                    scene.traverse(child => {
+                        if (child instanceof THREE.Mesh) {
+                            allMeshes.push(child);
+                        }
+                    }
+                    )
+                    allMeshes.forEach(mesh => {
+                        //@ts-ignore
+                        mesh.material.aoMapIntensity = parseFloat(e.target.value);
+                    })
+                    setAoValue(parseFloat(e.target.value));
+                }}
+                    min={0} max={1} step={0.01}
+                ></input>
+            </div>
+        </section>
+
         <section style={{ width: "100%" }}>
             <strong>환경맵</strong>
             <div style={{ marginTop: 4, display: "flex", flexDirection: "column" }}>
@@ -259,7 +297,7 @@ const SceneInfo = () => {
                         value={env.preset}
                         onChange={(e) => {
                             setEnv({ ...env, preset: e.target.value as "apartment" | "city" | "dawn" | "forest" | "lobby" | "night" | "park" | "studio" | "sunset" | "warehouse" });
-                            
+
                         }}>
                         <option value="apartment">아파트</option>
                         <option value="city">도시</option>
@@ -516,11 +554,11 @@ const SceneInfo = () => {
                     if (child.type === "BoxHelper") {
                         return null;
                     }
-                    
+
                     if (isProbeMesh(child)) {
                         return null;
                     }
-                    
+
                     if (isTransformControlOrChild(child)) {
                         return null;
                     }
