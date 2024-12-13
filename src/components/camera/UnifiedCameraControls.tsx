@@ -5,6 +5,7 @@ import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import React, { useEffect, useRef, useState } from 'react';
 import { cameraMatrixAtom, cameraSettingAtom, lastCameraInfoAtom, orbitSettingAtom } from '../../scripts/atoms';
 import { THREE, Vector3 } from '../../scripts/VTHREE';
+import { useGetThreeExports, useSetThreeExports } from '../canvas/Viewport';
 
 
 // Props 타입 정의
@@ -19,10 +20,10 @@ interface UnifiedCameraControlsProps {
 
 
 const UnifiedCameraControls: React.FC<UnifiedCameraControlsProps> = ({
-                                                                         rotationSpeed = 0.002,
-                                                                         inertia = 0.9,
-                                                                     }) => {
-    
+    rotationSpeed = 0.002,
+    inertia = 0.9,
+}) => {
+
     const { camera, raycaster, pointer, scene, gl } = useThree();
     //카메라 회전 boolean
     const isRotateRef = useRef(false);
@@ -44,7 +45,7 @@ const UnifiedCameraControls: React.FC<UnifiedCameraControlsProps> = ({
     const prevTapTime = useRef<number>(0);
     //orbitControl
     const orbit = useRef<any>(null);
-    
+
     //
     const cameraSetting = useAtomValue(cameraSettingAtom);
     //카메라 정보값 갱신
@@ -53,18 +54,18 @@ const UnifiedCameraControls: React.FC<UnifiedCameraControlsProps> = ({
     const [lastCameraInfo, setLastCameraInfo] = useAtom(lastCameraInfoAtom);
     //orbit카메라 세팅
     const [orbitSetting, setOrbitSetting] = useAtom(orbitSettingAtom);
-    
-    
+
+
     // 카메라 이동 및 회전시 카메라 데이터 저장장
     const updateCameraInfo = () => {
         const originalTarget = orbit.current.target;
         const cameraPosition = camera.position.clone();
-        
+
         const distance = cameraPosition.distanceTo(originalTarget);
-        
+
         // 카메라의 방향 벡터
         const direction = camera.getWorldDirection(new THREE.Vector3());
-        
+
         // 목표 좌표 계산 (카메라 위치 + 방향 벡터)
         const target = calculateTargetPosition(cameraPosition, direction, distance);
         // 마지막 카메라 정보 업데이트
@@ -74,18 +75,18 @@ const UnifiedCameraControls: React.FC<UnifiedCameraControlsProps> = ({
             target,
         }));
     };
-    
+
     function calculateTargetPosition(cameraPosition: THREE.Vector3, direction: THREE.Vector3, distance: number) {
         // direction이 정규화되지 않았을 경우 정규화
         const normalizedDirection = direction.clone().normalize();
-        
+
         // 방향 벡터에 거리(distance)를 곱해 이동한 벡터 계산
         const offset = normalizedDirection.multiplyScalar(distance);
-        
+
         // 카메라 위치에 offset을 더해 타겟 위치 계산
         return cameraPosition.clone().add(offset);
     }
-    
+
     // OrbitControls 관련 설정 함수
     const updateOrbitTarget = (target: THREE.Vector3) => {
         if (orbit.current) {
@@ -93,40 +94,40 @@ const UnifiedCameraControls: React.FC<UnifiedCameraControlsProps> = ({
             orbit.current.update();
         }
     };
-    
-    
+
+
     // 마우스 드래그로 카메라 회전
     const moveCameraRotation = (deltaX: number, deltaY: number): void => {
         velocity.current = { x: deltaX * rotationSpeed, y: deltaY * rotationSpeed };
-        
+
         // X축과 Y축 회전을 위한 쿼터니언 생성
         const quaternionX = new THREE.Quaternion();
         const quaternionY = new THREE.Quaternion();
-        
+
         // X축 회전 설정 (Y축을 중심으로 수평 회전)
         quaternionX.setFromAxisAngle(new THREE.Vector3(0, 1, 0), -deltaX * rotationSpeed);
         // Y축 회전 설정 (X축을 중심으로 수직 회전)
         quaternionY.setFromAxisAngle(new THREE.Vector3(1, 0, 0), -deltaY * rotationSpeed);
-        
+
         // 카메라의 현재 쿼터니언에 X축 회전을 적용
         camera.quaternion.multiplyQuaternions(quaternionX, camera.quaternion);
         // 카메라의 업데이트된 쿼터니언에 Y축 회전을 추가로 적용
         camera.quaternion.multiplyQuaternions(camera.quaternion, quaternionY);
         // 카메라의 월드 변환 행렬 업데이트
         camera.updateMatrixWorld(true);
-        
+
     };
-    
+
     // 관성 효과 적용
     const applyInertia = (): void => {
-        
+
         // 회전 중이 아니고, 현재 회전 속도가 특정 임계값(0.001)보다 클 경우에만 관성 적용
         if (!isRotateRef.current && (Math.abs(velocity.current.x) > 0.001 || Math.abs(velocity.current.y) > 0.001)) {
-            
+
             // 회전 속도에 관성을 곱해 점점 줄어들도록 설정
             velocity.current.x *= inertia;
             velocity.current.y *= inertia;
-            
+
             // X축과 Y축 회전을 위한 쿼터니언 생성
             const quaternionX = new THREE.Quaternion();
             const quaternionY = new THREE.Quaternion();
@@ -134,19 +135,19 @@ const UnifiedCameraControls: React.FC<UnifiedCameraControlsProps> = ({
             quaternionX.setFromAxisAngle(new THREE.Vector3(0, 1, 0), -velocity.current.x);
             // 현재 회전 속도를 기반으로 Y축(X축 중심 회전) 쿼터니언 생성
             quaternionY.setFromAxisAngle(new THREE.Vector3(1, 0, 0), -velocity.current.y);
-            
+
             // 카메라의 현재 쿼터니언에 X축 회전 적용
             camera.quaternion.multiplyQuaternions(quaternionX, camera.quaternion);
             // 카메라의 업데이트된 쿼터니언에 Y축 회전 추가로 적용
             camera.quaternion.multiplyQuaternions(camera.quaternion, quaternionY);
-            
+
             camera.updateMatrixWorld(true);
             updateCameraInfo();
             // 다음 프레임에서 applyInertia를 호출하여 관성을 지속적으로 적용
             requestAnimationFrame(applyInertia);
         }
     };
-    
+
     //모바일 새로운 위치로 카메라 이동
     const moveCameraPosition = (newVector: THREE.Vector3): void => {
         //현재 카메라 위치와 새로운 벡터 위치의 사이의 거리를 구함
@@ -170,18 +171,18 @@ const UnifiedCameraControls: React.FC<UnifiedCameraControlsProps> = ({
             },
         });
     };
-    
-    
+
+
     //pc에서 카메라 위치 이동 함수
     const animateCameraMovement = (currentTime: number): void => {
-        
+
         //시간에 따라 일정한 속도를 유지하기위해 현재 프레임과 이전 프레임 사이의 시간을 구한다.
         const deltaTime = prevFrameTime.current
             ? (currentTime - (prevFrameTime.current || 0)) / 1000
             : 0;
         //이전 프레임에 현재 시간을 저장
         prevFrameTime.current = currentTime;
-        
+
         //방향을 위한 변수
         const forward = new THREE.Vector3();
         //현재 카메라의 방향을 구한다.
@@ -190,7 +191,7 @@ const UnifiedCameraControls: React.FC<UnifiedCameraControlsProps> = ({
         forward.y = 0;
         //정규화 하여 방향에 사용이 가능하게 
         forward.normalize();
-        
+
         //오른쪽 방향 설정 forward값으로 설정 가능
         const right = new THREE.Vector3(-forward.z, 0, forward.x);
         //카메라가 움직일 방향 설정
@@ -203,7 +204,7 @@ const UnifiedCameraControls: React.FC<UnifiedCameraControlsProps> = ({
         if (activeKeys.current.has('a')) moveDirection.sub(right);
         //오른쪽으로
         if (activeKeys.current.has('d')) moveDirection.add(right);
-        
+
         if (moveDirection.length() > 0) {
             const movement = moveDirection.clone()
                 .normalize()
@@ -212,12 +213,12 @@ const UnifiedCameraControls: React.FC<UnifiedCameraControlsProps> = ({
             camera.updateProjectionMatrix();
             updateCameraInfo();
         }
-        
+
         if (cameraAction) {
             animationFrameId.current = requestAnimationFrame(animateCameraMovement);
         }
     };
-    
+
     //isoView walkView 변환
     const switchCamera = (position: Vector3, target: Vector3, cameraFov: number) => {
         // 카메라 위치 애니메이션
@@ -227,11 +228,11 @@ const UnifiedCameraControls: React.FC<UnifiedCameraControlsProps> = ({
             z: position.z,
             duration: 3,
             ease: 'power2.out',
-            onUpdate: function() {
+            onUpdate: function () {
                 // OrbitControls와 동기화
                 camera.lookAt(target.x, target.y, target.z);
                 updateOrbitTarget(target);
-                
+
             },
             onComplete: () => {
                 camera.lookAt(target.x, target.y, target.z);
@@ -250,18 +251,27 @@ const UnifiedCameraControls: React.FC<UnifiedCameraControlsProps> = ({
             });
         }
     };
-    
+
+    const threes = useThree();
+    const setThrees = useSetThreeExports();
     useEffect(() => {
+        if (orbit.current) {
+            threes.orbitControls = orbit.current;
+            setThrees(threes);
+        }
+    }, []);
+    useEffect(() => {
+
         const handleKeyDown = (event: KeyboardEvent): void => {
             activeKeys.current.add(event.key.toLowerCase());
             setCameraAction(true);
         };
-        
+
         const handleKeyUp = (event: KeyboardEvent): void => {
             activeKeys.current.delete(event.key.toLowerCase());
             if (activeKeys.current.size === 0) setCameraAction(false);
         };
-        
+
         window.addEventListener('keydown', handleKeyDown);
         window.addEventListener('keyup', handleKeyUp);
         document.addEventListener('control-dragged', (event) => {
@@ -271,7 +281,7 @@ const UnifiedCameraControls: React.FC<UnifiedCameraControlsProps> = ({
                 return { ...pre, enable: !moving };
             });
         });
-        
+
         return () => {
             window.removeEventListener('keydown', handleKeyDown);
             window.removeEventListener('keyup', handleKeyUp);
@@ -279,11 +289,11 @@ const UnifiedCameraControls: React.FC<UnifiedCameraControlsProps> = ({
             });
         };
     }, []);
-    
+
     useEffect(() => {
         const element = document.getElementById('canvasDiv');
         if (!element) return;
-        
+
         //마우스 클릭 눌렀을때 이벤트
         const handleMouseDown = (event: MouseEvent): void => {
             //회전 true
@@ -293,7 +303,7 @@ const UnifiedCameraControls: React.FC<UnifiedCameraControlsProps> = ({
             //마우스 위치값 설정
             previousMousePosition.current = { x: event.clientX, y: event.clientY };
         };
-        
+
         //마우스 이동 이벤트
         const handleMouseMove = (event: MouseEvent): void => {
             if (isRotateRef.current) {
@@ -313,7 +323,7 @@ const UnifiedCameraControls: React.FC<UnifiedCameraControlsProps> = ({
             //감속 하면서 멈추는 함수
             applyInertia();
         };
-        
+
         //모바일 터치땠을때 이벤트
         const handleTouchEnd = (): void => {
             //현재 시간
@@ -329,19 +339,19 @@ const UnifiedCameraControls: React.FC<UnifiedCameraControlsProps> = ({
                 if (intersects.length > 0) {
                     // 교차된 첫 번째 객체의 좌표를 기준으로 카메라 이동
                     moveCameraPosition(intersects[0].point);
-                    
+
                 }
             }
             // 마지막 터치 이벤트 시간 갱신
             prevTapTime.current = currentTime;
         };
-        
+
         element.addEventListener('mousedown', handleMouseDown);
         element.addEventListener('mousemove', handleMouseMove);
         element.addEventListener('mouseup', handleMouseUp);
         element.addEventListener('touchend', handleTouchEnd);
-        
-        
+
+
         return () => {
             if (element) {
                 element.removeEventListener('mousedown', handleMouseDown);
@@ -351,8 +361,8 @@ const UnifiedCameraControls: React.FC<UnifiedCameraControlsProps> = ({
             }
         };
     }, []);
-    
-    
+
+
     useEffect(() => {
         if (cameraAction) {
             // 카메라 이동 애니메이션이 활성화되었을 때
@@ -371,9 +381,9 @@ const UnifiedCameraControls: React.FC<UnifiedCameraControlsProps> = ({
             }
         }
     }, [cameraAction]);
-    
+
     useEffect(() => {
-        
+
         if (scene && scene.children.length > 0) {
             // const group = new THREE.Group()
             // scene.traverse((child: THREE.Object3D) => {
@@ -388,7 +398,7 @@ const UnifiedCameraControls: React.FC<UnifiedCameraControlsProps> = ({
             const boundingBox = new THREE.Box3().setFromObject(scene);
             const size = boundingBox.getSize(new THREE.Vector3()); // 모델 크기
             const center = boundingBox.getCenter(new THREE.Vector3()); // 모델 중심
-            
+
             if (cameraSetting.isoView) {
                 setOrbitSetting(pre => ({
                     ...pre,
@@ -410,17 +420,17 @@ const UnifiedCameraControls: React.FC<UnifiedCameraControlsProps> = ({
                     ...pre,
                     enable: false,
                 }));
-                
+
                 switchCamera(
                     lastCameraInfo.position,
                     lastCameraInfo.target, 75,
                 );
-                
+
             }
         }
     }, [cameraSetting.isoView]);
-    
-    
+
+
     // isoView가 아닌 상태에서 OrbitControls이 활성화 되면 이전 바라보던 방향으로 설정
     useEffect(() => {
         if (!cameraSetting.isoView && orbit.current) {
@@ -432,20 +442,20 @@ const UnifiedCameraControls: React.FC<UnifiedCameraControlsProps> = ({
         }
     }, [orbitSetting.enable]);
     //
-    
+
     return <OrbitControls ref={orbit} makeDefault
-                          autoRotate={orbitSetting.autoRotate}
-                          enabled={orbitSetting.enable}
-                          onChange={e => {
-                            //   console.log(e);
-                              if (!cameraSetting.isoView) {
-                                  const matrix = e?.target.object.matrix.clone();
-                                  setCameraAtom(matrix);
-                                  // if (orbitSetting.enable) {
-                                  //     updateCameraInfo();
-                                  // }
-                              }
-                          }}
+        autoRotate={orbitSetting.autoRotate}
+        enabled={orbitSetting.enable}
+        onChange={e => {
+            //   console.log(e);
+            if (!cameraSetting.isoView) {
+                const matrix = e?.target.object.matrix.clone();
+                setCameraAtom(matrix);
+                // if (orbitSetting.enable) {
+                //     updateCameraInfo();
+                // }
+            }
+        }}
     />;
 };
 

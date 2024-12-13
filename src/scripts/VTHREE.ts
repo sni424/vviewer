@@ -327,6 +327,6 @@ window.setThree = (view: View, state: RootState) => {
   return state;
 }
 
-window.getThree = (view: View) => {
+window.getThree = (view: View = View.Shared) => {
   return window.threeStore[view];
 }

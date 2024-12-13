@@ -122,10 +122,21 @@ const SelectBox = () => {
         if (!selectedObject) {
             return;
         }
-        const helper = new THREE.BoxHelper(selectedObject, 0xff0000);
-        helper.userData.boxhelper = true;
-        helper.layers.set(5);
-        scene.add(helper);
+
+        const cloned = selectedObject.clone();
+        if (cloned instanceof THREE.Mesh) {
+            cloned.material = new THREE.MeshBasicMaterial({
+                color: 0xff0000
+            });
+            cloned.material.wireFrame = true;
+
+            (((cloned as THREE.Mesh).material) as THREE.MeshStandardMaterial).wireframe = true;
+            cloned.material.depthTest = false;
+        }
+        cloned.userData.boxhelper = true;
+        cloned.layers.set(5);
+
+        scene.add(cloned);
     });
 
     return null;

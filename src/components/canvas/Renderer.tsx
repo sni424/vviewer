@@ -23,7 +23,7 @@ import {
 import { __UNDEFINED__ } from '../../Constants';
 import MyEnvironment from './EnvironmentMap';
 import SelectBox from './SelectBox';
-import { getIntersects, loadScene, saveScene } from '../../scripts/utils';
+import { getIntersects, loadScene, saveScene, zoomToSelected } from '../../scripts/utils';
 import GlobalContrast from './GlobalContrast';
 import GlobalColorTemperature from './GlobalColorTemperature';
 import GlobalSaturationCheck from './GlobalSaturationCheck';
@@ -50,6 +50,7 @@ function Renderer() {
         camera.position.set(1, 1, 1);
         const mat = camera.matrix.clone();
         setCameraAtom(mat);
+
         setSharedExports(threeExports);
         // setSharedExports(threeExports);
 
@@ -248,6 +249,10 @@ function RendererContainer() {
                 e.preventDefault();
                 setAtomValue(panelTabAtom, Tabs[numberKey - 1]);
                 return;
+            }
+
+            if (e.key.toLowerCase() === "z") {
+                zoomToSelected();
             }
 
         }

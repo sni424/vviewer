@@ -4,11 +4,12 @@ import { get, set } from 'idb-keyval';
 import { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import * as THREE from "./VTHREE";
 import pako from 'pako';
-import { FileInfo } from '../types';
+import { FileInfo, View } from '../types';
 import objectHash from 'object-hash';
-import { BenchMark } from './atoms';
+import { BenchMark, getAtomValue, selectedAtom, threeExportsAtom } from './atoms';
 import { TransformControls } from 'three-stdlib';
-import { RGBELoader } from 'three/examples/jsm/Addons.js';
+import { OrbitControls, RGBELoader } from 'three/examples/jsm/Addons.js';
+import { useGetThreeExports } from '../components/canvas/Viewport';
 
 
 export const groupInfo = (group: THREE.Group | { scene: THREE.Group } | THREE.Scene | THREE.Object3D) => {
@@ -335,3 +336,40 @@ export const loadHDRTexture = (path: string): Promise<THREE.Texture> => {
         );
     });
 };
+
+export const zoomToSelected = (obj?: THREE.Object3D) => {
+    // const three = getAtomValue(threeExportsAtom);
+    const three = window.getThree(View.Shared);
+    if (!three) {
+        return;
+    }
+    const { scene, camera, orbitControls } = three;
+
+    let dst: THREE.Object3D = obj!;
+    if (!dst) {
+        const uuid = getAtomValue(selectedAtom)[0];
+        if (!uuid) {
+            return;
+        }
+        dst = scene.getObjectByProperty("uuid", uuid)!;
+        if (!dst) {
+            return;
+        }
+    }
+
+    const box = new THREE.Box3().setFromObject(dst);
+    const center = box.getCenter(new THREE.Vector3());
+
+    // zoom out to fit the box into view
+    const size = box.getSize(new THREE.Vector3()).length();
+    const dist = size;
+    const dir = camera.position.clone().sub(center).normalize();
+    dir.multiplyScalar(dist*0.8);
+    camera.position.copy(center).add(dir);
+    camera.lookAt(center);
+    if (orbitControls instanceof OrbitControls) {
+        orbitControls.target = center;
+        orbitControls.update();
+    }
+    camera.updateProjectionMatrix();
+}
