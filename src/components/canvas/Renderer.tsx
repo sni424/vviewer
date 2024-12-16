@@ -150,6 +150,8 @@ function RendererContainer() {
     const [selected, setSelected] = useAtom(selectedAtom);
     const setMaterialSelected = useSetAtom(materialSelectedAtom);
     const setScrollTo = useSetAtom(treeScrollToAtom);
+    const setTab = useSetAtom(panelTabAtom);
+    const setTreeScrollTo = useSetAtom(treeScrollToAtom);
     const gl = useAtomValue(globalGlAtom);
     const lastClickRef = useRef<number>(0);
     const cameraLayer = new THREE.Layers();
@@ -254,6 +256,14 @@ function RendererContainer() {
 
             if (e.key.toLowerCase() === "z") {
                 zoomToSelected();
+            }
+
+            if (e.key.toLowerCase() === "t") {
+                if (selected.length > 0) {
+                    setTab("tree");
+                    setTreeScrollTo(selected[0]);
+                }
+
             }
 
         }

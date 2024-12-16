@@ -139,7 +139,7 @@ const RecursiveNode = ({ data, depth = 0 }: { data: THREE.Object3D, depth: numbe
                         setOpen(!open);
                     }
                 }}>&gt;</div>
-                <div style={{
+                <div className="flex justify-start" style={{
                     width: "calc(100% - 16px)",
                     color: data.name.length === 0 ? "#666" : "#000",
                     cursor: "pointer",
@@ -147,7 +147,8 @@ const RecursiveNode = ({ data, depth = 0 }: { data: THREE.Object3D, depth: numbe
                     overflow: "hidden",
                     textOverflow: "ellipsis",
                     whiteSpace: "nowrap",
-                    display: "inline-block"
+                    display: "inline-block",
+                    textAlign:"left"
                 }} onClick={(e) => {
                     console.log(data);
                     // console.log(data.type, data.name, data.uuid)
@@ -162,8 +163,6 @@ const RecursiveNode = ({ data, depth = 0 }: { data: THREE.Object3D, depth: numbe
                         setSelecteds([data.uuid]);
                         setScrollTo(data.uuid);
                     }
-
-
                 }}>
                     {data.name.length === 0 ? "<이름없음>" : data.name}
                 </div>
