@@ -122,12 +122,13 @@ const SceneInfo = () => {
     const { filelist, loading } = useFilelist();
     const setSource = useSetAtom(sourceAtom);
     const [brightnessContrast, setGlobalContrast] = useAtom(globalBrightnessContrastAtom)
-    // const { on: brightnessContrastOn, brightnessValue, contrastValue } = brightnessContrast;
+    const { on: brightnessContrastOn, brightnessValue, contrastValue } = brightnessContrast;
     const [globalSaturationCheckOn, setGlobalSaturationCheck] = useAtom(globalSaturationCheckAtom);
     const [globalColorTemperature, setGlobalColorTemperature] = useAtom(globalColorTemperatureAtom)
     const [cm, setCm] = useAtom(globalColorManagementAtom);
     const { on: cmOn, value: cmValue } = cm;
     const [aoValue, setAoValue] = useState(0);
+    const [lmIntensityValue, setlmIntensityValue] = useState(1);
 
     useEffect(() => {
         get("savedScene").then(val => {
@@ -268,6 +269,37 @@ const SceneInfo = () => {
                     min={0} max={1} step={0.01}
                 ></input>
             </div>
+            <div className='flex'>
+                <div className='mr-3'>라이트맵 세기</div>
+                <input className='flex-1 min-w-0' type="range" value={lmIntensityValue} onChange={e => {
+                    const allMeshes: THREE.Mesh[] = [];
+                    scene.traverse(child => {
+                        if (child instanceof THREE.Mesh) {
+                            allMeshes.push(child);
+                        }
+                    }
+                    )
+                    allMeshes.forEach(mesh => {
+                        (mesh.material as THREE.MeshStandardMaterial).lightMapIntensity = parseFloat(e.target.value);
+                    })
+                    setlmIntensityValue(parseFloat(e.target.value));
+                }} min={0} max={1} step={0.01} ></input>
+                <input type="number" value={lmIntensityValue} onChange={e => {
+                    const allMeshes: THREE.Mesh[] = [];
+                    scene.traverse(child => {
+                        if (child instanceof THREE.Mesh) {
+                            allMeshes.push(child);
+                        }
+                    }
+                    )
+                    allMeshes.forEach(mesh => {
+                        (mesh.material as THREE.MeshStandardMaterial).lightMapIntensity = parseFloat(e.target.value);
+                    })
+                    setlmIntensityValue(parseFloat(e.target.value));
+                }}
+                    min={0} max={1} step={0.01}
+                ></input>
+            </div>
         </section>
 
         <section style={{ width: "100%" }}>
@@ -404,7 +436,7 @@ const SceneInfo = () => {
         </section>
 
         <section style={{ marginTop: 16, fontSize: 13, display: "flex", flexDirection: "column", gap: 6 }}>
-            {/* <div>
+            <div>
                 <strong>밝기/대비</strong>
                 <input type="checkbox" checked={brightnessContrastOn} onChange={(e) => {
                     console.log(e.target.checked);
@@ -430,7 +462,7 @@ const SceneInfo = () => {
 
                 </>}
 
-            </div> */}
+            </div>
             <div>
                 <strong>새츄레이션보기</strong>
                 <input type="checkbox" checked={globalSaturationCheckOn} onChange={(e) => {
@@ -438,7 +470,7 @@ const SceneInfo = () => {
                 }
                 } />
             </div>
-            <div>
+            {/* <div>
                 <strong>Color Management</strong>
                 <input type="checkbox" checked={cmOn} onChange={(e) => {
                     setCm(prev => ({ ...prev, on: e.target.checked }));
@@ -504,7 +536,7 @@ const SceneInfo = () => {
                     </div>
 
                 </div>}
-            </div>
+            </div> */}
             {/* <div>
                 <div>
                     <strong>색온도</strong>{globalColorTemperatureOn && <span>: {globalColorTemperatureValue}K </span>}

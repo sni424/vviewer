@@ -127,9 +127,6 @@ function Renderer() {
         <MyEnvironment></MyEnvironment>
         <SelectBox></SelectBox>
         {/* <Gizmo></Gizmo> */}
-        <PostProcess></PostProcess>
-        <GlobalSaturationCheck></GlobalSaturationCheck>
-        {/* <GlobalContrast></GlobalContrast> */}
         {/*<GlobalToneMapping></GlobalToneMapping> */}
         {/* <GlobalColorTemperature></GlobalColorTemperature> */}
         {/* 기즈모헬퍼는 제일 마지막에 렌더 */}
@@ -140,6 +137,9 @@ function Renderer() {
         >
             <GizmoViewport name='GizmoHelper' axisColors={['red', 'green', 'blue']} labelColor="black" />
         </GizmoHelper>
+        <PostProcess></PostProcess>
+        {/* <GlobalContrast></GlobalContrast> */}
+        <GlobalSaturationCheck></GlobalSaturationCheck>
 
     </>
 }
