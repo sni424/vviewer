@@ -49,7 +49,6 @@ export default class VGLTFLoader extends GLTFLoader {
                             material.lightMapIntensity = material.userData.lightMapIntensity;
                             material.emissiveMap = null;
                             material.needsUpdate = true;
-                            console.log(material);
                         }
                     }
                 }

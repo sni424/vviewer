@@ -160,8 +160,7 @@ const SceneInfo = () => {
                 navigate("/mobile");
             }}>모바일</button>
             <button style={{ fontSize: 10 }} disabled={scene.children.length === 0} onClick={() => {
-
-                new VGLTFExporter().parseAsync(threeExports.scene).then(result => {
+                new VGLTFExporter().parseAsync(threeExports.scene, {binary: true}).then(result => {
                     console.log('parse DoNE');
                     if (result instanceof ArrayBuffer) {
                         saveArrayBuffer(result, `scene-${new Date().toISOString()}.glb`);
@@ -173,7 +172,7 @@ const SceneInfo = () => {
                     console.log('GLTFExporter ERROR : ', err);
                     alert('GLTF 내보내기 중 오류 발생');
                 })
-            }}>GLTF 내보내기</button>
+            }}>GLB 내보내기</button>
             <button style={{ fontSize: 10 }} onClick={() => {
                 // navigate("/upload");
                 openModal(() => <div style={{ width: "80%", height: "80%", backgroundColor: "#ffffffcc", padding: 16, borderRadius: 8, boxSizing: "border-box", position: "relative" }}>

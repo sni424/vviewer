@@ -82,7 +82,6 @@ export default class VGLTFExporter extends GLTFExporter {
                     clonedMat.userData.isEmissiveLightMap = true;
                     clonedMat.userData.lightMapIntensity = clonedMat.lightMapIntensity;
                     clonedMat.needsUpdate = true;
-                    console.log('hasLightMap', clonedMat);
                     mesh.material = clonedMat;
                 }
             }

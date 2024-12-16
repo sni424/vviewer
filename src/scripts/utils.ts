@@ -2,7 +2,7 @@ import { RootState } from '@react-three/fiber';
 import { get, set } from 'idb-keyval';
 
 import { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import * as THREE from "./VTHREE";
+import * as THREE from './VTHREE';
 import pako from 'pako';
 import { FileInfo, View } from '../types';
 import objectHash from 'object-hash';
@@ -11,6 +11,7 @@ import { TransformControls } from 'three-stdlib';
 import { OrbitControls, RGBELoader } from 'three/examples/jsm/Addons.js';
 import { useGetThreeExports } from '../components/canvas/Viewport';
 import VGLTFLoader from './VGLTFLoader.tsx';
+import VGLTFExporter from './VGLTFExporter.ts';
 
 
 export const groupInfo = (group: THREE.Group | { scene: THREE.Group } | THREE.Scene | THREE.Object3D) => {
@@ -25,17 +26,17 @@ export const groupInfo = (group: THREE.Group | { scene: THREE.Group } | THREE.Sc
         if (node.isSystemGenerated()) {
             return;
         }
-
+        
         // if (isGizmo(node)) {
         //     return;
         // }
-
+        
         // if (node.type === "BoxHelper") {
         //     return;
         // }
         if (node instanceof THREE.Mesh) {
             try {
-
+                
                 const geometry = node.geometry;
                 if (geometry instanceof THREE.BufferGeometry) {
                     triangleCount += geometry.index!.count / 3;
@@ -53,28 +54,28 @@ export const groupInfo = (group: THREE.Group | { scene: THREE.Group } | THREE.Sc
         nodeCount++;
     });
     return { triangleCount, vertexCount, meshCount, nodeCount, object3dCount };
-
-}
+    
+};
 
 export const formatNumber = (num: number): string => {
     return new Intl.NumberFormat('en-US').format(num);
-}
+};
 
 export const toNthDigit = (num: number, digit: number): string => {
-
+    
     const isNegative = num < 0;
     const positivePart = Math.abs(num);
-
+    
     // add dot with pad
     const multiplied = Math.round(positivePart * Math.pow(10, digit));
     const padded = multiplied.toString().padStart(digit, '0');
     const integerPart = padded.slice(0, -digit);
     const decimalPart = padded.slice(-digit);
-
-    return `${isNegative ? '-' : ''}${integerPart.length === 0 ? "0" : integerPart}.${decimalPart}`;
-
-
-}
+    
+    return `${isNegative ? '-' : ''}${integerPart.length === 0 ? '0' : integerPart}.${decimalPart}`;
+    
+    
+};
 
 export const getIntersects = (
     e: React.MouseEvent,
@@ -82,7 +83,7 @@ export const getIntersects = (
     raycaster: THREE.Raycaster = new THREE.Raycaster(),
     filterUserdataIgnoreRaycast = true, // Object3D.userData.ignoreRayCast가 true인 아이들은 무시
 ) => {
-
+    
     if (!threeExports) {
         console.error(
             'Three가 셋업되지 않은 상태에서 Intersect가 불림 @useEditorInputEvents',
@@ -99,38 +100,39 @@ export const getIntersects = (
     const rect = e.currentTarget.getBoundingClientRect();
     const xRatio = (e.clientX - rect.left) / rect.width;
     const yRatio = (e.clientY - rect.top) / rect.height;
-
+    
     mouse.x = xRatio * 2 - 1;
     mouse.y = -yRatio * 2 + 1;
     raycaster.setFromCamera(mouse, camera);
-
+    
     const dstObjects = filterUserdataIgnoreRaycast
         ? scene.children.filter(
             obj => !obj.getUserData().ignoreRaycast && !obj.isTransformControl() && !obj.isBoxHelper(),
         )
         : scene.children;
     const intersects = raycaster.intersectObjects(dstObjects, true) as THREE.Intersection[];
-
+    
     const mesh = intersects.filter(obj => obj.object.type === 'Mesh') as THREE.Intersection<THREE.Mesh>[];
-
+    
     return { intersects, mesh };
 };
 
 export const saveScene = async (scene: THREE.Scene) => {
     return new Promise(async (resolve, reject) => {
-        const json = scene.toJSON();
-        const key = "savedScene";
-
-        set(key, json).then(() => {
+        const glbArr = await new VGLTFExporter().parseAsync(scene, { binary: true }) as ArrayBuffer;
+        const blob = new Blob([glbArr], { type: 'application/octet-stream' });
+        const key = 'savedScene';
+        
+        set(key, blob).then(() => {
             resolve(true);
             return true;
         }).catch(e => {
             console.error(e);
             reject(false);
-        })
-
+        });
+        
     });
-}
+};
 
 // Object 가 TransformControls 의 객체 중 일부인지?
 export const isTransformControlOrChild = (object: THREE.Object3D) => {
@@ -142,43 +144,46 @@ export const isTransformControlOrChild = (object: THREE.Object3D) => {
         current = current.parent;
     }
     return false;
-}
+};
 
 // Object 가 Probe 의 Mesh 인지?
 export const isProbeMesh = (object: THREE.Object3D) => {
     return object.userData.isProbeMesh !== undefined;
-}
+};
 
 export const loadScene = async (): Promise<THREE.Object3D | undefined> => {
     return new Promise(async (resolve, reject) => {
-        const key = "savedScene";
-        get(key).then((json) => {
-            if (!json) {
+        const key = 'savedScene';
+        get(key).then(async (blob) => {
+            if (!blob) {
                 reject(undefined);
                 return;
             }
-            const loader = new THREE.ObjectLoader();
-            const scene = loader.parse(json);
-            resolve(scene);
+            // const loader = new THREE.ObjectLoader();
+            // const scene = loader.parse(json);
+            const loader = new VGLTFLoader();
+            const url = URL.createObjectURL(blob);
+            const gltf = await loader.loadAsync(url);
+            resolve(gltf.scene);
         }).catch(e => {
             console.error(e);
             reject(undefined);
-        })
+        });
     });
-}
+};
 
 
 export function compressObjectToFile(obj: object, fileName: string): File {
-
+    
     // Convert the object to a JSON string
     const jsonString = JSON.stringify(obj);
-
+    
     // Compress the JSON string using pako
     const compressed = pako.gzip(jsonString);
-
+    
     // Create a Blob from the compressed data
     const blob = new Blob([compressed], { type: 'application/gzip' });
-
+    
     // Return a File instance
     return new File([blob], fileName, { type: 'application/gzip' });
 }
@@ -186,14 +191,14 @@ export function compressObjectToFile(obj: object, fileName: string): File {
 export async function decompressFileToObject<T = any>(url: string): Promise<T> {
     return fetch(url).then(res => res.arrayBuffer()).then(buffer => {
         const decompressed = pako.ungzip(buffer, { to: 'string' });
-        return JSON.parse(decompressed) as T
-    })
+        return JSON.parse(decompressed) as T;
+    });
 }
 
 export async function cached(file: FileInfo): Promise<boolean> {
     return get(objectHash(file)).then(data => {
         return Boolean(data);
-    })
+    });
 }
 
 export async function loadFile(file: FileInfo): Promise<Blob> {
@@ -202,36 +207,37 @@ export async function loadFile(file: FileInfo): Promise<Blob> {
         if (!data) {
             return fetch(file.fileUrl).then(res => res.blob()).then(data => {
                 return set(hash, data).then(_ => {
-                    return data
+                    return data;
                 });
-            })
+            });
         }
         return data;
-    })
+    });
 }
 
 export const loadLatest = async ({
-    threeExports,
-    addBenchmark: _addBenchmark,
-    // setSceneAnalysis,
-}: {
+                                     threeExports,
+                                     addBenchmark: _addBenchmark,
+                                     // setSceneAnalysis,
+                                 }: {
     threeExports: RootState,
     addBenchmark?: (key: keyof BenchMark, value?: number) => void,
 }) => {
-    const addBenchmark = _addBenchmark ?? (() => { });
-
+    const addBenchmark = _addBenchmark ?? (() => {
+    });
+    
     const latestHashUrl = import.meta.env.VITE_LATEST_HASH;
     const latestUrl = import.meta.env.VITE_LATEST;
     if (!latestUrl || !latestHashUrl) {
-        alert(".env에 환경변수를 설정해주세요, latestUrl latestHashUrl");
+        alert('.env에 환경변수를 설정해주세요, latestUrl latestHashUrl');
         return;
     }
-    addBenchmark("start");
-    addBenchmark("downloadStart");
-
-    const localLatestHash = await get("latest-hash");
+    addBenchmark('start');
+    addBenchmark('downloadStart');
+    
+    const localLatestHash = await get('latest-hash');
     const remoteLatestHash = await (await decompressFileToObject<{ hash: string }>(latestHashUrl)).hash;
-
+    
     const loadModel = async () => {
         let url;
         if (!localLatestHash || localLatestHash !== remoteLatestHash) {
@@ -254,36 +260,36 @@ export const loadLatest = async ({
             // })
         } else {
             // return JSON.parse((await get("latest"))!);
-            const blob = await get("latest");
+            const blob = await get('latest');
             console.log('getLatest: ', blob);
             url = URL.createObjectURL(blob);
         }
         return await new VGLTFLoader().loadAsync(url);
-    }
-
+    };
+    
     return loadModel().then((res) => {
-        addBenchmark("downloadEnd");
-        addBenchmark("parseStart");
+        addBenchmark('downloadEnd');
+        addBenchmark('parseStart');
         // const loader = new THREE.ObjectLoader();
         // const parsedScene = loader.parse(res);
         const parsedScene = res.scene;
-        addBenchmark("parseEnd");
-
+        addBenchmark('parseEnd');
+        
         const { scene } = threeExports;
         // threeExports.scene.add(parsedScene);
-
+        
         const loadAsync = new Promise((res, rej) => {
-
+            
             // const obj = new THREE.ObjectLoader().parse(modelFiles[0].gltf);
             
             scene.add(parsedScene);
-
+            
             const interval = setInterval(() => {
                 //@ts-ignore
-                const found = scene.getObjectByProperty("uuid", parsedScene.uuid);
+                const found = scene.getObjectByProperty('uuid', parsedScene.uuid);
                 if (found) {
                     // console.log("loaded", elapsed, "ms");
-
+                    
                     // 1초 후에 메시,버텍스, 트라이앵글 수 계산
                     // setTimeout(() => {
                     //     let meshCount = 0;
@@ -312,26 +318,26 @@ export const loadLatest = async ({
                     //         maxVertexInMesh,
                     //         maxTriangleInMesh
                     //     });
-
+                    
                     // }, 1000);
-
+                    
                     clearInterval(interval);
-                    addBenchmark("sceneAddEnd");
-                    addBenchmark("end");
+                    addBenchmark('sceneAddEnd');
+                    addBenchmark('end');
                     res(parsedScene);
                 }
-                rej("not found");
+                rej('not found');
             }, 30);
-
-
-        })
+            
+            
+        });
         return loadAsync;
-
+        
     }).catch(e => {
         console.error(e);
-        alert("모델을 불러오는데 실패했습니다. : " + e.message);
-    })
-}
+        alert('모델을 불러오는데 실패했습니다. : ' + e.message);
+    });
+};
 
 
 export const loadHDRTexture = (path: string): Promise<THREE.Texture> => {
@@ -344,7 +350,7 @@ export const loadHDRTexture = (path: string): Promise<THREE.Texture> => {
                 resolve(texture);
             },
             undefined,
-            (error) => reject(error)
+            (error) => reject(error),
         );
     });
 };
@@ -356,27 +362,27 @@ export const zoomToSelected = (obj?: THREE.Object3D) => {
         return;
     }
     const { scene, camera, orbitControls } = three;
-
+    
     let dst: THREE.Object3D = obj!;
     if (!dst) {
         const uuid = getAtomValue(selectedAtom)[0];
         if (!uuid) {
             return;
         }
-        dst = scene.getObjectByProperty("uuid", uuid)!;
+        dst = scene.getObjectByProperty('uuid', uuid)!;
         if (!dst) {
             return;
         }
     }
-
+    
     const box = new THREE.Box3().setFromObject(dst);
     const center = box.getCenter(new THREE.Vector3());
-
+    
     // zoom out to fit the box into view
     const size = box.getSize(new THREE.Vector3()).length();
     const dist = size;
     const dir = camera.position.clone().sub(center).normalize();
-    dir.multiplyScalar(dist*0.8);
+    dir.multiplyScalar(dist * 0.8);
     camera.position.copy(center).add(dir);
     camera.lookAt(center);
     if (orbitControls instanceof OrbitControls) {
@@ -384,4 +390,4 @@ export const zoomToSelected = (obj?: THREE.Object3D) => {
         orbitControls.update();
     }
     camera.updateProjectionMatrix();
-}
+};
