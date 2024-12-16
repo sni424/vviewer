@@ -76,63 +76,62 @@ const MobileLoaderPanel = () => {
                 const fileinfo = JSON.parse(e.currentTarget.getAttribute("data-fileinfo")!) as FileInfo;
                 addBenchmark("start");
                 addBenchmark("downloadStart");
-                loadFile(fileinfo).then(blob => {
+                loadFile(fileinfo).then(async (blob) => {
                     setDownloading(false);
                     addBenchmark("downloadEnd");
                     addBenchmark("parseStart");
                     const url = URL.createObjectURL(blob);
                     const loader = new VGLTFLoader();
-                    loader.load(url, gltf => {
-                        addBenchmark("parseEnd");
-                        addBenchmark("sceneAddStart");
+                    const gltf = await loader.loadAsync(url);
+                    addBenchmark("parseEnd");
+                    addBenchmark("sceneAddStart");
+                    
+                    const { scene } = threeExports;
+                    scene.add(gltf.scene);
+                    const interval = setInterval(() => {
+                        //@ts-ignore
+                        const found = scene.getObjectByProperty("uuid", gltf.scene.uuid);
+                        if (found) {
+                            // console.log("loaded", elapsed, "ms");
 
-                        const { scene } = threeExports;
-                        threeExports.scene.add(gltf.scene);
-                        const interval = setInterval(() => {
-                            //@ts-ignore
-                            const found = scene.getObjectByProperty("uuid", gltf.scene.uuid);
-                            if (found) {
-                                // console.log("loaded", elapsed, "ms");
+                            // 1초 후에 메시,버텍스, 트라이앵글 수 계산
+                            setTimeout(() => {
+                                let meshCount = 0;
+                                let vertexCount = 0;
+                                let triangleCount = 0;
+                                let maxVertexInMesh = 0;
+                                let maxTriangleInMesh = 0;
+                                scene.traverse(obj => {
+                                    if (obj instanceof THREE.Mesh) {
+                                        meshCount++;
+                                        vertexCount += obj.geometry.attributes.position.count;
+                                        triangleCount += obj.geometry.index?.count ?? 0;
+                                        maxVertexInMesh = Math.max(maxVertexInMesh, obj.geometry.attributes.position.count);
+                                        maxTriangleInMesh = Math.max(maxTriangleInMesh, obj.geometry.index?.count ?? 0);
+                                    }
+                                });
+                                console.log("mesh count", meshCount);
+                                console.log("vertex count", vertexCount);
+                                console.log("triangle count", triangleCount);
+                                console.log("max vertex in mesh", maxVertexInMesh);
+                                console.log("max triangle in mesh", maxTriangleInMesh);
+                                setSceneAnalysis({
+                                    meshCount,
+                                    vertexCount,
+                                    triangleCount,
+                                    maxVertexInMesh,
+                                    maxTriangleInMesh
+                                });
 
-                                // 1초 후에 메시,버텍스, 트라이앵글 수 계산
-                                setTimeout(() => {
-                                    let meshCount = 0;
-                                    let vertexCount = 0;
-                                    let triangleCount = 0;
-                                    let maxVertexInMesh = 0;
-                                    let maxTriangleInMesh = 0;
-                                    scene.traverse(obj => {
-                                        if (obj instanceof THREE.Mesh) {
-                                            meshCount++;
-                                            vertexCount += obj.geometry.attributes.position.count;
-                                            triangleCount += obj.geometry.index?.count ?? 0;
-                                            maxVertexInMesh = Math.max(maxVertexInMesh, obj.geometry.attributes.position.count);
-                                            maxTriangleInMesh = Math.max(maxTriangleInMesh, obj.geometry.index?.count ?? 0);
-                                        }
-                                    });
-                                    console.log("mesh count", meshCount);
-                                    console.log("vertex count", vertexCount);
-                                    console.log("triangle count", triangleCount);
-                                    console.log("max vertex in mesh", maxVertexInMesh);
-                                    console.log("max triangle in mesh", maxTriangleInMesh);
-                                    setSceneAnalysis({
-                                        meshCount,
-                                        vertexCount,
-                                        triangleCount,
-                                        maxVertexInMesh,
-                                        maxTriangleInMesh
-                                    });
+                            }, 1000);
 
-                                }, 1000);
-
-                                clearInterval(interval);
-                                addBenchmark("sceneAddEnd");
-                                addBenchmark("end");
-                            }
+                            clearInterval(interval);
+                            addBenchmark("sceneAddEnd");
+                            addBenchmark("end");
+                        }
 
 
-                        }, 30);
-                    })
+                    }, 30);
                 }).finally(() => {
                     addBenchmark("sceneAddEnd");
                     addBenchmark("end");

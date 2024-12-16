@@ -317,7 +317,10 @@ function MaterialPanelContainer() {
                 <div style={{ fontSize: 10, color: "#444" }}>
                     {mat.type}
                 </div>
-
+                <button style={{fontSize: 12}} onClick={() => {
+                    const toJSON = mat.toJSON();
+                    console.log(toJSON);
+                }}>toJSON</button>
             </div>
             {/* <MaterialPanel style={{width:"100%"}} mat={mat}></MaterialPanel> */}
             <MapSection mat={mat as THREE.MeshStandardMaterial} forceUpdate={forceUpdate} />

@@ -10,6 +10,7 @@ import { BenchMark, getAtomValue, selectedAtom, threeExportsAtom } from './atoms
 import { TransformControls } from 'three-stdlib';
 import { OrbitControls, RGBELoader } from 'three/examples/jsm/Addons.js';
 import { useGetThreeExports } from '../components/canvas/Viewport';
+import VGLTFLoader from './VGLTFLoader.tsx';
 
 
 export const groupInfo = (group: THREE.Group | { scene: THREE.Group } | THREE.Scene | THREE.Object3D) => {
@@ -232,28 +233,40 @@ export const loadLatest = async ({
     const remoteLatestHash = await (await decompressFileToObject<{ hash: string }>(latestHashUrl)).hash;
 
     const loadModel = async () => {
+        let url;
         if (!localLatestHash || localLatestHash !== remoteLatestHash) {
-            return decompressFileToObject(latestUrl).then(async (res) => {
-                // alert("decompressFileToObject+" + JSON.stringify(res))
-
-                await set("latest-hash", remoteLatestHash);
-                await set("latest", res);
-                // await set("latest", JSON.stringify(res));
-                return res;
-            }).catch((e) => {
-                alert("모델을 불러오는데 실패했습니다." + e.message);
-            })
+            // CACHE UPDATE
+            const blob = await fetch(latestUrl).then(res => res.blob());
+            await set('latest-hash', remoteLatestHash);
+            await set('latest', blob);
+            
+            url = URL.createObjectURL(blob);
+            
+            // return decompressFileToObject(latestUrl).then(async (res) => {
+            //     // alert("decompressFileToObject+" + JSON.stringify(res))
+            //
+            //     await set("latest-hash", remoteLatestHash);
+            //     await set("latest", res);
+            //     // await set("latest", JSON.stringify(res));
+            //     return res;
+            // }).catch((e) => {
+            //     alert("모델을 불러오는데 실패했습니다." + e.message);
+            // })
         } else {
             // return JSON.parse((await get("latest"))!);
-            return get("latest");
+            const blob = await get("latest");
+            console.log('getLatest: ', blob);
+            url = URL.createObjectURL(blob);
         }
+        return await new VGLTFLoader().loadAsync(url);
     }
 
     return loadModel().then((res) => {
         addBenchmark("downloadEnd");
         addBenchmark("parseStart");
-        const loader = new THREE.ObjectLoader();
-        const parsedScene = loader.parse(res);
+        // const loader = new THREE.ObjectLoader();
+        // const parsedScene = loader.parse(res);
+        const parsedScene = res.scene;
         addBenchmark("parseEnd");
 
         const { scene } = threeExports;
@@ -262,8 +275,7 @@ export const loadLatest = async ({
         const loadAsync = new Promise((res, rej) => {
 
             // const obj = new THREE.ObjectLoader().parse(modelFiles[0].gltf);
-
-
+            
             scene.add(parsedScene);
 
             const interval = setInterval(() => {

@@ -6,13 +6,13 @@ import { cameraMatrixAtom, globalColorTemperatureAtom, globalBrightnessContrastA
 import { useEffect, useState } from 'react';
 import { get, set } from 'idb-keyval';
 import { Euler, Quaternion, THREE, Vector3 } from '../scripts/VTHREE';
-import { GLTFExporter } from 'three/examples/jsm/Addons.js';
 import { useNavigate } from 'react-router-dom';
 import useFilelist from '../scripts/useFilelist';
 import { __UNDEFINED__, DEFAULT_COLOR_TEMPERATURE } from '../Constants';
 import objectHash from 'object-hash';
 import GlobalRenderOptions from './canvas/GlobalRenderOptions';
 import UploadPage from './UploadModal';
+import VGLTFExporter from '../scripts/VGLTFExporter.ts';
 
 const useEnvUrl = () => {
     const [envUrl, setEnvUrl] = useState<string | null>(null);
@@ -161,13 +161,17 @@ const SceneInfo = () => {
             }}>모바일</button>
             <button style={{ fontSize: 10 }} disabled={scene.children.length === 0} onClick={() => {
 
-                new GLTFExporter().parseAsync(threeExports.scene).then(result => {
+                new VGLTFExporter().parseAsync(threeExports.scene).then(result => {
+                    console.log('parse DoNE');
                     if (result instanceof ArrayBuffer) {
                         saveArrayBuffer(result, `scene-${new Date().toISOString()}.glb`);
                     } else {
                         const output = JSON.stringify(result, null, 2);
                         saveString(output, `scene-${new Date().toISOString()}.gltf`);
                     }
+                }).catch(err => {
+                    console.log('GLTFExporter ERROR : ', err);
+                    alert('GLTF 내보내기 중 오류 발생');
                 })
             }}>GLTF 내보내기</button>
             <button style={{ fontSize: 10 }} onClick={() => {
@@ -190,41 +194,44 @@ const SceneInfo = () => {
             <button style={{ fontSize: 10 }} onClick={() => {
                 saveString(JSON.stringify(scene.toJSON(), null, 2), `scene-${new Date().toISOString()}.json`);
             }}>씬 json으로 내보내기</button>
-            <button style={{ fontSize: 10 }} onClick={() => {
+            <button style={{ fontSize: 10 }} onClick={async () => {
                 const uploadUrl = import.meta.env.VITE_UPLOAD_URL;
                 if (!uploadUrl) {
                     alert(".env에 환경변수를 설정해주세요, uploadUrl");
                     return;
                 }
-
-                const uploadData = scene.toJSON();
-                const file = compressObjectToFile(uploadData, "latest");
-                const fd = new FormData();
-                fd.append("file", file);
-
-                // latest 캐싱을 위한 hash
-                const uploadHash = objectHash(uploadData);
-                const hashData = {
-                    hash: uploadHash
-                };
-                // convert object to File:
-                const hashFile = compressObjectToFile(hashData, "latest-hash");
-                const hashFd = new FormData();
-                hashFd.append("file", hashFile);
-                fetch(uploadUrl, {
-                    method: "POST",
-                    body: hashFd
-                }).then(() => {
-                    // 해시부터 업로드하고
-                    fetch(uploadUrl, {
+                
+                const glbArr = await new VGLTFExporter().parseAsync(threeExports.scene, {binary: true});
+                if (glbArr instanceof ArrayBuffer) {
+                    console.log('before File Make');
+                    const blob = new Blob([glbArr], { type: 'application/octet-stream' });
+                    const file =  new File([blob], 'latest.glb', { type: 'model/gltf-binary' });
+                    const fd = new FormData();
+                    fd.append("file", file);
+                    
+                    // latest 캐싱을 위한 hash
+                    const uploadHash = objectHash(new Date().toISOString());
+                    const hashData = {
+                        hash: uploadHash
+                    };
+                    // convert object to File:
+                    const hashFile = compressObjectToFile(hashData, "latest-hash");
+                    const hashFd = new FormData();
+                    hashFd.append("file", hashFile);
+                    console.log('before Upload');
+                    await fetch(uploadUrl, {
+                        method: "POST",
+                        body: hashFd
+                    })
+                    await fetch(uploadUrl, {
                         method: "POST",
                         body: fd
-                    }).then(res => res.json()).then(() => {
-                        // 그 다음에 파일업로드
-                        alert("업로드 완료");
-                    });
-                })
-
+                    })
+                    alert("업로드 완료");
+                } else {
+                    console.error('VGLTFExporter GLB 처리 안됨, "binary: true" option 확인');
+                    alert('VGLTFExporter 문제 발생함, 로그 확인');
+                }
             }}>씬 업로드</button>
             <button onClick={() => {
                 loadLatest({ threeExports }).catch(e => {
