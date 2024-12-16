@@ -218,7 +218,8 @@ function RendererContainer() {
 
 
             // 자유이동 <-> OrbitControls
-            if (e.key.toLowerCase() === "q") {
+            // tilde
+            if (e.key.toLowerCase() === "q" || e.key === "`") {
                 e.preventDefault();
                 const { orbitSetting } = getSettings();
                 setAtomValue(orbitSettingAtom, (prev) => ({
