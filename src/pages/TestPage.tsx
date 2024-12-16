@@ -1,14 +1,10 @@
 import React from 'react'
-import Closure from '../components/test/Closure'
+import Closure from '../components/test/ClosureTest'
+import OutlineTest from '../components/test/OutlineTest'
 
 function TestPage() {
   return (
-    // <div>TestPage
-    //     <div className='font-bold'>sdf</div>
-    // </div>
-    <div className='fullscreen'>
-      <Closure></Closure>
-    </div>
+    <OutlineTest></OutlineTest>
   )
 }
 
