@@ -6,7 +6,6 @@ import { THREE } from '../../scripts/VTHREE';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import {
     cameraMatrixAtom,
-    cameraSettingAtom,
     globalGlAtom,
     loadHistoryAtom,
     materialSelectedAtom,
@@ -42,8 +41,6 @@ function Renderer() {
     const setSharedExports = useSetThreeExports();
     const { scene, camera } = threeExports;
     const setCameraAtom = useSetAtom(cameraMatrixAtom);
-
-    const [model, setModel] = useState<any>(null)
 
     useEffect(() => {
         setThreeExportsAtom(threeExports);
@@ -108,8 +105,8 @@ function Renderer() {
                         }
                     })
                 }
+                console.log("gltf.scene", gltf.scene)
                 scene.add(gltf.scene);
-                setModel(gltf.scene)
                 // revoke object url
                 URL.revokeObjectURL(url);
                 setLoadHistoryAtom(history => {
@@ -223,7 +220,7 @@ function RendererContainer() {
                 const { orbitSetting } = getSettings();
                 setAtomValue(orbitSettingAtom, (prev) => ({
                     ...prev,
-                    enable: !orbitSetting.enable
+                    enabled: !orbitSetting.enabled
                 }))
                 return;
             }
