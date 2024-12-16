@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { THREE } from "../scripts/VTHREE";
 import { useModal } from "../scripts/atoms";
 
@@ -9,84 +9,106 @@ export interface MapPreviewProps {
     height?: number;
 }
 
-const MapPreview: React.FC<MapPreviewProps> = ({ material, width, height, matKey: mapKey }) => {
-    const [mapSrc, setMapSrc] = useState<string | null | undefined>(undefined);
-    const texture = material[mapKey as keyof THREE.MeshStandardMaterial] as THREE.Texture;
-    const { openModal, closeModal } = useModal();
+const FullscreenCanvas = ({ texture }: { texture: THREE.Texture }) => {
+    const { closeModal } = useModal();
+    const innerCanvasRef = useRef<HTMLCanvasElement>(null);
+    const maxHeight = window.innerHeight - 100;
+    const maxWidth = window.innerWidth - 100;
+    const aspect = texture.image.width / texture.image.height;
+    let dstHeight = maxHeight;
+    let dstWidth = maxHeight * aspect;
+    if (dstWidth > maxWidth) {
+        dstWidth = maxWidth;
+        dstHeight = maxWidth / aspect;
+    }
+    const closer = () => {
+        closeModal?.();
+    }
+
 
     useEffect(() => {
-        if(mapKey === "envMap"){
+        if (!innerCanvasRef.current) {
+            return;
+        }
+        innerCanvasRef.current.width = dstWidth;
+        innerCanvasRef.current.height = dstHeight;
+        innerCanvasRef.current.getContext("2d")?.drawImage(texture.image, 0, 0, dstWidth, dstHeight);
+    }, [])
+    return <div className="h-full flex flex-col" onClick={closer}>
+        <div className="h-20">
+
+        </div>
+        <div style={{
+            width: dstWidth,
+            height: dstHeight,
+        }}>
+            <canvas ref={innerCanvasRef} style={{ width: "100%", height: "100%" }} onClick={closer}>
+            </canvas>
+        </div>
+        <div className="flex-1 min-w-0 bg-white flex items-end flex-col mt-5 mb-5 p-3 box-border">
+            <div>
+                가로 : {texture.image.width}px
+            </div>
+            <div>
+                세로 : {texture.image.height}px
+            </div>
+        </div>
+    </div>
+}
+
+// TODO : 이미지를 캔버스에 그린 후 <img>에 박고 있는데, img태그를 그냥 canvas로 바꾸면 바로 그릴 수 있다
+const MapPreview: React.FC<MapPreviewProps> = ({ material, width, height, matKey: mapKey }) => {
+    const texture = material[mapKey as keyof THREE.MeshStandardMaterial] as THREE.Texture;
+    const { openModal, closeModal } = useModal();
+    const canvasRef = useRef<HTMLCanvasElement>(null);
+    const hasImage = texture && texture.image;
+
+    useEffect(() => {
+        if (mapKey === "envMap") {
             // HDR이미지를 보여줄 수가 없다
             return;
         }
 
-        const previewCanvasId = "map-preview-canvas";
-        if (texture && texture.image) {
-
-            let canvas = document.getElementById(previewCanvasId) as HTMLCanvasElement;
-            if (!canvas) {
-                canvas = document.createElement("canvas");
-                canvas.id = previewCanvasId;
-            }
-
-            // Create a canvas to draw the texture
-            const context = canvas.getContext("2d");
-
-            // Set the canvas size to the texture size
-            const { width, height } = texture.image;
-            canvas.width = width;
-            canvas.height = height;
-
-            // Draw the texture onto the canvas
-            if (context) {
-                context.drawImage(texture.image, 0, 0, width, height);
-
-                // Convert the canvas content to a data URL
-                const dataUrl = canvas.toDataURL();
-                setMapSrc(dataUrl);
-            }
-        } else {
-            setMapSrc(null);
+        if (!canvasRef.current) {
+            return;
         }
 
-        return () => {
-            document.getElementById(previewCanvasId)?.remove();
+        if (!hasImage) {
+            return;
         }
+
+        const w = width ?? 60;
+        const h = height ?? 60;
+        canvasRef.current.width = w;
+        canvasRef.current.height = h;
+        canvasRef.current.getContext("2d")?.drawImage(texture.image, 0, 0, w, h);
+
     }, [texture]);
 
-    if(mapKey==="envMap"){
-        if(texture){
-            return <div style={{fontSize:11, color:"#555"}}>envMap표시불가</div>
+    if (mapKey === "envMap") {
+        if (texture) {
+            return <div style={{ fontSize: 11, color: "#555" }}>envMap표시불가</div>
         } else {
             return <div>없음</div>
         }
     }
 
-    return <div style={{ width: (mapSrc !== null) ? (width ?? 60) : undefined, height: (mapSrc !== null) ? (height ?? 60) : undefined, backgroundClip: "gray", borderRadius: 8 }}>
-        {mapSrc && <img style={{ cursor: "pointer", width: "100%", height: "100%", objectFit: "contain" }} src={mapSrc} alt={`${mapKey} preview`} onClick={() => {
-            openModal(() => {
-                return <div style={{
-                    maxHeight: 800,
-                    maxWidth: 800,
-                    display: "flex",
-                    justifyContent: "center",
-                    alignItems: "center",
-                    padding: 20, boxSizing: "border-box"
-                }}
-                    onKeyDown={(e) => {
-                        e.stopPropagation();
-                        closeModal();
-                    }}
-                >
-                    <img src={mapSrc} alt="Light Map Preview" style={{
-                        width: "100%",
-                        height: "100%",
-                        objectFit: "contain"
-                    }} />
-                </div>
-            })
-        }} />}
-        {(mapSrc === null) && "없음"}
+    return <div
+        style={{
+            width: (hasImage) ? (width ?? 60) : undefined,
+            height: (hasImage) ? (height ?? 60) : undefined,
+            backgroundClip: "gray",
+            borderRadius: 8
+        }}>
+        {(!hasImage) ? "없음" : null}
+        <canvas style={{ width: "100%", height: "100%", cursor: "pointer" }} ref={canvasRef} onClick={() => {
+            if (!hasImage) {
+                console.log("11");
+                return;
+            }
+            openModal(<FullscreenCanvas texture={texture}></FullscreenCanvas>);
+        }}></canvas>
+
     </div >
 };
 

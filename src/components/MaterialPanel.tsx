@@ -109,7 +109,7 @@ const MapInfo = (props: MapInfoProps) => {
                 const reader = new FileReader();
                 reader.onload = (e) => {
                     const texture = new THREE.TextureLoader().load(e.target?.result as string);
-                    texture.flipY = texture.flipY;
+                    texture.flipY = !texture.flipY;
                     setMap(material, mapKey, texture);
                     forceUpdate?.();
                 }
