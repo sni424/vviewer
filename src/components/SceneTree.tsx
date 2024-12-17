@@ -111,10 +111,14 @@ const RecursiveNode = ({
 
   const thisSelected = selecteds.includes(data.uuid);
 
+  // 자식 중에 선택된 것이 있는지 확인
   // 비싼 재귀지만 개발단이니 진행
-
   const { scene } = threeExports;
   const childSelected = (() => {
+    if (data.uuid === scene.uuid) {
+      // 최상단 scene은 패스
+      return false;
+    }
     if (thisSelected) {
       return false;
     }
@@ -156,6 +160,8 @@ const RecursiveNode = ({
         paddingLeft: depth * 4,
         fontSize: 12,
         marginTop: 2,
+        // border: childSelected ? '1px solid #3d3d3d' : undefined,
+        backgroundColor: childSelected ? '#ccc' : undefined,
       }}
     >
       <div
@@ -167,9 +173,9 @@ const RecursiveNode = ({
           backgroundColor: scrollToThis
             ? 'orange'
             : thisSelected
-              ? '#bbb'
+              ? '#aaa'
               : childSelected
-                ? '#cdcdcd'
+                ? '#ccc'
                 : undefined,
         }}
       >
