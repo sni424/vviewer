@@ -6,10 +6,10 @@ import { useAtomValue } from 'jotai';
 import { globalBrightnessContrastAtom } from '../../scripts/atoms';
 
 class GlobalContrastEffect extends Effect {
-    constructor({ contrast = 1.5 } = {}) {
-        super(
-            'CustomEffect',
-            /*glsl */`
+  constructor({ contrast = 1.5 } = {}) {
+    super(
+      'CustomEffect',
+      /*glsl */ `
           uniform sampler2D tDiffuse;
           uniform float uContrast;
   
@@ -34,30 +34,35 @@ class GlobalContrastEffect extends Effect {
             }
           }
         `,
-            {
-                blendFunction: BlendFunction.NORMAL, // How the effect blends with the scene
-                uniforms: new Map([['uContrast', new Uniform(contrast)]]),
-            }
-        );
-    }
+      {
+        blendFunction: BlendFunction.NORMAL, // How the effect blends with the scene
+        uniforms: new Map([['uContrast', new Uniform(contrast)]]),
+      },
+    );
+  }
 }
 
 // Extend the custom effect
 extend({ GlobalContrastEffect });
 
 const GlobalContrast = () => {
-    const { on, contrastValue: globalContrastValue } = useAtomValue(globalBrightnessContrastAtom);
+  const { on, contrastValue: globalContrastValue } = useAtomValue(
+    globalBrightnessContrastAtom,
+  );
 
-    if (!on) {
-        return null;
-    }
+  if (!on) {
+    return null;
+  }
 
-    const customEffect = new GlobalContrastEffect({ contrast: globalContrastValue })
+  const customEffect = new GlobalContrastEffect({
+    contrast: globalContrastValue,
+  });
 
-    return <EffectComposer>
-        <primitive object={customEffect} />
+  return (
+    <EffectComposer>
+      <primitive object={customEffect} />
     </EffectComposer>
-
-}
+  );
+};
 
 export default GlobalContrast;

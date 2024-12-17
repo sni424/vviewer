@@ -1,22 +1,24 @@
-export const EnvirontmentPresets = ["apartment",
-    "city",
-    "dawn",
-    "forest",
-    "lobby",
-    "night",
-    "park",
-    "studio",
-    "sunset",
-    "warehouse",] as const;
-export type EnvirontmentPresets = typeof EnvirontmentPresets[number];
+export const EnvirontmentPresets = [
+  'apartment',
+  'city',
+  'dawn',
+  'forest',
+  'lobby',
+  'night',
+  'park',
+  'studio',
+  'sunset',
+  'warehouse',
+] as const;
+export type EnvirontmentPresets = (typeof EnvirontmentPresets)[number];
 
-export const __UNDEFINED__ = "__UNDEFINED__" as const;
+export const __UNDEFINED__ = '__UNDEFINED__' as const;
 
 export const DEFAULT_COLOR_TEMPERATURE = 6500;
 
 export enum Layer {
-    Model = 1,
-    GizmoHelper = 11,
-    Selected = 12,
-    ReflectionBox = 13,
+  Model = 1,
+  GizmoHelper = 11,
+  Selected = 12,
+  ReflectionBox = 13,
 }

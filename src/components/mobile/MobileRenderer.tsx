@@ -1,5 +1,4 @@
-
-import { useEffect } from 'react'
+import { useEffect } from 'react';
 
 import { Canvas, useThree } from '@react-three/fiber';
 import { useSetAtom } from 'jotai';
@@ -10,27 +9,31 @@ import GlobalContrast from '../canvas/GlobalContrast';
 import useStats from '../../scripts/useStats';
 
 const Renderer = () => {
-    useStats();
-    const setThreeExports = useSetAtom(threeExportsAtom);
-    const threeExports = useThree();
+  useStats();
+  const setThreeExports = useSetAtom(threeExportsAtom);
+  const threeExports = useThree();
 
-    useEffect(() => {
-        setThreeExports(threeExports);
-    }, []);
+  useEffect(() => {
+    setThreeExports(threeExports);
+  }, []);
 
-    return <>
-        <OrbitControls />
-        {/* <ambientLight intensity={0.5} />
+  return (
+    <>
+      <OrbitControls />
+      {/* <ambientLight intensity={0.5} />
       <pointLight position={[10, 10, 10]} /> */}
-    </>;
-}
+    </>
+  );
+};
 
 const MobileRenderer = () => {
-    return <Canvas>
-        <Renderer />
-        <EnvironmentMap></EnvironmentMap>
-        <GlobalContrast></GlobalContrast>
+  return (
+    <Canvas>
+      <Renderer />
+      <EnvironmentMap></EnvironmentMap>
+      <GlobalContrast></GlobalContrast>
     </Canvas>
-}
+  );
+};
 
 export default MobileRenderer;

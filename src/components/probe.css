@@ -1,54 +1,54 @@
 .probe-document {
-    padding: 0.5rem;
-    margin-top: 0.5rem;
-    margin-bottom: 0.5rem;
-    border: 1px solid black;
+  padding: 0.5rem;
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+  border: 1px solid black;
 }
 
 .probe-document .summary > span {
-   font-size: 12px;
+  font-size: 12px;
 }
 
 .probe-document .summary .summary-title {
-    font-size: 13px;
-    text-align: center;
+  font-size: 13px;
+  text-align: center;
 }
 
 .probe-document .property {
-    margin-top: 8px;
+  margin-top: 8px;
 }
 
 .probe-document .title {
-    font-size: 14px;
+  font-size: 14px;
 }
 
 .probe-container {
-
 }
 
 .probe {
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    width: 100%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  width: 100%;
 }
 
 .probe .on-off {
-    margin-left: 0.5rem;
+  margin-left: 0.5rem;
 }
 
 .probe .deleteButton {
-    margin-left: auto;
+  margin-left: auto;
 }
 
 .probe .probeId {
-    font-size: 12px;
+  font-size: 12px;
 }
 
 .probe .probeId.selected {
-    background-color: #e1d79e;
+  background-color: #e1d79e;
 }
 
-.probe > span:hover,button:hover {
-    background-color: #d3d3d3;
+.probe > span:hover,
+button:hover {
+  background-color: #d3d3d3;
 }

@@ -3,9 +3,13 @@ import { Uniform } from 'three';
 import { extend } from '@react-three/fiber';
 import { Effect, BlendFunction } from 'postprocessing';
 import { useAtomValue } from 'jotai';
-import { globalColorTemperatureAtom, globalBrightnessContrastAtom, globalSaturationCheckAtom } from '../../scripts/atoms';
+import {
+  globalColorTemperatureAtom,
+  globalBrightnessContrastAtom,
+  globalSaturationCheckAtom,
+} from '../../scripts/atoms';
 
-const colorTemperatureShader = /* glsl */`
+const colorTemperatureShader = /* glsl */ `
     uniform sampler2D tDiffuse;
     uniform float uTemperature; // Temperature in Kelvin
 
@@ -45,35 +49,32 @@ const colorTemperatureShader = /* glsl */`
 `;
 
 class GlobalColorTemperatureEffect extends Effect {
-    constructor(uTemperature: number) {
-        super(
-            'GlobalColorTemperatureEffect',
-            colorTemperatureShader,
-            {
-                blendFunction: BlendFunction.NORMAL, // How the effect blends with the scene
-                uniforms: new Map([['uTemperature', new Uniform(uTemperature)]]),
-                // uniforms: new Map([['uContrast', new Uniform(1)]]),
-            }
-        );
-    }
+  constructor(uTemperature: number) {
+    super('GlobalColorTemperatureEffect', colorTemperatureShader, {
+      blendFunction: BlendFunction.NORMAL, // How the effect blends with the scene
+      uniforms: new Map([['uTemperature', new Uniform(uTemperature)]]),
+      // uniforms: new Map([['uContrast', new Uniform(1)]]),
+    });
+  }
 }
 
 // Extend the custom effect
 extend({ GlobalColorTemperatureEffect });
 
 const GlobalColorTemperature = () => {
-    const { on, value } = useAtomValue(globalColorTemperatureAtom);
+  const { on, value } = useAtomValue(globalColorTemperatureAtom);
 
-    if (!on) {
-        return null;
-    }
+  if (!on) {
+    return null;
+  }
 
-    const customEffect = new GlobalColorTemperatureEffect(value)
+  const customEffect = new GlobalColorTemperatureEffect(value);
 
-    return <EffectComposer>
-        <primitive object={customEffect} />
+  return (
+    <EffectComposer>
+      <primitive object={customEffect} />
     </EffectComposer>
-
-}
+  );
+};
 
 export default GlobalColorTemperature;

@@ -1,13 +1,14 @@
 import { Effect } from 'postprocessing';
 import { Uniform } from 'three';
 import { extend } from '@react-three/fiber';
-import { globalColorManagementAtom, LookType, ViewTransform } from '../../scripts/atoms';
+import {
+  globalColorManagementAtom,
+  LookType,
+  ViewTransform,
+} from '../../scripts/atoms';
 import { useAtomValue } from 'jotai';
 
-
-
-
-const fragmentShader = /*glsl */`
+const fragmentShader = /*glsl */ `
   uniform float exposure;
   uniform float gamma;
   uniform int look; // Look type (as an enum int)
@@ -117,41 +118,44 @@ const fragmentShader = /*glsl */`
 `;
 
 class GlobalColorManagementEffect extends Effect {
-    constructor({
-        exposure = 0.0,
-        gamma = 2.2,
-        look = LookType.MEDIUM_CONTRAST, // Default Look setting
-        viewTransform = ViewTransform.Standard, // Default View Transform setting
-    }: {
-        exposure?: number;
-        gamma?: number;
-        look?: LookType;
-        viewTransform?: ViewTransform
-    }) {
-        super('ColorManagementShader', fragmentShader, {
-            uniforms: new Map([
-                ['exposure', new Uniform(exposure)],
-                ['gamma', new Uniform(gamma)],
-                ['look', new Uniform(Object.values(LookType).indexOf(look))], // Map Look enum to index
-                ["viewTransform", new Uniform(Object.values(ViewTransform).indexOf(viewTransform))] // Map View Transform enum to index
-            ])
-        });
-    }
+  constructor({
+    exposure = 0.0,
+    gamma = 2.2,
+    look = LookType.MEDIUM_CONTRAST, // Default Look setting
+    viewTransform = ViewTransform.Standard, // Default View Transform setting
+  }: {
+    exposure?: number;
+    gamma?: number;
+    look?: LookType;
+    viewTransform?: ViewTransform;
+  }) {
+    super('ColorManagementShader', fragmentShader, {
+      uniforms: new Map([
+        ['exposure', new Uniform(exposure)],
+        ['gamma', new Uniform(gamma)],
+        ['look', new Uniform(Object.values(LookType).indexOf(look))], // Map Look enum to index
+        [
+          'viewTransform',
+          new Uniform(Object.values(ViewTransform).indexOf(viewTransform)),
+        ], // Map View Transform enum to index
+      ]),
+    });
+  }
 }
 
 extend({ GlobalColorManagementEffect });
 
 function GlobalColorManagement() {
-    const { on, value } = useAtomValue(globalColorManagementAtom);
+  const { on, value } = useAtomValue(globalColorManagementAtom);
 
-    if (!on || !value) {
-        return null;
-    }
+  if (!on || !value) {
+    return null;
+  }
 
-    console.log(value);
-    const customEffect = new GlobalColorManagementEffect(value);
+  console.log(value);
+  const customEffect = new GlobalColorManagementEffect(value);
 
-    return <primitive object={customEffect} />
+  return <primitive object={customEffect} />;
 }
 
-export default GlobalColorManagement
+export default GlobalColorManagement;

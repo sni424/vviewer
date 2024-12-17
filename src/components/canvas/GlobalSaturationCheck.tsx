@@ -3,9 +3,12 @@ import { Uniform } from 'three';
 import { extend } from '@react-three/fiber';
 import { Effect, BlendFunction } from 'postprocessing';
 import { useAtomValue } from 'jotai';
-import { globalBrightnessContrastAtom, globalSaturationCheckAtom } from '../../scripts/atoms';
+import {
+  globalBrightnessContrastAtom,
+  globalSaturationCheckAtom,
+} from '../../scripts/atoms';
 
-const shader = /* glsl */`
+const shader = /* glsl */ `
     uniform sampler2D tDiffuse;
 
 
@@ -41,33 +44,28 @@ const shader = /* glsl */`
 `;
 
 class GlobalSaturactionCheckEffect extends Effect {
-    constructor() {
-        super(
-            'GlobalSaturactionCheckEffect',
-            shader,
-            {
-                blendFunction: BlendFunction.NORMAL, // How the effect blends with the scene
-                // uniforms: new Map([['uContrast', new Uniform(contrast)]]),
-                // uniforms: new Map([['uContrast', new Uniform(1)]]),
-            }
-        );
-    }
+  constructor() {
+    super('GlobalSaturactionCheckEffect', shader, {
+      blendFunction: BlendFunction.NORMAL, // How the effect blends with the scene
+      // uniforms: new Map([['uContrast', new Uniform(contrast)]]),
+      // uniforms: new Map([['uContrast', new Uniform(1)]]),
+    });
+  }
 }
 
 // Extend the custom effect
 extend({ GlobalSaturactionCheckEffect });
 
 const GlobalSaturationCheck = () => {
-    const on = useAtomValue(globalSaturationCheckAtom);
+  const on = useAtomValue(globalSaturationCheckAtom);
 
-    if (!on) {
-        return null;
-    }
+  if (!on) {
+    return null;
+  }
 
-    const customEffect = new GlobalSaturactionCheckEffect()
+  const customEffect = new GlobalSaturactionCheckEffect();
 
-    return <primitive object={customEffect} />
-
-}
+  return <primitive object={customEffect} />;
+};
 
 export default GlobalSaturationCheck;
