@@ -298,8 +298,6 @@ const MapInfo = (props: MapInfoProps) => {
 };
 
 const MapSection = ({ mat }: { mat: THREE.MeshStandardMaterial }) => {
-  console.log(mat.uuid);
-
   return (
     <section
       style={{ display: 'flex', flexDirection: 'column', width: '100%' }}
