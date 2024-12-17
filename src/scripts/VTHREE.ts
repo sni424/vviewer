@@ -1,6 +1,7 @@
 import { RootState } from '@react-three/fiber';
 import * as THREE from 'three';
 import { TransformControlsPlane } from 'three/examples/jsm/Addons.js';
+import { Layer } from '../Constants';
 import {
   Matrix4Array,
   MoveActionOptions,
@@ -66,6 +67,10 @@ declare module 'three' {
     traverse(
       callback: (node: Object3D) => any,
       filter?: (node: Object3D) => boolean,
+    ): void;
+    traverse(
+      callback: (node: Object3D) => any,
+      layer?: Layer,
     ): void;
 
     isSystemGenerated(): boolean;
@@ -298,11 +303,20 @@ const defaultSceneFilter = (node: THREE.Object3D) => {
   if (node.isBoxHelper()) {
     return false;
   }
+  if (node.layers.mask & Layer.Selected) {
+    return false;
+  }
+  if (node.layers.mask & Layer.GizmoHelper) {
+    return false;
+  }
+  if (node.layers.mask & Layer.ReflectionBox) {
+    return false;
+  }
   return true;
 };
 THREE.Object3D.prototype.traverse = function (
   callback: (node: THREE.Object3D) => any,
-  filter: (node: THREE.Object3D) => boolean = defaultSceneFilter,
+  filterInput?: Layer | ((node: THREE.Object3D) => boolean),
 ) {
   //original code :
   /*
@@ -317,9 +331,18 @@ THREE.Object3D.prototype.traverse = function (
     }
    */
 
+  const filter = filterInput ?? defaultSceneFilter;
+
+  if (typeof filter === "number") {
+    // Layer
+    if (!this.layers.isEnabled(filter)) {
+      return;
+    }
+  }
+
   callback(this);
 
-  if (filter && !filter(this)) {
+  if (filter && typeof filter === "function" && !filter(this)) {
     // debugger;
     return;
   }
@@ -327,7 +350,7 @@ THREE.Object3D.prototype.traverse = function (
   const children = this.children;
 
   for (let i = 0, l = children.length; i < l; i++) {
-    children[i].traverse(callback, filter);
+    children[i].traverse(callback, filter as any);
   }
 };
 

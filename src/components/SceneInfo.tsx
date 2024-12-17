@@ -16,7 +16,7 @@ import { get, set } from 'idb-keyval';
 import objectHash from 'object-hash';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { __UNDEFINED__ } from '../Constants';
+import { __UNDEFINED__, Layer } from '../Constants';
 import {
   cameraMatrixAtom,
   globalBrightnessContrastAtom,
@@ -376,6 +376,10 @@ const GeneralSceneInfo = () => {
 
         <ul style={{ paddingLeft: 4, marginTop: 8 }}>
           {scene.children.map((child, index) => {
+            if (!child.layers.isEnabled(Layer.Model)) {
+              return null;
+            }
+
             if (child.type === 'BoxHelper') {
               return null;
             }
@@ -938,7 +942,7 @@ const GeneralMaterialControl = () => {
               if (child instanceof THREE.Mesh) {
                 allMeshes.push(child);
               }
-            });
+            }, Layer.Model);
             allMeshes.forEach(mesh => {
               //@ts-ignore
               mesh.material.aoMapIntensity = parseFloat(e.target.value);
@@ -958,7 +962,7 @@ const GeneralMaterialControl = () => {
               if (child instanceof THREE.Mesh) {
                 allMeshes.push(child);
               }
-            });
+            }, Layer.Model);
             allMeshes.forEach(mesh => {
               //@ts-ignore
               mesh.material.aoMapIntensity = parseFloat(e.target.value);
@@ -982,7 +986,7 @@ const GeneralMaterialControl = () => {
               if (child instanceof THREE.Mesh) {
                 allMeshes.push(child);
               }
-            });
+            }, Layer.Model);
             allMeshes.forEach(mesh => {
               (mesh.material as THREE.MeshStandardMaterial).lightMapIntensity =
                 parseFloat(e.target.value);
@@ -1002,7 +1006,7 @@ const GeneralMaterialControl = () => {
               if (child instanceof THREE.Mesh) {
                 allMeshes.push(child);
               }
-            });
+            }, Layer.Model);
             allMeshes.forEach(mesh => {
               (mesh.material as THREE.MeshStandardMaterial).lightMapIntensity =
                 parseFloat(e.target.value);
