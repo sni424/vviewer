@@ -127,32 +127,35 @@ function Upload() {
         >
             <div style={{ marginBottom: 16 }}>
                 드래그&드랍으로 파일 업로드
-                <button style={{marginLeft:20}} onClick={() => {
+                <button style={{ marginLeft: 20 }} onClick={() => {
                     closeModal();
                 }}>창 닫기</button>
             </div>
             {filelist ? <>
                 <div style={{ marginTop: 20, marginBottom: 16 }}>파일목록</div>
-                {/* <div style={{ width: "80%", display: "grid", gridTemplateColumns: "1fr 1fr 1fr" }}> */}
-                <div style={{ width: "80%", display: "grid", gridTemplateColumns: "1fr 1fr" }}>
-                    {/* <div>모델</div><div>환경맵</div><div>씬</div> */}
-                    <strong>모델</strong><strong>환경맵</strong>
-                    <FileInfoList filelist={filelist.models} itemStyle={{ cursor: "pointer", marginTop: 6 }} itemProps={
-                        {
-                            onClick: (e) => {
-                                const file = JSON.parse(e.currentTarget.getAttribute("data-fileinfo")!) as FileInfo;
-                                loadFile(file).then(blob => {
-                                    console.log("loaded")
-                                    const url = URL.createObjectURL(blob);
-                                    const fileFromBlob = new File([blob], file.filename);
-                                    setSource([{ url, name: file.filename, file: fileFromBlob }]);
-                                    closeModal?.();
-                                })
+                <div style={{ width: "80%" }}>
+                    <div>
+                        <strong>모델</strong>
+                        <FileInfoList filelist={filelist.models} itemStyle={{ cursor: "pointer", marginTop: 8 }} itemProps={
+                            {
+                                onClick: (e) => {
+                                    const file = JSON.parse(e.currentTarget.getAttribute("data-fileinfo")!) as FileInfo;
+                                    loadFile(file).then(blob => {
+                                        console.log("loaded")
+                                        const url = URL.createObjectURL(blob);
+                                        const fileFromBlob = new File([blob], file.filename);
+                                        setSource([{ url, name: file.filename, file: fileFromBlob }]);
+                                        closeModal?.();
+                                    })
 
+                                }
                             }
-                        }
-                    } />
-                    <FileInfoList filelist={filelist.envs} />
+                        } />
+                    </div>
+                    <div className='mt-8'>
+                        <strong>환경맵</strong>
+                        <FileInfoList filelist={filelist.envs} />
+                    </div>
                     {/* <FileInfoList filelist={filelist.scenes} /> */}
                 </div>
             </>

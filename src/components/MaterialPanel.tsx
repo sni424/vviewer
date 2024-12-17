@@ -1,4 +1,4 @@
-import { useAtom, useAtomValue } from 'jotai';
+import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import React, { useEffect, useState } from 'react'
 import { materialSelectedAtom, selectedAtom, threeExportsAtom } from '../scripts/atoms';
 import { THREE } from '../scripts/VTHREE';
@@ -57,14 +57,11 @@ const setMap = (material: THREE.MeshStandardMaterial, mapKey: string, texture: T
 }
 
 const MapInfo = (props: MapInfoProps) => {
-    if (props.matKey === "lightMap") {
-        console.log("Lightmap rendered");
-    }
 
-    const { label, material, matKey: mapKey, materialRange, textureRange, forceUpdate } = props;
+    const { label, material, matKey: mapKey, materialRange, textureRange } = props;
     const texture = material[mapKey as keyof THREE.MeshStandardMaterial] as THREE.Texture;
     const [channel, setChannel] = useState(texture?.channel ?? -1);
-
+    const setMaterialSelected = useSetAtom(materialSelectedAtom);
 
     const materialRangeKey = materialRange?.matKey as keyof THREE.MeshStandardMaterial;
     const materialValue = materialRangeKey ? material[materialRangeKey] : undefined;
@@ -82,6 +79,12 @@ const MapInfo = (props: MapInfoProps) => {
     const textureStep = textureRange?.step ?? (textureMax - textureMin) / 100;
 
     const [isDragging, setIsDragging] = useState(false);
+
+    useEffect(() => {
+        setChannel(texture?.channel ?? -1);
+        setMaterialRangeValue(materialValue as number);
+        setTextureRangeValue(textureValue as number);
+    }, [props.material])
 
     const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
         e.preventDefault();
@@ -111,7 +114,13 @@ const MapInfo = (props: MapInfoProps) => {
                     const texture = new THREE.TextureLoader().load(e.target?.result as string);
                     texture.flipY = !texture.flipY;
                     setMap(material, mapKey, texture);
-                    forceUpdate?.();
+
+                    // 강제 리로딩
+                    const curMat = props.material;
+                    setTimeout(()=>{
+                        setMaterialSelected(curMat);
+                    },100);
+                    setMaterialSelected(null);
                 }
                 reader.readAsDataURL(file);
             }
@@ -121,6 +130,7 @@ const MapInfo = (props: MapInfoProps) => {
 
 
     return <div
+        key={`mapinfo-${props.matKey}-${props.material.uuid}`}
         style={{ fontSize: 11, width: "100%", boxSizing: "border-box", border: isDragging ? "1px dashed black" : undefined }}
         onDrop={handleDrop}
         onDragOver={handleDragOver}
@@ -130,7 +140,6 @@ const MapInfo = (props: MapInfoProps) => {
             {label && <strong style={{ fontSize: 12 }}>{label}</strong>}
             <button style={{ fontSize: 10 }} onClick={() => {
                 setMap(material, mapKey, null);
-                forceUpdate?.();
             }}>삭제</button>
         </div>
 
@@ -150,7 +159,7 @@ const MapInfo = (props: MapInfoProps) => {
         </div>}
         {
             materialRange && materialValue !== undefined && (
-                <div style={{ display: "flex", width: "100%", gap:8 }}>
+                <div style={{ display: "flex", width: "100%", gap: 8 }}>
                     <div style={{
                         flex: 1, minWidth: 0
                     }}>
@@ -164,7 +173,7 @@ const MapInfo = (props: MapInfoProps) => {
                     {/* <div style={{ width: 25 }}>
                         {toNthDigit(materialRangeValue, 2)}
                     </div> */}
-                    <input style={{width:35, borderRadius:4}} type="number" min={materialMin} max={materialMax} step={materialStep} value={materialRangeValue} onChange={(e) => {
+                    <input style={{ width: 35, borderRadius: 4 }} type="number" min={materialMin} max={materialMax} step={materialStep} value={materialRangeValue} onChange={(e) => {
                         const value = parseFloat(e.target.value);
                         materialRange.onChange(value);
                         setMaterialRangeValue(value);
@@ -190,7 +199,7 @@ const MapInfo = (props: MapInfoProps) => {
                     {/* <div style={{ width: 25 }}>
                         {toNthDigit(textureRangeValue, 2)}
                     </div> */}
-                    <input style={{width:35, borderRadius:4}} type="number" min={textureMin} max={textureMax} step={textureStep} value={textureRangeValue} onChange={(e) => {
+                    <input style={{ width: 35, borderRadius: 4 }} type="number" min={textureMin} max={textureMax} step={textureStep} value={textureRangeValue} onChange={(e) => {
                         const value = parseFloat(e.target.value);
                         textureRange.onChange(value);
                         setTextureRangeValue(value);
@@ -202,15 +211,16 @@ const MapInfo = (props: MapInfoProps) => {
     </div>
 }
 
-const MapSection = ({ mat, forceUpdate }: { mat: THREE.MeshStandardMaterial; forceUpdate: () => any }) => {
+const MapSection = ({ mat }: { mat: THREE.MeshStandardMaterial; }) => {
 
+    console.log(mat.uuid)
 
     return <section style={{ display: "flex", flexDirection: "column", width: "100%" }}>
         <div style={{ width: "100%", display: "flex", flexDirection: "column", border: "1px solid gray", padding: 8, borderRadius: 8, boxSizing: "border-box", fontSize: 13 }}
         >
 
-            <div style={{ width: "100%", display: "grid", gridTemplateColumns: "1fr 1fr", rowGap: 12, columnGap:12 }}>
-                <MapInfo forceUpdate={forceUpdate} label="Light Map" material={mat} matKey="lightMap" materialRange={{
+            <div style={{ width: "100%", display: "grid", gridTemplateColumns: "1fr 1fr", rowGap: 12, columnGap: 12 }}>
+                <MapInfo label="Light Map" material={mat} matKey="lightMap" materialRange={{
                     matKey: "lightMapIntensity",
                     onChange: (value) => {
                         mat.lightMapIntensity = value;
@@ -220,37 +230,37 @@ const MapSection = ({ mat, forceUpdate }: { mat: THREE.MeshStandardMaterial; for
                 }}>
                 </MapInfo>
 
-                <MapInfo forceUpdate={forceUpdate} label="Diffuse" material={mat} matKey="map"></MapInfo>
-                <MapInfo forceUpdate={forceUpdate} label="Normal" material={mat} matKey="normalMap"></MapInfo>
-                <MapInfo forceUpdate={forceUpdate} label="Roughness" material={mat} matKey="roughnessMap" materialRange={{
+                <MapInfo label="Diffuse" material={mat} matKey="map"></MapInfo>
+                <MapInfo label="Normal" material={mat} matKey="normalMap"></MapInfo>
+                <MapInfo label="Roughness" material={mat} matKey="roughnessMap" materialRange={{
                     matKey: "roughness",
                     onChange: (value) => {
                         mat.roughness = value;
                         mat.needsUpdate = true;
                     }
                 }}></MapInfo>
-                <MapInfo forceUpdate={forceUpdate} label="Metalness" material={mat} matKey="metalnessMap" materialRange={{
+                <MapInfo label="Metalness" material={mat} matKey="metalnessMap" materialRange={{
                     matKey: "metalness",
                     onChange: (value) => {
                         mat.metalness = value;
                         mat.needsUpdate = true;
                     }
                 }}></MapInfo>
-                <MapInfo forceUpdate={forceUpdate} label="AO" material={mat} matKey="aoMap" materialRange={{
+                <MapInfo label="AO" material={mat} matKey="aoMap" materialRange={{
                     matKey: "aoMapIntensity",
                     onChange: (value) => {
                         mat.aoMapIntensity = value;
                         mat.needsUpdate = true;
                     }
                 }}></MapInfo>
-                <MapInfo forceUpdate={forceUpdate} label="Emissive" material={mat} matKey="emissiveMap" materialRange={{
+                <MapInfo label="Emissive" material={mat} matKey="emissiveMap" materialRange={{
                     matKey: "emissiveIntensity",
                     onChange: (value) => {
                         mat.emissiveIntensity = value;
                         mat.needsUpdate = true;
                     }
                 }}></MapInfo>
-                <MapInfo forceUpdate={forceUpdate} label="Env Map" material={mat} matKey="envMap" materialRange={{
+                <MapInfo label="Env Map" material={mat} matKey="envMap" materialRange={{
                     matKey: "envMapIntensity",
                     onChange: (value) => {
                         mat.envMapIntensity = value;
@@ -258,37 +268,14 @@ const MapSection = ({ mat, forceUpdate }: { mat: THREE.MeshStandardMaterial; for
                     }
                 }}></MapInfo>
             </div>
-            {/* <LightMapPreview ></LightMapPreview> */}
         </div>
-        {/* {Object.entries(mat).map(([key, value]) => {
-            return <div key={`mat-${mat.uuid}` + key} style={{ fontSize: 10 }}>{key}: {JSON.stringify(value)}</div>
-        })} */}
     </section >
-
-    // return <div>
-    //     <div>color: {JSON.stringify(mat.color)}</div>
-    //     <div>emissive: {JSON.stringify(mat.emissive)}</div>
-    //     <div>emissiveIntensity: {JSON.stringify(mat.emissiveIntensity)}</div>
-    //     <div>emissiveMap: {JSON.stringify(mat.emissiveMap)}</div>
-    //     <div>envMap: {JSON.stringify(mat.envMap)}</div>
-    //     <div>lightMap: {JSON.stringify(mat.lightMap)}</div>
-    //     <div>map: {JSON.stringify(mat.map)}</div>
-    //     <div>metalness: {JSON.stringify(mat.metalness)}</div>
-    //     <div>normalMap: {JSON.stringify(mat.normalMap)}</div>
-    //     <div>roughness: {JSON.stringify(mat.roughness)}</div>
-    //     <div>roughnessMap: {JSON.stringify(mat.roughnessMap)}</div>
-    // </div>
 }
 
 function MaterialPanelContainer() {
     const selecteds = useAtomValue(selectedAtom);
     const threeExports = useAtomValue(threeExportsAtom);
     const [mat, setMat] = useAtom(materialSelectedAtom);
-    const forceUpdate = () => {
-        if (mat) {
-            setMat(mat.clone());
-        }
-    }
 
     if (!mat || !threeExports) {
         return null;
@@ -319,7 +306,7 @@ function MaterialPanelContainer() {
                 </div>
             </div>
             {/* <MaterialPanel style={{width:"100%"}} mat={mat}></MaterialPanel> */}
-            <MapSection mat={mat as THREE.MeshStandardMaterial} forceUpdate={forceUpdate} />
+            <MapSection mat={mat as THREE.MeshStandardMaterial} />
             <div style={{ position: "absolute", top: 5, right: 5, fontSize: 12, fontWeight: "bold", cursor: "pointer" }} onClick={() => {
                 setMat(null);
             }}>X</div>

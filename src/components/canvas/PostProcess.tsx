@@ -24,8 +24,8 @@ function PostProcess() {
     return (
         <EffectComposer >
             <BrightnessContrastEffect></BrightnessContrastEffect>
-            {/* <GlobalColorManagement></GlobalColorManagement>
-            <GlobalSaturationCheck></GlobalSaturationCheck> */}
+            {/* <GlobalColorManagement></GlobalColorManagement> */}
+            <GlobalSaturationCheck></GlobalSaturationCheck>
         </EffectComposer>
     )
 }
