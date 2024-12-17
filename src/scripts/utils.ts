@@ -104,11 +104,11 @@ export const getIntersects = (
 
   const dstObjects = filterUserdataIgnoreRaycast
     ? scene.children.filter(
-        obj =>
-          !obj.getUserData().ignoreRaycast &&
-          !obj.isTransformControl() &&
-          !obj.isBoxHelper(),
-      )
+      obj =>
+        !obj.getUserData().ignoreRaycast &&
+        !obj.isTransformControl() &&
+        !obj.isBoxHelper(),
+    )
     : scene.children;
   const intersects = raycaster.intersectObjects(
     dstObjects,
@@ -239,7 +239,7 @@ export const loadLatest = async ({
   threeExports: RootState;
   addBenchmark?: (key: keyof BenchMark, value?: number) => void;
 }) => {
-  const addBenchmark = _addBenchmark ?? (() => {});
+  const addBenchmark = _addBenchmark ?? (() => { });
 
   const latestHashUrl = import.meta.env.VITE_LATEST_HASH;
   const latestUrl = import.meta.env.VITE_LATEST;
@@ -430,6 +430,8 @@ const rotateCameraSmoothly = (
   return new THREE.Quaternion().slerpQuaternions(quaternionB, quaternionA, t);
 };
 
+// 현재 애니메이션 인스턴스를 저장
+let currentAnimation: gsap.core.Tween | null = null;
 //카메라 이동 경로에따른 애니메이션션
 const handlePathfindingMove = (
   camera: THREE.Object3D,
@@ -438,6 +440,7 @@ const handlePathfindingMove = (
   direction: THREE.Vector3,
 ) => {
   if (path.length === 0) return; // 종료 조건 추가
+
 
   const startPosition = camera.position.clone(); // 초기 카메라 위치
   const startDirection = camera
@@ -448,7 +451,7 @@ const handlePathfindingMove = (
   const distance = camera.position.distanceTo(newVector); // 거리 계산
 
   // 애니메이션 실행
-  const animation = gsap.to(camera.position, {
+  currentAnimation = gsap.to(camera.position, {
     x: newVector.x,
     y: 1,
     z: newVector.z,
@@ -471,31 +474,42 @@ const handlePathfindingMove = (
         path.shift();
 
         handlePathfindingMove(camera, path, speed, direction); // 재귀 호출로 다음 경로 처리
-        animation.kill();
+        if (currentAnimation) {
+          currentAnimation.kill();
+        }
         return;
       } else {
-        //마지막 경로에서 카메라 방향 설정
-        if (path.length === 1) {
-          const quaternion = rotateCameraSmoothly(
-            startDirection,
-            direction,
-            progress,
-          );
-          camera.quaternion.copy(quaternion);
-        } else {
-          //이동하는 경로에따라 카메라 방향 설정
-          const quaternion = rotateCameraSmoothly(
-            startDirection,
-            endDirection,
-            adjustedProgress,
-          );
-          camera.quaternion.copy(quaternion);
-        }
+        const quaternion = rotateCameraSmoothly(
+          startDirection,
+          direction,
+          progress,
+        );
+        camera.quaternion.copy(quaternion);
+        // //마지막 경로에서 카메라 방향 설정
+        // if (path.length === 1) {
+        //   const quaternion = rotateCameraSmoothly(
+        //     startDirection,
+        //     direction,
+        //     progress,
+        //   );
+        //   camera.quaternion.copy(quaternion);
+        // } else {
+        //   //이동하는 경로에따라 카메라 방향 설정
+        //   const quaternion = rotateCameraSmoothly(
+        //     startDirection,
+        //     endDirection,
+        //     adjustedProgress,
+        //   );
+        //   camera.quaternion.copy(quaternion);
+        // }
       }
     },
     onComplete: () => {
       path.shift(); // 현재 경로 제거
-      animation.kill(); // 애니메이션 중지
+      // 애니메이션 중지
+      if (currentAnimation) {
+        currentAnimation.kill();
+      }
     },
   });
 };
@@ -524,6 +538,7 @@ const isoViewCamera = (
   speed: number,
   cameraFov: number,
 ) => {
+  console.log("isoViewCamera", camera.position, target)
   // 카메라 위치 애니메이션
   gsap.to(camera.position, {
     x: target.x,
@@ -551,9 +566,42 @@ const isoViewCamera = (
   });
 };
 
+const walkViewCamera = (camera: THREE.PerspectiveCamera,
+  target: THREE.Vector3,
+  direction: THREE.Vector3,
+  speed: number,
+  cameraFov: number,) => {
+  console.log("walkViewCamera", camera.position, target)
+  // 카메라 위치 애니메이션
+  gsap.to(camera.position, {
+    x: target.x,
+    y: target.y,
+    z: target.z,
+    duration: speed,
+    ease: 'power2.out', // 자연스러운 애니메이션
+    onUpdate: function () {
+      camera.lookAt(direction.x, direction.y, direction.z);
+      camera.updateProjectionMatrix();
+    },
+    onComplete: () => {
+      camera.lookAt(direction.x, direction.y, direction.z);
+    },
+  });
+
+  // 카메라 FOV 애니메이션
+  gsap.to(camera, {
+    fov: cameraFov,
+    duration: speed,
+    ease: 'power2.out', // 동일한 ease로 FOV 변경
+    onUpdate: () => {
+      camera.updateProjectionMatrix();
+    },
+  });
+}
+
 //카메라 moveTo함수
 export const moveTo = (
-  camera: THREE.Camera,
+  camera: THREE.PerspectiveCamera,
   action: MoveActionType,
   options: MoveActionOptions,
 ) => {
@@ -592,6 +640,9 @@ export const moveTo = (
           );
 
           if (path) {
+            if (currentAnimation) {
+              currentAnimation.kill()
+            }
             handlePathfindingMove(camera, path, speed, direction);
           }
         }
@@ -613,7 +664,13 @@ export const moveTo = (
         }
       }
       break;
+    case 'walkView':
+      if (options.walkView) {
+        const { speed, target, direction } = options.walkView;
+        walkViewCamera(camera, target, direction, speed, 75);
 
+      }
+      break;
     case 'linear':
       if (options.linear) {
         handleLinearMove(

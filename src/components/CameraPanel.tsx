@@ -1,11 +1,10 @@
-import { useAtom, useAtomValue, useSetAtom } from 'jotai';
+import { useAtom, useAtomValue } from 'jotai';
 import React, { useEffect, useState } from 'react';
 import {
   cameraMatrixAtom,
   cameraSettingAtom,
   lastCameraInfoAtom,
   orbitSettingAtom,
-  oribitControlAtom,
   threeExportsAtom,
 } from '../scripts/atoms';
 import { Quaternion, THREE, Vector3 } from '../scripts/VTHREE';
@@ -16,6 +15,24 @@ type placeInfoType = {
   direction: THREE.Vector3;
 };
 
+const tour: placeInfoType[] = [
+  {
+    name: '안방',
+    position: new THREE.Vector3(-3.056, 1.2, 2.08),
+    direction: new THREE.Vector3(-0.07, -0.01, 0.99),
+  },
+  {
+    name: '서재방',
+    position: new THREE.Vector3(3.35, 1.2, 0.686),
+    direction: new THREE.Vector3(0.6, -0.05, 0.79),
+  },
+  {
+    name: '아이방',
+    position: new THREE.Vector3(-5.36, 1.2, 1.37),
+    direction: new THREE.Vector3(-0.18, -0.06, 0.98),
+  },
+];
+
 const CameraPanel = () => {
   const [isCameraPanel, setCameraPanel] = useState(true);
   //저장한 위치
@@ -25,15 +42,11 @@ const CameraPanel = () => {
   const [cameraSetting, setCameraSetting] = useAtom(cameraSettingAtom);
 
   const [isOrbit, setOrbit] = useAtom(orbitSettingAtom);
-  const setLastCameraInfo = useSetAtom(lastCameraInfoAtom);
-  const orbitControl = useAtomValue(oribitControlAtom);
-  const [positionY, _setPositionY] = useState<number>(0);
+  const [lastCameraInfo, setLastCameraInfo] = useAtom(lastCameraInfoAtom);
   const posYRef = React.useRef(0);
-  const setPositionY = (newY: number) => {
-    posYRef.current = newY;
-    return _setPositionY(newY);
-  };
   const lastSpace = React.useRef(0);
+
+  const [selectRoom, setSelectRoom] = useState(1);
 
   useEffect(() => {
     // space 입력 시 카메라 상승
@@ -48,7 +61,11 @@ const CameraPanel = () => {
         }
         lastSpace.current = Date.now();
         const newY = Number((posYRef.current + velocity).toFixed(2));
-        setPositionY(newY);
+
+        setCameraSetting(pre => ({
+          ...pre,
+          cameraY: Number((pre.cameraY + newY).toFixed(2)),
+        }));
       }
 
       if (e.key.toLowerCase() === 'c') {
@@ -62,7 +79,11 @@ const CameraPanel = () => {
         }
         lastSpace.current = Date.now();
         const newY = Number((posYRef.current - velocity).toFixed(2));
-        setPositionY(newY);
+
+        setCameraSetting(pre => ({
+          ...pre,
+          cameraY: Number((pre.cameraY + newY).toFixed(2)),
+        }));
       }
     };
 
@@ -76,21 +97,25 @@ const CameraPanel = () => {
     if (!threeExports) {
       return;
     }
-    camera.position.y = positionY;
+    camera.position.y = cameraSetting.cameraY;
     camera.updateProjectionMatrix();
     setLastCameraInfo(pre => ({
       ...pre,
       position: camera.position.clone(),
     }));
-  }, [positionY]);
+  }, [cameraSetting.cameraY]); // cameraY 값만 감지
 
-  // useEffect는 항상 최상위에서 호출되도록 함
-  useEffect(() => {
-    if (threeExports && threeExports.camera) {
-      const newY = Number(threeExports.camera.position.y.toFixed(2));
-      setPositionY(newY);
-    }
-  }, [threeExports, cameraMatrix]);
+  //아래 코드 실행시 처음에 설정해둔 카메라 값이 아니라 기본값 1로 변경됨
+  // // useEffect는 항상 최상위에서 호출되도록 함
+  // useEffect(() => {
+  //   if (threeExports && threeExports.camera) {
+  //     const newY = Number(threeExports.camera.position.y.toFixed(2));
+  //     setCameraSetting(pre => ({
+  //       ...pre,
+  //       cameraY: newY,
+  //     }));
+  //   }
+  // }, [threeExports, cameraMatrix]);
 
   if (!threeExports) {
     return null; // early return
@@ -157,8 +182,17 @@ const CameraPanel = () => {
                             model: scene,
                           },
                         });
+                      } else {
+                        console.log('no scene');
                       }
                     } else {
+                      camera.moveTo('walkView', {
+                        walkView: {
+                          target: lastCameraInfo.position,
+                          direction: lastCameraInfo.direction,
+                          speed: 3,
+                        },
+                      });
                     }
                     setCameraSetting(pre => ({
                       ...pre,
@@ -236,11 +270,14 @@ const CameraPanel = () => {
                     width: '100%',
                   }}
                   type="number"
-                  value={positionY}
+                  value={cameraSetting.cameraY}
                   onChange={e => {
-                    const newY =
-                      Number(parseFloat(e.target.value).toFixed(2)) || 0;
-                    setPositionY(newY);
+                    // const newY =
+                    //   Number(parseFloat(e.target.value).toFixed(2)) || 0;
+                    // setCameraSetting(pre => ({
+                    //   ...pre,
+                    //   cameraY: newY,
+                    // }));
                   }}
                 />
               </div>
@@ -323,6 +360,82 @@ const CameraPanel = () => {
                       </button>
                     );
                   })}
+              </div>
+            </div>
+            <div
+              style={{
+                width: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <div
+                style={{
+                  width: '95%',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                }}
+              >
+                <div
+                  style={{ cursor: 'pointer' }}
+                  onClick={() => {
+                    setSelectRoom((pre: number) => {
+                      if (pre === 1) {
+                        return tour.length;
+                      } else {
+                        return pre - 1;
+                      }
+                    });
+                  }}
+                >
+                  ◁
+                </div>
+                <div
+                  style={{ cursor: 'pointer' }}
+                  onClick={() => {
+                    console.log(
+                      camera.position,
+                      camera.getWorldDirection(new Vector3()).normalize(),
+                    );
+                  }}
+                >
+                  ▶
+                </div>
+                <div>
+                  {selectRoom}/{tour.length}
+                </div>
+                <div style={{ cursor: 'pointer' }}>x1</div>
+                <select
+                  style={{ cursor: 'pointer' }}
+                  value={selectRoom}
+                  onChange={e => {
+                    setSelectRoom(Number(e.target.value));
+                  }}
+                >
+                  {tour.map((room: placeInfoType, index) => {
+                    return (
+                      <option key={`room_${room.position.x}`} value={index + 1}>
+                        {room.name}
+                      </option>
+                    );
+                  })}
+                </select>
+                <div
+                  style={{ cursor: 'pointer' }}
+                  onClick={() => {
+                    setSelectRoom((pre: number) => {
+                      if (pre === tour.length) {
+                        return 1;
+                      } else {
+                        return pre + 1;
+                      }
+                    });
+                  }}
+                >
+                  ▷
+                </div>
               </div>
             </div>
           </section>
