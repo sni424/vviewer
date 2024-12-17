@@ -1,19 +1,28 @@
 import React, { useEffect } from 'react';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import { useState } from 'react';
-import { cameraMatrixAtom, cameraSettingAtom, lastCameraInfoAtom, orbitSettingAtom, threeExportsAtom, } from '../scripts/atoms';
-import { Quaternion, THREE, Vector3 } from '../scripts/VTHREE';
+import { cameraMatrixAtom, cameraSettingAtom, lastCameraInfoAtom, orbitSettingAtom, oribitControlAtom, threeExportsAtom, } from '../scripts/atoms';
+import { Object3D, Quaternion, THREE, Vector3 } from '../scripts/VTHREE';
+import { moveTo } from './camera/CameraFun';
+
+type placeInfoType = {
+    name: string,
+    position: THREE.Vector3,
+    direction: THREE.Vector3
+}
 
 const CameraPanel = () => {
 
     const [isCameraPanel, setCameraPanel] = useState(true)
+    //저장한 위치
+    const [placeInfo, setPlaceInfo] = useState<placeInfoType[]>([])
     const threeExports = useAtomValue(threeExportsAtom);
     const cameraMatrix = useAtomValue(cameraMatrixAtom);
     const [cameraSetting, setCameraSetting] = useAtom(cameraSettingAtom)
 
     const [isOrbit, setOrbit] = useAtom(orbitSettingAtom)
     const setLastCameraInfo = useSetAtom(lastCameraInfoAtom)
-
+    const orbitControl = useAtomValue(oribitControlAtom)
     const [positionY, _setPositionY] = useState<number>(0);
     const posYRef = React.useRef(0);
     const setPositionY = (newY: number) => {
@@ -25,7 +34,7 @@ const CameraPanel = () => {
 
     useEffect(() => {
         // space 입력 시 카메라 상승
-        const handleKeydown= (e:KeyboardEvent) => {
+        const handleKeydown = (e: KeyboardEvent) => {
             // 카메라 y값 상승
             const velocity = 0.1;
             if (e.key === " ") {
@@ -40,7 +49,7 @@ const CameraPanel = () => {
             }
 
             if (e.key.toLowerCase() === "c") {
-                if(e.ctrlKey){
+                if (e.ctrlKey) {
                     return;
                 }
                 e.preventDefault();
@@ -84,7 +93,7 @@ const CameraPanel = () => {
         return null; // early return
     }
 
-    const { camera } = threeExports;
+    const { camera, scene } = threeExports;
     const position = new Vector3();
     const rotation = new Quaternion();
     const scale = new Vector3();
@@ -116,26 +125,39 @@ const CameraPanel = () => {
                         }}>
                             <div>
                                 <label >isoView</label>
-                                <input type="checkbox" id="isoView" name="isoView" checked={cameraSetting.isoView} onChange={e => {
+                                <input type="checkbox" id="isoView" name="isoView"
+                                    checked={cameraSetting.isoView}
+                                    onChange={e => {
+                                        if (e.target.checked) {
+                                            if (scene) {
+                                                camera.moveTo("isoView", {
+                                                    isoView: {
+                                                        speed: 3,
+                                                        model: scene
+                                                    }
+                                                });
+                                            }
+                                        } else {
 
-                                    setCameraSetting(pre => ({
-                                        ...pre,
-                                        isoView: e.target.checked
-                                    }))
-                                }} />
+                                        }
+                                        setCameraSetting(pre => ({
+                                            ...pre,
+                                            isoView: e.target.checked
+                                        }))
+                                    }} />
                             </div>
                             <div>
                                 <label >isOrbit</label>
                                 <input type="checkbox" id="autoRotate" name="autoRotate"
-                                    checked={isOrbit.enable}
+                                    checked={isOrbit.enabled}
                                     onChange={e => {
-                                        if (cameraSetting.isoView) {
-                                            window.alert("isoView에서는 orbit 비활성이 불가능 합니다.")
-                                            return
-                                        }
+                                        // if (cameraSetting.isoView) {
+                                        //     window.alert("isoView에서는 orbit 비활성이 불가능 합니다.")
+                                        //     return
+                                        // }
                                         setOrbit(pre => ({
                                             ...pre,
-                                            enable: e.target.checked
+                                            enabled: e.target.checked
                                         }))
                                     }} />
                             </div>
@@ -201,16 +223,65 @@ const CameraPanel = () => {
                                     }}
                                 />
                             </div>
+                            <div>
+                                <button style={{
+                                    boxSizing: "border-box",
+                                    marginTop: "8px"
+                                }}
+                                    onClick={() => {
+                                        setPlaceInfo((pre: placeInfoType[]) => [
+                                            ...pre,
+                                            {
+                                                name: `place-${pre.length}`,
+                                                position: camera.position.clone(),
+                                                direction: camera.getWorldDirection(new THREE.Vector3()).clone()
+                                            }
+                                        ]);
+                                    }}
+                                >위치 추가</button>
+                            </div>
+                            <div style={{
+                                boxSizing: "border-box",
+                                marginTop: "8px",
+                                display: "flex",
+                                alignItems: "center",
+                                gap: "4px",
+                                flexWrap: "wrap"
+                            }}>
+                                {placeInfo.length > 0 && placeInfo.map((place: placeInfoType, index: number) => {
+                                    return (
+                                        <button
+                                            key={`placeInfo-${index}`}
+                                            style={{
+                                                boxSizing: "border-box",
+                                                marginTop: "8px"
+                                            }}
+                                            onClick={() => {
+
+                                                camera.moveTo("pathfinding", {
+                                                    pathfinding: {
+                                                        target: place.position,
+                                                        speed: 0,
+                                                        model: scene.children[scene.children.length - 1],
+                                                        direction: place.direction
+                                                    }
+                                                })
+
+                                            }}
+                                        >{place.name}</button>
+                                    )
+                                })}
+                            </div>
                         </div>
                     </section>
-                </div> : <div style={{ display: "flex", justifyContent: "end", cursor: "pointer" }}
+                </div > : <div style={{ display: "flex", justifyContent: "end", cursor: "pointer" }}
                     onClick={() => {
                         setCameraPanel(true)
                     }}
                 >확대</div>
             }
 
-        </div>
+        </div >
     )
 }
 

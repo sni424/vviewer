@@ -39,8 +39,6 @@ function Renderer() {
     const { scene, camera } = threeExports;
     const setCameraAtom = useSetAtom(cameraMatrixAtom);
 
-    const [model, setModel] = useState<any>(null)
-
     useEffect(() => {
         setThreeExportsAtom(threeExports);
         camera.position.set(1, 1, 1);
@@ -106,7 +104,6 @@ function Renderer() {
                 }
                 setAsModel(gltf.scene);
                 scene.add(gltf.scene);
-                setModel(gltf.scene)
                 // revoke object url
                 URL.revokeObjectURL(url);
                 setLoadHistoryAtom(history => {
@@ -282,7 +279,7 @@ const useKeyHandler = () => {
                 const { orbitSetting } = getSettings();
                 setAtomValue(orbitSettingAtom, (prev) => ({
                     ...prev,
-                    enable: !orbitSetting.enable
+                    enabled: !orbitSetting.enabled
                 }))
                 return;
             }
@@ -360,8 +357,8 @@ function RendererContainer() {
                     width: "100%",
                     height: "100%",
                 }}
-                onCreated={state=>{
-                    const {scene} = state;
+                onCreated={state => {
+                    const { scene } = state;
                     scene.layers.enable(Layer.Model);
                 }}
             >

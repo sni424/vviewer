@@ -1,11 +1,21 @@
 import type { RootState } from '@react-three/fiber';
-import { atom, createStore, getDefaultStore, PrimitiveAtom, useAtom, useAtomValue, useSetAtom, WritableAtom } from 'jotai';
+import {
+  atom,
+  createStore,
+  getDefaultStore,
+  PrimitiveAtom,
+  useAtom,
+  useAtomValue,
+  useSetAtom,
+  WritableAtom,
+} from 'jotai';
 import { THREE, Vector3 } from './VTHREE';
 import React from 'react';
 import { set } from 'idb-keyval';
 import { FileInfo, GLProps, View, ViewportOption } from '../types';
 import { DEFAULT_COLOR_TEMPERATURE } from '../Constants';
 import ReflectionProbe from './ReflectionProbe.ts';
+import { OrbitControls } from 'three/examples/jsm/Addons.js';
 
 type AtomArgType<T> = T | ((prev: T) => T);
 export type Store = ReturnType<typeof createStore>;
@@ -17,7 +27,10 @@ export function getAtomValue<T = any>(atom: PrimitiveAtom<T>): T {
   return store.get(atom);
 }
 
-export function setAtomValue<T = any>(atom: PrimitiveAtom<T>, value: T|((prev: T) => T)) {
+export function setAtomValue<T = any>(
+  atom: PrimitiveAtom<T>,
+  value: T | ((prev: T) => T),
+) {
   const store = getDefaultStore();
   store.set(atom, value);
 }
@@ -30,10 +43,10 @@ export const createAtomCombo = <T = any>(
   initalValue?: T,
   store?: Store,
 ): [
-    WritableAtom<T, unknown[], unknown>,
-    () => T | undefined,
-    (arg: AtomArgType<T>) => void,
-  ] => {
+  WritableAtom<T, unknown[], unknown>,
+  () => T | undefined,
+  (arg: AtomArgType<T>) => void,
+] => {
   const dstStore = store ?? defaultStore;
   // @ts-ignore
   const theAtom = atom<T>(initalValue);
@@ -48,10 +61,14 @@ export const createAtomCombo = <T = any>(
 
 // export type MapDst = 'lightmap' | 'emissivemap' | 'envmap'; // hdr적용은 추후 필요하면 추가
 export type MapDst = 'lightmap' | 'emissivemap';
-export type ModelSource = { name: string; url: string; file: File; map?: File, mapDst?: MapDst };
-export const sourceAtom = atom<
-  ModelSource[]
->([]);
+export type ModelSource = {
+  name: string;
+  url: string;
+  file: File;
+  map?: File;
+  mapDst?: MapDst;
+};
+export const sourceAtom = atom<ModelSource[]>([]);
 export const loadHistoryAtom = atom<
   Map<
     string,
@@ -59,20 +76,21 @@ export const loadHistoryAtom = atom<
   >
 >(new Map());
 export const threeExportsAtom = atom<RootState>();
+export const oribitControlAtom = atom<OrbitControls>();
 
 export type Env = {
   select: 'none' | 'preset' | 'custom' | 'url';
   preset?:
-  | 'apartment'
-  | 'city'
-  | 'dawn'
-  | 'forest'
-  | 'lobby'
-  | 'night'
-  | 'park'
-  | 'studio'
-  | 'sunset'
-  | 'warehouse';
+    | 'apartment'
+    | 'city'
+    | 'dawn'
+    | 'forest'
+    | 'lobby'
+    | 'night'
+    | 'park'
+    | 'studio'
+    | 'sunset'
+    | 'warehouse';
   url?: string;
   intensity?: number;
   rotation?: {
@@ -138,7 +156,11 @@ export type GizmoMode = (typeof GizmoModes)[number];
 export const mouseModeAtom = atom<'select' | GizmoMode>('select');
 
 // 값은 -1.0 ~ 1.0
-export const globalBrightnessContrastAtom = atom<{ on: boolean; brightnessValue: number; contrastValue: number }>({
+export const globalBrightnessContrastAtom = atom<{
+  on: boolean;
+  brightnessValue: number;
+  contrastValue: number;
+}>({
   on: false,
   brightnessValue: 0,
   contrastValue: 0,
@@ -215,49 +237,57 @@ export const globalGlAtom = atom<GLProps>({
 export const ProbeAtom = atom<ReflectionProbe[]>([]);
 export const treeScrollToAtom = atom<string | null>(null);
 
-export const Tabs = ['scene', 'tree', "probe", "hotspot"] as const;
+export const Tabs = ['scene', 'tree', 'probe', 'hotspot'] as const;
 export type Tab = (typeof Tabs)[number];
 export const panelTabAtom = atom<Tab>('scene');
 
 export const treeSearchAtom = atom<string | undefined>();
 
 //카메라 정보값
-export const lastCameraInfoAtom = atom({
+export const lastCameraInfoAtom = atom<{
+  position: THREE.Vector3;
+  direction: THREE.Vector3;
+  target: THREE.Vector3;
+}>({
   position: new Vector3(0, 1, 0),
   direction: new Vector3(0, 1, -1),
   target: new Vector3(0, 1, -1),
 });
 
-export const cameraSettingAtom = atom({
+export const cameraSettingAtom = atom<{
+  moveSpeed: number;
+  isoView: boolean;
+}>({
   moveSpeed: 1,
   isoView: false,
 });
 
 //orbit세팅
-export const orbitSettingAtom = atom({
-  autoRotate: true,
-  enable: false,
+export const orbitSettingAtom = atom<{
+  autoRotate: boolean;
+  enabled: boolean;
+}>({
+  autoRotate: false,
+  enabled: false,
 });
 
-
 export enum LookType {
-  None = "None",
+  None = 'None',
   VERY_LOW_CONTRAST = 'Very Low Contrast',
   LOW_CONTRAST = 'Low Contrast',
   MEDIUM_CONTRAST = 'Medium Contrast',
   HIGH_CONTRAST = 'High Contrast',
-  VERY_HIGH_CONTRAST = 'Very High Contrast'
+  VERY_HIGH_CONTRAST = 'Very High Contrast',
 }
 export enum ViewTransform {
-  Standard = "Standard",
-  KhronosPBRNeutral = "KhronosPBRNeutral",
-  AgX = "AgX",
-  Filmic = "Filmic",
-  FilmicLog = "FilmicLog",
-  FalseColor = "FalseColor",
-  Raw = "Raw",
+  Standard = 'Standard',
+  KhronosPBRNeutral = 'KhronosPBRNeutral',
+  AgX = 'AgX',
+  Filmic = 'Filmic',
+  FilmicLog = 'FilmicLog',
+  FalseColor = 'FalseColor',
+  Raw = 'Raw',
 }
-
 
 export type ColorManagement = {
   exposure: number;
@@ -265,23 +295,29 @@ export type ColorManagement = {
   look: LookType;
   viewTransform: ViewTransform;
 };
-export const globalColorManagementAtom = atom<{ on: boolean; value: ColorManagement }>({
-  on: false, value: {
+export const globalColorManagementAtom = atom<{
+  on: boolean;
+  value: ColorManagement;
+}>({
+  on: false,
+  value: {
     exposure: 1.0,
     gamma: 1.0,
     look: LookType.HIGH_CONTRAST,
     viewTransform: ViewTransform.Raw,
-  }
+  },
 });
 
 // export const testCameraPosAtom = atom<[number, number]>();
-export const [mainCameraPosAtom, getTestCameraPos, setTestCameraPos] = createAtomCombo<THREE.Vector3>();
+export const [mainCameraPosAtom, getTestCameraPos, setTestCameraPos] =
+  createAtomCombo<THREE.Vector3>();
 export const mainCameraProjectedAtom = atom<[number, number]>();
 
 type WithInitialValue<Value> = {
   init: Value;
-};;
-export type ThreeAtom = PrimitiveAtom<RootState | undefined> & WithInitialValue<RootState | undefined>;
+};
+export type ThreeAtom = PrimitiveAtom<RootState | undefined> &
+  WithInitialValue<RootState | undefined>;
 export const sharedThreeAtom = atom<RootState>();
 export const mainThreeAtom = atom<RootState>();
 export const topThreeAtom = atom<RootState>();
@@ -301,7 +337,6 @@ export const Threes: { [key in View]: ThreeAtom } = {
   [View.Bottom]: bottomThreeAtom,
 } as const;
 
-
 export const viewportOptionAtom = atom<{
   [key in View]: ViewportOption;
 }>({
@@ -316,38 +351,42 @@ export const viewportOptionAtom = atom<{
 });
 
 export const useViewportOption = (view: View = View.Shared) => {
-
   const [options, setOptions] = useAtom(viewportOptionAtom);
 
   const getOption = options[view] as ViewportOption;
 
   // 알아서 머지하도록 설정
-  const setOption = (option: ViewportOption | ((prev: ViewportOption) => ViewportOption), _view: View = view) => {
-    return setOptions((prev) => {
-      if (typeof option === "function") {
-        const setStateAction = option as ((prev: ViewportOption) => ViewportOption);
+  const setOption = (
+    option: ViewportOption | ((prev: ViewportOption) => ViewportOption),
+    _view: View = view,
+  ) => {
+    return setOptions(prev => {
+      if (typeof option === 'function') {
+        const setStateAction = option as (
+          prev: ViewportOption,
+        ) => ViewportOption;
         return {
           ...prev,
           [_view]: {
             ...prev[_view],
-            ...(setStateAction)(prev[_view])
-          }
-        }
+            ...setStateAction(prev[_view]),
+          },
+        };
       }
 
       return {
         ...prev,
         [_view]: {
           ...prev[_view],
-          ...option
-        }
-      }
+          ...option,
+        },
+      };
     });
-  }
+  };
 
   return {
     getOption,
     setOption,
-    allOptions: options
-  }
-}
+    allOptions: options,
+  };
+};

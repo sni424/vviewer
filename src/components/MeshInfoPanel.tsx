@@ -13,7 +13,9 @@ const MeshView = ({ object, index }: { object: THREE.Object3D; index: number }) 
     const isSelectedMaterialThisMesh = currentMat && (selectedMaterial?.uuid === currentMat?.uuid);
     const setSelecteds = useSetAtom(selectedAtom);
     const setTab = useSetAtom(panelTabAtom);
-    const setTreeScrollTo = useSetAtom(treeScrollToAtom);
+    const [treeScrollTo, setTreeScrollTo] = useAtom(treeScrollToAtom);
+
+    const thisOrange = treeScrollTo === object.uuid;
 
     return <div style={{
         width: "100%",
@@ -26,26 +28,34 @@ const MeshView = ({ object, index }: { object: THREE.Object3D; index: number }) 
         <div>
 
         </div>
-        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12 }}><div>
-            {index + 1}. <span style={{ textDecoration: "underline" }}>{object.name.length === 0 ? "이름없음" : object.name}</span></div>
+        <div className='flex w-full justify-between text-sm'>
+            <div className={`inline-block ${thisOrange ? "bg-orange-600" : "bg-yellow-500"} text-white`}>
+                <div>
+                    {index + 1}.
+                    <span className={`underline`}>{object.name.length === 0 ? "이름없음" : object.name}
+
+                    </span>
+                </div>
+            </div>
+            <div className={`inline-block`}>{object.type}</div>
         </div>
         {/* <div style={{ display: "grid" }}> */}
         <div>
-        <button style={{ fontSize: 11 }} onClick={() => {
+            <button onClick={() => {
                 setSelecteds([object.parent!.uuid]);
                 setTreeScrollTo(object.parent!.uuid);
             }} disabled={!Boolean(object.parent)}>부모선택</button>
-            <button style={{ fontSize: 11 }} onClick={() => {
+            <button onClick={() => {
                 setSelecteds([object.uuid]);
             }}>단일선택</button>
-            <button style={{ fontSize: 11 }} onClick={() => {
+            <button onClick={() => {
                 setSelecteds(prev => prev.filter(uuid => uuid !== object.uuid));
             }}>제외</button>
-            <button style={{ fontSize: 11 }} onClick={() => {
+            <button onClick={() => {
                 setTab("tree");
                 setTreeScrollTo(object.uuid);
             }}>트리에서 보기</button>
-            {currentMat && <button style={{ fontSize: 11 }} onClick={() => {
+            {currentMat && <button onClick={() => {
                 setSelectedMaterial((object as THREE.Mesh).material as THREE.Material);
             }} disabled={isSelectedMaterialThisMesh}>{isSelectedMaterialThisMesh ? "재질선택됨" : "재질"}</button>}
         </div>
@@ -59,7 +69,7 @@ const MeshView = ({ object, index }: { object: THREE.Object3D; index: number }) 
             {Object.keys(object.userData).length > 0 && <div style={{ fontSize: 11 }}>유저데이터
                 <div style={{ fontSize: 10 }}>
                     {Object.entries(object.userData as Record<string, any>).map(([key, value]) => {
-                        
+
                         if (key === 'probe') {
                             return null;
                         }
