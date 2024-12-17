@@ -126,7 +126,7 @@ const SceneInfo = () => {
     const [globalSaturationCheckOn, setGlobalSaturationCheck] = useAtom(globalSaturationCheckAtom);
     const [globalColorTemperature, setGlobalColorTemperature] = useAtom(globalColorTemperatureAtom)
     const [cm, setCm] = useAtom(globalColorManagementAtom);
-    const { on: cmOn, value: cmValue } = cm;
+    // const { on: cmOn, value: cmValue } = cm;
     const [aoValue, setAoValue] = useState(0);
     const [lmIntensityValue, setlmIntensityValue] = useState(1);
 

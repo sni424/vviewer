@@ -43,7 +43,7 @@ export const groupInfo = (group: THREE.Group | { scene: THREE.Group } | THREE.Sc
                 }
             } catch (e) {
                 console.error(e);
-                debugger;
+                // debugger;
             }
         }
         if (node instanceof THREE.Object3D) {
@@ -138,6 +138,7 @@ export const isTransformControlOrChild = (object: THREE.Object3D) => {
         if (current instanceof TransformControls || current.userData.isTransformControls) {
             return true; // Skip if it's part of TransformControls
         }
+        //@ts-ignore
         current = current.parent;
     }
     return false;
@@ -343,7 +344,7 @@ export const zoomToSelected = (obj?: THREE.Object3D) => {
     if (!three) {
         return;
     }
-    const { scene, camera, orbitControls } = three;
+    const { scene, camera, orbitControls } = (three as typeof three & { orbitControls?: OrbitControls });
 
     let dst: THREE.Object3D = obj!;
     if (!dst) {
@@ -359,17 +360,37 @@ export const zoomToSelected = (obj?: THREE.Object3D) => {
 
     const box = new THREE.Box3().setFromObject(dst);
     const center = box.getCenter(new THREE.Vector3());
+    const boxSize = box.getSize(new THREE.Vector3());
 
     // zoom out to fit the box into view
-    const size = box.getSize(new THREE.Vector3()).length();
-    const dist = size;
     const dir = camera.position.clone().sub(center).normalize();
-    dir.multiplyScalar(dist*0.8);
-    camera.position.copy(center).add(dir);
-    camera.lookAt(center);
     if (orbitControls instanceof OrbitControls) {
-        orbitControls.target = center;
+        // camera.lookAt(center);
+        // camera.updateProjectionMatrix();
+
+        // Set camera to look at the center of the box
+        camera.position.set(0, 0, boxSize.z * 2); // Adjust the distance as needed
+        camera.lookAt(center);
+
+        // Adjust the camera's frustum to fit the box
+        const maxSize = Math.max(boxSize.x, boxSize.y, boxSize.z);
+        const fov = THREE.MathUtils.degToRad((camera as THREE.PerspectiveCamera).fov);
+        const distance = maxSize / (2 * Math.tan(fov / 2));
+        camera.position.z = distance;
+
+        orbitControls.target.copy(center);
         orbitControls.update();
+        camera.updateProjectionMatrix();
+
+    } else {
+        const size = box.getSize(new THREE.Vector3()).length();
+        const dist = size;
+        dir.multiplyScalar(dist * 0.8);
+        camera.position.copy(center).add(dir);
+        camera.lookAt(center);
+        camera.updateProjectionMatrix();
     }
-    camera.updateProjectionMatrix();
+
+
+
 }
