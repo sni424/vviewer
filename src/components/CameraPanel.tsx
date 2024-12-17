@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import { useState } from 'react';
 import { cameraMatrixAtom, cameraSettingAtom, lastCameraInfoAtom, orbitSettingAtom, oribitControlAtom, threeExportsAtom, } from '../scripts/atoms';
-import { Quaternion, THREE, Vector3 } from '../scripts/VTHREE';
+import { Object3D, Quaternion, THREE, Vector3 } from '../scripts/VTHREE';
 import { moveTo } from './camera/CameraFun';
 
 type placeInfoType = {
@@ -128,6 +128,18 @@ const CameraPanel = () => {
                                 <input type="checkbox" id="isoView" name="isoView"
                                     checked={cameraSetting.isoView}
                                     onChange={e => {
+                                        if (e.target.checked) {
+                                            if (scene) {
+                                                camera.moveTo("isoView", {
+                                                    isoView: {
+                                                        speed: 3,
+                                                        model: scene
+                                                    }
+                                                });
+                                            }
+                                        } else {
+
+                                        }
                                         setCameraSetting(pre => ({
                                             ...pre,
                                             isoView: e.target.checked
@@ -245,7 +257,8 @@ const CameraPanel = () => {
                                                 marginTop: "8px"
                                             }}
                                             onClick={() => {
-                                                moveTo(camera, "pathfinding", {
+
+                                                camera.moveTo("pathfinding", {
                                                     pathfinding: {
                                                         target: place.position,
                                                         speed: 0,
@@ -253,6 +266,7 @@ const CameraPanel = () => {
                                                         direction: place.direction
                                                     }
                                                 })
+
                                             }}
                                         >{place.name}</button>
                                     )

@@ -1,4 +1,3 @@
-
 export interface ServerData {
   nodes: Record<string, ServerNode>;
   resources: PartsData;
@@ -221,40 +220,40 @@ export type Matrix4Array = [
   number,
 ];
 
-import { GLTF } from "three/examples/jsm/Addons.js";
+import { GLTF } from 'three/examples/jsm/Addons.js';
 
 export type FileInfo = {
-  filename: string,
-  fileType: null,
-  fileSize: number,
+  filename: string;
+  fileType: null;
+  fileSize: number;
   fileUrl: string;
   uploadDate: string;
 };
 
 export type ModelFileSaved = {
-  file: FileInfo,
+  file: FileInfo;
   // gltfEncoded: string;
   blob: Blob;
   elapsed: number;
   hash: string;
-}
+};
 
 export type ModelFile = {
-  file: FileInfo,
-  gltf: GLTF["scene"];
+  file: FileInfo;
+  gltf: GLTF['scene'];
   elapsed: number;
   hash: string;
-}
+};
 
-import { THREE } from "./scripts/VTHREE";
+import { THREE } from './scripts/VTHREE';
 export declare type GLProps = {
   toneMapping?: THREE.ToneMapping;
   toneMappingExposure?: number;
 
   // WebGLRenderer.d.ts
   /**
-     * default is false.
-     */
+   * default is false.
+   */
   alpha?: boolean | undefined;
 
   /**
@@ -293,18 +292,17 @@ export declare type GLProps = {
   failIfMajorPerformanceCaveat?: boolean | undefined;
 };
 
-
 // Layer로 켜고끄기
 export enum View {
   Shared = 0, // 기본 Scene에 존재하는 모든 값
-  Main = 1,   // Main Scene에만 존재
-  Top = 2,    // Top Scene에만 존재
+  Main = 1, // Main Scene에만 존재
+  Top = 2, // Top Scene에만 존재
   Front = 3,
   Right = 4,
   Back = 5,
   Left = 6,
   Bottom = 7,
-};
+}
 
 export type GridOption = {
   size?: number;
@@ -314,6 +312,28 @@ export type GridOption = {
 };
 
 export type ViewportOption = {
-  show?: boolean,
+  show?: boolean;
   grid?: boolean;
 };
+
+export type MoveActionType = 'pathfinding' | 'linear' | 'teleport' | 'isoView';
+
+export interface MoveActionOptions {
+  pathfinding?: {
+    target: THREE.Vector3; // 이동할 경로 (Pathfinding)
+    direction: THREE.Vector3; //도착했을때 카메라가 바라볼 방향
+    speed: number; // 애니메이션 속도
+    model: THREE.Object3D; //바닥 모델
+  };
+  isoView?: {
+    speed: number; // 애니메이션 속도
+    model: THREE.Object3D; //바라볼 모델 (중앙 값을 구하기 위해)
+  };
+  linear?: {
+    target: THREE.Vector3; // 목표 좌표 (Linear)
+    duration: number; // 애니메이션 시간
+  };
+  teleport?: {
+    target: THREE.Vector3; // 목표 좌표 (Teleport)
+  };
+} // 타입 정의

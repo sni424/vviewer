@@ -1,7 +1,13 @@
 import * as THREE from 'three';
-import { Matrix4Array, View } from '../types';
+import {
+  Matrix4Array,
+  MoveActionOptions,
+  MoveActionType,
+  View,
+} from '../types';
 import { TransformControlsPlane } from 'three/examples/jsm/Addons.js';
 import { RootState } from '@react-three/fiber';
+import { moveTo } from './utils';
 
 export interface ThreeUserData {
   otherUserCamera?: boolean;
@@ -14,8 +20,6 @@ export interface ThreeUserData {
   selectBox?: 'mine' | string; // 내 꺼는 mine, 이 외의 경우 다른 유저의 uuid
 }
 
-
-
 declare module 'three' {
   interface Matrix4 {
     toArray(): Matrix4Array;
@@ -23,7 +27,11 @@ declare module 'three' {
   }
 
   interface Vector3 {
-    screenPosition(camera: THREE.Camera, width?: number, height?: number): { x: number; y: number };
+    screenPosition(
+      camera: THREE.Camera,
+      width?: number,
+      height?: number,
+    ): { x: number; y: number };
     inCameraView(camera: THREE.Camera): boolean;
 
     // 카메라와 점 사이의 물체
@@ -65,9 +73,17 @@ declare module 'three' {
     isXYZGizmo(): boolean;
     isTransformControl(): boolean;
   }
+
+  interface Camera {
+    moveTo(action: MoveActionType, options: MoveActionOptions): void;
+  }
 }
 
-THREE.Vector3.prototype.screenPosition = function (camera, inputWidth, inputHeight) {
+THREE.Vector3.prototype.screenPosition = function (
+  camera,
+  inputWidth,
+  inputHeight,
+) {
   const vector = this.clone().project(camera);
   const width = inputWidth ?? window.innerWidth;
   const height = inputHeight ?? window.innerHeight;
@@ -137,13 +153,13 @@ THREE.Object3D.prototype.setUserData = function (
     this.userData = {
       ...this.userData,
       ...userData,
-    }
+    };
   } else {
     this.userData = { ...userData };
   }
 
   return this;
-}
+};
 
 THREE.Vector3.prototype.screenPosition = function (camera) {
   const vector = this.project(camera);
@@ -209,6 +225,17 @@ THREE.Vector3.prototype.revert = function () {
   return this;
 };
 
+THREE.Camera.prototype.moveTo = function (
+  action: MoveActionType,
+  options: MoveActionOptions,
+) {
+  if (this.type !== 'PerspectiveCamera') {
+    console.error(this);
+    throw new Error('not PerspectiveCamera');
+  }
+  moveTo(this, action, options);
+};
+
 THREE.Object3D.prototype.getUserData = function () {
   return this.userData as ThreeUserData;
 };
@@ -238,19 +265,23 @@ THREE.Matrix4.prototype.decomposed = function () {
 };
 
 THREE.Object3D.prototype.isTransformControl = function () {
-  return this.name === 'TransformControl' ||
+  return (
+    this.name === 'TransformControl' ||
     ['translate', 'rotate', 'scale'].includes(
       (this as TransformControlsPlane).mode,
-    )
+    ) ||
     // R3F Drei 로 추가된 TransformControls 에 userData 를 통해 생성된 데이터로 Group 데이터 구별
-    || (this.type === 'Group' && this.userData.isTransformControl);
+    (this.type === 'Group' && this.userData.isTransformControl)
+  );
 };
 THREE.Object3D.prototype.isBoxHelper = function () {
   return this.type === 'BoxHelper';
 };
 
 THREE.Object3D.prototype.isXYZGizmo = function () {
-  return this.name === 'GizmoHelper' || (this.type === 'Mesh' && this.name === 'XYZ');
+  return (
+    this.name === 'GizmoHelper' || (this.type === 'Mesh' && this.name === 'XYZ')
+  );
 };
 
 THREE.Object3D.prototype.isSystemGenerated = function () {
@@ -269,8 +300,10 @@ const defaultSceneFilter = (node: THREE.Object3D) => {
   }
   return true;
 };
-THREE.Object3D.prototype.traverse = function (callback: (node: THREE.Object3D) => any,
-  filter: (node: THREE.Object3D) => boolean = defaultSceneFilter) {
+THREE.Object3D.prototype.traverse = function (
+  callback: (node: THREE.Object3D) => any,
+  filter: (node: THREE.Object3D) => boolean = defaultSceneFilter,
+) {
   //original code :
   /*
   callback( this );
@@ -301,7 +334,6 @@ THREE.Object3D.prototype.traverse = function (callback: (node: THREE.Object3D) =
 export * from 'three';
 export { THREE };
 
-
 declare global {
   interface Window {
     getThree: (view: View) => RootState | undefined;
@@ -309,7 +341,6 @@ declare global {
     threeStore: { [key in View]: RootState | undefined };
   }
 }
-
 
 window.threeStore = {
   [View.Shared]: undefined,
@@ -320,13 +351,13 @@ window.threeStore = {
   [View.Back]: undefined,
   [View.Left]: undefined,
   [View.Bottom]: undefined,
-}
+};
 
 window.setThree = (view: View, state: RootState) => {
   window.threeStore[view] = state;
   return state;
-}
+};
 
 window.getThree = (view: View = View.Shared) => {
   return window.threeStore[view];
-}
+};
