@@ -48,14 +48,13 @@ const MobileLoaderPanel = () => {
     <div
       style={{
         width: '80%',
-        height: '60%',
+        maxHeight: '70%',
         position: 'absolute',
         top: '10%',
         left: '10%',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        justifyContent: 'center',
         backgroundColor: 'lightgray',
         padding: 16,
         boxSizing: 'border-box',
@@ -63,35 +62,37 @@ const MobileLoaderPanel = () => {
         overflow: 'auto',
       }}
     >
-      <button
-        onClick={async () => {
-          setDownloading(true);
-          loadLatest({
-            threeExports,
-            addBenchmark,
-          })
-            .then(async fileinfo => {})
-            .finally(() => {
-              setDownloading(false);
-              setOpenLoader(false);
+      <div className="flex gap-8">
+        <button
+          onClick={async () => {
+            setDownloading(true);
+            loadLatest({
+              threeExports,
+              addBenchmark,
+            })
+              .then(async fileinfo => {})
+              .finally(() => {
+                setDownloading(false);
+                setOpenLoader(false);
+              });
+          }}
+        >
+          최신업로드 불러오기
+        </button>
+        <button
+          onClick={() => {
+            clear().then(() => {
+              alert('캐시비우기완료');
             });
-        }}
-      >
-        최신업로드 불러오기
-      </button>
-      <button
-        onClick={() => {
-          clear().then(() => {
-            alert('캐시비우기완료');
-          });
-        }}
-      >
-        캐시비우기
-      </button>
+          }}
+        >
+          캐시비우기
+        </button>
+      </div>
 
       <FileInfoList
         filelist={filelist.models}
-        itemStyle={{ fontSize: 12, marginTop: 4, cursor: 'pointer' }}
+        itemStyle={{ fontSize: 12, marginTop: 8, cursor: 'pointer' }}
         itemProps={{
           onClick: e => {
             try {

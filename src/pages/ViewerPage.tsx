@@ -169,7 +169,7 @@ const ViewerPage = () => {
 
   return (
     <div
-      className="fullscreen flex relative"
+      className="fullscreen flex relative text-xs"
       style={{
         cursor: isDragging ? 'copy' : 'auto',
       }}
