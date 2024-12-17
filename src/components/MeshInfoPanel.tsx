@@ -31,6 +31,10 @@ const MeshView = ({ object, index }: { object: THREE.Object3D; index: number }) 
         </div>
         {/* <div style={{ display: "grid" }}> */}
         <div>
+        <button style={{ fontSize: 11 }} onClick={() => {
+                setSelecteds([object.parent!.uuid]);
+                setTreeScrollTo(object.parent!.uuid);
+            }} disabled={!Boolean(object.parent)}>부모선택</button>
             <button style={{ fontSize: 11 }} onClick={() => {
                 setSelecteds([object.uuid]);
             }}>단일선택</button>

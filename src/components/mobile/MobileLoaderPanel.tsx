@@ -4,10 +4,11 @@ import { useState } from "react";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { openLoaderAtom, sceneAnalysisAtom, threeExportsAtom, useBenchmark } from "../../scripts/atoms";
 import useFilelist from "../../scripts/useFilelist";
-import { decompressFileToObject, loadFile, loadLatest } from "../../scripts/utils";
+import { decompressFileToObject, loadFile, loadLatest, setAsModel } from "../../scripts/utils";
 import { THREE } from "../../scripts/VTHREE";
 import { FileInfo } from "../../types";
 import VGLTFLoader from "../../scripts/VGLTFLoader";
+import { Layer } from "../../Constants";
 
 const MobileLoaderPanel = () => {
     const [loading, setLoading] = useState(false);
@@ -73,27 +74,29 @@ const MobileLoaderPanel = () => {
 
         <FileInfoList filelist={filelist.models} itemStyle={{ fontSize: 12, marginTop: 4, cursor: "pointer" }} itemProps={{
             onClick: e => {
-                const fileinfo = JSON.parse(e.currentTarget.getAttribute("data-fileinfo")!) as FileInfo;
-                addBenchmark("start");
-                addBenchmark("downloadStart");
-                loadFile(fileinfo).then(blob => {
-                    setDownloading(false);
-                    addBenchmark("downloadEnd");
-                    addBenchmark("parseStart");
-                    const url = URL.createObjectURL(blob);
-                    const loader = new VGLTFLoader();
-                    loader.load(url, gltf => {
+                try {
+                    const fileinfo = JSON.parse(e.currentTarget.getAttribute("data-fileinfo")!) as FileInfo;
+                    addBenchmark("start");
+                    addBenchmark("downloadStart");
+                    loadFile(fileinfo).then(async (blob) => {
+                        setDownloading(false);
+                        addBenchmark("downloadEnd");
+                        addBenchmark("parseStart");
+                        const url = URL.createObjectURL(blob);
+                        const loader = new VGLTFLoader();
+                        const gltf = await loader.loadAsync(url);
                         addBenchmark("parseEnd");
                         addBenchmark("sceneAddStart");
-
+                        
                         const { scene } = threeExports;
-                        threeExports.scene.add(gltf.scene);
+                        setAsModel(gltf.scene);
+                        scene.add(gltf.scene);
                         const interval = setInterval(() => {
                             //@ts-ignore
                             const found = scene.getObjectByProperty("uuid", gltf.scene.uuid);
                             if (found) {
                                 // console.log("loaded", elapsed, "ms");
-
+                                
                                 // 1초 후에 메시,버텍스, 트라이앵글 수 계산
                                 setTimeout(() => {
                                     let meshCount = 0;
@@ -122,22 +125,25 @@ const MobileLoaderPanel = () => {
                                         maxVertexInMesh,
                                         maxTriangleInMesh
                                     });
-
+                                    
                                 }, 1000);
-
+                                
                                 clearInterval(interval);
                                 addBenchmark("sceneAddEnd");
                                 addBenchmark("end");
                             }
-
-
+                            
+                            
                         }, 30);
+                    }).finally(() => {
+                        addBenchmark("sceneAddEnd");
+                        addBenchmark("end");
+                        setOpenLoader(false);
                     })
-                }).finally(() => {
-                    addBenchmark("sceneAddEnd");
-                    addBenchmark("end");
-                    setOpenLoader(false);
-                })
+                } catch (e) {
+                    console.error('error', e);
+                }
+                
             }
         }} />
     </div>

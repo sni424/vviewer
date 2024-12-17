@@ -2,23 +2,18 @@ import { RootState } from '@react-three/fiber';
 import { get, set } from 'idb-keyval';
 import { Pathfinding } from 'three-pathfinding';
 import gsap from 'gsap';
+
+import { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import * as THREE from './VTHREE';
 import pako from 'pako';
 import objectHash from 'object-hash';
-import { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
-
-import * as THREE from './VTHREE';
-
-import { FileInfo, MoveActionOptions, MoveActionType, View } from '../types';
-import {
-  BenchMark,
-  getAtomValue,
-  selectedAtom,
-  threeExportsAtom,
-} from './atoms';
+import { BenchMark, getAtomValue, selectedAtom } from './atoms';
 import { TransformControls } from 'three-stdlib';
 import { OrbitControls, RGBELoader } from 'three/examples/jsm/Addons.js';
-import { useGetThreeExports } from '../components/canvas/Viewport';
-import { Vector3 } from 'three';
+import VGLTFLoader from './VGLTFLoader.tsx';
+import VGLTFExporter from './VGLTFExporter.ts';
+import { Layer } from '../Constants';
+import { FileInfo, MoveActionOptions, MoveActionType, View } from '../types.ts';
 
 export const groupInfo = (
   group: THREE.Group | { scene: THREE.Group } | THREE.Scene | THREE.Object3D,
@@ -129,10 +124,13 @@ export const getIntersects = (
 
 export const saveScene = async (scene: THREE.Scene) => {
   return new Promise(async (resolve, reject) => {
-    const json = scene.toJSON();
+    const glbArr = (await new VGLTFExporter().parseAsync(scene, {
+      binary: true,
+    })) as ArrayBuffer;
+    const blob = new Blob([glbArr], { type: 'application/octet-stream' });
     const key = 'savedScene';
 
-    set(key, json)
+    set(key, blob)
       .then(() => {
         resolve(true);
         return true;
@@ -154,6 +152,7 @@ export const isTransformControlOrChild = (object: THREE.Object3D) => {
     ) {
       return true; // Skip if it's part of TransformControls
     }
+    //@ts-ignore
     current = current.parent;
   }
   return false;
@@ -168,14 +167,17 @@ export const loadScene = async (): Promise<THREE.Object3D | undefined> => {
   return new Promise(async (resolve, reject) => {
     const key = 'savedScene';
     get(key)
-      .then(json => {
-        if (!json) {
+      .then(async blob => {
+        if (!blob) {
           reject(undefined);
           return;
         }
-        const loader = new THREE.ObjectLoader();
-        const scene = loader.parse(json);
-        resolve(scene);
+        // const loader = new THREE.ObjectLoader();
+        // const scene = loader.parse(json);
+        const loader = new VGLTFLoader();
+        const url = URL.createObjectURL(blob);
+        const gltf = await loader.loadAsync(url);
+        resolve(gltf.scene);
       })
       .catch(e => {
         console.error(e);
@@ -254,39 +256,48 @@ export const loadLatest = async ({
   ).hash;
 
   const loadModel = async () => {
+    let url;
     if (!localLatestHash || localLatestHash !== remoteLatestHash) {
-      return decompressFileToObject(latestUrl)
-        .then(async res => {
-          // alert("decompressFileToObject+" + JSON.stringify(res))
+      // CACHE UPDATE
+      const blob = await fetch(latestUrl).then(res => res.blob());
+      await set('latest-hash', remoteLatestHash);
+      await set('latest', blob);
 
-          await set('latest-hash', remoteLatestHash);
-          await set('latest', res);
-          // await set("latest", JSON.stringify(res));
-          return res;
-        })
-        .catch(e => {
-          alert('모델을 불러오는데 실패했습니다.' + e.message);
-        });
+      url = URL.createObjectURL(blob);
+
+      // return decompressFileToObject(latestUrl).then(async (res) => {
+      //     // alert("decompressFileToObject+" + JSON.stringify(res))
+      //
+      //     await set("latest-hash", remoteLatestHash);
+      //     await set("latest", res);
+      //     // await set("latest", JSON.stringify(res));
+      //     return res;
+      // }).catch((e) => {
+      //     alert("모델을 불러오는데 실패했습니다." + e.message);
+      // })
     } else {
       // return JSON.parse((await get("latest"))!);
-      return get('latest');
+      const blob = await get('latest');
+      console.log('getLatest: ', blob);
+      url = URL.createObjectURL(blob);
     }
+    return await new VGLTFLoader().loadAsync(url);
   };
 
   return loadModel()
     .then(res => {
       addBenchmark('downloadEnd');
       addBenchmark('parseStart');
-      const loader = new THREE.ObjectLoader();
-      const parsedScene = loader.parse(res);
+      // const loader = new THREE.ObjectLoader();
+      // const parsedScene = loader.parse(res);
+      const parsedScene = res.scene;
       addBenchmark('parseEnd');
 
       const { scene } = threeExports;
       // threeExports.scene.add(parsedScene);
 
       const loadAsync = new Promise((res, rej) => {
-        // const obj = new THREE.ObjectLoader().parse(modelFiles[0].gltf);
-
+        setAsModel(parsedScene);
         scene.add(parsedScene);
 
         const interval = setInterval(() => {
@@ -363,7 +374,9 @@ export const zoomToSelected = (obj?: THREE.Object3D) => {
   if (!three) {
     return;
   }
-  const { scene, camera, orbitControls } = three;
+  const { scene, camera, orbitControls } = three as typeof three & {
+    orbitControls?: OrbitControls;
+  };
 
   let dst: THREE.Object3D = obj!;
   if (!dst) {
@@ -505,7 +518,7 @@ const handleLinearMove = (
 };
 
 const isoViewCamera = (
-  camera: THREE.Camera,
+  camera: THREE.PerspectiveCamera,
   target: THREE.Vector3,
   direction: THREE.Vector3,
   speed: number,
@@ -591,7 +604,7 @@ export const moveTo = (
           const boundingBox = new THREE.Box3().setFromObject(model);
           const size = boundingBox.getSize(new THREE.Vector3()); // 모델 크기
           const center = boundingBox.getCenter(new THREE.Vector3()); // 모델 중심
-          const position = new Vector3(
+          const position = new THREE.Vector3(
             center.x + size.x,
             center.y + size.y * 8,
             center.z + size.z,
@@ -613,11 +626,16 @@ export const moveTo = (
 
     case 'teleport':
       if (options.teleport) {
-        handleTeleportMove(camera, options.teleport.target);
+        // handleTeleportMove(camera, options.teleport.target);
       }
       break;
 
     default:
       console.error('Invalid action type');
   }
+};
+export const setAsModel = (object: THREE.Object3D) => {
+  object.layers.enable(Layer.Model);
+  object.children.forEach(setAsModel);
+  return object;
 };

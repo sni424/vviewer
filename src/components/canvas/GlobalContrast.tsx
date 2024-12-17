@@ -46,7 +46,7 @@ class GlobalContrastEffect extends Effect {
 extend({ GlobalContrastEffect });
 
 const GlobalContrast = () => {
-    const { contrastOn: on, contrastValue: globalContrastValue } = useAtomValue(globalBrightnessContrastAtom);
+    const { on, contrastValue: globalContrastValue } = useAtomValue(globalBrightnessContrastAtom);
 
     if (!on) {
         return null;

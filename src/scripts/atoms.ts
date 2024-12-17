@@ -193,6 +193,7 @@ export const useBenchmark = () => {
     key: keyof typeof benchmark,
     value: number = Date.now(),
   ) => {
+    console.log('addBenchmark -> ', key);
     setBenchmark(prev => ({ ...prev, [key]: value }));
   };
   const loading =

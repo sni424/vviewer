@@ -19,13 +19,13 @@ function PostProcess() {
     const _gbc = useAtomValue(globalBrightnessContrastAtom);
     const _gSat = useAtomValue(globalSaturationCheckAtom);
     const _gcm = useAtomValue(globalColorManagementAtom);
-    console.log(_gcm.value)
+    // console.log(_gcm.value)
 
     return (
         <EffectComposer >
-            {/* <BrightnessContrastEffect></BrightnessContrastEffect> */}
-            <GlobalColorManagement></GlobalColorManagement>
-            <GlobalSaturationCheck></GlobalSaturationCheck>
+            <BrightnessContrastEffect></BrightnessContrastEffect>
+            {/* <GlobalColorManagement></GlobalColorManagement>
+            <GlobalSaturationCheck></GlobalSaturationCheck> */}
         </EffectComposer>
     )
 }
