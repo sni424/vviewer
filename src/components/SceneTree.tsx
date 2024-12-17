@@ -1,9 +1,10 @@
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { materialSelectedAtom, selectedAtom, threeExportsAtom, treeScrollToAtom, treeSearchAtom } from "../scripts/atoms";
 import { useEffect, useRef, useState } from "react";
-import { THREE } from "../scripts/VTHREE";
+import { Layers, THREE } from "../scripts/VTHREE";
 import { TransformControls } from 'three-stdlib';
 import { isProbeMesh, isTransformControlOrChild } from '../scripts/utils.ts';
+import { Layer } from "../Constants.ts";
 
 const MeshChildren = ({ data }: { data: THREE.Mesh }) => {
     const material = data.material as THREE.Material;
@@ -79,6 +80,9 @@ const RecursiveNode = ({ data, depth = 0 }: { data: THREE.Object3D, depth: numbe
         return null;
     }
 
+    if(!data.layers.isEnabled(Layer.Model)){
+        return null;
+    }
 
 
     const thisSelected = selecteds.includes(data.uuid);

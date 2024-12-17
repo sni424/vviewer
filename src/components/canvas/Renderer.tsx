@@ -17,10 +17,10 @@ import {
     threeExportsAtom,
     treeScrollToAtom,
 } from '../../scripts/atoms';
-import { __UNDEFINED__ } from '../../Constants';
+import { __UNDEFINED__, Layer } from '../../Constants';
 import MyEnvironment from './EnvironmentMap';
 import SelectBox from './SelectBox';
-import { getIntersects, loadScene, saveScene, zoomToSelected } from '../../scripts/utils';
+import { getIntersects, loadScene, saveScene, setAsModel, zoomToSelected } from '../../scripts/utils';
 import GlobalSaturationCheck from './GlobalSaturationCheck';
 import UnifiedCameraControls from '../camera/UnifiedCameraControls';
 import PostProcess from './PostProcess';
@@ -104,6 +104,7 @@ function Renderer() {
                         }
                     })
                 }
+                setAsModel(gltf.scene);
                 scene.add(gltf.scene);
                 setModel(gltf.scene)
                 // revoke object url
@@ -292,6 +293,7 @@ const useKeyHandler = () => {
                 loadScene().then(loaded => {
                     if (loaded) {
                         scene.removeFromParent();
+                        setAsModel(loaded);
                         scene.add(loaded);
                         alert("로드 완료")
                     }
@@ -357,6 +359,10 @@ function RendererContainer() {
                 style={{
                     width: "100%",
                     height: "100%",
+                }}
+                onCreated={state=>{
+                    const {scene} = state;
+                    scene.layers.enable(Layer.Model);
                 }}
             >
                 <Renderer></Renderer>

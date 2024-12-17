@@ -3,6 +3,7 @@ import { selectedAtom, threeExportsAtom, treeScrollToAtom } from "../../scripts/
 import { THREE } from "../../scripts/VTHREE";
 import { useRef } from "react";
 import { useThree } from "@react-three/fiber";
+import { Layer } from "../../Constants";
 
 const SelectBox = () => {
     const { scene } = useThree();
@@ -54,6 +55,7 @@ const SelectBox = () => {
             mesh.getWorldPosition(cloned.position);
             mesh.getWorldQuaternion(cloned.quaternion);
             mesh.getWorldScale(cloned.scale);
+            mesh.layers.enable(Layer.Selected);
             return <primitive object={cloned} key={`selected-${cloned.uuid}`}></primitive>
         })}
     </>

@@ -10,6 +10,7 @@ import { BenchMark, getAtomValue, selectedAtom, threeExportsAtom } from './atoms
 import { TransformControls } from 'three-stdlib';
 import { OrbitControls, RGBELoader } from 'three/examples/jsm/Addons.js';
 import { useGetThreeExports } from '../components/canvas/Viewport';
+import { Layer } from '../Constants';
 
 
 export const groupInfo = (group: THREE.Group | { scene: THREE.Group } | THREE.Scene | THREE.Object3D) => {
@@ -262,9 +263,7 @@ export const loadLatest = async ({
 
         const loadAsync = new Promise((res, rej) => {
 
-            // const obj = new THREE.ObjectLoader().parse(modelFiles[0].gltf);
-
-
+            setAsModel(parsedScene);
             scene.add(parsedScene);
 
             const interval = setInterval(() => {
@@ -390,7 +389,10 @@ export const zoomToSelected = (obj?: THREE.Object3D) => {
         camera.lookAt(center);
         camera.updateProjectionMatrix();
     }
+}
 
-
-
+export const setAsModel = (object: THREE.Object3D) => {
+    object.layers.enable(Layer.Model);
+    object.children.forEach(setAsModel);
+    return object;
 }

@@ -1,11 +1,12 @@
 import * as THREE from './VTHREE.ts';
 import { v4 } from 'uuid';
 import { TransformControls } from 'three-stdlib';
+import { Layer } from '../Constants.ts';
 
 const DEFAULT_RESOLUTION: ReflectionProbeResolutions = 256;
 const DEFAULT_POSITION: THREE.Vector3 = new THREE.Vector3(0, 0, 0);
 const DEFAULT_SIZE: THREE.Vector3 = new THREE.Vector3(4, 4, 4);
-const REFLECTION_BOX_LAYER = 5;
+const REFLECTION_BOX_LAYER = Layer.ReflectionBox;
 const CUBE_CAMERA_LAYER = 10;
 
 export type ReflectionProbeResolutions = 256 | 512 | 1024 | 2048;
