@@ -25,8 +25,9 @@ function FloatingTopView({ children }: { children?: React.ReactNode }) {
         style={{
           width: show ? 200 : 0,
           height: show ? 200 : 0,
-          border: '1px solid #3f3f3fdd',
+          border: show ? '1px solid #3f3f3fdd' : undefined,
           backgroundColor: '#f6f6f6aa',
+          position: 'relative',
         }}
       >
         <TheCanvas
@@ -36,7 +37,7 @@ function FloatingTopView({ children }: { children?: React.ReactNode }) {
         >
           {children}
         </TheCanvas>
-        <TopViewController hide={hide}></TopViewController>
+        {show && <TopViewController hide={hide}></TopViewController>}
       </div>
     </>
   );

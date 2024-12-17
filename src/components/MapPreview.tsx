@@ -137,7 +137,9 @@ const MapPreview: React.FC<MapPreviewProps> = ({
             console.log('11');
             return;
           }
-          openModal(<FullscreenCanvas texture={texture}></FullscreenCanvas>);
+          openModal(() => (
+            <FullscreenCanvas texture={texture}></FullscreenCanvas>
+          ));
         }}
       ></canvas>
     </div>

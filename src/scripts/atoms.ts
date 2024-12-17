@@ -43,10 +43,10 @@ export const createAtomCombo = <T = any>(
   initalValue?: T,
   store?: Store,
 ): [
-  WritableAtom<T, unknown[], unknown>,
-  () => T | undefined,
-  (arg: AtomArgType<T>) => void,
-] => {
+    WritableAtom<T, unknown[], unknown>,
+    () => T | undefined,
+    (arg: AtomArgType<T>) => void,
+  ] => {
   const dstStore = store ?? defaultStore;
   // @ts-ignore
   const theAtom = atom<T>(initalValue);
@@ -72,7 +72,7 @@ export const sourceAtom = atom<ModelSource[]>([]);
 export const loadHistoryAtom = atom<
   Map<
     string,
-    { name: string; start: number; end: number; file: File; uuid: string }
+    { name: string; start: number; end: number; file: File; uuid: string | null }
   >
 >(new Map());
 export const threeExportsAtom = atom<RootState>();
@@ -81,16 +81,16 @@ export const oribitControlAtom = atom<OrbitControls>();
 export type Env = {
   select: 'none' | 'preset' | 'custom' | 'url';
   preset?:
-    | 'apartment'
-    | 'city'
-    | 'dawn'
-    | 'forest'
-    | 'lobby'
-    | 'night'
-    | 'park'
-    | 'studio'
-    | 'sunset'
-    | 'warehouse';
+  | 'apartment'
+  | 'city'
+  | 'dawn'
+  | 'forest'
+  | 'lobby'
+  | 'night'
+  | 'park'
+  | 'studio'
+  | 'sunset'
+  | 'warehouse';
   url?: string;
   intensity?: number;
   rotation?: {
@@ -390,3 +390,13 @@ export const useViewportOption = (view: View = View.Shared) => {
     allOptions: options,
   };
 };
+
+
+export const viewGridAtom = atom<boolean>(true);
+export const toggleGrid = (value?: boolean) => {
+  if (value !== undefined) {
+    setAtomValue(viewGridAtom, value);
+  } else {
+    setAtomValue(viewGridAtom, (prev) => !prev);
+  }
+}

@@ -122,8 +122,6 @@ export const Viewport =
       return null;
     }
 
-    console.log('vp re');
-
     return (
       <Canvas
         id={`canvas-${view}`}
