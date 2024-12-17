@@ -1,4 +1,3 @@
-import { GizmoHelper, GizmoViewport, } from '@react-three/drei'
 import { Canvas, useThree } from '@react-three/fiber'
 import VGLTFLoader from '../../scripts/VGLTFLoader';
 import { useEffect, useRef, useState } from 'react';
@@ -6,7 +5,6 @@ import { THREE } from '../../scripts/VTHREE';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import {
     cameraMatrixAtom,
-    cameraSettingAtom,
     globalGlAtom,
     loadHistoryAtom,
     materialSelectedAtom,
@@ -15,22 +13,20 @@ import {
     selectedAtom,
     setAtomValue,
     sourceAtom,
-    Tab,
     Tabs,
     threeExportsAtom,
     treeScrollToAtom,
 } from '../../scripts/atoms';
-import { __UNDEFINED__ } from '../../Constants';
+import { __UNDEFINED__, Layer } from '../../Constants';
 import MyEnvironment from './EnvironmentMap';
 import SelectBox from './SelectBox';
-import { getIntersects, loadScene, saveScene, zoomToSelected } from '../../scripts/utils';
-import GlobalContrast from './GlobalContrast';
-import GlobalColorTemperature from './GlobalColorTemperature';
+import { getIntersects, loadScene, saveScene, setAsModel, zoomToSelected } from '../../scripts/utils';
 import GlobalSaturationCheck from './GlobalSaturationCheck';
 import UnifiedCameraControls from '../camera/UnifiedCameraControls';
 import PostProcess from './PostProcess';
 import { useSetThreeExports } from './Viewport';
 import { getSettings } from '../../pages/useSettings';
+import { View } from '../../types';
 
 function Renderer() {
     // useStats();
@@ -108,6 +104,7 @@ function Renderer() {
                         }
                     })
                 }
+                setAsModel(gltf.scene);
                 scene.add(gltf.scene);
                 setModel(gltf.scene)
                 // revoke object url
@@ -126,38 +123,99 @@ function Renderer() {
         <UnifiedCameraControls />
         <MyEnvironment></MyEnvironment>
         <SelectBox></SelectBox>
-        {/* <Gizmo></Gizmo> */}
         <PostProcess></PostProcess>
         <GlobalSaturationCheck></GlobalSaturationCheck>
-        {/* <GlobalContrast></GlobalContrast> */}
-        {/*<GlobalToneMapping></GlobalToneMapping> */}
-        {/* <GlobalColorTemperature></GlobalColorTemperature> */}
-        {/* 기즈모헬퍼는 제일 마지막에 렌더 */}
-        <GizmoHelper
-            name='GizmoHelper'
-            alignment="bottom-right" // widget alignment within scene
-            margin={[80, 80]} // widget margins (X, Y)
-        >
-            <GizmoViewport name='GizmoHelper' axisColors={['red', 'green', 'blue']} labelColor="black" />
-        </GizmoHelper>
 
     </>
 }
-
-
-function RendererContainer() {
+const useMouseHandler = () => {
     const threeExports = useAtomValue(threeExportsAtom);
     const [selected, setSelected] = useAtom(selectedAtom);
     const setMaterialSelected = useSetAtom(materialSelectedAtom);
     const setScrollTo = useSetAtom(treeScrollToAtom);
-    const gl = useAtomValue(globalGlAtom);
     const lastClickRef = useRef<number>(0);
-    const cameraLayer = new THREE.Layers();
-    cameraLayer.enableAll();
     const mouseDownPosition = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
     // 드래그로 간주할 최소 거리
     const dragThreshold = 5;
-    const lastSpace = useRef<number>(0);
+
+
+    if (!threeExports) {
+        return;
+    }
+
+    const handleMouseDown = (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
+        lastClickRef.current = Date.now();
+        // 마우스 다운 시 위치 저장
+        mouseDownPosition.current = { x: e.clientX, y: e.clientY };
+    }
+
+    const handleMouseUp = (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
+
+        if (!threeExports) {
+            return;
+        }
+
+        // 마우스 업 시 이동 거리 계산
+        const xGap = Math.abs(e.clientX - mouseDownPosition.current.x);
+        const yGap = Math.abs(e.clientY - mouseDownPosition.current.y);
+
+
+
+        // 이동 거리가 임계값 이상이면 드래그로 간주
+        if (xGap > dragThreshold ||
+            yGap > dragThreshold || Date.now() - lastClickRef.current > 200) {
+            return;
+        }
+
+        const { intersects, mesh } = getIntersects(e, threeExports);
+
+        if (intersects.length > 0) {
+            // console.log(intersects[0].object.uuid);
+
+            if (e.ctrlKey) {
+                setSelected(selected => {
+                    if (selected.includes(intersects[0].object.uuid)) {
+                        setMaterialSelected(null);
+                        return selected.filter(uuid => uuid !== intersects[0].object.uuid);
+                    }
+                    if (intersects[0].object.type === "Mesh") {
+                        setMaterialSelected((intersects[0].object as THREE.Mesh).material as THREE.Material);
+                        setScrollTo(intersects[0].object.uuid);
+                    }
+                    return [...selected, intersects[0].object.uuid];
+                });
+            } else {
+                if (!intersects[0].object.userData.isProbeMesh) {
+                    setSelected([intersects[0].object.uuid]);
+                    setScrollTo(intersects[0].object.uuid);
+                    if (intersects[0].object.type === "Mesh") {
+                        setMaterialSelected((intersects[0].object as THREE.Mesh).material as THREE.Material);
+                    }
+                }
+            }
+
+            // if riht 
+            // if (e.button === 2) {
+
+            // }
+        } else {
+            setSelected([]);
+            // console.log("none")
+        }
+    }
+
+    return {
+        handleMouseDown,
+        handleMouseUp
+    }
+}
+const useKeyHandler = () => {
+    const threeExports = useAtomValue(threeExportsAtom);
+    const [selected, setSelected] = useAtom(selectedAtom);
+    const setMaterialSelected = useSetAtom(materialSelectedAtom);
+    const setScrollTo = useSetAtom(treeScrollToAtom);
+    const setTab = useSetAtom(panelTabAtom);
+    const setTreeScrollTo = useSetAtom(treeScrollToAtom);
 
     useEffect(() => {
         if (!threeExports) {
@@ -218,7 +276,8 @@ function RendererContainer() {
 
 
             // 자유이동 <-> OrbitControls
-            if (e.key.toLowerCase() === "q") {
+            // tilde
+            if (e.key.toLowerCase() === "q" || e.key === "`") {
                 e.preventDefault();
                 const { orbitSetting } = getSettings();
                 setAtomValue(orbitSettingAtom, (prev) => ({
@@ -234,6 +293,7 @@ function RendererContainer() {
                 loadScene().then(loaded => {
                     if (loaded) {
                         scene.removeFromParent();
+                        setAsModel(loaded);
                         scene.add(loaded);
                         alert("로드 완료")
                     }
@@ -255,6 +315,14 @@ function RendererContainer() {
                 zoomToSelected();
             }
 
+            if (e.key.toLowerCase() === "t") {
+                if (selected.length > 0) {
+                    setTab("tree");
+                    setTreeScrollTo(selected[0]);
+                }
+
+            }
+
         }
 
         window.addEventListener("keydown", keyHandler);
@@ -262,6 +330,19 @@ function RendererContainer() {
             window.removeEventListener("keydown", keyHandler);
         }
     }, [threeExports, selected]);
+}
+
+function RendererContainer() {
+
+    // const threeExports = useAtomValue(threeExportsAtom);
+    useKeyHandler();
+    const mouse = useMouseHandler();
+
+    const gl = useAtomValue(globalGlAtom);
+    const cameraLayer = new THREE.Layers();
+    cameraLayer.enableAll();
+    cameraLayer.disable(View.Top);
+    cameraLayer.disable(View.Front);
 
     return (
         <div
@@ -271,95 +352,17 @@ function RendererContainer() {
                 height: "100%",
             }}>
             <Canvas
-                // gl={{
-                //     antialias: true,
-                //     alpha: true,
-                //     powerPreference: "high-performance",
-                //     stencil: false,
-                //     depth: true,
-                //     logarithmicDepthBuffer: true,
-                //     premultipliedAlpha: false,
-                //     preserveDrawingBuffer: true,
-                //     autoClear: false,
-                //     autoClearColor: false,
-                //     autoClearDepth: false,
-                //     autoClearStencil: false,
-                //     extensions: null,
-                //     forceContextLoss: false,
-                //     maxLights: 4,
-                //     physicallyCorrectLights: false,
-                //     pixelRatio: 1,
-                //     precision: "highp",
-                //     shadowMapType: THREE.PCFSoftShadowMap,
-                //     toneMapping: THREE.LinearToneMapping,
-                //     toneMappingExposure: 1,
-                //     toneMappingWhitePoint: 1
-                // }}
-                // gl={gl}
                 gl={gl}
                 camera={{ layers: cameraLayer }}
-                onMouseDown={(e) => {
-                    lastClickRef.current = Date.now();
-                    // 마우스 다운 시 위치 저장
-                    mouseDownPosition.current = { x: e.clientX, y: e.clientY };
-                }}
-                onMouseUp={(e) => {
-
-                    if (!threeExports) {
-                        return;
-                    }
-
-                    // 마우스 업 시 이동 거리 계산
-                    const xGap = Math.abs(e.clientX - mouseDownPosition.current.x);
-                    const yGap = Math.abs(e.clientY - mouseDownPosition.current.y);
-
-
-
-                    // 이동 거리가 임계값 이상이면 드래그로 간주
-                    if (xGap > dragThreshold ||
-                        yGap > dragThreshold || Date.now() - lastClickRef.current > 200) {
-                        return;
-                    }
-
-                    const { intersects, mesh } = getIntersects(e, threeExports);
-
-                    if (intersects.length > 0) {
-                        // console.log(intersects[0].object.uuid);
-
-                        if (e.ctrlKey) {
-                            setSelected(selected => {
-                                if (selected.includes(intersects[0].object.uuid)) {
-                                    setMaterialSelected(null);
-                                    return selected.filter(uuid => uuid !== intersects[0].object.uuid);
-                                }
-                                if (intersects[0].object.type === "Mesh") {
-                                    setMaterialSelected((intersects[0].object as THREE.Mesh).material as THREE.Material);
-                                    setScrollTo(intersects[0].object.uuid);
-                                }
-                                return [...selected, intersects[0].object.uuid];
-                            });
-                        } else {
-                            if (!intersects[0].object.userData.isProbeMesh) {
-                                setSelected([intersects[0].object.uuid]);
-                                setScrollTo(intersects[0].object.uuid);
-                                if (intersects[0].object.type === "Mesh") {
-                                    setMaterialSelected((intersects[0].object as THREE.Mesh).material as THREE.Material);
-                                }
-                            }
-                        }
-
-                        // if riht 
-                        // if (e.button === 2) {
-
-                        // }
-                    } else {
-                        setSelected([]);
-                        // console.log("none")
-                    }
-                }}
+                onMouseDown={mouse?.handleMouseDown}
+                onMouseUp={mouse?.handleMouseUp}
                 style={{
                     width: "100%",
                     height: "100%",
+                }}
+                onCreated={state=>{
+                    const {scene} = state;
+                    scene.layers.enable(Layer.Model);
                 }}
             >
                 <Renderer></Renderer>

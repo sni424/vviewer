@@ -30,7 +30,7 @@ const CameraPanel = () => {
             const velocity = 0.1;
             if (e.key === " ") {
                 e.preventDefault();
-                const tooSoon = Date.now() - lastSpace.current < 30;
+                const tooSoon = Date.now() - lastSpace.current < 16;
                 if (tooSoon) {
                     return;
                 }
@@ -44,7 +44,7 @@ const CameraPanel = () => {
                     return;
                 }
                 e.preventDefault();
-                const tooSoon = Date.now() - lastSpace.current < 30;
+                const tooSoon = Date.now() - lastSpace.current < 16;
                 if (tooSoon) {
                     return;
                 }

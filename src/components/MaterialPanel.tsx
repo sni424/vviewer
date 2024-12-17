@@ -150,7 +150,7 @@ const MapInfo = (props: MapInfoProps) => {
         </div>}
         {
             materialRange && materialValue !== undefined && (
-                <div style={{ display: "flex", width: "100%" }}>
+                <div style={{ display: "flex", width: "100%", gap:8 }}>
                     <div style={{
                         flex: 1, minWidth: 0
                     }}>
@@ -209,7 +209,7 @@ const MapSection = ({ mat, forceUpdate }: { mat: THREE.MeshStandardMaterial; for
         <div style={{ width: "100%", display: "flex", flexDirection: "column", border: "1px solid gray", padding: 8, borderRadius: 8, boxSizing: "border-box", fontSize: 13 }}
         >
 
-            <div style={{ width: "100%", display: "grid", gridTemplateColumns: "1fr 1fr", rowGap: 12 }}>
+            <div style={{ width: "100%", display: "grid", gridTemplateColumns: "1fr 1fr", rowGap: 12, columnGap:12 }}>
                 <MapInfo forceUpdate={forceUpdate} label="Light Map" material={mat} matKey="lightMap" materialRange={{
                     matKey: "lightMapIntensity",
                     onChange: (value) => {

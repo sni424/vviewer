@@ -1,9 +1,10 @@
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { materialSelectedAtom, selectedAtom, threeExportsAtom, treeScrollToAtom, treeSearchAtom } from "../scripts/atoms";
 import { useEffect, useRef, useState } from "react";
-import { THREE } from "../scripts/VTHREE";
+import { Layers, THREE } from "../scripts/VTHREE";
 import { TransformControls } from 'three-stdlib';
 import { isProbeMesh, isTransformControlOrChild } from '../scripts/utils.ts';
+import { Layer } from "../Constants.ts";
 
 const MeshChildren = ({ data }: { data: THREE.Mesh }) => {
     const material = data.material as THREE.Material;
@@ -79,6 +80,9 @@ const RecursiveNode = ({ data, depth = 0 }: { data: THREE.Object3D, depth: numbe
         return null;
     }
 
+    if(!data.layers.isEnabled(Layer.Model)){
+        return null;
+    }
 
 
     const thisSelected = selecteds.includes(data.uuid);
@@ -139,7 +143,7 @@ const RecursiveNode = ({ data, depth = 0 }: { data: THREE.Object3D, depth: numbe
                         setOpen(!open);
                     }
                 }}>&gt;</div>
-                <div style={{
+                <div className="flex justify-start" style={{
                     width: "calc(100% - 16px)",
                     color: data.name.length === 0 ? "#666" : "#000",
                     cursor: "pointer",
@@ -147,7 +151,8 @@ const RecursiveNode = ({ data, depth = 0 }: { data: THREE.Object3D, depth: numbe
                     overflow: "hidden",
                     textOverflow: "ellipsis",
                     whiteSpace: "nowrap",
-                    display: "inline-block"
+                    display: "inline-block",
+                    textAlign:"left"
                 }} onClick={(e) => {
                     console.log(data);
                     // console.log(data.type, data.name, data.uuid)
@@ -162,8 +167,6 @@ const RecursiveNode = ({ data, depth = 0 }: { data: THREE.Object3D, depth: numbe
                         setSelecteds([data.uuid]);
                         setScrollTo(data.uuid);
                     }
-
-
                 }}>
                     {data.name.length === 0 ? "<이름없음>" : data.name}
                 </div>

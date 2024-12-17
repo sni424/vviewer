@@ -4,10 +4,11 @@ import { useState } from "react";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { openLoaderAtom, sceneAnalysisAtom, threeExportsAtom, useBenchmark } from "../../scripts/atoms";
 import useFilelist from "../../scripts/useFilelist";
-import { decompressFileToObject, loadFile, loadLatest } from "../../scripts/utils";
+import { decompressFileToObject, loadFile, loadLatest, setAsModel } from "../../scripts/utils";
 import { THREE } from "../../scripts/VTHREE";
 import { FileInfo } from "../../types";
 import VGLTFLoader from "../../scripts/VGLTFLoader";
+import { Layer } from "../../Constants";
 
 const MobileLoaderPanel = () => {
     const [loading, setLoading] = useState(false);
@@ -88,6 +89,7 @@ const MobileLoaderPanel = () => {
                         addBenchmark("sceneAddStart");
                         
                         const { scene } = threeExports;
+                        setAsModel(gltf.scene);
                         scene.add(gltf.scene);
                         const interval = setInterval(() => {
                             //@ts-ignore

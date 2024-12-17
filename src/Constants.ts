@@ -14,3 +14,9 @@ export const __UNDEFINED__ = "__UNDEFINED__" as const;
 
 export const DEFAULT_COLOR_TEMPERATURE = 6500;
 
+export enum Layer {
+    Model = 1,
+    GizmoHelper = 11,
+    Selected = 12,
+    ReflectionBox = 13,
+}

@@ -3,6 +3,8 @@ import { useAtomValue, useSetAtom } from 'jotai';
 import { useState } from 'react';
 import { MapDst, ModelSource, sourceAtom, threeExportsAtom, useModal } from '../scripts/atoms';
 import {  THREE } from '../scripts/VTHREE';
+import { Layer } from '../Constants';
+import { setAsModel } from './utils';
 
 
 const MapSelectModal = ({ gltfs, inputMaps, closeModal }: { closeModal?: () => any; gltfs: File[]; inputMaps: File[] }) => {
@@ -102,6 +104,7 @@ const useModelDragAndDrop = () => {
                     reader.onload = function () {
                         const obj = JSON.parse(reader.result as string);
                         const parsedScene = loader.parse(obj);
+                        setAsModel(parsedScene);
                         scene.add(parsedScene);
                     }
                 })

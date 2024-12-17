@@ -1,5 +1,5 @@
-import {  useAtomValue, useSetAtom } from 'jotai';
-import { loadHistoryAtom, modalAtom,threeExportsAtom, } from '../scripts/atoms';
+import { useAtomValue, useSetAtom } from 'jotai';
+import { loadHistoryAtom, modalAtom, threeExportsAtom, } from '../scripts/atoms';
 import useFiles from '../scripts/useFiles';
 import RendererContainer from '../components/canvas/Renderer';
 import MeshInfoPanel from '../components/MeshInfoPanel';
@@ -10,6 +10,7 @@ import FloatingFrontView from '../components/canvas/FloatingFrontView';
 import useModelDragAndDrop from '../scripts/useModelDragAndDrop';
 import ThePanel from '../components/ThePanel';
 import CameraPanel from '../components/CameraPanel';
+import GizmoPanel from '../components/GizmoPanel';
 
 
 function Loading() {
@@ -105,6 +106,7 @@ const Views = () => {
     return <div className='absolute bottom-2 right-2 flex flex-row gap-2 items-end '>
         <FloatingTopView></FloatingTopView>
         <FloatingFrontView></FloatingFrontView>
+        <GizmoPanel></GizmoPanel>
     </div>
 }
 
@@ -122,6 +124,7 @@ const ViewerPage = () => {
             onDrop={handleDrop}
         >
             <RendererContainer />
+
             <Views></Views>
             <CameraPanel />
         </div>

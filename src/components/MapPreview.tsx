@@ -74,6 +74,8 @@ const MapPreview: React.FC<MapPreviewProps> = ({ material, width, height, matKey
         }
 
         if (!hasImage) {
+            canvasRef.current.width = 0;
+            canvasRef.current.height = 0;
             return;
         }
 
