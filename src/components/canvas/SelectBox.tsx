@@ -52,6 +52,8 @@ const SelectBox = () => {
             } else {
                 cloned.material = selectedMatRef.current;
             }
+            cloned.layers.disableAll();
+            cloned.layers.enable(Layer.Selected);
             mesh.getWorldPosition(cloned.position);
             mesh.getWorldQuaternion(cloned.quaternion);
             mesh.getWorldScale(cloned.scale);

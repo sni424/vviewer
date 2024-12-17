@@ -148,7 +148,7 @@ const GeneralButtons = () => {
         }}>GLB 내보내기</button>
         <button style={{ fontSize: 10 }} onClick={() => {
             // navigate("/upload");
-            openModal(() => <div style={{ width: "80%", height: "80%", backgroundColor: "#ffffffcc", padding: 16, borderRadius: 8, boxSizing: "border-box", position: "relative" }}>
+            openModal(() => <div style={{ width: "80%", maxHeight: "80%", backgroundColor: "#ffffffcc", padding: 16, borderRadius: 8, boxSizing: "border-box", position: "relative", overflowY:"auto" }}>
                 <UploadPage></UploadPage>
             </div>)
         }}>모델추가&업로드</button>
