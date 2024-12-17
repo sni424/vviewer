@@ -1,7 +1,6 @@
-import { useAtom, useAtomValue, useSetAtom } from 'jotai';
+import { useAtom, useAtomValue } from 'jotai';
 import useFiles from '../scripts/useFiles';
 import {
-  cached,
   compressObjectToFile,
   formatNumber,
   groupInfo,
@@ -10,34 +9,29 @@ import {
   loadLatest,
   loadScene,
   saveScene,
-  setAsModel,
   toNthDigit,
 } from '../scripts/utils';
 
+import { get, set } from 'idb-keyval';
+import objectHash from 'object-hash';
+import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { __UNDEFINED__ } from '../Constants';
 import {
   cameraMatrixAtom,
-  globalColorTemperatureAtom,
   globalBrightnessContrastAtom,
+  globalColorManagementAtom,
+  globalColorTemperatureAtom,
   globalSaturationCheckAtom,
   selectedAtom,
-  sourceAtom,
   threeExportsAtom,
   useEnvParams,
   useModal,
-  globalColorManagementAtom,
-  LookType,
-  ViewTransform,
 } from '../scripts/atoms';
-import { useEffect, useState } from 'react';
-import { get, set } from 'idb-keyval';
-import { Euler, Quaternion, THREE, Vector3 } from '../scripts/VTHREE';
-import { useNavigate } from 'react-router-dom';
 import useFilelist from '../scripts/useFilelist';
-import { __UNDEFINED__, DEFAULT_COLOR_TEMPERATURE, Layer } from '../Constants';
-import objectHash from 'object-hash';
-import GlobalRenderOptions from './canvas/GlobalRenderOptions';
-import UploadPage from './UploadModal';
 import VGLTFExporter from '../scripts/VGLTFExporter.ts';
+import { Quaternion, THREE, Vector3 } from '../scripts/VTHREE';
+import UploadPage from './UploadModal';
 
 const useEnvUrl = () => {
   const [envUrl, setEnvUrl] = useState<string | null>(null);

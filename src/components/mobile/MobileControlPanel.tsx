@@ -1,15 +1,15 @@
 import { clear } from 'idb-keyval';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
+import { useRef, useState } from 'react';
+import { __UNDEFINED__ } from '../../Constants';
 import {
   envAtom,
   filelistAtom,
   globalBrightnessContrastAtom,
   openLoaderAtom,
 } from '../../scripts/atoms';
-import { toNthDigit } from '../../scripts/utils';
-import { useRef, useState } from 'react';
-import { __UNDEFINED__ } from '../../Constants';
 import useFilelist from '../../scripts/useFilelist';
+import { toNthDigit } from '../../scripts/utils';
 
 const ContrastController = () => {
   const [globalContrast, setGlobalContrast] = useAtom(

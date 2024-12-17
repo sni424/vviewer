@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import { useAtom, useAtomValue, useSetAtom } from 'jotai';
+import { THREE } from '../scripts/VTHREE';
 import {
   materialSelectedAtom,
   panelTabAtom,
@@ -7,8 +8,6 @@ import {
   treeScrollToAtom,
   useModal,
 } from '../scripts/atoms';
-import { useAtom, useAtomValue, useSetAtom } from 'jotai';
-import { THREE } from '../scripts/VTHREE';
 import { groupInfo } from '../scripts/utils';
 import ApplyLightMapComponent from './ApplyLightMapComponent';
 

@@ -5,9 +5,8 @@ import {
   selectedAtom,
   threeExportsAtom,
 } from '../scripts/atoms';
+import { loadHDRTexture } from '../scripts/utils';
 import { THREE } from '../scripts/VTHREE';
-import { loadHDRTexture, toNthDigit } from '../scripts/utils';
-import useLightMapDragAndDrop from '../scripts/useLightMapDragAndDrop';
 import MapPreview, { MapPreviewProps } from './MapPreview';
 
 interface MapInfoProps extends MapPreviewProps {

@@ -1,7 +1,7 @@
+import { useAtomValue } from 'jotai';
 import { useState } from 'react';
 import { selectedAtom, threeExportsAtom, useModal } from '../scripts/atoms';
 import { THREE } from '../scripts/VTHREE';
-import { useAtomValue } from 'jotai';
 
 const ApplyLightMapComponent = () => {
   const { closeModal } = useModal();

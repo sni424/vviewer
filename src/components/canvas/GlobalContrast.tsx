@@ -1,8 +1,8 @@
-import { EffectComposer } from '@react-three/postprocessing';
-import { Uniform } from 'three';
 import { extend } from '@react-three/fiber';
-import { Effect, BlendFunction } from 'postprocessing';
+import { EffectComposer } from '@react-three/postprocessing';
 import { useAtomValue } from 'jotai';
+import { BlendFunction, Effect } from 'postprocessing';
+import { Uniform } from 'three';
 import { globalBrightnessContrastAtom } from '../../scripts/atoms';
 
 class GlobalContrastEffect extends Effect {

@@ -1,19 +1,19 @@
 import { RootState } from '@react-three/fiber';
+import gsap from 'gsap';
 import { get, set } from 'idb-keyval';
 import { Pathfinding } from 'three-pathfinding';
-import gsap from 'gsap';
 
-import { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import * as THREE from './VTHREE';
-import pako from 'pako';
 import objectHash from 'object-hash';
-import { BenchMark, getAtomValue, selectedAtom } from './atoms';
+import pako from 'pako';
 import { TransformControls } from 'three-stdlib';
 import { OrbitControls, RGBELoader } from 'three/examples/jsm/Addons.js';
-import VGLTFLoader from './VGLTFLoader.tsx';
-import VGLTFExporter from './VGLTFExporter.ts';
+import { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { Layer } from '../Constants';
 import { FileInfo, MoveActionOptions, MoveActionType, View } from '../types.ts';
+import { BenchMark, getAtomValue, selectedAtom } from './atoms';
+import VGLTFExporter from './VGLTFExporter.ts';
+import VGLTFLoader from './VGLTFLoader.tsx';
+import * as THREE from './VTHREE';
 
 export const groupInfo = (
   group: THREE.Group | { scene: THREE.Group } | THREE.Scene | THREE.Object3D,

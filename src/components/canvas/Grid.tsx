@@ -1,5 +1,5 @@
-import { GridHelperProps } from '@react-three/fiber';
 import { Grid as GridDrei } from '@react-three/drei';
+import { GridHelperProps } from '@react-three/fiber';
 
 export type GridAxis = 'xz' | 'xy' | 'yz';
 function Grid({

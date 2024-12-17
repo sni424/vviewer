@@ -1,6 +1,6 @@
 import { Environment } from '@react-three/drei';
-import { __UNDEFINED__ } from '../../Constants';
 import { useAtomValue } from 'jotai';
+import { __UNDEFINED__ } from '../../Constants';
 import { envAtom } from '../../scripts/atoms';
 import { THREE } from '../../scripts/VTHREE';
 

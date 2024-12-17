@@ -1,7 +1,7 @@
 import { useThree } from '@react-three/fiber';
 import gsap from 'gsap';
-import React, { useEffect, useRef, useState } from 'react';
 import { useAtomValue, useSetAtom } from 'jotai';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   cameraSettingAtom,
   lastCameraInfoAtom,

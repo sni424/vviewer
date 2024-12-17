@@ -1,11 +1,10 @@
-import { Route, Routes, useNavigate } from 'react-router-dom';
-import ViewerPage from './ViewerPage';
-import { Env, useEnvParams } from '../scripts/atoms';
 import { useEffect } from 'react';
-import { get } from 'idb-keyval';
-import TestPage from './TestPage';
+import { Route, Routes, useNavigate } from 'react-router-dom';
+import { useEnvParams } from '../scripts/atoms';
 import MobilePage from './MobilePage';
+import TestPage from './TestPage';
 import { loadSettings, saveSettings } from './useSettings';
+import ViewerPage from './ViewerPage';
 
 const MyRoutes = () => {
   const navigate = useNavigate();

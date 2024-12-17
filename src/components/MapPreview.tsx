@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { THREE } from '../scripts/VTHREE';
 import { useModal } from '../scripts/atoms';
 

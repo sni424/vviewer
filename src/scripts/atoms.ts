@@ -1,4 +1,5 @@
 import type { RootState } from '@react-three/fiber';
+import { set } from 'idb-keyval';
 import {
   atom,
   createStore,
@@ -9,13 +10,12 @@ import {
   useSetAtom,
   WritableAtom,
 } from 'jotai';
-import { THREE, Vector3 } from './VTHREE';
 import React from 'react';
-import { set } from 'idb-keyval';
-import { FileInfo, GLProps, View, ViewportOption } from '../types';
-import { DEFAULT_COLOR_TEMPERATURE } from '../Constants';
-import ReflectionProbe from './ReflectionProbe.ts';
 import { OrbitControls } from 'three/examples/jsm/Addons.js';
+import { DEFAULT_COLOR_TEMPERATURE } from '../Constants';
+import { FileInfo, GLProps, View, ViewportOption } from '../types';
+import ReflectionProbe from './ReflectionProbe.ts';
+import { THREE, Vector3 } from './VTHREE';
 
 type AtomArgType<T> = T | ((prev: T) => T);
 export type Store = ReturnType<typeof createStore>;

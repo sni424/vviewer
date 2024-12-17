@@ -1,6 +1,6 @@
-import React, { useMemo, useState } from 'react';
-import { ViewportController, Viewport } from './Viewport';
+import React, { useState } from 'react';
 import { View } from '../../types';
+import { Viewport, ViewportController } from './Viewport';
 
 function FloatingTopView({ children }: { children?: React.ReactNode }) {
   const view = View.Top;

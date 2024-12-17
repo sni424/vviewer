@@ -1,8 +1,8 @@
 import { Canvas, useThree } from '@react-three/fiber';
-import VGLTFLoader from '../../scripts/VGLTFLoader';
-import { useEffect, useRef, useState } from 'react';
-import { THREE } from '../../scripts/VTHREE';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
+import { useEffect, useRef } from 'react';
+import { Layer } from '../../Constants';
+import { getSettings } from '../../pages/useSettings';
 import {
   cameraMatrixAtom,
   globalGlAtom,
@@ -17,9 +17,6 @@ import {
   threeExportsAtom,
   treeScrollToAtom,
 } from '../../scripts/atoms';
-import { __UNDEFINED__, Layer } from '../../Constants';
-import MyEnvironment from './EnvironmentMap';
-import SelectBox from './SelectBox';
 import {
   getIntersects,
   loadScene,
@@ -27,12 +24,15 @@ import {
   setAsModel,
   zoomToSelected,
 } from '../../scripts/utils';
-import GlobalSaturationCheck from './GlobalSaturationCheck';
-import UnifiedCameraControls from '../camera/UnifiedCameraControls';
-import PostProcess from './PostProcess';
-import { useSetThreeExports } from './Viewport';
-import { getSettings } from '../../pages/useSettings';
+import VGLTFLoader from '../../scripts/VGLTFLoader';
+import { THREE } from '../../scripts/VTHREE';
 import { View } from '../../types';
+import UnifiedCameraControls from '../camera/UnifiedCameraControls';
+import MyEnvironment from './EnvironmentMap';
+import GlobalSaturationCheck from './GlobalSaturationCheck';
+import PostProcess from './PostProcess';
+import SelectBox from './SelectBox';
+import { useSetThreeExports } from './Viewport';
 
 function Renderer() {
   // useStats();

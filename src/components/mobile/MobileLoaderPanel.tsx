@@ -1,7 +1,6 @@
-import { clear, get, set } from 'idb-keyval';
-import FileInfoList from '../FileInfoList';
-import { useState } from 'react';
+import { clear } from 'idb-keyval';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
+import { useState } from 'react';
 import {
   openLoaderAtom,
   sceneAnalysisAtom,
@@ -9,16 +8,11 @@ import {
   useBenchmark,
 } from '../../scripts/atoms';
 import useFilelist from '../../scripts/useFilelist';
-import {
-  decompressFileToObject,
-  loadFile,
-  loadLatest,
-  setAsModel,
-} from '../../scripts/utils';
+import { loadFile, loadLatest, setAsModel } from '../../scripts/utils';
+import VGLTFLoader from '../../scripts/VGLTFLoader';
 import { THREE } from '../../scripts/VTHREE';
 import { FileInfo } from '../../types';
-import VGLTFLoader from '../../scripts/VGLTFLoader';
-import { Layer } from '../../Constants';
+import FileInfoList from '../FileInfoList';
 
 const MobileLoaderPanel = () => {
   const [loading, setLoading] = useState(false);

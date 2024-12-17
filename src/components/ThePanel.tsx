@@ -1,9 +1,9 @@
-import React from 'react';
 import { useAtom, useAtomValue } from 'jotai';
-import { loadHistoryAtom, panelTabAtom, Tab, Tabs } from '../scripts/atoms';
+import React from 'react';
+import HotSpotPanel from '../components/HotSpotPanel';
 import SceneInfo from '../components/SceneInfo';
 import SceneTree from '../components/SceneTree';
-import HotSpotPanel from '../components/HotSpotPanel';
+import { loadHistoryAtom, panelTabAtom, Tab, Tabs } from '../scripts/atoms';
 import ProbeInfo from './ProbeInfo';
 
 const ThePanel = () => {

@@ -1,6 +1,6 @@
+import { useAtomValue } from 'jotai';
 import React, { useEffect } from 'react';
 import { modalAtom, useModal } from '../scripts/atoms';
-import { useAtomValue } from 'jotai';
 
 function Modal() {
   const Content = useAtomValue(modalAtom);

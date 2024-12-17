@@ -1,6 +1,5 @@
-import React, { useEffect } from 'react';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
-import { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   cameraMatrixAtom,
   cameraSettingAtom,
@@ -9,8 +8,7 @@ import {
   oribitControlAtom,
   threeExportsAtom,
 } from '../scripts/atoms';
-import { Object3D, Quaternion, THREE, Vector3 } from '../scripts/VTHREE';
-import { moveTo } from './camera/CameraFun';
+import { Quaternion, THREE, Vector3 } from '../scripts/VTHREE';
 
 type placeInfoType = {
   name: string;

@@ -1,9 +1,9 @@
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
+import { GLTF } from 'three/examples/jsm/loaders/GLTFLoader';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { KTX2Loader } from 'three/examples/jsm/loaders/KTX2Loader.js';
 import * as THREE from '../scripts/VTHREE.ts';
-import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
-import { GLTF } from 'three/examples/jsm/loaders/GLTFLoader';
 
 export default class VGLTFLoader extends GLTFLoader {
   constructor(manager?: THREE.LoadingManager) {

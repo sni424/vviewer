@@ -1,13 +1,9 @@
-import { useAtomValue } from 'jotai';
-import {
-  selectedAtom,
-  threeExportsAtom,
-  treeScrollToAtom,
-} from '../../scripts/atoms';
-import { THREE } from '../../scripts/VTHREE';
-import { useRef } from 'react';
 import { useThree } from '@react-three/fiber';
+import { useAtomValue } from 'jotai';
+import { useRef } from 'react';
 import { Layer } from '../../Constants';
+import { selectedAtom, treeScrollToAtom } from '../../scripts/atoms';
+import { THREE } from '../../scripts/VTHREE';
 
 const SelectBox = () => {
   const { scene } = useThree();

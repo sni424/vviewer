@@ -1,18 +1,12 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { Canvas, useFrame, useThree, extend } from '@react-three/fiber';
-import { Mesh, Vector3 } from 'three';
 import { Environment, OrbitControls } from '@react-three/drei';
-import { LineGeometry } from 'three/examples/jsm/Addons.js';
+import { Canvas, useThree } from '@react-three/fiber';
+import React, { useEffect, useRef, useState } from 'react';
+import { Mesh } from 'three';
 
-import * as THREE from 'three';
-import {
-  mainCameraPosAtom,
-  mainCameraProjectedAtom,
-  threeExportsAtom,
-} from '../../scripts/atoms';
 import { atom, useAtom, useAtomValue, useSetAtom } from 'jotai';
+import * as THREE from 'three';
+import { mainCameraPosAtom, threeExportsAtom } from '../../scripts/atoms';
 import TopView from '../canvas/FloatingTopView';
-import Grid from '../canvas/Grid';
 import { useGetThreeExports, useSetThreeExports } from '../canvas/Viewport';
 
 type Point = { x: number; y: number };

@@ -1,6 +1,5 @@
-import React from 'react';
 import { useAtomValue, useSetAtom } from 'jotai';
-import { useState } from 'react';
+import React, { useState } from 'react';
 import {
   MapDst,
   ModelSource,
@@ -9,7 +8,6 @@ import {
   useModal,
 } from '../scripts/atoms';
 import { THREE } from '../scripts/VTHREE';
-import { Layer } from '../Constants';
 import { setAsModel } from './utils';
 
 const MapSelectModal = ({

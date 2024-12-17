@@ -1,8 +1,7 @@
 import { useAtom } from 'jotai';
-import React from 'react';
 import { globalGlAtom } from '../../scripts/atoms';
-import { GLProps } from '../../types';
 import { THREE } from '../../scripts/VTHREE';
+import { GLProps } from '../../types';
 
 const useGlobalREnderOption = () => {
   const [gl, setGl] = useAtom(globalGlAtom);

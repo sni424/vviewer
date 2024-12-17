@@ -1,10 +1,10 @@
-import { atom, useAtom, useAtomValue, useSetAtom } from 'jotai';
+import { atom, useAtom, useSetAtom } from 'jotai';
 import React, { useEffect, useState } from 'react';
-import { FileInfo } from '../types';
-import { formatNumber, loadFile } from '../scripts/utils';
-import useFilelist from '../scripts/useFilelist';
-import FileInfoList from './FileInfoList';
 import { sourceAtom, useModal } from '../scripts/atoms';
+import useFilelist from '../scripts/useFilelist';
+import { loadFile } from '../scripts/utils';
+import { FileInfo } from '../types';
+import FileInfoList from './FileInfoList';
 
 const uploadSourceAtom = atom<
   {

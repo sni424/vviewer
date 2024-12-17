@@ -1,10 +1,10 @@
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
+import { useEffect, useState } from 'react';
+import { v4 } from 'uuid';
 import { ProbeAtom, selectedAtom, threeExportsAtom } from '../scripts/atoms.ts';
 import ReflectionProbe from '../scripts/ReflectionProbe.ts';
-import './probe.css';
-import React, { useEffect, useState } from 'react';
-import { v4 } from 'uuid';
 import { THREE } from '../scripts/VTHREE.ts';
+import './probe.css';
 
 const ProbeInfo = () => {
   const threeExports = useAtomValue(threeExportsAtom);

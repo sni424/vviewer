@@ -1,17 +1,11 @@
-import React, { useEffect, useState } from 'react';
 import { OrthographicCamera } from '@react-three/drei';
-import { View } from '../../types';
-import { THREE } from '../../scripts/VTHREE';
-import {
-  Canvas,
-  CanvasProps,
-  RootState,
-  useFrame,
-  useThree,
-} from '@react-three/fiber';
-import { Threes, useViewportOption } from '../../scripts/atoms';
-import Grid from './Grid';
+import { Canvas, CanvasProps, RootState, useThree } from '@react-three/fiber';
+import React, { useEffect, useState } from 'react';
 import { OrbitControls as OrbitControlsImpl } from 'three/examples/jsm/Addons.js';
+import { useViewportOption } from '../../scripts/atoms';
+import { THREE } from '../../scripts/VTHREE';
+import { View } from '../../types';
+import Grid from './Grid';
 
 const CameraDistance = 300;
 export const DefaultCameraPositions: {

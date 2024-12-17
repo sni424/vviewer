@@ -1,12 +1,12 @@
+import { RootState } from '@react-three/fiber';
 import * as THREE from 'three';
+import { TransformControlsPlane } from 'three/examples/jsm/Addons.js';
 import {
   Matrix4Array,
   MoveActionOptions,
   MoveActionType,
   View,
 } from '../types';
-import { TransformControlsPlane } from 'three/examples/jsm/Addons.js';
-import { RootState } from '@react-three/fiber';
 import { moveTo } from './utils';
 
 export interface ThreeUserData {

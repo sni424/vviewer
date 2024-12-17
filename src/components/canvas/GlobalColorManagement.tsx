@@ -1,12 +1,12 @@
+import { extend } from '@react-three/fiber';
+import { useAtomValue } from 'jotai';
 import { Effect } from 'postprocessing';
 import { Uniform } from 'three';
-import { extend } from '@react-three/fiber';
 import {
   globalColorManagementAtom,
   LookType,
   ViewTransform,
 } from '../../scripts/atoms';
-import { useAtomValue } from 'jotai';
 
 const fragmentShader = /*glsl */ `
   uniform float exposure;

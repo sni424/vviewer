@@ -1,4 +1,3 @@
-import React from 'react';
 import Closure from '../components/test/Closure';
 
 function TestPage() {

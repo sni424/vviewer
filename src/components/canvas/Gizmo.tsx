@@ -1,9 +1,9 @@
-import { useAtomValue } from 'jotai';
-import { selectedAtom } from '../../scripts/atoms';
 import { Box, TransformControls } from '@react-three/drei';
-import { THREE } from '../../scripts/VTHREE';
-import { useMemo, useRef } from 'react';
 import { useThree } from '@react-three/fiber';
+import { useAtomValue } from 'jotai';
+import { useMemo, useRef } from 'react';
+import { selectedAtom } from '../../scripts/atoms';
+import { THREE } from '../../scripts/VTHREE';
 
 function Gizmo() {
   const selecteds = useAtomValue(selectedAtom);

@@ -1,12 +1,7 @@
-import { EffectComposer } from '@react-three/postprocessing';
-import { Uniform } from 'three';
 import { extend } from '@react-three/fiber';
-import { Effect, BlendFunction } from 'postprocessing';
 import { useAtomValue } from 'jotai';
-import {
-  globalBrightnessContrastAtom,
-  globalSaturationCheckAtom,
-} from '../../scripts/atoms';
+import { BlendFunction, Effect } from 'postprocessing';
+import { globalSaturationCheckAtom } from '../../scripts/atoms';
 
 const shader = /* glsl */ `
     uniform sampler2D tDiffuse;

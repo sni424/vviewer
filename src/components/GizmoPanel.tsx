@@ -1,10 +1,10 @@
-import React, { useEffect } from 'react';
-import { useGetThreeExports } from './canvas/Viewport';
-import { View } from '../types';
-import { THREE } from '../scripts/VTHREE';
-import { Canvas } from '@react-three/fiber';
 import { GizmoHelper, GizmoViewport } from '@react-three/drei';
+import { Canvas } from '@react-three/fiber';
+import React, { useEffect } from 'react';
 import { Layer } from '../Constants';
+import { THREE } from '../scripts/VTHREE';
+import { View } from '../types';
+import { useGetThreeExports } from './canvas/Viewport';
 
 const Axis = (props: { axisColor: string; style?: React.CSSProperties }) => {
   const { axisColor: color } = props;

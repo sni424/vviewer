@@ -1,7 +1,7 @@
-import * as THREE from './VTHREE.ts';
-import { v4 } from 'uuid';
 import { TransformControls } from 'three-stdlib';
+import { v4 } from 'uuid';
 import { Layer } from '../Constants.ts';
+import * as THREE from './VTHREE.ts';
 
 const DEFAULT_RESOLUTION: ReflectionProbeResolutions = 256;
 const DEFAULT_POSITION: THREE.Vector3 = new THREE.Vector3(0, 0, 0);

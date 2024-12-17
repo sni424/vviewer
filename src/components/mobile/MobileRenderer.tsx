@@ -1,12 +1,12 @@
 import { useEffect } from 'react';
 
+import { OrbitControls } from '@react-three/drei';
 import { Canvas, useThree } from '@react-three/fiber';
 import { useSetAtom } from 'jotai';
-import { OrbitControls } from '@react-three/drei';
 import { threeExportsAtom } from '../../scripts/atoms';
+import useStats from '../../scripts/useStats';
 import EnvironmentMap from '../canvas/EnvironmentMap';
 import GlobalContrast from '../canvas/GlobalContrast';
-import useStats from '../../scripts/useStats';
 
 const Renderer = () => {
   useStats();

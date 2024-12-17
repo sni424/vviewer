@@ -1,7 +1,7 @@
+import { useAtomValue } from 'jotai';
 import { useEffect, useState } from 'react';
 import { sceneAnalysisAtom, useBenchmark } from '../../scripts/atoms';
 import { formatNumber } from '../../scripts/utils';
-import { useAtomValue } from 'jotai';
 
 const MobileBenchmarkPanel = () => {
   const { benchmark } = useBenchmark();

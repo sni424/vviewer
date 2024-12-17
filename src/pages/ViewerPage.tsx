@@ -1,16 +1,16 @@
 import { useAtomValue, useSetAtom } from 'jotai';
+import CameraPanel from '../components/CameraPanel';
+import FloatingFrontView from '../components/canvas/FloatingFrontView';
+import FloatingTopView from '../components/canvas/FloatingTopView';
+import RendererContainer from '../components/canvas/Renderer';
+import GizmoPanel from '../components/GizmoPanel';
+import MaterialPanelContainer from '../components/MaterialPanel';
+import MeshInfoPanel from '../components/MeshInfoPanel';
+import Modal from '../components/Modal';
+import ThePanel from '../components/ThePanel';
 import { loadHistoryAtom, modalAtom, threeExportsAtom } from '../scripts/atoms';
 import useFiles from '../scripts/useFiles';
-import RendererContainer from '../components/canvas/Renderer';
-import MeshInfoPanel from '../components/MeshInfoPanel';
-import MaterialPanelContainer from '../components/MaterialPanel';
-import Modal from '../components/Modal';
-import FloatingTopView from '../components/canvas/FloatingTopView';
-import FloatingFrontView from '../components/canvas/FloatingFrontView';
 import useModelDragAndDrop from '../scripts/useModelDragAndDrop';
-import ThePanel from '../components/ThePanel';
-import CameraPanel from '../components/CameraPanel';
-import GizmoPanel from '../components/GizmoPanel';
 
 function Loading() {
   const files = useFiles();

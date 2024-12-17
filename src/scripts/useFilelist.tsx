@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
-import { FileInfo } from '../types';
 import { useAtom } from 'jotai';
+import { useEffect } from 'react';
+import { FileInfo } from '../types';
 import { filelistAtom } from './atoms';
 
 const _fetchFunction = async () => {
