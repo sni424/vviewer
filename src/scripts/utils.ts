@@ -641,3 +641,19 @@ export const setAsModel = (object: THREE.Object3D) => {
   object.children.forEach(setAsModel);
   return object;
 };
+
+
+export const resetGL = (threeExports?: RootState) => {
+  if (!threeExports) {
+    return;
+  }
+  const { gl, scene, camera } = threeExports;
+  if (!gl || !gl.info || !gl.info.programs) {
+    return;
+  }
+  scene.traverse((object: THREE.Object3D) => {
+    if ((object as { material?: THREE.Material }).material) gl.properties.remove((object as THREE.Mesh).material)
+  })
+  gl.info.programs.length = 0
+  gl.compile(scene, camera)
+}
