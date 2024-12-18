@@ -316,19 +316,26 @@ export type ViewportOption = {
   grid?: boolean;
 };
 
-export type MoveActionType = 'pathfinding' | 'linear' | 'teleport' | 'isoView';
+export type MoveActionType = 'pathfinding' | 'linear' | 'teleport'
+  | 'isoView' | 'walkView';
 
 export interface MoveActionOptions {
   pathfinding?: {
-    target: THREE.Vector3; // 이동할 경로 (Pathfinding)
-    direction: THREE.Vector3; //도착했을때 카메라가 바라볼 방향
-    speed: number; // 애니메이션 속도
-    model: THREE.Object3D; //바닥 모델
+    target?: THREE.Vector3; // 이동할 경로 (Pathfinding)
+    direction?: THREE.Vector3; //도착했을때 카메라가 바라볼 방향
+    speed?: number; // 애니메이션 속도
+    model?: THREE.Object3D; //바닥 모델
+    stopAnimtaion?: boolean //애니메이션 중지
   };
   isoView?: {
     speed: number; // 애니메이션 속도
     model: THREE.Object3D; //바라볼 모델 (중앙 값을 구하기 위해)
   };
+  walkView?: {
+    target: THREE.Vector3; // 이동할 경로 (Pathfinding)
+    direction: THREE.Vector3; //도착했을때 카메라가 바라볼 방향
+    speed: number; // 애니메이션 속도
+  }
   linear?: {
     target: THREE.Vector3; // 목표 좌표 (Linear)
     duration: number; // 애니메이션 시간

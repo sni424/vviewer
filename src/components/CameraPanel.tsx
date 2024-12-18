@@ -1,38 +1,24 @@
-import { useAtom, useAtomValue, useSetAtom } from 'jotai';
+import { useAtom, useAtomValue } from 'jotai';
 import React, { useEffect, useState } from 'react';
 import {
   cameraMatrixAtom,
   cameraSettingAtom,
   lastCameraInfoAtom,
   orbitSettingAtom,
-  oribitControlAtom,
   threeExportsAtom,
 } from '../scripts/atoms';
 import { Quaternion, THREE, Vector3 } from '../scripts/VTHREE';
 
-type placeInfoType = {
-  name: string;
-  position: THREE.Vector3;
-  direction: THREE.Vector3;
-};
-
 const CameraPanel = () => {
   const [isCameraPanel, setCameraPanel] = useState(true);
-  //저장한 위치
-  const [placeInfo, setPlaceInfo] = useState<placeInfoType[]>([]);
+
   const threeExports = useAtomValue(threeExportsAtom);
   const cameraMatrix = useAtomValue(cameraMatrixAtom);
   const [cameraSetting, setCameraSetting] = useAtom(cameraSettingAtom);
 
   const [isOrbit, setOrbit] = useAtom(orbitSettingAtom);
-  const setLastCameraInfo = useSetAtom(lastCameraInfoAtom);
-  const orbitControl = useAtomValue(oribitControlAtom);
-  const [positionY, _setPositionY] = useState<number>(0);
+  const [lastCameraInfo, setLastCameraInfo] = useAtom(lastCameraInfoAtom);
   const posYRef = React.useRef(0);
-  const setPositionY = (newY: number) => {
-    posYRef.current = newY;
-    return _setPositionY(newY);
-  };
   const lastSpace = React.useRef(0);
 
   useEffect(() => {
@@ -48,7 +34,11 @@ const CameraPanel = () => {
         }
         lastSpace.current = Date.now();
         const newY = Number((posYRef.current + velocity).toFixed(2));
-        setPositionY(newY);
+
+        setCameraSetting(pre => ({
+          ...pre,
+          cameraY: Number((pre.cameraY + newY).toFixed(2)),
+        }));
       }
 
       if (e.key.toLowerCase() === 'c') {
@@ -62,7 +52,11 @@ const CameraPanel = () => {
         }
         lastSpace.current = Date.now();
         const newY = Number((posYRef.current - velocity).toFixed(2));
-        setPositionY(newY);
+
+        setCameraSetting(pre => ({
+          ...pre,
+          cameraY: Number((pre.cameraY + newY).toFixed(2)),
+        }));
       }
     };
 
@@ -76,21 +70,25 @@ const CameraPanel = () => {
     if (!threeExports) {
       return;
     }
-    camera.position.y = positionY;
+    camera.position.y = cameraSetting.cameraY;
     camera.updateProjectionMatrix();
     setLastCameraInfo(pre => ({
       ...pre,
       position: camera.position.clone(),
     }));
-  }, [positionY]);
+  }, [cameraSetting.cameraY]); // cameraY 값만 감지
 
-  // useEffect는 항상 최상위에서 호출되도록 함
-  useEffect(() => {
-    if (threeExports && threeExports.camera) {
-      const newY = Number(threeExports.camera.position.y.toFixed(2));
-      setPositionY(newY);
-    }
-  }, [threeExports, cameraMatrix]);
+  //아래 코드 실행시 처음에 설정해둔 카메라 값이 아니라 기본값 1로 변경됨
+  // // useEffect는 항상 최상위에서 호출되도록 함
+  // useEffect(() => {
+  //   if (threeExports && threeExports.camera) {
+  //     const newY = Number(threeExports.camera.position.y.toFixed(2));
+  //     setCameraSetting(pre => ({
+  //       ...pre,
+  //       cameraY: newY,
+  //     }));
+  //   }
+  // }, [threeExports, cameraMatrix]);
 
   if (!threeExports) {
     return null; // early return
@@ -157,8 +155,17 @@ const CameraPanel = () => {
                             model: scene,
                           },
                         });
+                      } else {
+                        console.log('no scene');
                       }
                     } else {
+                      camera.moveTo('walkView', {
+                        walkView: {
+                          target: lastCameraInfo.position,
+                          direction: lastCameraInfo.direction,
+                          speed: 3,
+                        },
+                      });
                     }
                     setCameraSetting(pre => ({
                       ...pre,
@@ -236,11 +243,14 @@ const CameraPanel = () => {
                     width: '100%',
                   }}
                   type="number"
-                  value={positionY}
+                  value={cameraSetting.cameraY}
                   onChange={e => {
-                    const newY =
-                      Number(parseFloat(e.target.value).toFixed(2)) || 0;
-                    setPositionY(newY);
+                    // const newY =
+                    //   Number(parseFloat(e.target.value).toFixed(2)) || 0;
+                    // setCameraSetting(pre => ({
+                    //   ...pre,
+                    //   cameraY: newY,
+                    // }));
                   }}
                 />
               </div>
@@ -266,63 +276,6 @@ const CameraPanel = () => {
                     }));
                   }}
                 />
-              </div>
-              <div>
-                <button
-                  style={{
-                    boxSizing: 'border-box',
-                    marginTop: '8px',
-                  }}
-                  onClick={() => {
-                    setPlaceInfo((pre: placeInfoType[]) => [
-                      ...pre,
-                      {
-                        name: `place-${pre.length}`,
-                        position: camera.position.clone(),
-                        direction: camera
-                          .getWorldDirection(new THREE.Vector3())
-                          .clone(),
-                      },
-                    ]);
-                  }}
-                >
-                  위치 추가
-                </button>
-              </div>
-              <div
-                style={{
-                  boxSizing: 'border-box',
-                  marginTop: '8px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                  flexWrap: 'wrap',
-                }}
-              >
-                {placeInfo.length > 0 &&
-                  placeInfo.map((place: placeInfoType, index: number) => {
-                    return (
-                      <button
-                        key={`placeInfo-${index}`}
-                        style={{
-                          boxSizing: 'border-box',
-                          marginTop: '8px',
-                        }}
-                        onClick={() => {
-                          camera.moveTo('pathfinding', {
-                            pathfinding: {
-                              target: place.position,
-                              speed: 0,
-                              model: scene.children[scene.children.length - 1],
-                              direction: place.direction,
-                            },
-                          });
-                        }}
-                      >
-                        {place.name}
-                      </button>
-                    );
-                  })}
               </div>
             </div>
           </section>

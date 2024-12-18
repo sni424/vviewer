@@ -310,9 +310,19 @@ export const lastCameraInfoAtom = atom<{
 export const cameraSettingAtom = atom<{
   moveSpeed: number;
   isoView: boolean;
+  cameraY: number
+  tour: {
+    isAnimation: boolean,
+    roomIndex: number
+  }
 }>({
-  moveSpeed: 1,
+  moveSpeed: 3,
   isoView: false,
+  cameraY: 1.5,
+  tour: {
+    isAnimation: false,
+    roomIndex: 0
+  }
 });
 
 //orbit세팅
@@ -321,7 +331,7 @@ export const orbitSettingAtom = atom<{
   enabled: boolean;
 }>({
   autoRotate: false,
-  enabled: false,
+  enabled: true,
 });
 
 export enum LookType {

@@ -5,7 +5,6 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
   cameraSettingAtom,
   lastCameraInfoAtom,
-  orbitSettingAtom,
   oribitControlAtom,
 } from '../../scripts/atoms';
 import { THREE } from '../../scripts/VTHREE';
@@ -22,7 +21,7 @@ const CameraManager: React.FC<UnifiedCameraControlsProps> = ({
   inertia = 0.9,
 }) => {
   //threejs 객체 가져오기
-  const { camera, raycaster, pointer, scene, gl } = useThree();
+  const { camera, raycaster, pointer, scene } = useThree();
   //카메라 회전 boolean
   const isRotateRef = useRef(false);
   // TransformControls 조작 ing boolean
@@ -49,8 +48,6 @@ const CameraManager: React.FC<UnifiedCameraControlsProps> = ({
   const cameraSetting = useAtomValue(cameraSettingAtom);
   //orbitControl atom에 저장
   const oribitControl = useAtomValue(oribitControlAtom);
-  //orbitControl 설정값
-  const orbitSetting = useAtomValue(orbitSettingAtom);
 
   const setLastCameraInfo = useSetAtom(lastCameraInfoAtom);
 
@@ -72,11 +69,18 @@ const CameraManager: React.FC<UnifiedCameraControlsProps> = ({
         distance,
       );
       // 마지막 카메라 정보 업데이트
-      setLastCameraInfo(pre => ({
-        ...pre,
-        position: cameraPosition,
-        target,
-      }));
+      if (cameraSetting.isoView) {
+        setLastCameraInfo(pre => ({
+          ...pre,
+          target,
+        }));
+      } else {
+        setLastCameraInfo(pre => ({
+          ...pre,
+          position: cameraPosition,
+          target,
+        }));
+      }
     }
   };
 
@@ -297,14 +301,13 @@ const CameraManager: React.FC<UnifiedCameraControlsProps> = ({
 
     return () => {
       if (element) {
-        console.log('안녕');
         element.removeEventListener('mousedown', handleMouseDown);
         element.removeEventListener('mousemove', handleMouseMove);
         element.removeEventListener('mouseup', handleMouseUp);
         element.removeEventListener('touchend', handleTouchEnd);
       }
     };
-  }, [oribitControl]);
+  }, [oribitControl, cameraSetting.isoView]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent): void => {

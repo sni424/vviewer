@@ -32,7 +32,7 @@ const OrbitManager: React.FC = () => {
 
   // isoView가 아닌 상태에서 OrbitControls이 활성화 되면 이전 바라보던 방향으로 설정
   useEffect(() => {
-    if (!cameraSetting.isoView && orbitRef.current) {
+    if (orbitRef.current) {
       if (orbitSetting.enabled) {
         updateOrbitTarget(lastCameraInfo.target);
       }
@@ -43,7 +43,7 @@ const OrbitManager: React.FC = () => {
     document.addEventListener('control-dragged', event => {
       const { moving } = event.detail;
       setOrbitSetting(pre => {
-        return { ...pre, enable: !moving };
+        return { ...pre, enabled: !moving };
       });
     });
     return () => {
