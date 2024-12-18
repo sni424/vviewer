@@ -18,7 +18,12 @@ import objectHash from 'object-hash';
 import { ToneMappingMode } from 'postprocessing';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { __UNDEFINED__, Layer } from '../Constants';
+import {
+  __UNDEFINED__,
+  AOMAP_INTENSITY_MAX,
+  Layer,
+  LIGHTMAP_INTENSITY_MAX,
+} from '../Constants';
 import {
   cameraMatrixAtom,
   globalBrightnessContrastAtom,
@@ -1296,7 +1301,7 @@ const GeneralMaterialControl = () => {
             setAoValue(parseFloat(e.target.value));
           }}
           min={0}
-          max={1}
+          max={AOMAP_INTENSITY_MAX}
           step={0.01}
         ></input>
       </div>
@@ -1320,7 +1325,7 @@ const GeneralMaterialControl = () => {
             setlmIntensityValue(parseFloat(e.target.value));
           }}
           min={0}
-          max={1}
+          max={LIGHTMAP_INTENSITY_MAX}
           step={0.01}
         ></input>
         <input
