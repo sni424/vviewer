@@ -241,7 +241,7 @@ export const loadLatest = async ({
   threeExports: RootState;
   addBenchmark?: (key: keyof BenchMark, value?: number) => void;
 }) => {
-  const addBenchmark = _addBenchmark ?? (() => {});
+  const addBenchmark = _addBenchmark ?? (() => { });
 
   const latestHashUrl = import.meta.env.VITE_LATEST_HASH;
   const latestUrl = import.meta.env.VITE_LATEST;
@@ -614,34 +614,35 @@ export const moveTo = (
         const ZONE = 'level';
 
         const pathFinding = new Pathfinding();
+        if (model && target && speed && direction) {
+          const navMesh = model.getObjectByName('84B3_DP') as THREE.Mesh;
+          if (navMesh) {
+            const zone = Pathfinding.createZone(navMesh.geometry);
+            pathFinding.setZoneData(ZONE, zone);
 
-        const navMesh = model.getObjectByName('84B3_DP') as THREE.Mesh;
-        if (navMesh) {
-          const zone = Pathfinding.createZone(navMesh.geometry);
-          pathFinding.setZoneData(ZONE, zone);
+            const groupID = pathFinding.getGroup(ZONE, camera.position);
+            const targetGroupID = pathFinding.getGroup(ZONE, target);
+            const closestStartNode = pathFinding.getClosestNode(
+              camera.position,
+              'level',
+              groupID,
+            );
+            const closestTargetNode = pathFinding.getClosestNode(
+              target,
+              'level',
+              targetGroupID,
+            );
 
-          const groupID = pathFinding.getGroup(ZONE, camera.position);
-          const targetGroupID = pathFinding.getGroup(ZONE, target);
-          const closestStartNode = pathFinding.getClosestNode(
-            camera.position,
-            'level',
-            groupID,
-          );
-          const closestTargetNode = pathFinding.getClosestNode(
-            target,
-            'level',
-            targetGroupID,
-          );
+            const path = pathFinding.findPath(
+              closestStartNode.centroid,
+              closestTargetNode.centroid,
+              ZONE,
+              groupID,
+            );
 
-          const path = pathFinding.findPath(
-            closestStartNode.centroid,
-            closestTargetNode.centroid,
-            ZONE,
-            groupID,
-          );
-
-          if (path) {
-            handlePathfindingMove(camera, path, speed, direction);
+            if (path) {
+              handlePathfindingMove(camera, path, speed, direction);
+            }
           }
         }
       }
