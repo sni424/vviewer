@@ -10,13 +10,8 @@ import {
 } from '../types';
 import { moveTo, resetGL } from './utils';
 
-export class LightmapImageContrast {
-  static min = -0.5;
-  static max = 2.5;
-  static step = 0.005;
-  static on = false;
-  static value = 0.0;
-}
+export { LightmapImageContrast } from '../scripts/postprocess/MaterialShader';
+
 export interface ThreeUserData {
   otherUserCamera?: boolean;
   sessionId?: string;
@@ -431,143 +426,6 @@ THREE.Object3D.prototype.traverse = function (
   }
 };
 
-const _prevMaterial_onBeforeCompile = THREE.Material.prototype.onBeforeCompile;
-THREE.Material.prototype.onBeforeCompile = function (parameters: THREE.WebGLProgramParametersWithUniforms, renderer: THREE.WebGLRenderer) {
-  _prevMaterial_onBeforeCompile(parameters, renderer);
-
-  // if (!parameters.uniforms.lmContrastOn) {
-  parameters.uniforms = {
-    ...parameters.uniforms,
-    lmContrastOn: new THREE.Uniform(LightmapImageContrast.on)
-  }
-  // }
-  // if (!parameters.uniforms.lmContrastValue) {
-  parameters.uniforms = {
-    ...parameters.uniforms,
-    lmContrastValue: new THREE.Uniform(LightmapImageContrast.value)
-  }
-  // }
-  /**
-   * "uniform vec3 diffuse;
-uniform float opacity;
-#ifndef FLAT_SHADED
-  varying vec3 vNormal;
-#endif
-#include <common>
-#include <dithering_pars_fragment>
-#include <color_pars_fragment>
-#include <uv_pars_fragment>
-#include <map_pars_fragment>
-#include <alphamap_pars_fragment>
-#include <alphatest_pars_fragment>
-#include <alphahash_pars_fragment>
-#include <aomap_pars_fragment>
-#include <lightmap_pars_fragment>
-#include <envmap_common_pars_fragment>
-#include <envmap_pars_fragment>
-#include <fog_pars_fragment>
-#include <specularmap_pars_fragment>
-#include <logdepthbuf_pars_fragment>
-#include <clipping_planes_pars_fragment>
-void main() {
-  vec4 diffuseColor = vec4( diffuse, opacity );
-  #include <clipping_planes_fragment>
-  #include <logdepthbuf_fragment>
-  #include <map_fragment>
-  #include <color_fragment>
-  #include <alphamap_fragment>
-  #include <alphatest_fragment>
-  #include <alphahash_fragment>
-  #include <specularmap_fragment>
-  ReflectedLight reflectedLight = ReflectedLight( vec3( 0.0 ), vec3( 0.0 ), vec3( 0.0 ), vec3( 0.0 ) );
-  #ifdef USE_LIGHTMAP
-    vec4 lightMapTexel = texture2D( lightMap, vLightMapUv );
-    reflectedLight.indirectDiffuse += lightMapTexel.rgb * lightMapIntensity * RECIPROCAL_PI;
-  #else
-    reflectedLight.indirectDiffuse += vec3( 1.0 );
-  #endif
-  #include <aomap_fragment>
-  reflectedLight.indirectDiffuse *= diffuseColor.rgb;
-  vec3 outgoingLight = reflectedLight.indirectDiffuse;
-  #include <envmap_fragment>
-  #include <opaque_fragment>
-  #include <tonemapping_fragment>
-  #include <colorspace_fragment>
-  #include <fog_fragment>
-  #include <premultiplied_alpha_fragment>
-  #include <dithering_fragment>
-}"
-   */
-
-  const targetHead = "void main() {";
-  const contentHead = /*glsl */`
-  #ifndef USE_LIGHTMAP_CONTRAST
-  #define USE_LIGHTMAP_CONTRAST
-  uniform bool lmContrastOn;
-  uniform float lmContrastValue;
-  #endif
-  void main() {`;
-  parameters.fragmentShader = parameters.fragmentShader.replace(targetHead, contentHead);
-
-  const targetBody = `#include <lights_fragment_maps>`;
-  const contentBody = /*glsl */`
-
-  #if defined( RE_IndirectDiffuse )
-
-	#ifdef USE_LIGHTMAP
-
-		vec4 lightMapTexel = texture2D( lightMap, vLightMapUv );
-    vec3 lmcolor = lightMapTexel.rgb;
-    vec3 lmcolorComputed = lmcolor;
-    
-    float contrast = lmContrastValue;
-    contrast = contrast*0.8 + 0.8;
-    lmcolorComputed = clamp(lmcolorComputed, 0.0, 1.0);
-    lmcolorComputed = (lmcolorComputed - 0.5) * contrast + 0.5;
-    lmcolorComputed = smoothstep(0.0, 1.0, lmcolorComputed); 
-
-    
-		vec3 lightMapIrradiance = (lmContrastOn ? lmcolorComputed : lmcolor) * lightMapIntensity;
-		// vec3 lightMapIrradiance = lmcolor * lightMapIntensity;
-		// vec3 lightMapIrradiance = lightMapTexel.rgb * 0.0;
-
-		irradiance += lightMapIrradiance;
-    // irradiance = vec3(0.0);
-
-	#endif
-
-	#if defined( USE_ENVMAP ) && defined( STANDARD ) && defined( ENVMAP_TYPE_CUBE_UV )
-
-		iblIrradiance += getIBLIrradiance( geometryNormal );
-
-	#endif
-
-#endif
-
-#if defined( USE_ENVMAP ) && defined( RE_IndirectSpecular )
-
-	#ifdef USE_ANISOTROPY
-
-		radiance += getIBLAnisotropyRadiance( geometryViewDir, geometryNormal, material.roughness, material.anisotropyB, material.anisotropy );
-
-	#else
-
-		radiance += getIBLRadiance( geometryViewDir, geometryNormal, material.roughness );
-
-	#endif
-
-	#ifdef USE_CLEARCOAT
-
-		clearcoatRadiance += getIBLRadiance( geometryViewDir, geometryClearcoatNormal, material.clearcoatRoughness );
-
-	#endif
-
-#endif
-  `;
-  parameters.fragmentShader = parameters.fragmentShader.replace(targetBody, contentBody);
-  // console.log(parameters.fragmentShader)
-  // console.log("Mat onBeforeCompile");
-}
 
 
 export * from 'three';
@@ -601,4 +459,7 @@ window.getThree = (view: View = View.Shared) => {
   return window.threeStore[view];
 };
 
+
+// THREE.Material.prototype.onBeforeCompile 오버라이딩
+import "../scripts/postprocess/MaterialShader";
 
