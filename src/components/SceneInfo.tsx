@@ -33,6 +33,7 @@ import {
   useModal,
 } from '../scripts/atoms';
 import useFilelist from '../scripts/useFilelist';
+import useStats from '../scripts/useStats.ts';
 import VGLTFExporter from '../scripts/VGLTFExporter.ts';
 import {
   LightmapImageContrast,
@@ -145,6 +146,8 @@ const GeneralButtons = () => {
   const [hasSaved, setHasSaved] = useState(false);
   const { openModal, closeModal } = useModal();
   const navigate = useNavigate();
+  const [statsOn, setStatsOn] = useState(false);
+  useStats(statsOn);
 
   useEffect(() => {
     get('savedScene').then(val => {
@@ -169,6 +172,13 @@ const GeneralButtons = () => {
         gridTemplateColumns: '1fr 1fr 1fr',
       }}
     >
+      <button
+        onClick={() => {
+          setStatsOn(prev => !prev);
+        }}
+      >
+        {statsOn ? 'FPS끄기' : 'FPS켜기'}
+      </button>
       <button
         onClick={() => {
           navigate('/mobile');

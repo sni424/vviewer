@@ -500,7 +500,7 @@ void main() {
    */
 
   const targetHead = "void main() {";
-  const contentHead = `
+  const contentHead = /*glsl */`
   #ifndef USE_LIGHTMAP_CONTRAST
   #define USE_LIGHTMAP_CONTRAST
   uniform bool lmContrastOn;
