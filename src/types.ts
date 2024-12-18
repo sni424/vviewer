@@ -321,10 +321,11 @@ export type MoveActionType = 'pathfinding' | 'linear' | 'teleport'
 
 export interface MoveActionOptions {
   pathfinding?: {
-    target: THREE.Vector3; // 이동할 경로 (Pathfinding)
-    direction: THREE.Vector3; //도착했을때 카메라가 바라볼 방향
-    speed: number; // 애니메이션 속도
-    model: THREE.Object3D; //바닥 모델
+    target?: THREE.Vector3; // 이동할 경로 (Pathfinding)
+    direction?: THREE.Vector3; //도착했을때 카메라가 바라볼 방향
+    speed?: number; // 애니메이션 속도
+    model?: THREE.Object3D; //바닥 모델
+    stopAnimtaion?: boolean //애니메이션 중지
   };
   isoView?: {
     speed: number; // 애니메이션 속도

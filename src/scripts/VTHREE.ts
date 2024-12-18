@@ -1,6 +1,7 @@
 import { RootState } from '@react-three/fiber';
 import * as THREE from 'three';
 import { TransformControlsPlane } from 'three/examples/jsm/Addons.js';
+import { Layer } from '../Constants';
 import {
   Matrix4Array,
   MoveActionOptions,
@@ -67,11 +68,22 @@ declare module 'three' {
       callback: (node: Object3D) => any,
       filter?: (node: Object3D) => boolean,
     ): void;
+    traverse(
+      callback: (node: Object3D) => any,
+      layer?: Layer,
+    ): void;
 
     isSystemGenerated(): boolean;
     isBoxHelper(): boolean;
     isXYZGizmo(): boolean;
     isTransformControl(): boolean;
+
+    traverseParent(...params: Parameters<Object3D["traverseAncestors"]>): ReturnType<Object3D["traverseAncestors"]>;
+
+    isParentVisible(): boolean;
+
+    // 자신을 포함한 모든 자식들
+    all<T = Object3D>(includeSelf?: boolean): T[];
   }
 
   interface Camera {
@@ -159,6 +171,26 @@ THREE.Object3D.prototype.setUserData = function (
   }
 
   return this;
+};
+
+THREE.Object3D.prototype.all = function <T = THREE.Object3D>(includeSelf = false) {
+  const result = includeSelf ? [this] : [];
+  this.traverse((node) => {
+    result.push(node);
+  });
+  return result as T[];
+}
+
+THREE.Object3D.prototype.traverseParent = THREE.Object3D.prototype.traverseAncestors;
+
+THREE.Object3D.prototype.isParentVisible = function () {
+  let visibility = true;
+  this.traverseParent((node) => {
+    if (node.visible === false) {
+      visibility = false;
+    }
+  });
+  return visibility;
 };
 
 THREE.Vector3.prototype.screenPosition = function (camera) {
@@ -298,11 +330,20 @@ const defaultSceneFilter = (node: THREE.Object3D) => {
   if (node.isBoxHelper()) {
     return false;
   }
+  if (node.layers.isEnabled(Layer.Selected)) {
+    return false;
+  }
+  if (node.layers.isEnabled(Layer.GizmoHelper)) {
+    return false;
+  }
+  if (node.layers.isEnabled(Layer.ReflectionBox)) {
+    return false;
+  }
   return true;
 };
 THREE.Object3D.prototype.traverse = function (
   callback: (node: THREE.Object3D) => any,
-  filter: (node: THREE.Object3D) => boolean = defaultSceneFilter,
+  filterInput?: Layer | ((node: THREE.Object3D) => boolean),
 ) {
   //original code :
   /*
@@ -317,9 +358,18 @@ THREE.Object3D.prototype.traverse = function (
     }
    */
 
+  const filter = filterInput ?? defaultSceneFilter;
+
+  if (typeof filter === "number") {
+    // Layer
+    if (!this.layers.isEnabled(filter)) {
+      return;
+    }
+  }
+
   callback(this);
 
-  if (filter && !filter(this)) {
+  if (filter && typeof filter === "function" && !filter(this)) {
     // debugger;
     return;
   }
@@ -327,7 +377,7 @@ THREE.Object3D.prototype.traverse = function (
   const children = this.children;
 
   for (let i = 0, l = children.length; i < l; i++) {
-    children[i].traverse(callback, filter);
+    children[i].traverse(callback, filter as any);
   }
 };
 
@@ -361,3 +411,4 @@ window.setThree = (view: View, state: RootState) => {
 window.getThree = (view: View = View.Shared) => {
   return window.threeStore[view];
 };
+

@@ -111,10 +111,15 @@ const RecursiveNode = ({
 
   const thisSelected = selecteds.includes(data.uuid);
 
+  // 자식 중에 선택된 것이 있는지 확인
   // 비싼 재귀지만 개발단이니 진행
-
   const { scene } = threeExports;
+  const isRoot = data.uuid === scene.uuid;
   const childSelected = (() => {
+    if (isRoot) {
+      // 최상단 scene은 패스
+      return false;
+    }
     if (thisSelected) {
       return false;
     }
@@ -156,6 +161,8 @@ const RecursiveNode = ({
         paddingLeft: depth * 4,
         fontSize: 12,
         marginTop: 2,
+        // border: childSelected ? '1px solid #3d3d3d' : undefined,
+        backgroundColor: childSelected ? '#ccc' : undefined,
       }}
     >
       <div
@@ -167,9 +174,9 @@ const RecursiveNode = ({
           backgroundColor: scrollToThis
             ? 'orange'
             : thisSelected
-              ? '#bbb'
+              ? '#aaa'
               : childSelected
-                ? '#cdcdcd'
+                ? '#ccc'
                 : undefined,
         }}
       >
@@ -212,8 +219,6 @@ const RecursiveNode = ({
               textAlign: 'left',
             }}
             onClick={e => {
-              console.log(data);
-              // console.log(data.type, data.name, data.uuid)
               if (e.ctrlKey) {
                 if (selecteds.includes(data.uuid)) {
                   setSelecteds(selecteds.filter(uuid => uuid !== data.uuid));
@@ -227,7 +232,11 @@ const RecursiveNode = ({
               }
             }}
           >
-            {data.name.length === 0 ? '<이름없음>' : data.name}
+            {isRoot
+              ? '장면 루트'
+              : data.name.length === 0
+                ? '<이름없음>'
+                : data.name}
           </div>
         </div>
 
@@ -327,10 +336,11 @@ const SearchResultList = ({
   data,
   label,
 }: {
-  data: THREE.Object3D[];
+  data: (THREE.Object3D | THREE.Material)[];
   label: string;
 }) => {
   const [selecteds, setSelecteds] = useAtom(selectedAtom);
+  const [selectedMaterial, setSelectedMaterial] = useAtom(materialSelectedAtom);
 
   return (
     <div style={{ marginBottom: 12 }}>
@@ -338,7 +348,9 @@ const SearchResultList = ({
       {data.length > 0 ? (
         <ul>
           {data.map((obj, index) => {
-            const thisSelected = selecteds.includes(obj.uuid);
+            const thisSelected =
+              selecteds.includes(obj.uuid) ||
+              selectedMaterial?.uuid === obj.uuid;
             return (
               <li
                 style={{
@@ -348,14 +360,20 @@ const SearchResultList = ({
                 }}
                 key={'search-list-item-' + label.replace(' ', '-') + obj.uuid}
                 onClick={e => {
-                  if (e.ctrlKey) {
-                    if (selecteds.includes(obj.uuid)) {
-                      setSelecteds(selecteds.filter(uuid => uuid !== obj.uuid));
-                    } else {
-                      setSelecteds([...selecteds, obj.uuid]);
-                    }
+                  if ((obj as { isMaterial?: boolean }).isMaterial) {
+                    setSelectedMaterial(obj as THREE.Material);
                   } else {
-                    setSelecteds([obj.uuid]);
+                    if (e.ctrlKey) {
+                      if (selecteds.includes(obj.uuid)) {
+                        setSelecteds(
+                          selecteds.filter(uuid => uuid !== obj.uuid),
+                        );
+                      } else {
+                        setSelecteds([...selecteds, obj.uuid]);
+                      }
+                    } else {
+                      setSelecteds([obj.uuid]);
+                    }
                   }
                 }}
               >
@@ -372,6 +390,10 @@ const SearchResultList = ({
   );
 };
 
+const toUnique = (arr: (THREE.Object3D | THREE.Material)[]) => {
+  return arr.filter((v, i, a) => a.findIndex(t => t.uuid === v.uuid) === i);
+};
+
 const SearchResults = () => {
   const threeExports = useAtomValue(threeExportsAtom);
   const query = useAtomValue(treeSearchAtom)?.trim().toLowerCase();
@@ -386,6 +408,7 @@ const SearchResults = () => {
   const names: THREE.Object3D[] = [];
   const ids: THREE.Object3D[] = [];
   const materials: THREE.Material[] = [];
+  const meshesUsingMaterial: THREE.Object3D[] = [];
 
   scene.traverse(obj => {
     // 1. typeSearch
@@ -402,7 +425,16 @@ const SearchResults = () => {
     if (obj.name.toLowerCase().includes(query)) {
       names.push(obj);
     }
-  });
+
+    // 4. material search
+    if (obj.type === 'Mesh') {
+      const material = (obj as THREE.Mesh).material as THREE.Material;
+      if (material?.name.toLowerCase().includes(query)) {
+        materials.push(material);
+        meshesUsingMaterial.push(obj);
+      }
+    }
+  }, Layer.Model);
 
   console.log({
     types,
@@ -412,9 +444,23 @@ const SearchResults = () => {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column' }}>
-      <SearchResultList data={types} label="타입 검색"></SearchResultList>
-      <SearchResultList data={names} label="이름 검색"></SearchResultList>
-      <SearchResultList data={ids} label="ID 검색"></SearchResultList>
+      <SearchResultList
+        data={toUnique(types)}
+        label="타입 검색"
+      ></SearchResultList>
+      <SearchResultList
+        data={toUnique(names)}
+        label="이름 검색"
+      ></SearchResultList>
+      <SearchResultList data={toUnique(ids)} label="ID 검색"></SearchResultList>
+      <SearchResultList
+        data={toUnique(materials)}
+        label="재질 검색"
+      ></SearchResultList>
+      <SearchResultList
+        data={toUnique(meshesUsingMaterial)}
+        label="메시 검색(재질사용)"
+      ></SearchResultList>
     </div>
   );
 };

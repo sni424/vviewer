@@ -5,7 +5,7 @@ import { Viewport, ViewportController } from './Viewport';
 function FloatingFrontView({ children }: { children?: React.ReactNode }) {
   const view = View.Front;
   const TheCanvas = Viewport(view);
-  const TopViewController = ViewportController(view);
+  const FrontViewController = ViewportController(view);
   const [show, setShow] = useState(false);
   const hide = () => setShow(false);
 
@@ -21,23 +21,24 @@ function FloatingFrontView({ children }: { children?: React.ReactNode }) {
         </button>
       )}
 
-      {show && (
-        <div
-          className="relative w-[200px] h-[200px] bg-[#f6f6f6]"
-          style={{
-            border: '1px solid #3f3f3f',
+      <div
+        style={{
+          width: show ? 200 : 0,
+          height: show ? 200 : 0,
+          border: show ? '1px solid #3f3f3fdd' : undefined,
+          backgroundColor: '#f6f6f6aa',
+          position: 'relative',
+        }}
+      >
+        <TheCanvas
+          onCreated={state => {
+            state.camera.layers.enable(view);
           }}
         >
-          <TheCanvas
-            onCreated={state => {
-              state.camera.layers.enable(view);
-            }}
-          >
-            {children}
-          </TheCanvas>
-          <TopViewController hide={hide}></TopViewController>
-        </div>
-      )}
+          {children}
+        </TheCanvas>
+        {show && <FrontViewController hide={hide}></FrontViewController>}
+      </div>
     </>
   );
 }

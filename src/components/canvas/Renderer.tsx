@@ -15,7 +15,9 @@ import {
   sourceAtom,
   Tabs,
   threeExportsAtom,
+  toggleGrid,
   treeScrollToAtom,
+  viewGridAtom,
 } from '../../scripts/atoms';
 import {
   getIntersects,
@@ -30,9 +32,19 @@ import { View } from '../../types';
 import UnifiedCameraControls from '../camera/UnifiedCameraControls';
 import MyEnvironment from './EnvironmentMap';
 import GlobalSaturationCheck from './GlobalSaturationCheck';
+import Grid from './Grid';
 import PostProcess from './PostProcess';
 import SelectBox from './SelectBox';
 import { useSetThreeExports } from './Viewport';
+
+const MainGrid = () => {
+  const on = useAtomValue(viewGridAtom);
+  if (!on) {
+    return null;
+  }
+
+  return <Grid layers={View.Shared}></Grid>;
+};
 
 function Renderer() {
   // useStats();
@@ -52,24 +64,11 @@ function Renderer() {
     setCameraAtom(mat);
 
     setSharedExports(threeExports);
-    // setSharedExports(threeExports);
-
-    // const emptyEnvironment = new Texture();
-    // const img = new ImageData(1, 1);
-    // img.data[0] = 255;
-    // img.data[1] = 0;
-    // img.data[2] = 0;
-    // emptyEnvironment.colorSpace = "sRGB";
-    // emptyEnvironment.image = img;
-    // emptyEnvironment.needsUpdate = true;
-    // scene.environment = emptyEnvironment;
-    // scene.environment =
   }, []);
 
   useEffect(() => {
     sources.forEach(source => {
       const { name, url, file, map, mapDst } = source;
-      // setLoadingsAtom(loadings => [...loadings, source]);
       setLoadHistoryAtom(history => {
         const newHistory = new Map(history);
         //@ts-ignore
@@ -136,6 +135,7 @@ function Renderer() {
       <SelectBox></SelectBox>
       <PostProcess></PostProcess>
       <GlobalSaturationCheck></GlobalSaturationCheck>
+      <MainGrid></MainGrid>
     </>
   );
 }
@@ -237,7 +237,7 @@ const useKeyHandler = () => {
     }
 
     const { scene } = threeExports;
-    const keyHandler = (e: KeyboardEvent) => {
+    const handleKeyDown = (e: KeyboardEvent) => {
       // on escape
       if (e.key === 'Escape') {
         setSelected([]);
@@ -336,11 +336,15 @@ const useKeyHandler = () => {
           setTreeScrollTo(selected[0]);
         }
       }
+
+      if (e.key.toLowerCase() === 'g') {
+        toggleGrid();
+      }
     };
 
-    window.addEventListener('keydown', keyHandler);
+    window.addEventListener('keydown', handleKeyDown);
     return () => {
-      window.removeEventListener('keydown', keyHandler);
+      window.removeEventListener('keydown', handleKeyDown);
     };
   }, [threeExports, selected]);
 };

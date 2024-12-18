@@ -29,10 +29,10 @@ const FileInfoList = ({
             {...itemProps}
             data-fileinfo={JSON.stringify(fileinfo)}
           >
+            {isCached && <span style={{ fontWeight: 'bold' }}>(캐시됨)</span>}
             {i + 1}. {fileinfo.filename} (
             {formatNumber(fileinfo.fileSize / (1024 * 1024))}mb) -{' '}
             {new Date(fileinfo.uploadDate).toLocaleString()}{' '}
-            {isCached && <span style={{ fontWeight: 'bold' }}>(캐시됨)</span>}
           </li>
         );
       })}

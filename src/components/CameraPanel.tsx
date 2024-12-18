@@ -9,34 +9,9 @@ import {
 } from '../scripts/atoms';
 import { Quaternion, THREE, Vector3 } from '../scripts/VTHREE';
 
-type placeInfoType = {
-  name: string;
-  position: THREE.Vector3;
-  direction: THREE.Vector3;
-};
-
-const tour: placeInfoType[] = [
-  {
-    name: '안방',
-    position: new THREE.Vector3(-3.056, 1.2, 2.08),
-    direction: new THREE.Vector3(-0.07, -0.01, 0.99),
-  },
-  {
-    name: '서재방',
-    position: new THREE.Vector3(3.35, 1.2, 0.686),
-    direction: new THREE.Vector3(0.6, -0.05, 0.79),
-  },
-  {
-    name: '아이방',
-    position: new THREE.Vector3(-5.36, 1.2, 1.37),
-    direction: new THREE.Vector3(-0.18, -0.06, 0.98),
-  },
-];
-
 const CameraPanel = () => {
   const [isCameraPanel, setCameraPanel] = useState(true);
-  //저장한 위치
-  const [placeInfo, setPlaceInfo] = useState<placeInfoType[]>([]);
+
   const threeExports = useAtomValue(threeExportsAtom);
   const cameraMatrix = useAtomValue(cameraMatrixAtom);
   const [cameraSetting, setCameraSetting] = useAtom(cameraSettingAtom);
@@ -45,8 +20,6 @@ const CameraPanel = () => {
   const [lastCameraInfo, setLastCameraInfo] = useAtom(lastCameraInfoAtom);
   const posYRef = React.useRef(0);
   const lastSpace = React.useRef(0);
-
-  const [selectRoom, setSelectRoom] = useState(1);
 
   useEffect(() => {
     // space 입력 시 카메라 상승
@@ -303,139 +276,6 @@ const CameraPanel = () => {
                     }));
                   }}
                 />
-              </div>
-              <div>
-                <button
-                  style={{
-                    boxSizing: 'border-box',
-                    marginTop: '8px',
-                  }}
-                  onClick={() => {
-                    setPlaceInfo((pre: placeInfoType[]) => [
-                      ...pre,
-                      {
-                        name: `place-${pre.length}`,
-                        position: camera.position.clone(),
-                        direction: camera
-                          .getWorldDirection(new THREE.Vector3())
-                          .clone(),
-                      },
-                    ]);
-                  }}
-                >
-                  위치 추가
-                </button>
-              </div>
-              <div
-                style={{
-                  boxSizing: 'border-box',
-                  marginTop: '8px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                  flexWrap: 'wrap',
-                }}
-              >
-                {placeInfo.length > 0 &&
-                  placeInfo.map((place: placeInfoType, index: number) => {
-                    return (
-                      <button
-                        key={`placeInfo-${index}`}
-                        style={{
-                          boxSizing: 'border-box',
-                          marginTop: '8px',
-                        }}
-                        onClick={() => {
-                          camera.moveTo('pathfinding', {
-                            pathfinding: {
-                              target: place.position,
-                              speed: 0,
-                              model: scene.children[scene.children.length - 1],
-                              direction: place.direction,
-                            },
-                          });
-                        }}
-                      >
-                        {place.name}
-                      </button>
-                    );
-                  })}
-              </div>
-            </div>
-            <div
-              style={{
-                width: '100%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <div
-                style={{
-                  width: '95%',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                }}
-              >
-                <div
-                  style={{ cursor: 'pointer' }}
-                  onClick={() => {
-                    setSelectRoom((pre: number) => {
-                      if (pre === 1) {
-                        return tour.length;
-                      } else {
-                        return pre - 1;
-                      }
-                    });
-                  }}
-                >
-                  ◁
-                </div>
-                <div
-                  style={{ cursor: 'pointer' }}
-                  onClick={() => {
-                    console.log(
-                      camera.position,
-                      camera.getWorldDirection(new Vector3()).normalize(),
-                    );
-                  }}
-                >
-                  ▶
-                </div>
-                <div>
-                  {selectRoom}/{tour.length}
-                </div>
-                <div style={{ cursor: 'pointer' }}>x1</div>
-                <select
-                  style={{ cursor: 'pointer' }}
-                  value={selectRoom}
-                  onChange={e => {
-                    setSelectRoom(Number(e.target.value));
-                  }}
-                >
-                  {tour.map((room: placeInfoType, index) => {
-                    return (
-                      <option key={`room_${room.position.x}`} value={index + 1}>
-                        {room.name}
-                      </option>
-                    );
-                  })}
-                </select>
-                <div
-                  style={{ cursor: 'pointer' }}
-                  onClick={() => {
-                    setSelectRoom((pre: number) => {
-                      if (pre === tour.length) {
-                        return 1;
-                      } else {
-                        return pre + 1;
-                      }
-                    });
-                  }}
-                >
-                  ▷
-                </div>
               </div>
             </div>
           </section>

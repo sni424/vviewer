@@ -10,9 +10,13 @@ import {
   useSetAtom,
   WritableAtom,
 } from 'jotai';
+import { ToneMappingMode } from 'postprocessing';
 import React from 'react';
 import { OrbitControls } from 'three/examples/jsm/Addons.js';
-import { DEFAULT_COLOR_TEMPERATURE } from '../Constants';
+import {
+  DEFAULT_COLOR_TEMPERATURE,
+  DEFAULT_TONEMAPPING_VALUES,
+} from '../Constants';
 import { FileInfo, GLProps, View, ViewportOption } from '../types';
 import ReflectionProbe from './ReflectionProbe.ts';
 import { THREE, Vector3 } from './VTHREE';
@@ -72,7 +76,7 @@ export const sourceAtom = atom<ModelSource[]>([]);
 export const loadHistoryAtom = atom<
   Map<
     string,
-    { name: string; start: number; end: number; file: File; uuid: string }
+    { name: string; start: number; end: number; file: File; uuid: string | null }
   >
 >(new Map());
 export const threeExportsAtom = atom<RootState>();
@@ -222,6 +226,23 @@ export const globalColorTemperatureAtom = atom<{
   value: DEFAULT_COLOR_TEMPERATURE,
 });
 
+const TONEMAPPING_RESOLUTIONS = [4, 8, 16, 64, 128, 256, 512, 1024] as const;
+export type ToneMappingResolutions = (typeof TONEMAPPING_RESOLUTIONS)[number];
+
+export const globalToneMappingAtom = atom<{
+  on: boolean;
+  resolution: ToneMappingResolutions;
+  middleGrey: number;
+  maxLuminance: number;
+  averageLuminance: number;
+  adaptationRate: number;
+  mode: ToneMappingMode;
+  opacity: number;
+}>({
+  on: false,
+  ...DEFAULT_TONEMAPPING_VALUES,
+});
+
 export const globalGlAtom = atom<GLProps>({
   antialias: true,
   alpha: true,
@@ -231,6 +252,8 @@ export const globalGlAtom = atom<GLProps>({
   powerPreference: 'high-performance',
   depth: true,
   failIfMajorPerformanceCaveat: false,
+  toneMapping: THREE.NeutralToneMapping,
+  toneMappingExposure: 1,
 });
 
 // REFLECTION PROBES
@@ -258,10 +281,18 @@ export const cameraSettingAtom = atom<{
   moveSpeed: number;
   isoView: boolean;
   cameraY: number
+  tour: {
+    isAnimation: boolean,
+    roomIndex: number
+  }
 }>({
-  moveSpeed: 5,
+  moveSpeed: 3,
   isoView: false,
-  cameraY: 1.5
+  cameraY: 1.5,
+  tour: {
+    isAnimation: false,
+    roomIndex: 0
+  }
 });
 
 //orbit세팅
@@ -392,3 +423,13 @@ export const useViewportOption = (view: View = View.Shared) => {
     allOptions: options,
   };
 };
+
+
+export const viewGridAtom = atom<boolean>(true);
+export const toggleGrid = (value?: boolean) => {
+  if (value !== undefined) {
+    setAtomValue(viewGridAtom, value);
+  } else {
+    setAtomValue(viewGridAtom, (prev) => !prev);
+  }
+}

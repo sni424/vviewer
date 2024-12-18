@@ -43,7 +43,7 @@ const OrbitManager: React.FC = () => {
     document.addEventListener('control-dragged', event => {
       const { moving } = event.detail;
       setOrbitSetting(pre => {
-        return { ...pre, enable: !moving };
+        return { ...pre, enabled: !moving };
       });
     });
     return () => {

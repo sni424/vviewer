@@ -99,6 +99,14 @@ const MapInfo = (props: MapInfoProps) => {
 
   const [isDragging, setIsDragging] = useState(false);
 
+  const reload = () => {
+    const curMat = props.material;
+    setTimeout(() => {
+      setMaterialSelected(curMat);
+    }, 50);
+    setMaterialSelected(null);
+  };
+
   useEffect(() => {
     setChannel(texture?.channel ?? -1);
     setMaterialRangeValue(materialValue as number);
@@ -140,11 +148,7 @@ const MapInfo = (props: MapInfoProps) => {
           setMap(material, mapKey, texture);
 
           // 강제 리로딩
-          const curMat = props.material;
-          setTimeout(() => {
-            setMaterialSelected(curMat);
-          }, 100);
-          setMaterialSelected(null);
+          reload();
         };
         reader.readAsDataURL(file);
       }
@@ -170,6 +174,7 @@ const MapInfo = (props: MapInfoProps) => {
           style={{ fontSize: 10 }}
           onClick={() => {
             setMap(material, mapKey, null);
+            reload();
           }}
         >
           삭제
@@ -293,8 +298,6 @@ const MapInfo = (props: MapInfoProps) => {
 };
 
 const MapSection = ({ mat }: { mat: THREE.MeshStandardMaterial }) => {
-  console.log(mat.uuid);
-
   return (
     <section
       style={{ display: 'flex', flexDirection: 'column', width: '100%' }}

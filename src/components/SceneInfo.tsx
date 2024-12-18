@@ -14,15 +14,18 @@ import {
 
 import { get, set } from 'idb-keyval';
 import objectHash from 'object-hash';
+import { ToneMappingMode } from 'postprocessing';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { __UNDEFINED__ } from '../Constants';
+import { __UNDEFINED__, Layer } from '../Constants';
 import {
   cameraMatrixAtom,
   globalBrightnessContrastAtom,
   globalColorManagementAtom,
   globalColorTemperatureAtom,
+  globalGlAtom,
   globalSaturationCheckAtom,
+  globalToneMappingAtom,
   selectedAtom,
   threeExportsAtom,
   useEnvParams,
@@ -376,6 +379,10 @@ const GeneralSceneInfo = () => {
 
         <ul style={{ paddingLeft: 4, marginTop: 8 }}>
           {scene.children.map((child, index) => {
+            if (!child.layers.isEnabled(Layer.Model)) {
+              return null;
+            }
+
             if (child.type === 'BoxHelper') {
               return null;
             }
@@ -459,6 +466,8 @@ const GeneralPostProcessingControl = () => {
   );
   const [cm, setCm] = useAtom(globalColorManagementAtom);
   // const { on: cmOn, value: cmValue } = cm;
+  const [glSetting, setGlSetting] = useAtom(globalGlAtom);
+  const [toneMapping, setToneMapping] = useAtom(globalToneMappingAtom);
 
   return (
     <section
@@ -555,6 +564,120 @@ const GeneralPostProcessingControl = () => {
             setGlobalSaturationCheck(e.target.checked);
           }}
         />
+      </div>
+      <div>
+        <div>
+          <div>
+            <strong>ToneMapping</strong>
+            <input
+              type="checkbox"
+              checked={toneMapping.on}
+              onChange={e => {
+                setToneMapping(prev => ({ ...prev, on: e.target.checked }));
+              }}
+            />
+          </div>
+          {toneMapping.on && (
+            <div style={{ paddingLeft: 8 }}>
+              <div>
+                <select
+                  value={toneMapping.mode}
+                  onChange={e => {
+                    console.log(e.target.value);
+                    //@ts-ignore
+                    setToneMapping(prev => ({
+                      ...prev,
+                      //@ts-ignore
+                      mode: Number(e.target.value) as ToneMappingMode,
+                    }));
+                  }}
+                >
+                  <option value={ToneMappingMode.LINEAR}>LINEAR</option>
+                  <option value={ToneMappingMode.REINHARD}>REINHARD</option>
+                  <option value={ToneMappingMode.REINHARD2}>REINHARD2</option>
+                  <option value={ToneMappingMode.REINHARD2_ADAPTIVE}>
+                    REINHARD2_ADAPTIVE
+                  </option>
+                  <option value={ToneMappingMode.UNCHARTED2}>UNCHARTED2</option>
+                  <option value={ToneMappingMode.OPTIMIZED_CINEON}>
+                    OPTIMIZED_CINEON
+                  </option>
+                  <option value={ToneMappingMode.CINEON}>CINEON</option>
+                  <option value={ToneMappingMode.ACES_FILMIC}>
+                    ACES_FILMIC
+                  </option>
+                  <option value={ToneMappingMode.AGX}>AGX</option>
+                  <option value={ToneMappingMode.NEUTRAL}>NEUTRAL</option>
+                </select>
+              </div>
+              <div>
+                <div>
+                  <span>노출</span>
+                  <span style={{ fontSize: 10 }}>
+                    (toneMappingExposure)
+                  </span> : {glSetting.toneMappingExposure ?? 0}{' '}
+                  <button
+                    style={{ fontSize: 11 }}
+                    onClick={() => {
+                      setGlSetting(prev => ({
+                        ...prev,
+                        toneMappingExposure: 1,
+                      }));
+                    }}
+                  >
+                    초기화
+                  </button>
+                </div>
+                <input
+                  style={{ width: '100%' }}
+                  type="range"
+                  min={0}
+                  max={5}
+                  step={0.01}
+                  value={glSetting.toneMappingExposure ?? 0}
+                  onChange={e => {
+                    setGlSetting(prev => ({
+                      ...prev,
+                      toneMappingExposure: parseFloat(e.target.value),
+                    }));
+                  }}
+                />
+              </div>
+              <div>
+                <div>
+                  <span>투명도</span>
+                  <span style={{ fontSize: 10 }}>(opacity)</span> :{' '}
+                  {toneMapping.opacity ?? 0}{' '}
+                  <button
+                    style={{ fontSize: 11 }}
+                    onClick={() => {
+                      setToneMapping(prev => ({
+                        ...prev,
+                        opacity: 1,
+                      }));
+                    }}
+                  >
+                    초기화
+                  </button>
+                </div>
+                <input
+                  style={{ width: '100%' }}
+                  type="range"
+                  min={0}
+                  max={1}
+                  step={0.01}
+                  value={toneMapping.opacity ?? 0}
+                  onChange={e => {
+                    setToneMapping(prev => ({
+                      ...prev,
+                      opacity: parseFloat(e.target.value),
+                    }));
+                  }}
+                />
+              </div>
+            </div>
+          )}
+        </div>
       </div>
       {/* <div>
             <strong>Color Management</strong>
@@ -938,7 +1061,7 @@ const GeneralMaterialControl = () => {
               if (child instanceof THREE.Mesh) {
                 allMeshes.push(child);
               }
-            });
+            }, Layer.Model);
             allMeshes.forEach(mesh => {
               //@ts-ignore
               mesh.material.aoMapIntensity = parseFloat(e.target.value);
@@ -958,7 +1081,7 @@ const GeneralMaterialControl = () => {
               if (child instanceof THREE.Mesh) {
                 allMeshes.push(child);
               }
-            });
+            }, Layer.Model);
             allMeshes.forEach(mesh => {
               //@ts-ignore
               mesh.material.aoMapIntensity = parseFloat(e.target.value);
@@ -982,7 +1105,7 @@ const GeneralMaterialControl = () => {
               if (child instanceof THREE.Mesh) {
                 allMeshes.push(child);
               }
-            });
+            }, Layer.Model);
             allMeshes.forEach(mesh => {
               (mesh.material as THREE.MeshStandardMaterial).lightMapIntensity =
                 parseFloat(e.target.value);
@@ -1002,7 +1125,7 @@ const GeneralMaterialControl = () => {
               if (child instanceof THREE.Mesh) {
                 allMeshes.push(child);
               }
-            });
+            }, Layer.Model);
             allMeshes.forEach(mesh => {
               (mesh.material as THREE.MeshStandardMaterial).lightMapIntensity =
                 parseFloat(e.target.value);

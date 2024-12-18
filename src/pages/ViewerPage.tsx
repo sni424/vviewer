@@ -1,4 +1,4 @@
-import { useAtomValue, useSetAtom } from 'jotai';
+import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import CameraPanel from '../components/CameraPanel';
 import FloatingFrontView from '../components/canvas/FloatingFrontView';
 import FloatingTopView from '../components/canvas/FloatingTopView';
@@ -8,7 +8,12 @@ import MaterialPanelContainer from '../components/MaterialPanel';
 import MeshInfoPanel from '../components/MeshInfoPanel';
 import Modal from '../components/Modal';
 import ThePanel from '../components/ThePanel';
-import { loadHistoryAtom, modalAtom, threeExportsAtom } from '../scripts/atoms';
+import {
+  loadHistoryAtom,
+  modalAtom,
+  threeExportsAtom,
+  viewGridAtom,
+} from '../scripts/atoms';
 import useFiles from '../scripts/useFiles';
 import useModelDragAndDrop from '../scripts/useModelDragAndDrop';
 
@@ -134,9 +139,23 @@ const ControlPanel = () => {
   );
 };
 
+const ViewGrid = () => {
+  const [view, setView] = useAtom(viewGridAtom);
+  return (
+    <button
+      onClick={() => {
+        setView(prev => !prev);
+      }}
+    >
+      {view ? '그리드 끄기' : '그리드 켜기'}
+    </button>
+  );
+};
+
 const Views = () => {
   return (
     <div className="absolute bottom-2 right-2 flex flex-row gap-2 items-end ">
+      <ViewGrid></ViewGrid>
       <FloatingTopView></FloatingTopView>
       <FloatingFrontView></FloatingFrontView>
       <GizmoPanel></GizmoPanel>
@@ -150,7 +169,7 @@ const ViewerPage = () => {
 
   return (
     <div
-      className="fullscreen flex relative"
+      className="fullscreen flex relative text-xs"
       style={{
         cursor: isDragging ? 'copy' : 'auto',
       }}

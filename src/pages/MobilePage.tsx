@@ -5,12 +5,7 @@ import MobileRenderer from '../components/mobile/MobileRenderer';
 
 function MobilePage() {
   return (
-    <div
-      style={{
-        width: '100dvw',
-        height: '100dvh',
-      }}
-    >
+    <div className="w-dvw h-dvh text-xs">
       <MobileRenderer></MobileRenderer>
       <MobileBenchmarkPanel></MobileBenchmarkPanel>
       <MobileControlPanel></MobileControlPanel>
