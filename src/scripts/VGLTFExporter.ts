@@ -63,6 +63,15 @@ export default class VGLTFExporter extends GLTFExporter {
     super.parse(cloned, onDone, onError, options);
   }
 
+  parseAsync(
+    input: THREE.Object3D | THREE.Object3D[],
+    options?: GLTFExporterOptions,
+  ): Promise<ArrayBuffer | { [key: string]: any }> {
+    return new Promise((resolve, reject) => {
+      this.parse(input, resolve, reject, options);
+    });
+  }
+
   /**
    * OnBeforeParse
    * Material 내에 lightMap 이 있을 경우, 해당 lightMap 을 emissive 에 넣어서 할당
@@ -75,6 +84,9 @@ export default class VGLTFExporter extends GLTFExporter {
         const mesh = object as THREE.Mesh;
         const material = mesh.material as THREE.MeshStandardMaterial;
 
+        if (material.lightMap) {
+          console.log('lightMapToEmissive : ', mesh, material);
+        }
         // 이미 매핑 됐으면 패스
         if (!material.userData.isEmissiveLightMap && material.lightMap) {
           const clonedMat = material.clone();

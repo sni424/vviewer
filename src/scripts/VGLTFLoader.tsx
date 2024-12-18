@@ -38,6 +38,7 @@ export default class VGLTFLoader extends GLTFLoader {
         if ('isMesh' in object) {
           const mesh = object as THREE.Mesh;
           const material = mesh.material as THREE.MeshStandardMaterial;
+          console.log('onLoad : ', mesh, material);
           if (material.userData.isEmissiveLightMap) {
             const emissiveMap = material.emissiveMap;
             if (emissiveMap) {
@@ -48,6 +49,7 @@ export default class VGLTFLoader extends GLTFLoader {
               material.lightMap = emissiveMap.clone();
               material.lightMapIntensity = material.userData.lightMapIntensity;
               material.emissiveMap = null;
+              material.aoMap = null;
               material.needsUpdate = true;
             }
           }
