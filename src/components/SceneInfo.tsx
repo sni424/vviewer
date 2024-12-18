@@ -8,6 +8,7 @@ import {
   isTransformControlOrChild,
   loadLatest,
   loadScene,
+  resetGL,
   saveScene,
   toNthDigit,
 } from '../scripts/utils';
@@ -39,7 +40,12 @@ import {
 } from '../scripts/postprocess/PostProcessUtils.ts';
 import useFilelist from '../scripts/useFilelist';
 import VGLTFExporter from '../scripts/VGLTFExporter.ts';
-import { Quaternion, THREE, Vector3 } from '../scripts/VTHREE';
+import {
+  LightmapImageContrast,
+  Quaternion,
+  THREE,
+  Vector3,
+} from '../scripts/VTHREE';
 import UploadPage from './UploadModal';
 
 const useEnvUrl = () => {
@@ -463,6 +469,8 @@ const GeneralSceneInfo = () => {
 };
 
 const GeneralPostProcessingControl = () => {
+  const threeExports = useAtomValue(threeExportsAtom);
+
   const [brightnessContrast, setGlobalContrast] = useAtom(
     globalBrightnessContrastAtom,
   );
@@ -483,6 +491,14 @@ const GeneralPostProcessingControl = () => {
   const [toneMapping, setToneMapping] = useAtom(globalToneMappingAtom);
   const [hueSaturation, setHueSaturation] = useAtom(globalHueSaturationAtom);
   const [lut, setLut] = useAtom(globalLUTAtom);
+  const [lmContrastOn, setLmContrastOn] = useState(LightmapImageContrast.on);
+  const [lmContrastValue, setLmContrastValue] = useState(
+    LightmapImageContrast.value,
+  );
+
+  if (!threeExports) {
+    return null;
+  }
 
   return (
     <section
@@ -572,6 +588,38 @@ const GeneralPostProcessingControl = () => {
         )}
       </div>
       {/* Saturation Control */}
+      <div>
+        <strong>라이트맵 이미지 대비</strong>
+        <input
+          type="checkbox"
+          checked={lmContrastOn}
+          onChange={e => {
+            if (!threeExports) {
+              return;
+            }
+            setLmContrastOn(e.target.checked);
+            LightmapImageContrast.on = e.target.checked;
+            resetGL(threeExports);
+          }}
+        />
+        {lmContrastOn && (
+          <input
+            type="range"
+            min={LightmapImageContrast.min}
+            max={LightmapImageContrast.max}
+            step={LightmapImageContrast.step}
+            onChange={e => {
+              if (!threeExports) {
+                return;
+              }
+              setLmContrastValue(parseFloat(e.target.value));
+              LightmapImageContrast.value = parseFloat(e.target.value);
+              resetGL(threeExports);
+            }}
+            value={lmContrastValue}
+          ></input>
+        )}
+      </div>
       <div>
         <strong>새츄레이션보기</strong>
         <input

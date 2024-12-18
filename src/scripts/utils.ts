@@ -104,16 +104,18 @@ export const getIntersects = (
 
   const dstObjects = filterUserdataIgnoreRaycast
     ? scene.children.filter(
-        obj =>
-          !obj.getUserData().ignoreRaycast &&
-          !obj.isTransformControl() &&
-          !obj.isBoxHelper(),
-      )
+      obj =>
+        !obj.getUserData().ignoreRaycast
+    )
     : scene.children;
-  const intersects = raycaster.intersectObjects(
-    dstObjects,
+  const defaultFilteredObjects = dstObjects.filter(obj =>
+    !obj.isTransformControl() &&
+    !obj.isBoxHelper()
+  )
+  const intersects = (raycaster.intersectObjects(
+    defaultFilteredObjects,
     true,
-  ) as THREE.Intersection[];
+  ) as THREE.Intersection[]).filter(intersect => intersect.object.visible && intersect.object.isParentVisible());
 
   const mesh = intersects.filter(
     obj => obj.object.type === 'Mesh',
@@ -239,7 +241,7 @@ export const loadLatest = async ({
   threeExports: RootState;
   addBenchmark?: (key: keyof BenchMark, value?: number) => void;
 }) => {
-  const addBenchmark = _addBenchmark ?? (() => {});
+  const addBenchmark = _addBenchmark ?? (() => { });
 
   const latestHashUrl = import.meta.env.VITE_LATEST_HASH;
   const latestUrl = import.meta.env.VITE_LATEST;
@@ -639,3 +641,19 @@ export const setAsModel = (object: THREE.Object3D) => {
   object.children.forEach(setAsModel);
   return object;
 };
+
+
+export const resetGL = (threeExports?: RootState) => {
+  if (!threeExports) {
+    return;
+  }
+  const { gl, scene, camera } = threeExports;
+  if (!gl || !gl.info || !gl.info.programs) {
+    return;
+  }
+  scene.traverse((object: THREE.Object3D) => {
+    if ((object as { material?: THREE.Material }).material) gl.properties.remove((object as THREE.Mesh).material)
+  })
+  gl.info.programs.length = 0
+  gl.compile(scene, camera)
+}

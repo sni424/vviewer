@@ -68,6 +68,26 @@ const RecursiveNode = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const [scrollTo, setScrollTo] = useAtom(treeScrollToAtom);
   const scrollToThis = Boolean(scrollTo) && scrollTo === data.uuid;
+  const thisSelected = selecteds.includes(data.uuid);
+
+  const [hidden, setHidden] = useState(data.visible ? false : true);
+  const toggleHide = () => {
+    if (threeExports) {
+      setHidden(!hidden);
+      data.visible = hidden;
+      const { gl, scene, camera } = threeExports;
+      gl.render(scene, camera);
+    }
+  };
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    console.log('here', thisSelected);
+    if (e.key.toLowerCase() === 'h') {
+      // hide
+      if (thisSelected) {
+        toggleHide();
+      }
+    }
+  };
 
   const type = data.type as
     | 'Scene'
@@ -80,7 +100,6 @@ const RecursiveNode = ({
     ['Scene', 'Object3D', 'Group'].includes(type) ? true : false,
   );
   const openable = type === 'Group' || type === 'Object3D' || type === 'Mesh';
-  const [hidden, setHidden] = useState(data.visible ? false : true);
 
   useEffect(() => {
     if (!scrollTo || !containerRef.current) {
@@ -108,8 +127,6 @@ const RecursiveNode = ({
   if (!data.layers.isEnabled(Layer.Model)) {
     return null;
   }
-
-  const thisSelected = selecteds.includes(data.uuid);
 
   // 자식 중에 선택된 것이 있는지 확인
   // 비싼 재귀지만 개발단이니 진행
@@ -155,6 +172,7 @@ const RecursiveNode = ({
 
   return (
     <div
+      onKeyDown={handleKeyDown}
       ref={containerRef}
       style={{
         width: '100%',
@@ -219,8 +237,6 @@ const RecursiveNode = ({
               textAlign: 'left',
             }}
             onClick={e => {
-              console.log(data);
-              // console.log(data.type, data.name, data.uuid)
               if (e.ctrlKey) {
                 if (selecteds.includes(data.uuid)) {
                   setSelecteds(selecteds.filter(uuid => uuid !== data.uuid));
@@ -255,14 +271,7 @@ const RecursiveNode = ({
               textAlign: 'center',
               display: 'inline-block',
             }}
-            onClick={() => {
-              if (threeExports) {
-                setHidden(!hidden);
-                data.visible = hidden;
-                const { gl, scene, camera } = threeExports;
-                gl.render(scene, camera);
-              }
-            }}
+            onClick={toggleHide}
           >
             {hidden ? '보이기' : '숨기기'}
           </div>
