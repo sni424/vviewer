@@ -147,12 +147,9 @@ const useModelDragAndDrop = () => {
         }
       }
       // Filter files by .gltf and .glb extensions
-      const filteredFiles = files.filter(file => {
-        console.log('file : ', file);
-        return acceptedExtensions.some(ext =>
-          file.name.toLowerCase().endsWith(ext),
-        );
-      });
+      const filteredFiles = files.filter(file =>
+        acceptedExtensions.some(ext => file.name.toLowerCase().endsWith(ext)),
+      );
 
       if (filteredFiles.length === 0) {
         alert('Only .gltf and .glb, .json, .png files are accepted.');
