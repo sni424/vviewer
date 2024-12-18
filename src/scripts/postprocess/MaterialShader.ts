@@ -2,35 +2,41 @@ import * as THREE from 'three';
 
 export class LightmapImageContrast {
   static min = -0.5;
-  static max = 5.5;
-  static step = 0.005;
+  static max = 5;
+  static step = 0.05;
   static on = false;
-  static value = 0.0;
+  static value = 1.0;
+  static k = 2.0;
 }
 
 declare module 'three' {
-
   interface Material {
-    onBeforeCompile: (parameters: THREE.WebGLProgramParametersWithUniforms, renderer: THREE.WebGLRenderer) => void;
+    onBeforeCompile: (
+      parameters: THREE.WebGLProgramParametersWithUniforms,
+      renderer: THREE.WebGLRenderer,
+    ) => void;
   }
 }
 
 const _prevMaterial_onBeforeCompile = THREE.Material.prototype.onBeforeCompile;
-THREE.Material.prototype.onBeforeCompile = function (parameters: THREE.WebGLProgramParametersWithUniforms, renderer: THREE.WebGLRenderer) {
+THREE.Material.prototype.onBeforeCompile = function (
+  parameters: THREE.WebGLProgramParametersWithUniforms,
+  renderer: THREE.WebGLRenderer,
+) {
   _prevMaterial_onBeforeCompile(parameters, renderer);
-
 
   // if (!parameters.uniforms.lmContrastOn) {
   parameters.uniforms = {
     ...parameters.uniforms,
-    lmContrastOn: new THREE.Uniform(LightmapImageContrast.on)
-  }
+    lmContrastOn: new THREE.Uniform(LightmapImageContrast.on),
+  };
   // }
   // if (!parameters.uniforms.lmContrastValue) {
   parameters.uniforms = {
     ...parameters.uniforms,
-    lmContrastValue: new THREE.Uniform(LightmapImageContrast.value)
-  }
+    lmContrastValue: new THREE.Uniform(LightmapImageContrast.value),
+    lmContrastK: new THREE.Uniform(LightmapImageContrast.k),
+  };
 
   if (!LightmapImageContrast.on) {
     return;
@@ -88,13 +94,16 @@ void main() {
 }"
    */
 
-  const targetHead = "void main() {";
-  const contentHead = /*glsl */`
+  const targetHead = 'void main() {';
+  const contentHead = /*glsl */ `
   #ifndef USE_LIGHTMAP_CONTRAST
   #define USE_LIGHTMAP_CONTRAST
   uniform bool lmContrastOn;
   uniform float lmContrastValue;
+  uniform float lmContrastK;
   #endif
+  
+  // 불변 상수 계산
 
   vec3 applyGammaCorrection(vec3 color, vec3 gammaFactor) {
     return pow(color, gammaFactor);
@@ -104,29 +113,77 @@ void main() {
     vec3 corrected = pow(color, vec3(gammaFactor));
     return dot(corrected, vec3(0.2126, 0.7152, 0.0722));
   }
+  
+  float S_k_t(float x, float k, float t, float r) {
+    // x를 지수로 조정
+    float x_exp = pow(x, t); // x^(log2 / logt)
+
+    // 중간값 계산
+    float term = x_exp - 1.0; // 나눗셈 병합
+    float denominatorInv = 1.0 / (1.0 + pow(term, k)); // 역수 미리 계산
+
+    // 최종 결과: 나눗셈 대신 곱셈
+    return (1.0 - r) * denominatorInv + r;
+  }
 
   vec3 adjustContrast(vec3 color, float contrastFactor) {
       // Apply gamma correction to linearize color
       float gammaFactor = 2.2;
-      float standard = 0.5;
+      float standard = 0.5; // 기준값 (수식에서 t)
+      float t = log(2.0) / log(standard);
+      float k = 4.0; // 곡률
+      float r = 0.5; // 명도 스케일링 상수
 
       color = applyGammaCorrection(color, vec3(gammaFactor)); // Assuming sRGB
       
       // Decompose into reflectance and illumination (simplified Retinex-inspired method)
       float intensity = dot(color, vec3(0.2126, 0.7152, 0.0722)); // Luminance
       // float intensity = dot(color, vec3(1.0, 1.0, 1.0)); // Luminance
+      
+      float adjustedIntensity = S_k_t(intensity, k, t, r);
+      
       vec3 reflectance = color / (intensity + 0.0001);
       
       // Adjust contrast of reflectance
       reflectance = (reflectance - standard) * contrastFactor + standard;
       
       // Recombine with original intensity
-      vec3 adjustedColor = reflectance * intensity * intensity; // 제곱
+      // vec3 adjustedColor = reflectance * intensity * intensity; // 제곱
+      vec3 adjustedColor = reflectance * adjustedIntensity;
       
       // Apply inverse gamma correction to return to sRGB
       adjustedColor = applyGammaCorrection(adjustedColor, vec3(1.0 / gammaFactor));
       
       return adjustedColor;
+  }
+  
+  vec3 adjustContrast4(vec3 color, float contrastFactor, float k) {
+    // 감마 보정 적용 (선형화)
+    float gammaFactor = 2.2;
+    float standard = 0.5; // 기준값 (수식에서 t)
+    float t = log(2.0) / log(standard);
+    float r = 0.5; // 명도 스케일링 상수
+    color = applyGammaCorrection(color, vec3(gammaFactor)); // Assuming sRGB
+
+    // 명도 계산 (Luminance)
+    float intensity = dot(color, vec3(0.2126, 0.7152, 0.0722));
+
+    // 비선형 명도 강조: S_k_t 함수 적용
+    float adjustedIntensity = S_k_t(intensity, k, t, r);
+
+    // 명도 대비 조절: 비선형 대비 적용
+    adjustedIntensity = pow(adjustedIntensity, contrastFactor);
+
+    // Reflectance 계산 (색상과 명도 분리)
+    vec3 reflectance = color / (intensity + 0.0001);
+
+    // 새로운 명도를 반영
+    vec3 adjustedColor = reflectance * adjustedIntensity * adjustedIntensity;
+
+    // 감마 역보정 (sRGB로 복귀)
+    adjustedColor = applyGammaCorrection(adjustedColor, vec3(1.0 / gammaFactor));
+
+    return adjustedColor;
   }
 
   vec3 adjustContrast2(vec3 color) {
@@ -167,17 +224,20 @@ void main() {
   }
 
   void main() {`;
-  parameters.fragmentShader = parameters.fragmentShader.replace(targetHead, contentHead);
+  parameters.fragmentShader = parameters.fragmentShader.replace(
+    targetHead,
+    contentHead,
+  );
 
   const targetBody = `#include <lights_fragment_maps>`;
-  const contentBody = /*glsl */`
+  const contentBody = /*glsl */ `
 
   #if defined( RE_IndirectDiffuse )
 
 	#ifdef USE_LIGHTMAP
 
 		vec4 lightMapTexel = texture2D( lightMap, vLightMapUv );
-    vec3 lmcolor = adjustContrast(lightMapTexel.rgb, lmContrastValue);
+    vec3 lmcolor = adjustContrast4(lightMapTexel.rgb, lmContrastValue, lmContrastK);
 
     
 		vec3 lightMapIrradiance = lmcolor * lightMapIntensity;
@@ -217,7 +277,10 @@ void main() {
 
 #endif
   `;
-  parameters.fragmentShader = parameters.fragmentShader.replace(targetBody, contentBody);
+  parameters.fragmentShader = parameters.fragmentShader.replace(
+    targetBody,
+    contentBody,
+  );
   // console.log(parameters.fragmentShader)
   // console.log("Mat onBeforeCompile");
-}
+};
