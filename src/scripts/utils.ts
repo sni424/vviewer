@@ -115,7 +115,7 @@ export const getIntersects = (
   const intersects = (raycaster.intersectObjects(
     defaultFilteredObjects,
     true,
-  ) as THREE.Intersection[]).filter(intersect => intersect.object.visible);
+  ) as THREE.Intersection[]).filter(intersect => intersect.object.visible && intersect.object.isParentVisible());
 
   const mesh = intersects.filter(
     obj => obj.object.type === 'Mesh',

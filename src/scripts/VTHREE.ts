@@ -77,6 +77,13 @@ declare module 'three' {
     isBoxHelper(): boolean;
     isXYZGizmo(): boolean;
     isTransformControl(): boolean;
+
+    traverseParent(...params: Parameters<Object3D["traverseAncestors"]>): ReturnType<Object3D["traverseAncestors"]>;
+
+    isParentVisible(): boolean;
+
+    // 자신을 포함한 모든 자식들
+    all<T = Object3D>(includeSelf?: boolean): T[];
   }
 
   interface Camera {
@@ -164,6 +171,26 @@ THREE.Object3D.prototype.setUserData = function (
   }
 
   return this;
+};
+
+THREE.Object3D.prototype.all = function <T = THREE.Object3D>(includeSelf = false) {
+  const result = includeSelf ? [this] : [];
+  this.traverse((node) => {
+    result.push(node);
+  });
+  return result as T[];
+}
+
+THREE.Object3D.prototype.traverseParent = THREE.Object3D.prototype.traverseAncestors;
+
+THREE.Object3D.prototype.isParentVisible = function () {
+  let visibility = true;
+  this.traverseParent((node) => {
+    if (node.visible === false) {
+      visibility = false;
+    }
+  });
+  return visibility;
 };
 
 THREE.Vector3.prototype.screenPosition = function (camera) {
@@ -384,3 +411,4 @@ window.setThree = (view: View, state: RootState) => {
 window.getThree = (view: View = View.Shared) => {
   return window.threeStore[view];
 };
+

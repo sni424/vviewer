@@ -219,8 +219,6 @@ const RecursiveNode = ({
               textAlign: 'left',
             }}
             onClick={e => {
-              console.log(data);
-              // console.log(data.type, data.name, data.uuid)
               if (e.ctrlKey) {
                 if (selecteds.includes(data.uuid)) {
                   setSelecteds(selecteds.filter(uuid => uuid !== data.uuid));
