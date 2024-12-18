@@ -715,44 +715,41 @@ export const readDirectory = async (
   directoryEntry: FileSystemDirectoryEntry,
   acceptedExtensions: string[],
 ) => {
+  console.log('Reading directory:', directoryEntry.name);
+
   const reader = directoryEntry.createReader();
-  return new Promise<File[]>((resolve, reject) => {
-    const entries: File[] = [];
+  const entries: File[] = [];
 
-    const readEntries = () => {
-      reader.readEntries(
-        async results => {
-          if (results.length === 0) {
-            resolve(entries);
-          } else {
-            for (const entry of results) {
-              if (entry.isFile) {
-                const file = await new Promise<File | null>((res, rej) => {
-                  (entry as FileSystemFileEntry).file(f => res(f), rej);
-                });
-                if (
-                  file &&
-                  acceptedExtensions.some(ext =>
-                    file.name.toLowerCase().endsWith(ext),
-                  )
-                ) {
-                  entries.push(file);
-                }
-              } else if (entry.isDirectory) {
-                const nestedFiles = await readDirectory(
-                  entry as FileSystemDirectoryEntry,
-                  acceptedExtensions,
-                );
-                entries.push(...nestedFiles);
-              }
-            }
-            readEntries();
-          }
-        },
-        error => reject(error),
-      );
-    };
+  const readEntries = async (): Promise<void> => {
+    const results = await new Promise<FileSystemEntry[]>((resolve, reject) =>
+      reader.readEntries(resolve, reject),
+    );
 
-    readEntries();
-  });
+    if (results.length === 0) return;
+
+    for (const entry of results) {
+      if (entry.isFile) {
+        const file = await new Promise<File | null>((res, rej) =>
+          (entry as FileSystemFileEntry).file(res, rej),
+        );
+        if (
+          file &&
+          acceptedExtensions.some(ext => file.name.toLowerCase().endsWith(ext))
+        ) {
+          entries.push(file);
+        }
+      } else if (entry.isDirectory) {
+        const nestedFiles = await readDirectory(
+          entry as FileSystemDirectoryEntry,
+          acceptedExtensions,
+        );
+        entries.push(...nestedFiles);
+      }
+    }
+
+    await readEntries(); // 계속해서 읽기
+  };
+
+  await readEntries();
+  return entries;
 };

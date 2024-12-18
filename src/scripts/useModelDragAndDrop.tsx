@@ -120,15 +120,17 @@ const useModelDragAndDrop = () => {
 
     if (event.dataTransfer.items && event.dataTransfer.items.length > 0) {
       const acceptedExtensions = ['.gltf', '.glb', '.json', 'png'];
-      const items = Array.from(event.dataTransfer.items);
+      const items = Array.from(event.dataTransfer.items).map(item => ({
+        entry: item.webkitGetAsEntry?.(),
+        file: item.getAsFile(),
+      }));
 
       const files: File[] = [];
 
       for (const item of items) {
-        const entry = item.webkitGetAsEntry?.();
+        const { entry, file } = item;
         if (entry) {
           if (entry.isFile) {
-            const file = item.getAsFile();
             if (
               file &&
               acceptedExtensions.some(ext =>
