@@ -43,3 +43,6 @@ export enum Layer {
   Selected = 12,
   ReflectionBox = 13,
 }
+
+export const AOMAP_INTENSITY_MAX = 2 as const;
+export const LIGHTMAP_INTENSITY_MAX = 10 as const;

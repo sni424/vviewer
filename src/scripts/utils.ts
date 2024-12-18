@@ -103,19 +103,19 @@ export const getIntersects = (
   raycaster.setFromCamera(mouse, camera);
 
   const dstObjects = filterUserdataIgnoreRaycast
-    ? scene.children.filter(
-      obj =>
-        !obj.getUserData().ignoreRaycast
-    )
+    ? scene.children.filter(obj => !obj.getUserData().ignoreRaycast)
     : scene.children;
-  const defaultFilteredObjects = dstObjects.filter(obj =>
-    !obj.isTransformControl() &&
-    !obj.isBoxHelper()
-  )
-  const intersects = (raycaster.intersectObjects(
-    defaultFilteredObjects,
-    true,
-  ) as THREE.Intersection[]).filter(intersect => intersect.object.visible && intersect.object.isParentVisible());
+  const defaultFilteredObjects = dstObjects.filter(
+    obj => !obj.isTransformControl() && !obj.isBoxHelper(),
+  );
+  const intersects = (
+    raycaster.intersectObjects(
+      defaultFilteredObjects,
+      true,
+    ) as THREE.Intersection[]
+  ).filter(
+    intersect => intersect.object.visible && intersect.object.isParentVisible(),
+  );
 
   const mesh = intersects.filter(
     obj => obj.object.type === 'Mesh',
@@ -241,7 +241,7 @@ export const loadLatest = async ({
   threeExports: RootState;
   addBenchmark?: (key: keyof BenchMark, value?: number) => void;
 }) => {
-  const addBenchmark = _addBenchmark ?? (() => { });
+  const addBenchmark = _addBenchmark ?? (() => {});
 
   const latestHashUrl = import.meta.env.VITE_LATEST_HASH;
   const latestUrl = import.meta.env.VITE_LATEST;
@@ -693,4 +693,66 @@ export const setAsModel = (object: THREE.Object3D) => {
   object.layers.enable(Layer.Model);
   object.children.forEach(setAsModel);
   return object;
+};
+
+export const resetGL = (threeExports?: RootState) => {
+  if (!threeExports) {
+    return;
+  }
+  const { gl, scene, camera } = threeExports;
+  if (!gl || !gl.info || !gl.info.programs) {
+    return;
+  }
+  scene.traverse((object: THREE.Object3D) => {
+    if ((object as { material?: THREE.Material }).material)
+      gl.properties.remove((object as THREE.Mesh).material);
+  });
+  gl.info.programs.length = 0;
+  gl.compile(scene, camera);
+};
+
+export const readDirectory = async (
+  directoryEntry: FileSystemDirectoryEntry,
+  acceptedExtensions: string[],
+) => {
+  const reader = directoryEntry.createReader();
+  return new Promise<File[]>((resolve, reject) => {
+    const entries: File[] = [];
+
+    const readEntries = () => {
+      reader.readEntries(
+        async results => {
+          if (results.length === 0) {
+            resolve(entries);
+          } else {
+            for (const entry of results) {
+              if (entry.isFile) {
+                const file = await new Promise<File | null>((res, rej) => {
+                  (entry as FileSystemFileEntry).file(f => res(f), rej);
+                });
+                if (
+                  file &&
+                  acceptedExtensions.some(ext =>
+                    file.name.toLowerCase().endsWith(ext),
+                  )
+                ) {
+                  entries.push(file);
+                }
+              } else if (entry.isDirectory) {
+                const nestedFiles = await readDirectory(
+                  entry as FileSystemDirectoryEntry,
+                  acceptedExtensions,
+                );
+                entries.push(...nestedFiles);
+              }
+            }
+            readEntries();
+          }
+        },
+        error => reject(error),
+      );
+    };
+
+    readEntries();
+  });
 };

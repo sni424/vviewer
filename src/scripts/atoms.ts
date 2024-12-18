@@ -10,8 +10,9 @@ import {
   useSetAtom,
   WritableAtom,
 } from 'jotai';
-import { ToneMappingMode } from 'postprocessing';
+import { LookupTexture, ToneMappingMode } from 'postprocessing';
 import React from 'react';
+import { Texture } from 'three';
 import { OrbitControls } from 'three/examples/jsm/Addons.js';
 import {
   DEFAULT_COLOR_TEMPERATURE,
@@ -20,6 +21,7 @@ import {
 import { FileInfo, GLProps, View, ViewportOption } from '../types';
 import ReflectionProbe from './ReflectionProbe.ts';
 import { THREE, Vector3 } from './VTHREE';
+import { LUTPresets } from './postprocess/PostProcessUtils.ts';
 
 type AtomArgType<T> = T | ((prev: T) => T);
 export type Store = ReturnType<typeof createStore>;
@@ -47,10 +49,10 @@ export const createAtomCombo = <T = any>(
   initalValue?: T,
   store?: Store,
 ): [
-    WritableAtom<T, unknown[], unknown>,
-    () => T | undefined,
-    (arg: AtomArgType<T>) => void,
-  ] => {
+  WritableAtom<T, unknown[], unknown>,
+  () => T | undefined,
+  (arg: AtomArgType<T>) => void,
+] => {
   const dstStore = store ?? defaultStore;
   // @ts-ignore
   const theAtom = atom<T>(initalValue);
@@ -76,7 +78,13 @@ export const sourceAtom = atom<ModelSource[]>([]);
 export const loadHistoryAtom = atom<
   Map<
     string,
-    { name: string; start: number; end: number; file: File; uuid: string | null }
+    {
+      name: string;
+      start: number;
+      end: number;
+      file: File;
+      uuid: string | null;
+    }
   >
 >(new Map());
 export const threeExportsAtom = atom<RootState>();
@@ -85,16 +93,16 @@ export const oribitControlAtom = atom<OrbitControls>();
 export type Env = {
   select: 'none' | 'preset' | 'custom' | 'url';
   preset?:
-  | 'apartment'
-  | 'city'
-  | 'dawn'
-  | 'forest'
-  | 'lobby'
-  | 'night'
-  | 'park'
-  | 'studio'
-  | 'sunset'
-  | 'warehouse';
+    | 'apartment'
+    | 'city'
+    | 'dawn'
+    | 'forest'
+    | 'lobby'
+    | 'night'
+    | 'park'
+    | 'studio'
+    | 'sunset'
+    | 'warehouse';
   url?: string;
   intensity?: number;
   rotation?: {
@@ -241,6 +249,28 @@ export const globalToneMappingAtom = atom<{
 }>({
   on: false,
   ...DEFAULT_TONEMAPPING_VALUES,
+});
+
+export const globalHueSaturationAtom = atom<{
+  on: boolean;
+  hue: number;
+  saturation: number;
+}>({
+  on: false,
+  hue: 0,
+  saturation: 0,
+});
+
+export const globalLUTAtom = atom<{
+  on: boolean;
+  preset: LUTPresets;
+  texture: Texture;
+  useTetrahedralFilter: boolean;
+}>({
+  on: false,
+  preset: 'neutral-2',
+  texture: LookupTexture.createNeutral(2),
+  useTetrahedralFilter: false,
 });
 
 export const globalGlAtom = atom<GLProps>({
@@ -424,12 +454,11 @@ export const useViewportOption = (view: View = View.Shared) => {
   };
 };
 
-
 export const viewGridAtom = atom<boolean>(true);
 export const toggleGrid = (value?: boolean) => {
   if (value !== undefined) {
     setAtomValue(viewGridAtom, value);
   } else {
-    setAtomValue(viewGridAtom, (prev) => !prev);
+    setAtomValue(viewGridAtom, prev => !prev);
   }
-}
+};

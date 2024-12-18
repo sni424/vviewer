@@ -8,7 +8,7 @@ import {
   useModal,
 } from '../scripts/atoms';
 import { THREE } from '../scripts/VTHREE';
-import { setAsModel } from './utils';
+import { readDirectory, setAsModel } from './utils';
 
 const MapSelectModal = ({
   gltfs,
@@ -114,14 +114,38 @@ const useModelDragAndDrop = () => {
     setIsDragging(false);
   };
 
-  const handleDrop = (event: React.DragEvent<HTMLDivElement>) => {
+  const handleDrop = async (event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault();
     setIsDragging(false);
 
-    if (event.dataTransfer.files && event.dataTransfer.files.length > 0) {
+    if (event.dataTransfer.items && event.dataTransfer.items.length > 0) {
       const acceptedExtensions = ['.gltf', '.glb', '.json', 'png'];
-      const files = Array.from(event.dataTransfer.files);
+      const items = Array.from(event.dataTransfer.items);
 
+      const files: File[] = [];
+
+      for (const item of items) {
+        const entry = item.webkitGetAsEntry?.();
+        if (entry) {
+          if (entry.isFile) {
+            const file = item.getAsFile();
+            if (
+              file &&
+              acceptedExtensions.some(ext =>
+                file.name.toLowerCase().endsWith(ext),
+              )
+            ) {
+              files.push(file);
+            }
+          } else if (entry.isDirectory) {
+            const directoryFiles = await readDirectory(
+              entry as FileSystemDirectoryEntry,
+              acceptedExtensions,
+            );
+            files.push(...directoryFiles);
+          }
+        }
+      }
       // Filter files by .gltf and .glb extensions
       const filteredFiles = files.filter(file =>
         acceptedExtensions.some(ext => file.name.toLowerCase().endsWith(ext)),
@@ -173,9 +197,32 @@ const useModelDragAndDrop = () => {
 
       // 2. 모델 + 이미지
       if (hasMaps) {
-        openModal(props => (
-          <MapSelectModal {...props} gltfs={gltfs} inputMaps={inputMaps} />
-        ));
+        const fileUrls = gltfs.map(file => {
+          const retval: ModelSource = {
+            name: file.name,
+            url: URL.createObjectURL(file),
+            file,
+            map: undefined as File | undefined,
+          };
+          const filenameWithoutExtension = file.name.split('.')[0];
+          // 모델명_Lightmap.png인 경우도 있고 모델명.png인 경우도 있다
+          const map = inputMaps.find(lightmap => {
+            const lightmapeName = lightmap.name.split('.')[0];
+            return (
+              filenameWithoutExtension === lightmapeName ||
+              filenameWithoutExtension + '_Lightmap' === lightmapeName
+            );
+          });
+          if (map) {
+            retval.map = map;
+            retval.mapDst = 'lightmap';
+          }
+          return retval;
+        });
+        setSourceUrls(fileUrls);
+        // openModal(props => (
+        //   <MapSelectModal {...props} gltfs={gltfs} inputMaps={inputMaps} />
+        // ));
       } else {
         // 3. 모델만
         const fileUrls = gltfs.map(file => ({
