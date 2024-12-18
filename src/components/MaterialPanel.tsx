@@ -1,5 +1,6 @@
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import React, { useEffect, useState } from 'react';
+import { AOMAP_INTENSITY_MAX, LIGHTMAP_INTENSITY_MAX } from '../Constants';
 import {
   materialSelectedAtom,
   selectedAtom,
@@ -333,7 +334,7 @@ const MapSection = ({ mat }: { mat: THREE.MeshStandardMaterial }) => {
                 mat.lightMapIntensity = value;
                 mat.needsUpdate = true;
               },
-              max: 10,
+              max: LIGHTMAP_INTENSITY_MAX,
             }}
           ></MapInfo>
 
@@ -373,6 +374,7 @@ const MapSection = ({ mat }: { mat: THREE.MeshStandardMaterial }) => {
                 mat.aoMapIntensity = value;
                 mat.needsUpdate = true;
               },
+              max: AOMAP_INTENSITY_MAX,
             }}
           ></MapInfo>
           <MapInfo
