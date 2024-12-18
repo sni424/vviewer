@@ -303,13 +303,13 @@ const defaultSceneFilter = (node: THREE.Object3D) => {
   if (node.isBoxHelper()) {
     return false;
   }
-  if (node.layers.mask & Layer.Selected) {
+  if (node.layers.isEnabled(Layer.Selected)) {
     return false;
   }
-  if (node.layers.mask & Layer.GizmoHelper) {
+  if (node.layers.isEnabled(Layer.GizmoHelper)) {
     return false;
   }
-  if (node.layers.mask & Layer.ReflectionBox) {
+  if (node.layers.isEnabled(Layer.ReflectionBox)) {
     return false;
   }
   return true;
