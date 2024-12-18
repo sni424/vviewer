@@ -261,7 +261,7 @@ const CameraManager: React.FC<UnifiedCameraControlsProps> = ({
       }
     };
     //마우스 클릭 땠을때 이벤트
-    const handleMouseUp = (): void => {
+    const handleMouseUp = (event: MouseEvent): void => {
       if (!oribitControl?.enabled) {
         //회전 멈춤
         isRotateRef.current = false;
@@ -294,10 +294,16 @@ const CameraManager: React.FC<UnifiedCameraControlsProps> = ({
       }
     };
 
+    //컨텍스트 메뉴가 나오면서 다른 이벤트들이 안먹는 이슈 방지지
+    const handleContextMenu = (event: MouseEvent): void => {
+      event.preventDefault(); // 기본 컨텍스트 메뉴 방지
+    };
+
     element.addEventListener('mousedown', handleMouseDown);
     element.addEventListener('mousemove', handleMouseMove);
     element.addEventListener('mouseup', handleMouseUp);
     element.addEventListener('touchend', handleTouchEnd);
+    window.addEventListener('contextmenu', handleContextMenu);
 
     return () => {
       if (element) {
@@ -305,6 +311,7 @@ const CameraManager: React.FC<UnifiedCameraControlsProps> = ({
         element.removeEventListener('mousemove', handleMouseMove);
         element.removeEventListener('mouseup', handleMouseUp);
         element.removeEventListener('touchend', handleTouchEnd);
+        window.removeEventListener('contextmenu', handleContextMenu);
       }
     };
   }, [oribitControl, cameraSetting.isoView]);
@@ -315,6 +322,7 @@ const CameraManager: React.FC<UnifiedCameraControlsProps> = ({
       setCameraAction(true);
     };
     const handleKeyUp = (event: KeyboardEvent): void => {
+      console.log('안녕');
       activeKeys.current.delete(event.key.toLowerCase());
       if (activeKeys.current.size === 0) setCameraAction(false);
     };
