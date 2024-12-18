@@ -55,6 +55,7 @@ export default class VGLTFLoader extends GLTFLoader {
       });
       onLoad(gltf);
     }
+
     super.parse(data, path, customOnLoad, onError);
   }
 }

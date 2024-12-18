@@ -2,18 +2,24 @@ import {
   BrightnessContrast,
   EffectComposer,
   HueSaturation,
+  LUT,
   ToneMapping,
 } from '@react-three/postprocessing';
-import { useAtomValue } from 'jotai';
+import { useAtom, useAtomValue } from 'jotai';
 import { BlendFunction, BlendMode } from 'postprocessing';
 import { useEffect, useRef } from 'react';
 import {
   globalBrightnessContrastAtom,
   globalColorManagementAtom,
   globalHueSaturationAtom,
+  globalLUTAtom,
   globalSaturationCheckAtom,
   globalToneMappingAtom,
 } from '../../scripts/atoms';
+import {
+  getLUTTexture,
+  LUTPresets,
+} from '../../scripts/postprocess/PostProcessUtils.ts';
 import GlobalSaturationCheck from './GlobalSaturationCheck';
 
 const BrightnessContrastEffect = () => {
@@ -87,6 +93,35 @@ const GlobalHueSaturationEffect = () => {
   );
 };
 
+const GlobalLUTEffect = () => {
+  const [{ on, preset, texture, useTetrahedralFilter }, setLut] =
+    useAtom(globalLUTAtom);
+
+  useEffect(() => {
+    console.log('presetChanged : ', preset);
+    updateTexture(preset);
+  }, [preset]);
+
+  if (!on) {
+    return null;
+  }
+
+  async function updateTexture(preset: LUTPresets) {
+    const texture = await getLUTTexture(preset);
+    if (texture) {
+      setLut(pre => ({ ...pre, texture }));
+    }
+  }
+
+  return (
+    <>
+      {texture && (
+        <LUT lut={texture} tetrahedralInterpolation={useTetrahedralFilter} />
+      )}
+    </>
+  );
+};
+
 function PostProcess() {
   // 각 컴포넌트 안에서 값만 바뀐다고 리렌더링되지 않음, 그냥 각 값이 바뀔 때 EffectComposer을 강제 리렌더링
   const _gbc = useAtomValue(globalBrightnessContrastAtom);
@@ -94,6 +129,7 @@ function PostProcess() {
   const _gcm = useAtomValue(globalColorManagementAtom);
   const _gtm = useAtomValue(globalToneMappingAtom);
   const _gsh = useAtomValue(globalHueSaturationAtom);
+  const _glut = useAtomValue(globalLUTAtom);
   // console.log(_gcm.value)
 
   return (
@@ -102,6 +138,7 @@ function PostProcess() {
       {/* <GlobalColorManagement></GlobalColorManagement> */}
       <GlobalToneMappingEffect></GlobalToneMappingEffect>
       <GlobalHueSaturationEffect></GlobalHueSaturationEffect>
+      <GlobalLUTEffect></GlobalLUTEffect>
       <GlobalSaturationCheck></GlobalSaturationCheck>
     </EffectComposer>
   );

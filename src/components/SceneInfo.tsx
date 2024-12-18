@@ -25,6 +25,7 @@ import {
   globalColorTemperatureAtom,
   globalGlAtom,
   globalHueSaturationAtom,
+  globalLUTAtom,
   globalSaturationCheckAtom,
   globalToneMappingAtom,
   selectedAtom,
@@ -32,6 +33,10 @@ import {
   useEnvParams,
   useModal,
 } from '../scripts/atoms';
+import {
+  getLUTTexture,
+  LUTPresets,
+} from '../scripts/postprocess/PostProcessUtils.ts';
 import useFilelist from '../scripts/useFilelist';
 import VGLTFExporter from '../scripts/VGLTFExporter.ts';
 import { Quaternion, THREE, Vector3 } from '../scripts/VTHREE';
@@ -321,6 +326,13 @@ const GeneralButtons = () => {
       >
         업로드한 씬 불러오기
       </button>
+      <button
+        onClick={() => {
+          getLUTTexture('neutral-8');
+        }}
+      >
+        테스트
+      </button>
     </section>
   );
 };
@@ -470,6 +482,7 @@ const GeneralPostProcessingControl = () => {
   const [glSetting, setGlSetting] = useAtom(globalGlAtom);
   const [toneMapping, setToneMapping] = useAtom(globalToneMappingAtom);
   const [hueSaturation, setHueSaturation] = useAtom(globalHueSaturationAtom);
+  const [lut, setLut] = useAtom(globalLUTAtom);
 
   return (
     <section
@@ -680,6 +693,7 @@ const GeneralPostProcessingControl = () => {
           </div>
         )}
       </div>
+      {/* HueSaturation */}
       <div>
         <div>
           <strong>HueSaturation</strong>
@@ -754,6 +768,59 @@ const GeneralPostProcessingControl = () => {
                   setHueSaturation(prev => ({
                     ...prev,
                     saturation: parseFloat(e.target.value),
+                  }));
+                }}
+              />
+            </div>
+          </>
+        )}
+      </div>
+      <div>
+        <div>
+          <strong>LUT</strong>
+          <input
+            type="checkbox"
+            checked={lut.on}
+            onChange={e => {
+              setLut(pre => ({
+                ...pre,
+                on: e.target.checked,
+              }));
+            }}
+          />
+        </div>
+        {lut.on && (
+          <>
+            <div style={{ display: 'flex' }}>
+              <span>PRESET: </span>
+              <select
+                value={lut.preset}
+                onChange={e => {
+                  console.log(e.target.value);
+                  //@ts-ignore
+                  setLut(prev => ({
+                    ...prev,
+                    //@ts-ignore
+                    preset: e.target.value,
+                  }));
+                }}
+              >
+                {LUTPresets.map(preset => (
+                  <option value={preset}>{preset}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <span style={{ fontSize: 12, marginRight: 4 }}>
+                tetrahedral interpolation
+              </span>
+              <input
+                type="checkbox"
+                checked={lut.useTetrahedralFilter}
+                onChange={e => {
+                  setLut(pre => ({
+                    ...pre,
+                    useTetrahedralFilter: e.target.checked,
                   }));
                 }}
               />

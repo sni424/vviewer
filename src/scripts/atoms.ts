@@ -10,8 +10,9 @@ import {
   useSetAtom,
   WritableAtom,
 } from 'jotai';
-import { ToneMappingMode } from 'postprocessing';
+import { LookupTexture, ToneMappingMode } from 'postprocessing';
 import React from 'react';
+import { Texture } from 'three';
 import { OrbitControls } from 'three/examples/jsm/Addons.js';
 import {
   DEFAULT_COLOR_TEMPERATURE,
@@ -20,6 +21,7 @@ import {
 import { FileInfo, GLProps, View, ViewportOption } from '../types';
 import ReflectionProbe from './ReflectionProbe.ts';
 import { THREE, Vector3 } from './VTHREE';
+import { LUTPresets } from './postprocess/PostProcessUtils.ts';
 
 type AtomArgType<T> = T | ((prev: T) => T);
 export type Store = ReturnType<typeof createStore>;
@@ -257,6 +259,18 @@ export const globalHueSaturationAtom = atom<{
   on: false,
   hue: 0,
   saturation: 0,
+});
+
+export const globalLUTAtom = atom<{
+  on: boolean;
+  preset: LUTPresets;
+  texture: Texture;
+  useTetrahedralFilter: boolean;
+}>({
+  on: false,
+  preset: 'neutral-2',
+  texture: LookupTexture.createNeutral(2),
+  useTetrahedralFilter: false,
 });
 
 export const globalGlAtom = atom<GLProps>({
