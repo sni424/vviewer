@@ -66,21 +66,20 @@ declare module 'three' {
     // false이면 오버라이드
     // default : true
     setUserData(userData: ThreeUserData, extend?: boolean): Object3D;
-    traverse(
-      callback: (node: Object3D) => any,
-      filter?: (node: Object3D) => boolean,
-    ): void;
-    traverse(
-      callback: (node: Object3D) => any,
-      layer?: Layer,
-    ): void;
+    traverse(callback: (node: Object3D) => any): void;
+
+    traverse(callback: (node: Object3D) => any): void;
+
+    traverseAll(callback: (node: Object3D) => any): void;
 
     isSystemGenerated(): boolean;
     isBoxHelper(): boolean;
     isXYZGizmo(): boolean;
     isTransformControl(): boolean;
 
-    traverseParent(...params: Parameters<Object3D["traverseAncestors"]>): ReturnType<Object3D["traverseAncestors"]>;
+    traverseParent(
+      ...params: Parameters<Object3D['traverseAncestors']>
+    ): ReturnType<Object3D['traverseAncestors']>;
 
     isParentVisible(): boolean;
 
@@ -98,7 +97,10 @@ declare module 'three' {
   }
 
   interface Material {
-    onBeforeCompile: (parameters: THREE.WebGLProgramParametersWithUniforms, renderer: THREE.WebGLRenderer) => void;
+    onBeforeCompile: (
+      parameters: THREE.WebGLProgramParametersWithUniforms,
+      renderer: THREE.WebGLRenderer,
+    ) => void;
   }
 }
 
@@ -184,53 +186,58 @@ THREE.Object3D.prototype.setUserData = function (
   return this;
 };
 
-THREE.Object3D.prototype.all = function <T = THREE.Object3D>(includeSelf = false) {
+THREE.Object3D.prototype.all = function <T = THREE.Object3D>(
+  includeSelf = false,
+) {
   const result = includeSelf ? [this] : [];
-  this.traverse((node) => {
+  this.traverse(node => {
     result.push(node);
   });
   return result as T[];
-}
+};
 
 THREE.Object3D.prototype.ofIDs = function (ids: string[]) {
   const result: THREE.Object3D[] = [];
-  this.traverse((node) => {
+  this.traverse(node => {
     if (ids.includes(node.uuid)) {
       result.push(node);
     }
   });
   return result;
-}
+};
 
 THREE.Object3D.prototype.meshes = function () {
   const result: THREE.Mesh[] = [];
-  this.traverse((node) => {
+  this.traverse(node => {
     if (node instanceof THREE.Mesh) {
       result.push(node);
     }
   });
   return result;
-}
+};
 
 THREE.Object3D.prototype.materials = function () {
   const result: THREE.Material[] = [];
-  this.traverse((node) => {
+  this.traverse(node => {
     if (node instanceof THREE.Mesh && node.material) {
       result.push(node.material);
     }
   });
   return result;
-}
+};
 
-THREE.Object3D.prototype.updateAllMaterials = function (threeExports?: RootState) {
+THREE.Object3D.prototype.updateAllMaterials = function (
+  threeExports?: RootState,
+) {
   resetGL(threeExports);
-}
+};
 
-THREE.Object3D.prototype.traverseParent = THREE.Object3D.prototype.traverseAncestors;
+THREE.Object3D.prototype.traverseParent =
+  THREE.Object3D.prototype.traverseAncestors;
 
 THREE.Object3D.prototype.isParentVisible = function () {
   let visibility = true;
-  this.traverseParent((node) => {
+  this.traverseParent(node => {
     if (node.visible === false) {
       visibility = false;
     }
@@ -386,47 +393,24 @@ const defaultSceneFilter = (node: THREE.Object3D) => {
   }
   return true;
 };
-THREE.Object3D.prototype.traverse = function (
+
+THREE.Object3D.prototype.traverseAll = function (
   callback: (node: THREE.Object3D) => any,
-  filterInput?: Layer | ((node: THREE.Object3D) => boolean),
 ) {
-  //original code :
-  /*
-  callback( this );
- 
-    const children = this.children;
- 
-    for ( let i = 0, l = children.length; i < l; i ++ ) {
- 
-      children[ i ].traverse( callback );
- 
-    }
-   */
-
-  const filter = filterInput ?? defaultSceneFilter;
-
-  if (typeof filter === "number") {
-    // Layer
-    if (!this.layers.isEnabled(filter)) {
-      return;
-    }
-  }
-
   callback(this);
-
-  if (filter && typeof filter === "function" && !filter(this)) {
-    // debugger;
-    return;
-  }
-
-  const children = this.children;
-
-  for (let i = 0, l = children.length; i < l; i++) {
-    children[i].traverse(callback, filter as any);
-  }
+  this.children.forEach(child => child.traverseAll(callback));
 };
 
-
+THREE.Object3D.prototype.traverse = function (
+  callback: (node: THREE.Object3D) => any,
+) {
+  if (!this.layers.isEnabled(Layer.Model)) {
+    // console.warn('traverse(): this Not in Model Layer : ', this);
+    return;
+  }
+  callback(this);
+  this.children.forEach(child => child.traverse(callback));
+};
 
 export * from 'three';
 export { THREE };
@@ -459,7 +443,5 @@ window.getThree = (view: View = View.Shared) => {
   return window.threeStore[view];
 };
 
-
 // THREE.Material.prototype.onBeforeCompile 오버라이딩
-import "../scripts/postprocess/MaterialShader";
-
+import '../scripts/postprocess/MaterialShader';
