@@ -20,7 +20,6 @@ const CameraPanel = () => {
   const [lastCameraInfo, setLastCameraInfo] = useAtom(lastCameraInfoAtom);
   const posYRef = React.useRef(0);
   const lastSpace = React.useRef(0);
-  console.log('cameraSetting', cameraSetting);
   useEffect(() => {
     // space 입력 시 카메라 상승
     const handleKeydown = (e: KeyboardEvent) => {
