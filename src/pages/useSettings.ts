@@ -9,7 +9,7 @@ import {
   viewGridAtom,
 } from '../scripts/atoms';
 
-export type SavedSettings = ReturnType<typeof getSettings>;
+export type SavedSettings = Partial<ReturnType<typeof getSettings>>;
 
 const SETTING_KEY = '__setting__';
 
@@ -56,4 +56,25 @@ export const loadSettings = () => {
 export const saveSettings = () => {
   const settings = getSettings();
   return set(SETTING_KEY, settings);
+};
+
+export const defaultSettings = async () => {
+  const defaultSettings: SavedSettings = {
+    cameraSetting: {
+      moveSpeed: 3,
+      isoView: false,
+      cameraY: 1.5,
+      tour: {
+        isAnimation: false,
+        roomIndex: 0,
+        animationSpeed: 1,
+      },
+    },
+    orbitSetting: {
+      autoRotate: false,
+      enabled: true,
+    },
+  };
+
+  return set(SETTING_KEY, defaultSettings);
 };

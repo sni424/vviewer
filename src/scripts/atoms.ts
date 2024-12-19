@@ -49,10 +49,10 @@ export const createAtomCombo = <T = any>(
   initalValue?: T,
   store?: Store,
 ): [
-  WritableAtom<T, unknown[], unknown>,
-  () => T | undefined,
-  (arg: AtomArgType<T>) => void,
-] => {
+    WritableAtom<T, unknown[], unknown>,
+    () => T | undefined,
+    (arg: AtomArgType<T>) => void,
+  ] => {
   const dstStore = store ?? defaultStore;
   // @ts-ignore
   const theAtom = atom<T>(initalValue);
@@ -93,16 +93,16 @@ export const oribitControlAtom = atom<OrbitControls>();
 export type Env = {
   select: 'none' | 'preset' | 'custom' | 'url';
   preset?:
-    | 'apartment'
-    | 'city'
-    | 'dawn'
-    | 'forest'
-    | 'lobby'
-    | 'night'
-    | 'park'
-    | 'studio'
-    | 'sunset'
-    | 'warehouse';
+  | 'apartment'
+  | 'city'
+  | 'dawn'
+  | 'forest'
+  | 'lobby'
+  | 'night'
+  | 'park'
+  | 'studio'
+  | 'sunset'
+  | 'warehouse';
   url?: string;
   intensity?: number;
   rotation?: {
@@ -314,6 +314,7 @@ export const cameraSettingAtom = atom<{
   tour: {
     isAnimation: boolean,
     roomIndex: number
+    animationSpeed: number
   }
 }>({
   moveSpeed: 3,
@@ -321,7 +322,8 @@ export const cameraSettingAtom = atom<{
   cameraY: 1.5,
   tour: {
     isAnimation: false,
-    roomIndex: 0
+    roomIndex: 0,
+    animationSpeed: 1
   }
 });
 
