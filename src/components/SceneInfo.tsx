@@ -24,6 +24,7 @@ import {
   Layer,
   LIGHTMAP_INTENSITY_MAX,
 } from '../Constants';
+import { defaultSettings, loadSettings } from '../pages/useSettings.ts';
 import {
   cameraMatrixAtom,
   globalBrightnessContrastAtom,
@@ -98,7 +99,7 @@ const CameraInfoSection = () => {
   const rotation = new Quaternion();
   const scale = new Vector3();
   cameraMatrix?.decompose(position, rotation, scale);
-
+  debugger;
   return (
     <section style={{ marginTop: 16 }}>
       <strong>카메라</strong>
@@ -159,6 +160,11 @@ const GeneralButtons = () => {
   const navigate = useNavigate();
   const [statsOn, setStatsOn] = useState(false);
   useStats(statsOn);
+
+  const handleResetSettings = async () => {
+    await defaultSettings();
+    await loadSettings(); // Reload settings from IDB to update atoms
+  };
 
   useEffect(() => {
     get('savedScene').then(val => {
@@ -353,6 +359,13 @@ const GeneralButtons = () => {
         }}
       >
         테스트
+      </button>
+      <button
+        onClick={() => {
+          handleResetSettings();
+        }}
+      >
+        카메라 세팅 초기화
       </button>
     </section>
   );
