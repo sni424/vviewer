@@ -9,6 +9,7 @@ import {
   FaAngleRight,
   FaPause,
 } from 'react-icons/fa';
+
 type placeInfoType = {
   name: string;
   position: THREE.Vector3;
@@ -33,6 +34,8 @@ const tour: placeInfoType[] = [
   },
 ];
 
+const animationSpeed = [1, 2, 3, 4, 5];
+
 function HotSpotPanel() {
   //저장한 위치
   const [placeInfo, setPlaceInfo] = useState<placeInfoType[]>([]);
@@ -45,23 +48,13 @@ function HotSpotPanel() {
   }
 
   const { camera, scene } = threeExports;
-  // useEffect(() => {
-  //   if (!threeExports) {
-  //     return;
-  //   }
-  //   setCameraSetting(prev => ({ ...prev, isoView: true }));
-  //   const { camera } = threeExports;
-  //   // topview
-  //   camera.position.set(0, 10, 0);
-  //   camera.rotation.set(-Math.PI / 2, 0, 0);
-  // }, []);
 
   useEffect(() => {
     if (cameraSetting.tour.isAnimation) {
       camera.moveTo('pathfinding', {
         pathfinding: {
           target: tour[cameraSetting.tour.roomIndex].position,
-          speed: 0,
+          speed: cameraSetting.tour.animationSpeed,
           model: scene.children[scene.children.length - 1],
           direction: tour[cameraSetting.tour.roomIndex].direction,
         },
@@ -73,7 +66,11 @@ function HotSpotPanel() {
         },
       });
     }
-  }, [cameraSetting.tour.isAnimation, cameraSetting.tour.roomIndex]);
+  }, [
+    cameraSetting.tour.isAnimation,
+    cameraSetting.tour.animationSpeed,
+    cameraSetting.tour.roomIndex,
+  ]);
   return (
     <>
       <div className="px-4 box-border w-full py-2">
@@ -106,7 +103,7 @@ function HotSpotPanel() {
                     camera.moveTo('pathfinding', {
                       pathfinding: {
                         target: place.position,
-                        speed: 0,
+                        speed: 1,
                         model: scene.children[scene.children.length - 1],
                         direction: place.direction,
                       },
@@ -180,7 +177,25 @@ function HotSpotPanel() {
             </div>
 
             {/* 배속 */}
-            <div className="text-sm font-semibold">x1</div>
+            <select
+              className="text-sm font-semibold text-black"
+              value={cameraSetting?.tour?.animationSpeed}
+              onChange={e => {
+                setCameraSetting(pre => ({
+                  ...pre,
+                  tour: {
+                    ...pre.tour,
+                    animationSpeed: Number(e.target.value),
+                  },
+                }));
+              }}
+            >
+              {animationSpeed.map((speed, index) => (
+                <option key={`animationSpeed_${index}`} value={index + 1}>
+                  x{speed}
+                </option>
+              ))}
+            </select>
 
             {/* 드롭다운 */}
             <select
@@ -197,7 +212,7 @@ function HotSpotPanel() {
               }}
             >
               {tour.map((room, index) => (
-                <option key={index} value={index}>
+                <option key={`tour_${index}`} value={index}>
                   {room.name}
                 </option>
               ))}

@@ -449,6 +449,8 @@ const handlePathfindingMove = (
   const newVector = new THREE.Vector3(path[0].x, 1, path[0].z); // 이동할 좌표
   const endDirection = newVector.clone().sub(startPosition).normalize(); // 이동할 방향
   const distance = camera.position.distanceTo(newVector); // 거리 계산
+  const baseDuration = distance; // 기본 거리 기반 duration
+  const speedFactor = Math.max(0.1, 1 / speed); // speed가 클수록 duration을 짧게 (최소 0.1 보장)
 
   // 기존 애니메이션 종료
   if (currentAnimation) {
@@ -461,10 +463,10 @@ const handlePathfindingMove = (
     z: newVector.z,
     duration:
       distance > 8
-        ? distance * (0.9 + speed)
+        ? baseDuration * 0.9 * speedFactor
         : distance < 2
-          ? distance * (1.5 + speed)
-          : distance + speed,
+          ? baseDuration * 1.5 * speedFactor
+          : baseDuration * speedFactor,
     onUpdate: function () {
       // 0에서 1까지 보간 값
       const progress = this.progress();
@@ -604,6 +606,7 @@ export const moveTo = (
     case 'pathfinding':
       if (options.pathfinding) {
         const { target, speed, model, direction, stopAnimtaion } = options.pathfinding;
+
         if (stopAnimtaion) {
           if (currentAnimation) {
             currentAnimation.kill();
@@ -615,6 +618,7 @@ export const moveTo = (
 
         const pathFinding = new Pathfinding();
         if (model && target && speed && direction) {
+
           const navMesh = model.getObjectByName('84B3_DP') as THREE.Mesh;
           if (navMesh) {
             const zone = Pathfinding.createZone(navMesh.geometry);
