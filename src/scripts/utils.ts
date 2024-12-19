@@ -165,9 +165,7 @@ export const isProbeMesh = (object: THREE.Object3D) => {
   return object.userData.isProbeMesh !== undefined;
 };
 
-export const loadScene = async (
-  scene: THREE.Scene,
-): Promise<THREE.Object3D | undefined> => {
+export const loadScene = async (): Promise<THREE.Object3D | undefined> => {
   return new Promise(async (resolve, reject) => {
     const key = 'savedScene';
     get(key)
@@ -178,11 +176,9 @@ export const loadScene = async (
         }
         // const loader = new THREE.ObjectLoader();
         // const scene = loader.parse(json);
-        const loader = new VGLTFLoader(scene);
+        const loader = new VGLTFLoader();
         const url = URL.createObjectURL(blob);
         const gltf = await loader.loadAsync(url);
-        scene.removeFromParent();
-        scene.add(gltf.scene);
         resolve(gltf.scene);
       })
       .catch(e => {

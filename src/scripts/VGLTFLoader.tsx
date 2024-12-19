@@ -8,17 +8,8 @@ import { Layer } from '../Constants.ts';
 import * as THREE from '../scripts/VTHREE.ts';
 
 export default class VGLTFLoader extends GLTFLoader {
-  private readonly scene: THREE.Scene;
-  private readonly name?: string;
-  constructor(
-    scene: THREE.Scene,
-    name?: string,
-    manager?: THREE.LoadingManager,
-  ) {
+  constructor(manager?: THREE.LoadingManager) {
     super(manager);
-
-    this.scene = scene;
-    this.name = name;
 
     //DRACO
     const dracoLoader = new DRACOLoader();
@@ -43,22 +34,14 @@ export default class VGLTFLoader extends GLTFLoader {
     onLoad: (gltf: GLTF) => void,
     onError?: (event: ErrorEvent) => void,
   ): void {
-    const scene = this.scene;
-    const name = this.name;
     function customOnLoad(gltf: GLTF) {
-      const model = gltf.scene;
-
-      if (name) {
-        model.name = name + '-' + model.name;
-      }
-      model.traverseAll((object: THREE.Object3D) => {
+      gltf.scene.traverseAll((object: THREE.Object3D) => {
         object.layers.enable(Layer.Model);
         updateLightMapFromEmissive(object);
       });
-      scene.add(model);
+
       onLoad(gltf);
     }
-
     super.parse(data, path, customOnLoad, onError);
   }
 }

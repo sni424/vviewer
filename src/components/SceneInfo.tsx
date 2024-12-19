@@ -273,9 +273,11 @@ const GeneralButtons = () => {
       <button
         style={{ fontSize: 10 }}
         onClick={() => {
-          loadScene(scene)
+          loadScene()
             .then(loaded => {
-              console.log('sceneLoaded : ', loaded);
+              if (loaded) {
+                scene.add(loaded);
+              }
             })
             .catch(() => {
               alert('씬 불러오기 실패');

@@ -163,7 +163,7 @@ const useModelDragAndDrop = () => {
         file.name.toLowerCase().endsWith('.json'),
       );
       if (threeExports && jsons.length > 0) {
-        const loader = new VObjectLoader(threeExports.scene);
+        const loader = new VObjectLoader();
         jsons.forEach(jsonFile => {
           // scene.toJSON()
           const reader = new FileReader();
@@ -171,7 +171,7 @@ const useModelDragAndDrop = () => {
 
           reader.onload = function () {
             const obj = JSON.parse(reader.result as string);
-            loader.parse(obj);
+            threeExports.scene.add(loader.parse(obj));
           };
         });
 
