@@ -23,7 +23,6 @@ import {
   getIntersects,
   loadScene,
   saveScene,
-  setAsModel,
   zoomToSelected,
 } from '../../scripts/utils';
 import VGLTFLoader from '../../scripts/VGLTFLoader';
@@ -83,8 +82,6 @@ function Renderer() {
       });
 
       new VGLTFLoader().loadAsync(url).then(gltf => {
-        gltf.scene.name = name + '-' + gltf.scene.name;
-
         if (map) {
           const texture = new THREE.TextureLoader().load(
             URL.createObjectURL(map),
@@ -92,7 +89,8 @@ function Renderer() {
           texture.flipY = !texture.flipY;
           texture.channel = 1;
           texture.needsUpdate = true;
-          gltf.scene.traverse(obj => {
+          gltf.scene.traverseAll(obj => {
+            console.log('obj : ', obj);
             if (obj.type === 'Mesh') {
               const material = (obj as THREE.Mesh)
                 .material as THREE.MeshStandardMaterial;
@@ -114,7 +112,7 @@ function Renderer() {
             }
           });
         }
-        setAsModel(gltf.scene);
+
         scene.add(gltf.scene);
         // revoke object url
         URL.revokeObjectURL(url);
@@ -307,7 +305,6 @@ const useKeyHandler = () => {
           .then(loaded => {
             if (loaded) {
               scene.removeFromParent();
-              setAsModel(loaded);
               scene.add(loaded);
               alert('로드 완료');
             }

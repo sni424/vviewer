@@ -8,7 +8,7 @@ import {
   useBenchmark,
 } from '../../scripts/atoms';
 import useFilelist from '../../scripts/useFilelist';
-import { loadFile, loadLatest, setAsModel } from '../../scripts/utils';
+import { loadFile, loadLatest } from '../../scripts/utils';
 import VGLTFLoader from '../../scripts/VGLTFLoader';
 import { THREE } from '../../scripts/VTHREE';
 import { FileInfo } from '../../types';
@@ -107,13 +107,13 @@ const MobileLoaderPanel = () => {
                   addBenchmark('downloadEnd');
                   addBenchmark('parseStart');
                   const url = URL.createObjectURL(blob);
+                  const { scene } = threeExports;
+
                   const loader = new VGLTFLoader();
                   const gltf = await loader.loadAsync(url);
                   addBenchmark('parseEnd');
                   addBenchmark('sceneAddStart');
 
-                  const { scene } = threeExports;
-                  setAsModel(gltf.scene);
                   scene.add(gltf.scene);
                   const interval = setInterval(() => {
                     //@ts-ignore
