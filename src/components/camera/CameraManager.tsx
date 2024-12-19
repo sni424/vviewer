@@ -322,7 +322,6 @@ const CameraManager: React.FC<UnifiedCameraControlsProps> = ({
       setCameraAction(true);
     };
     const handleKeyUp = (event: KeyboardEvent): void => {
-      console.log('안녕');
       activeKeys.current.delete(event.key.toLowerCase());
       if (activeKeys.current.size === 0) setCameraAction(false);
     };

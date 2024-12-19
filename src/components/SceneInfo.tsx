@@ -99,7 +99,6 @@ const CameraInfoSection = () => {
   const rotation = new Quaternion();
   const scale = new Vector3();
   cameraMatrix?.decompose(position, rotation, scale);
-  debugger;
   return (
     <section style={{ marginTop: 16 }}>
       <strong>카메라</strong>
