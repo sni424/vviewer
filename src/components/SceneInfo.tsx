@@ -537,6 +537,8 @@ const GeneralPostProcessingControl = () => {
     LightmapImageContrast.value,
   );
 
+  const [lmContrastK, setLmContrastK] = useState(LightmapImageContrast.k);
+
   if (!threeExports) {
     return null;
   }
@@ -644,21 +646,44 @@ const GeneralPostProcessingControl = () => {
           }}
         />
         {lmContrastOn && (
-          <input
-            type="range"
-            min={LightmapImageContrast.min}
-            max={LightmapImageContrast.max}
-            step={LightmapImageContrast.step}
-            onChange={e => {
-              if (!threeExports) {
-                return;
-              }
-              setLmContrastValue(parseFloat(e.target.value));
-              LightmapImageContrast.value = parseFloat(e.target.value);
-              resetGL(threeExports);
-            }}
-            value={lmContrastValue}
-          ></input>
+          <>
+            <div>
+              <input
+                type="range"
+                min={LightmapImageContrast.min}
+                max={LightmapImageContrast.max}
+                step={LightmapImageContrast.step}
+                onChange={e => {
+                  if (!threeExports) {
+                    return;
+                  }
+                  setLmContrastValue(parseFloat(e.target.value));
+                  LightmapImageContrast.value = parseFloat(e.target.value);
+                  resetGL(threeExports);
+                }}
+                value={lmContrastValue}
+              />
+              <span>{LightmapImageContrast.value}</span>
+            </div>
+            <div>
+              <input
+                type="range"
+                min={0}
+                max={4}
+                step={0.1}
+                onChange={e => {
+                  if (!threeExports) {
+                    return;
+                  }
+                  setLmContrastK(parseFloat(e.target.value));
+                  LightmapImageContrast.k = parseFloat(e.target.value);
+                  resetGL(threeExports);
+                }}
+                value={lmContrastK}
+              />
+              <span>{LightmapImageContrast.k}</span>
+            </div>
+          </>
         )}
       </div>
       <div>
