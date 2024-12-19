@@ -103,19 +103,19 @@ export const getIntersects = (
   raycaster.setFromCamera(mouse, camera);
 
   const dstObjects = filterUserdataIgnoreRaycast
-    ? scene.children.filter(
-      obj =>
-        !obj.getUserData().ignoreRaycast
-    )
+    ? scene.children.filter(obj => !obj.getUserData().ignoreRaycast)
     : scene.children;
-  const defaultFilteredObjects = dstObjects.filter(obj =>
-    !obj.isTransformControl() &&
-    !obj.isBoxHelper()
-  )
-  const intersects = (raycaster.intersectObjects(
-    defaultFilteredObjects,
-    true,
-  ) as THREE.Intersection[]).filter(intersect => intersect.object.visible && intersect.object.isParentVisible());
+  const defaultFilteredObjects = dstObjects.filter(
+    obj => !obj.isTransformControl() && !obj.isBoxHelper(),
+  );
+  const intersects = (
+    raycaster.intersectObjects(
+      defaultFilteredObjects,
+      true,
+    ) as THREE.Intersection[]
+  ).filter(
+    intersect => intersect.object.visible && intersect.object.isParentVisible(),
+  );
 
   const mesh = intersects.filter(
     obj => obj.object.type === 'Mesh',
@@ -431,7 +431,8 @@ const rotateCameraSmoothly = (
   //구면 선형 보간 두 벡터사이의 중간값
   return new THREE.Quaternion().slerpQuaternions(quaternionB, quaternionA, t);
 };
-
+// 현재 애니메이션 인스턴스를 저장
+let currentAnimation: gsap.core.Tween | null = null;
 //카메라 이동 경로에따른 애니메이션션
 const handlePathfindingMove = (
   camera: THREE.Object3D,
@@ -449,8 +450,12 @@ const handlePathfindingMove = (
   const endDirection = newVector.clone().sub(startPosition).normalize(); // 이동할 방향
   const distance = camera.position.distanceTo(newVector); // 거리 계산
 
+  // 기존 애니메이션 종료
+  if (currentAnimation) {
+    currentAnimation.kill();
+  }
   // 애니메이션 실행
-  const animation = gsap.to(camera.position, {
+  currentAnimation = gsap.to(camera.position, {
     x: newVector.x,
     y: 1,
     z: newVector.z,
@@ -473,10 +478,10 @@ const handlePathfindingMove = (
         path.shift();
 
         handlePathfindingMove(camera, path, speed, direction); // 재귀 호출로 다음 경로 처리
-        animation.kill();
+
         return;
       } else {
-        //마지막 경로에서 카메라 방향 설정
+        // //마지막 경로에서 카메라 방향 설정
         if (path.length === 1) {
           const quaternion = rotateCameraSmoothly(
             startDirection,
@@ -496,8 +501,10 @@ const handlePathfindingMove = (
       }
     },
     onComplete: () => {
-      path.shift(); // 현재 경로 제거
-      animation.kill(); // 애니메이션 중지
+      console.log("complete path")
+      const target = camera.position.clone().add(direction);
+      camera.lookAt(target.x, target.y, target.z)
+
     },
   });
 };
@@ -526,6 +533,7 @@ const isoViewCamera = (
   speed: number,
   cameraFov: number,
 ) => {
+
   // 카메라 위치 애니메이션
   gsap.to(camera.position, {
     x: target.x,
@@ -553,48 +561,88 @@ const isoViewCamera = (
   });
 };
 
+const walkViewCamera = (camera: THREE.PerspectiveCamera,
+  target: THREE.Vector3,
+  direction: THREE.Vector3,
+  speed: number,
+  cameraFov: number,) => {
+
+  // 카메라 위치 애니메이션
+  gsap.to(camera.position, {
+    x: target.x,
+    y: target.y,
+    z: target.z,
+    duration: speed,
+    ease: 'power2.out', // 자연스러운 애니메이션
+    onUpdate: function () {
+      camera.lookAt(direction.x, direction.y, direction.z);
+      camera.updateProjectionMatrix();
+    },
+    onComplete: () => {
+      camera.lookAt(direction.x, direction.y, direction.z);
+    },
+  });
+
+  // 카메라 FOV 애니메이션
+  gsap.to(camera, {
+    fov: cameraFov,
+    duration: speed,
+    ease: 'power2.out', // 동일한 ease로 FOV 변경
+    onUpdate: () => {
+      camera.updateProjectionMatrix();
+    },
+  });
+}
+
 //카메라 moveTo함수
 export const moveTo = (
-  camera: THREE.Camera,
+  camera: THREE.PerspectiveCamera,
   action: MoveActionType,
   options: MoveActionOptions,
 ) => {
   switch (action) {
     case 'pathfinding':
       if (options.pathfinding) {
-        const { target, speed, model, direction } = options.pathfinding;
+        const { target, speed, model, direction, stopAnimtaion } = options.pathfinding;
+        if (stopAnimtaion) {
+          if (currentAnimation) {
+            currentAnimation.kill();
+
+          }
+          return
+        }
         const ZONE = 'level';
 
         const pathFinding = new Pathfinding();
+        if (model && target && speed && direction) {
+          const navMesh = model.getObjectByName('84B3_DP') as THREE.Mesh;
+          if (navMesh) {
+            const zone = Pathfinding.createZone(navMesh.geometry);
+            pathFinding.setZoneData(ZONE, zone);
 
-        const navMesh = model.getObjectByName('84B3_DP') as THREE.Mesh;
+            const groupID = pathFinding.getGroup(ZONE, camera.position);
+            const targetGroupID = pathFinding.getGroup(ZONE, target);
+            const closestStartNode = pathFinding.getClosestNode(
+              camera.position,
+              'level',
+              groupID,
+            );
+            const closestTargetNode = pathFinding.getClosestNode(
+              target,
+              'level',
+              targetGroupID,
+            );
 
-        if (navMesh) {
-          const zone = Pathfinding.createZone(navMesh.geometry);
-          pathFinding.setZoneData(ZONE, zone);
+            const path = pathFinding.findPath(
+              closestStartNode.centroid,
+              closestTargetNode.centroid,
+              ZONE,
+              groupID,
+            );
 
-          const groupID = pathFinding.getGroup(ZONE, camera.position);
-          const targetGroupID = pathFinding.getGroup(ZONE, target);
-          const closestStartNode = pathFinding.getClosestNode(
-            camera.position,
-            'level',
-            groupID,
-          );
-          const closestTargetNode = pathFinding.getClosestNode(
-            target,
-            'level',
-            targetGroupID,
-          );
-
-          const path = pathFinding.findPath(
-            closestStartNode.centroid,
-            closestTargetNode.centroid,
-            ZONE,
-            groupID,
-          );
-
-          if (path) {
-            handlePathfindingMove(camera, path, speed, direction);
+            if (path) {
+              handlePathfindingMove(camera, path, speed, direction);
+            }
           }
         }
       }
@@ -615,7 +663,13 @@ export const moveTo = (
         }
       }
       break;
+    case 'walkView':
+      if (options.walkView) {
+        const { speed, target, direction } = options.walkView;
+        walkViewCamera(camera, target, direction, speed, 75);
 
+      }
+      break;
     case 'linear':
       if (options.linear) {
         handleLinearMove(
@@ -642,7 +696,6 @@ export const setAsModel = (object: THREE.Object3D) => {
   return object;
 };
 
-
 export const resetGL = (threeExports?: RootState) => {
   if (!threeExports) {
     return;
@@ -652,8 +705,52 @@ export const resetGL = (threeExports?: RootState) => {
     return;
   }
   scene.traverse((object: THREE.Object3D) => {
-    if ((object as { material?: THREE.Material }).material) gl.properties.remove((object as THREE.Mesh).material)
-  })
-  gl.info.programs.length = 0
-  gl.compile(scene, camera)
-}
+    if ((object as { material?: THREE.Material }).material)
+      gl.properties.remove((object as THREE.Mesh).material);
+  });
+  gl.info.programs.length = 0;
+  gl.compile(scene, camera);
+};
+
+export const readDirectory = async (
+  directoryEntry: FileSystemDirectoryEntry,
+  acceptedExtensions: string[],
+) => {
+  console.log('Reading directory:', directoryEntry.name);
+
+  const reader = directoryEntry.createReader();
+  const entries: File[] = [];
+
+  const readEntries = async (): Promise<void> => {
+    const results = await new Promise<FileSystemEntry[]>((resolve, reject) =>
+      reader.readEntries(resolve, reject),
+    );
+
+    if (results.length === 0) return;
+
+    for (const entry of results) {
+      if (entry.isFile) {
+        const file = await new Promise<File | null>((res, rej) =>
+          (entry as FileSystemFileEntry).file(res, rej),
+        );
+        if (
+          file &&
+          acceptedExtensions.some(ext => file.name.toLowerCase().endsWith(ext))
+        ) {
+          entries.push(file);
+        }
+      } else if (entry.isDirectory) {
+        const nestedFiles = await readDirectory(
+          entry as FileSystemDirectoryEntry,
+          acceptedExtensions,
+        );
+        entries.push(...nestedFiles);
+      }
+    }
+
+    await readEntries(); // 계속해서 읽기
+  };
+
+  await readEntries();
+  return entries;
+};
