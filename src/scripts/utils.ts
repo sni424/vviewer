@@ -283,7 +283,7 @@ export const loadLatest = async ({
       console.log('getLatest: ', blob);
       url = URL.createObjectURL(blob);
     }
-    return await new VGLTFLoader().loadAsync(url);
+    return await new VGLTFLoader(threeExports.scene).loadAsync(url);
   };
 
   return loadModel()
@@ -502,7 +502,7 @@ const handlePathfindingMove = (
       }
     },
     onComplete: () => {
-      console.log("complete path")
+      console.log('complete path');
       const target = camera.position.clone().add(direction);
       camera.lookAt(target.x, target.y, target.z)
       setTimeout(() => {
@@ -560,7 +560,6 @@ const isoViewCamera = (
   speed: number,
   cameraFov: number,
 ) => {
-
   // 카메라 위치 애니메이션
   gsap.to(camera.position, {
     x: target.x,
@@ -588,12 +587,13 @@ const isoViewCamera = (
   });
 };
 
-const walkViewCamera = (camera: THREE.PerspectiveCamera,
+const walkViewCamera = (
+  camera: THREE.PerspectiveCamera,
   target: THREE.Vector3,
   direction: THREE.Vector3,
   speed: number,
-  cameraFov: number,) => {
-
+  cameraFov: number,
+) => {
   // 카메라 위치 애니메이션
   gsap.to(camera.position, {
     x: target.x,
@@ -619,7 +619,7 @@ const walkViewCamera = (camera: THREE.PerspectiveCamera,
       camera.updateProjectionMatrix();
     },
   });
-}
+};
 
 //카메라 moveTo함수
 export const moveTo = (
@@ -631,13 +631,11 @@ export const moveTo = (
     case 'pathfinding':
       if (options.pathfinding) {
         const { target, speed, model, direction, stopAnimtaion } = options.pathfinding;
-
         if (stopAnimtaion) {
           if (currentAnimation) {
             currentAnimation.kill();
-
           }
-          return
+          return;
         }
         const ZONE = 'level';
 
@@ -696,7 +694,6 @@ export const moveTo = (
       if (options.walkView) {
         const { speed, target, direction } = options.walkView;
         walkViewCamera(camera, target, direction, speed, 75);
-
       }
       break;
     case 'linear':
@@ -783,4 +780,26 @@ export const readDirectory = async (
 
   await readEntries();
   return entries;
+};
+
+export const getModelArrangedScene = (scene: THREE.Scene) => {
+  const cloned = scene.clone();
+  const toDelete: string[] = [];
+  cloned.traverseAll(object => {
+    if (!object.layers.isEnabled(Layer.Model)) {
+      toDelete.push(object.uuid);
+    }
+  });
+
+  const elementsToDelete = toDelete
+    .map(uuid => {
+      return cloned.getObjectByProperty('uuid', uuid);
+    })
+    .filter(e => e !== undefined);
+
+  elementsToDelete.forEach(e => {
+    e.removeFromParent();
+  });
+
+  return cloned;
 };
