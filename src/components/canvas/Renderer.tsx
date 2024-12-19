@@ -23,7 +23,6 @@ import {
   getIntersects,
   loadScene,
   saveScene,
-  setAsModel,
   zoomToSelected,
 } from '../../scripts/utils';
 import VGLTFLoader from '../../scripts/VGLTFLoader';
@@ -82,8 +81,14 @@ function Renderer() {
         return newHistory;
       });
 
-      new VGLTFLoader().loadAsync(url).then(gltf => {
-        gltf.scene.name = name + '-' + gltf.scene.name;
+      new VGLTFLoader(scene, name).loadAsync(url).then(gltf => {
+        const sceneFind = scene.getObjectByProperty('uuid', gltf.scene.uuid);
+        console.log('sceneFind', sceneFind);
+        if (!sceneFind) {
+          throw new Error(
+            'VGLTFLoader : Scene 을 불러오는 데 문제가 발생했습니다.',
+          );
+        }
 
         if (map) {
           const texture = new THREE.TextureLoader().load(
@@ -92,7 +97,8 @@ function Renderer() {
           texture.flipY = !texture.flipY;
           texture.channel = 1;
           texture.needsUpdate = true;
-          gltf.scene.traverse(obj => {
+          sceneFind.traverseAll(obj => {
+            console.log('obj : ', obj);
             if (obj.type === 'Mesh') {
               const material = (obj as THREE.Mesh)
                 .material as THREE.MeshStandardMaterial;
@@ -114,8 +120,8 @@ function Renderer() {
             }
           });
         }
-        setAsModel(gltf.scene);
-        scene.add(gltf.scene);
+        // setAsModel(gltf.scene);
+        // scene.add(gltf.scene);
         // revoke object url
         URL.revokeObjectURL(url);
         setLoadHistoryAtom(history => {
@@ -303,14 +309,14 @@ const useKeyHandler = () => {
       // ctrl l
       if (e.ctrlKey && e.key.toLowerCase() === 'l') {
         e.preventDefault();
-        loadScene()
+        loadScene(scene)
           .then(loaded => {
-            if (loaded) {
-              scene.removeFromParent();
-              setAsModel(loaded);
-              scene.add(loaded);
-              alert('로드 완료');
-            }
+            // if (loaded) {
+            //   scene.removeFromParent();
+            //   setAsModel(loaded);
+            //   scene.add(loaded);
+            //   alert('로드 완료');
+            // }
           })
           .catch(e => {
             alert('로드 실패');

@@ -107,12 +107,13 @@ const MobileLoaderPanel = () => {
                   addBenchmark('downloadEnd');
                   addBenchmark('parseStart');
                   const url = URL.createObjectURL(blob);
-                  const loader = new VGLTFLoader();
+                  const { scene } = threeExports;
+
+                  const loader = new VGLTFLoader(scene);
                   const gltf = await loader.loadAsync(url);
                   addBenchmark('parseEnd');
                   addBenchmark('sceneAddStart');
 
-                  const { scene } = threeExports;
                   setAsModel(gltf.scene);
                   scene.add(gltf.scene);
                   const interval = setInterval(() => {

@@ -6,6 +6,11 @@ import * as THREE from './VTHREE.ts';
 const DEFAULT_RESOLUTION: ReflectionProbeResolutions = 256;
 const DEFAULT_POSITION: THREE.Vector3 = new THREE.Vector3(0, 0, 0);
 const DEFAULT_SIZE: THREE.Vector3 = new THREE.Vector3(4, 4, 4);
+const CUBE_CAMERA_FILTER_LAYERS = [
+  Layer.ReflectionBox,
+  Layer.GizmoHelper,
+  Layer.Selected,
+];
 const REFLECTION_BOX_LAYER = Layer.ReflectionBox;
 const CUBE_CAMERA_LAYER = 10;
 
@@ -87,7 +92,9 @@ export default class ReflectionProbe {
       this.renderTarget,
     );
     cubeCamera.layers.enableAll();
-    cubeCamera.layers.disable(REFLECTION_BOX_LAYER);
+    CUBE_CAMERA_FILTER_LAYERS.forEach(layer => {
+      cubeCamera.layers.disable(layer);
+    });
 
     // Create Sphere Mesh
     const sphereMesh = createProbeSphere();
@@ -294,11 +301,7 @@ export default class ReflectionProbe {
     const meshInBox: THREE.Mesh[] = [];
     const tempBox = new THREE.Box3();
     this.scene.traverse(child => {
-      if (
-        child.type === 'Mesh' &&
-        !child.userData.isProbeMesh &&
-        !isTransformControlsChild(child)
-      ) {
+      if ('isMesh' in child) {
         const meshBox = tempBox.setFromObject(child);
         if (box.intersectsBox(meshBox)) {
           child.userData.probe = this;
@@ -312,7 +315,7 @@ export default class ReflectionProbe {
     // envMap 적용
     const envMap = this.getTexture();
     meshInBox.forEach(mesh => {
-      const mat = mesh.material as THREE.Material;
+      const mat = mesh.material as THREE.MeshStandardMaterial;
       if (!('onBeforeCompileTemp' in mat)) {
         mat['onBeforeCompileTemp'] = mat.onBeforeCompile;
       }
@@ -408,7 +411,9 @@ export default class ReflectionProbe {
       this.renderTarget,
     );
     cubeCamera.layers.enableAll();
-    cubeCamera.layers.disable(REFLECTION_BOX_LAYER);
+    CUBE_CAMERA_FILTER_LAYERS.forEach(layer => {
+      cubeCamera.layers.disable(layer);
+    });
     cubeCamera.update(this.renderer, this.scene);
     this.cubeCamera = cubeCamera;
 

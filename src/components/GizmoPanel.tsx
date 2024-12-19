@@ -40,10 +40,13 @@ const XYZGizmo = () => {
     let anim = 0;
     const animate = () => {
       anim = requestAnimationFrame(animate);
-      const { camera } = window.getThree(View.Shared)!;
-      const cam = gizmoCameraRef.current!;
-      cam.matrix.copy(camera.matrix);
-      cam.position.addScalar(1000000);
+      const three = window.getThree(View.Shared);
+      if (three) {
+        const { camera } = window.getThree(View.Shared)!;
+        const cam = gizmoCameraRef.current!;
+        cam.matrix.copy(camera.matrix);
+        cam.position.addScalar(1000000);
+      }
     };
     anim = requestAnimationFrame(animate);
     return () => {

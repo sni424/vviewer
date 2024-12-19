@@ -7,8 +7,8 @@ import {
   threeExportsAtom,
   useModal,
 } from '../scripts/atoms';
-import { THREE } from '../scripts/VTHREE';
-import { readDirectory, setAsModel } from './utils';
+import { readDirectory } from './utils';
+import VObjectLoader from './VObjectLoader.ts';
 
 const MapSelectModal = ({
   gltfs,
@@ -163,18 +163,15 @@ const useModelDragAndDrop = () => {
         file.name.toLowerCase().endsWith('.json'),
       );
       if (threeExports && jsons.length > 0) {
-        const loader = new THREE.ObjectLoader();
+        const loader = new VObjectLoader(threeExports.scene);
         jsons.forEach(jsonFile => {
           // scene.toJSON()
           const reader = new FileReader();
           reader.readAsText(jsonFile);
 
-          const { scene } = threeExports;
           reader.onload = function () {
             const obj = JSON.parse(reader.result as string);
-            const parsedScene = loader.parse(obj);
-            setAsModel(parsedScene);
-            scene.add(parsedScene);
+            loader.parse(obj);
           };
         });
 

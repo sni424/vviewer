@@ -3,6 +3,7 @@ import useFiles from '../scripts/useFiles';
 import {
   compressObjectToFile,
   formatNumber,
+  getModelArrangedScene,
   groupInfo,
   isProbeMesh,
   isTransformControlOrChild,
@@ -250,7 +251,21 @@ const GeneralButtons = () => {
       <button
         style={{ fontSize: 10 }}
         onClick={() => {
-          saveScene(scene);
+          saveScene(scene)
+            .then(() => {
+              get('savedScene').then(val => {
+                if (val) {
+                  setHasSaved(true);
+                } else {
+                  setHasSaved(false);
+                  alert('크아악 저장하지 못했습니다.');
+                }
+              });
+            })
+            .catch(err => {
+              console.log('씬 저장 실패 : ', err);
+              alert('씬 저장 실패');
+            });
         }}
       >
         씬 저장(Ctrl S)
@@ -258,12 +273,9 @@ const GeneralButtons = () => {
       <button
         style={{ fontSize: 10 }}
         onClick={() => {
-          loadScene()
+          loadScene(scene)
             .then(loaded => {
-              if (loaded) {
-                scene.removeFromParent();
-                scene.add(loaded);
-              }
+              console.log('sceneLoaded : ', loaded);
             })
             .catch(() => {
               alert('씬 불러오기 실패');
@@ -277,7 +289,7 @@ const GeneralButtons = () => {
         style={{ fontSize: 10 }}
         onClick={() => {
           saveString(
-            JSON.stringify(scene.toJSON(), null, 2),
+            JSON.stringify(getModelArrangedScene(scene).toJSON(), null, 2),
             `scene-${new Date().toISOString()}.json`,
           );
         }}

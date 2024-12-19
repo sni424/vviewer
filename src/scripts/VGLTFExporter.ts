@@ -1,4 +1,5 @@
 import { GLTFExporter } from 'three/examples/jsm/Addons.js';
+import { Layer } from '../Constants.ts';
 import * as THREE from '../scripts/VTHREE.ts';
 
 interface GLTFExporterOptions {
@@ -60,6 +61,7 @@ export default class VGLTFExporter extends GLTFExporter {
     options?: GLTFExporterOptions,
   ): void {
     const cloned = this.onBeforeParse(input);
+    console.log('onBeforeParse Done');
     super.parse(cloned, onDone, onError, options);
   }
 
@@ -83,18 +85,40 @@ export default class VGLTFExporter extends GLTFExporter {
           clonedMat.userData.lightMapIntensity = clonedMat.lightMapIntensity;
           clonedMat.needsUpdate = true;
           mesh.material = clonedMat;
+          console.log('lightmap Passed');
         }
       }
+    }
+
+    function filterNotModelObjects(obj: THREE.Object3D) {
+      const toDelete: string[] = [];
+      obj.traverseAll(object => {
+        if (!object.layers.isEnabled(Layer.Model)) {
+          toDelete.push(object.uuid);
+        }
+      });
+
+      const elementsToDelete = toDelete
+        .map(uuid => {
+          return obj.getObjectByProperty('uuid', uuid);
+        })
+        .filter(e => e !== undefined);
+
+      elementsToDelete.forEach(e => {
+        e.removeFromParent();
+      });
     }
 
     if (Array.isArray(input)) {
       const clonedArr = input.map(i => i.clone());
       for (const obj of clonedArr) {
+        filterNotModelObjects(obj);
         obj.traverse(lightMapToEmissive);
       }
       return clonedArr;
     } else {
       const cloned = input.clone();
+      filterNotModelObjects(cloned);
       cloned.traverse(lightMapToEmissive);
       return cloned;
     }
