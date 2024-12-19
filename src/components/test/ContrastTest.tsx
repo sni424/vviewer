@@ -118,7 +118,7 @@ function ContrastTest() {
   const [_, _update] = useState(0);
   const update = () => _update(prev => prev + 1);
 
-  const graphWidth = 300;
+  const graphWidth = 400;
   const linearData = Array.from(
     { length: graphWidth },
     (_, index) => index / graphWidth,
@@ -137,7 +137,7 @@ function ContrastTest() {
     return (1.0 - r) * denominatorInv + r;
   };
 
-  const adjustContrast2 = (color: number[]) => {
+  const adjustContrast = (color: number[]) => {
     const gammaFactor = v.gammaFactor;
     const standard = v.standard;
     const t = Math.log(2.0) / Math.log(standard);
@@ -145,9 +145,12 @@ function ContrastTest() {
     const r = v.r;
 
     const corrected = color.map(value => Math.pow(value, gammaFactor));
-    const intensity = color[0] * 0.2126 + color[1] * 0.7152 + color[2] * 0.0722;
+    // const inputColor = color;
+    const inputColor = corrected;
+    const intensity =
+      inputColor[0] * 0.2126 + inputColor[1] * 0.7152 + inputColor[2] * 0.0722;
     const adjustedIntensity = S_k_t(intensity, k, t, r);
-    const reflectance = color.map(value => value / (intensity + 0.0001));
+    const reflectance = inputColor.map(value => value / (intensity + 0.0001));
     const reflectanceAdjusted = reflectance.map(
       value => (value - standard) * v.contrast + standard,
     );
@@ -161,7 +164,7 @@ function ContrastTest() {
     return adjustedColorGamma;
   };
 
-  const adjustContrast = (color: number[]) => {
+  const adjustContrast2 = (color: number[]) => {
     const gammaFactor = v.gammaFactor;
     const standard = v.standard;
     const t = Math.log(2.0) / Math.log(standard);
@@ -190,9 +193,14 @@ function ContrastTest() {
       <div className="w-full grid grid-cols-2 mb-5">
         <div className="w-full">
           <Slider label="gammaFactor" update={update}></Slider>
-          <Slider label="standard" update={update}></Slider>
+          <Slider
+            label="standard"
+            update={update}
+            min={0.1}
+            max={0.99}
+          ></Slider>
           <Slider label="k" update={update}></Slider>
-          <Slider label="r" update={update}></Slider>
+          {/* <Slider label="r" update={update}></Slider> */}
         </div>
         <div>
           <strong>Graph</strong>
