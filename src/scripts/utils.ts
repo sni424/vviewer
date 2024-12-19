@@ -10,7 +10,7 @@ import { OrbitControls, RGBELoader } from 'three/examples/jsm/Addons.js';
 import { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { Layer } from '../Constants';
 import { FileInfo, MoveActionOptions, MoveActionType, View } from '../types.ts';
-import { BenchMark, getAtomValue, selectedAtom } from './atoms';
+import { BenchMark, cameraActionAtom, getAtomValue, selectedAtom, setAtomValue } from './atoms';
 import VGLTFExporter from './VGLTFExporter.ts';
 import VGLTFLoader from './VGLTFLoader.tsx';
 import * as THREE from './VTHREE';
@@ -449,9 +449,8 @@ const handlePathfindingMove = (
   const newVector = new THREE.Vector3(path[0].x, 1, path[0].z); // 이동할 좌표
   const endDirection = newVector.clone().sub(startPosition).normalize(); // 이동할 방향
   const distance = camera.position.distanceTo(newVector); // 거리 계산
-  const baseDuration = distance; // 기본 거리 기반 duration
-  const speedFactor = Math.max(0.1, 1 / speed); // speed가 클수록 duration을 짧게 (최소 0.1 보장)
-
+  // speed가 클수록 duration을 짧게 (최소 0.1 보장)
+  const speedFactor = Math.max(0.1, 1 / speed);
   // 기존 애니메이션 종료
   if (currentAnimation) {
     currentAnimation.kill();
@@ -462,11 +461,11 @@ const handlePathfindingMove = (
     y: 1,
     z: newVector.z,
     duration:
-      distance > 8
-        ? baseDuration * 0.9 * speedFactor
+      distance > 7
+        ? distance * 0.9 * speedFactor
         : distance < 2
-          ? baseDuration * 1.5 * speedFactor
-          : baseDuration * speedFactor,
+          ? distance * 1.5 * speedFactor
+          : distance * speedFactor,
     onUpdate: function () {
       // 0에서 1까지 보간 값
       const progress = this.progress();
@@ -478,9 +477,7 @@ const handlePathfindingMove = (
 
       if (progress >= 0.9 && path.length > 1) {
         path.shift();
-
         handlePathfindingMove(camera, path, speed, direction); // 재귀 호출로 다음 경로 처리
-
         return;
       } else {
         // //마지막 경로에서 카메라 방향 설정
@@ -488,7 +485,8 @@ const handlePathfindingMove = (
           const quaternion = rotateCameraSmoothly(
             startDirection,
             direction,
-            progress,
+            // progress
+            distance > 5 ? Math.min(progress * distance, 1) : progress,
           );
           camera.quaternion.copy(quaternion);
         } else {
@@ -496,7 +494,8 @@ const handlePathfindingMove = (
           const quaternion = rotateCameraSmoothly(
             startDirection,
             endDirection,
-            adjustedProgress,
+            // adjustedProgress
+            distance > 5 ? Math.min(adjustedProgress * distance, 1) : adjustedProgress,
           );
           camera.quaternion.copy(quaternion);
         }
@@ -506,24 +505,50 @@ const handlePathfindingMove = (
       console.log("complete path")
       const target = camera.position.clone().add(direction);
       camera.lookAt(target.x, target.y, target.z)
+      setTimeout(() => {
+        setAtomValue(cameraActionAtom, pre => ({
+          ...pre,
+          tour: {
+            ...pre.tour,
+            path: false
+          }
+        }))
+      }, 500)
 
     },
   });
 };
 
 const handleLinearMove = (
-  camera: THREE.Camera,
+  camera: THREE.PerspectiveCamera,
   target: THREE.Vector3,
-  duration: number,
+  direction: THREE.Vector3,
+  speed: number,
 ) => {
+  const startDirection = camera
+    .getWorldDirection(new THREE.Vector3())
+    .normalize();
+  const distance = camera.position.distanceTo(target);
+  // speed가 클수록 duration을 짧게 (최소 0.1 보장)
+  const speedFactor = Math.max(0.1, 1 / speed);
   gsap.to(camera.position, {
     x: target.x,
     y: target.y,
     z: target.z,
-    duration,
+    duration: distance * speedFactor,
     ease: 'power2.out',
-    onUpdate: () => {
-      camera.lookAt(target);
+    onUpdate: function () {
+      const progress = this.progress();
+      const quaternion = rotateCameraSmoothly(
+        startDirection,
+        direction,
+        // progress
+        progress,
+      );
+      camera.quaternion.copy(quaternion);
+    },
+    onComplete: () => {
+      console.log("complete handleLinearMove")
     },
   });
 };
@@ -679,6 +704,7 @@ export const moveTo = (
         handleLinearMove(
           camera,
           options.linear.target,
+          options.linear.direction,
           options.linear.duration,
         );
       }
