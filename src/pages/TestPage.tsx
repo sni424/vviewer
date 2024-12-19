@@ -1,4 +1,4 @@
-import Closure from '../components/test/Closure';
+import ContrastTest from '../components/test/ContrastTest';
 
 function TestPage() {
   return (
@@ -6,7 +6,7 @@ function TestPage() {
     //     <div className='font-bold'>sdf</div>
     // </div>
     <div className="fullscreen">
-      <Closure></Closure>
+      <ContrastTest></ContrastTest>
     </div>
   );
 }
