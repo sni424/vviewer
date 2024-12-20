@@ -54,6 +54,7 @@ import {
   THREE,
   Vector3,
 } from '../scripts/VTHREE';
+import Clipping from './clipping/Clipping.tsx';
 import UploadPage from './UploadModal';
 
 const useEnvUrl = () => {
@@ -917,6 +918,7 @@ const GeneralPostProcessingControl = () => {
           </>
         )}
       </div>
+      <Clipping />
       {/* <div>
             <strong>Color Management</strong>
             <input type="checkbox" checked={cmOn} onChange={(e) => {

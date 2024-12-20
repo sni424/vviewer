@@ -458,7 +458,7 @@ const handlePathfindingMove = (
   // 애니메이션 실행
   currentAnimation = gsap.to(camera.position, {
     x: newVector.x,
-    y: 1,
+    y: camera.position.y,
     z: newVector.z,
     duration:
       distance > 7
