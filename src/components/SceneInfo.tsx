@@ -17,7 +17,7 @@ import {
 import { get, set } from 'idb-keyval';
 import objectHash from 'object-hash';
 import { ToneMappingMode } from 'postprocessing';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   __UNDEFINED__,
@@ -46,7 +46,7 @@ import {
   LUTPresets,
 } from '../scripts/postprocess/PostProcessUtils.ts';
 import useFilelist from '../scripts/useFilelist';
-import useStats from '../scripts/useStats.ts';
+import useStats, { StatPerSecond, VStats } from '../scripts/useStats.ts';
 import VGLTFExporter from '../scripts/VGLTFExporter.ts';
 import {
   LightmapImageContrast,
@@ -159,7 +159,6 @@ const GeneralButtons = () => {
   const { openModal, closeModal } = useModal();
   const navigate = useNavigate();
   const [statsOn, setStatsOn] = useState(false);
-  useStats(statsOn);
 
   const handleResetSettings = async () => {
     await defaultSettings();
@@ -1324,7 +1323,7 @@ const GeneralMaterialControl = () => {
               if (child instanceof THREE.Mesh) {
                 allMeshes.push(child);
               }
-            }, Layer.Model);
+            });
             allMeshes.forEach(mesh => {
               //@ts-ignore
               mesh.material.aoMapIntensity = parseFloat(e.target.value);
@@ -1344,7 +1343,7 @@ const GeneralMaterialControl = () => {
               if (child instanceof THREE.Mesh) {
                 allMeshes.push(child);
               }
-            }, Layer.Model);
+            });
             allMeshes.forEach(mesh => {
               //@ts-ignore
               mesh.material.aoMapIntensity = parseFloat(e.target.value);
@@ -1368,7 +1367,7 @@ const GeneralMaterialControl = () => {
               if (child instanceof THREE.Mesh) {
                 allMeshes.push(child);
               }
-            }, Layer.Model);
+            });
             allMeshes.forEach(mesh => {
               (mesh.material as THREE.MeshStandardMaterial).lightMapIntensity =
                 parseFloat(e.target.value);
@@ -1388,7 +1387,7 @@ const GeneralMaterialControl = () => {
               if (child instanceof THREE.Mesh) {
                 allMeshes.push(child);
               }
-            }, Layer.Model);
+            });
             allMeshes.forEach(mesh => {
               (mesh.material as THREE.MeshStandardMaterial).lightMapIntensity =
                 parseFloat(e.target.value);
@@ -1404,6 +1403,193 @@ const GeneralMaterialControl = () => {
   );
 };
 
+const hoveredStat = (hovered: HTMLLIElement) => {
+  return JSON.parse(hovered.getAttribute('data-stat')!) as {
+    stat: StatPerSecond;
+    dst: 'framerate' | 'memory';
+  };
+};
+
+const relativePosition = (element?: HTMLLIElement | null) => {
+  if (!element) {
+    return null;
+  }
+  // px relative to its parent
+  const rect = element.getBoundingClientRect();
+  const parentRect = element.parentElement?.getBoundingClientRect();
+
+  if (!parentRect) {
+    return null;
+  }
+
+  const isMemory = hoveredStat(element).dst === 'memory';
+
+  const offsetLeft = isMemory ? parentRect.width : 0;
+
+  return {
+    top: rect.top - parentRect.top,
+    left: rect.left - parentRect.left + offsetLeft,
+  };
+};
+
+const STAT_INTERVAL = 200; //ms
+
+const byteToMB = (byte: number) => {
+  return Math.round(byte / (1024 * 1024));
+};
+
+const GeneralStats = () => {
+  const [stats, setStats] = useState<VStats>();
+  const getStats = useStats(STAT_INTERVAL);
+  const [hovered, setHovered] = useState<HTMLLIElement>();
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const stats = getStats();
+      setStats(stats);
+      // console.log(
+      //   stats.stats[stats.stats.length - 1].highestMemoryUsage,
+      //   stats.baseMemory!.totalJSHeapSize,
+      // );
+    }, STAT_INTERVAL);
+    return () => {
+      clearInterval(interval);
+    };
+  }, []);
+
+  const highest = useMemo(
+    () => stats?.highestMemoryUsage ?? 0,
+    [stats?.highestMemoryUsage],
+  );
+
+  if (!stats) {
+    return (
+      <section>
+        <strong>통계</strong>
+        <div>
+          <div>로딩중...</div>
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <section>
+      <div>
+        <strong>통계</strong> -{' '}
+        <span>{Math.round(stats.elapsed / 1000)}초</span>
+      </div>
+      <div>
+        <div>
+          <div>
+            최대메모리사용량 :{' '}
+            <span>
+              {formatNumber(byteToMB(highest))} /{' '}
+              {formatNumber(byteToMB(stats.baseMemory?.jsHeapSizeLimit ?? 0))}mb
+              (
+              {Math.round(
+                (100 * highest) / (stats.baseMemory?.jsHeapSizeLimit ?? 0),
+              )}
+              %)
+            </span>
+          </div>
+          <div>평균 프레임 : {Math.round(stats.averageFramerate)}</div>
+          <div>
+            마지막 10초 프레임 :{' '}
+            {stats.stats
+              .slice(-10)
+              .reduce((acc, cur) => acc + cur.framerate, 0) / 10}
+          </div>
+          <div>Lowest 1% : {stats.lowest1percentFramerate}fps</div>
+          <div className="w-full grid grid-cols-2 relative">
+            <ul
+              id="ul1"
+              className="relative w-full h-20 bg-slate-100 overflow-hidden"
+            >
+              {stats.stats.map(stat => {
+                return (
+                  <li
+                    data-stat={JSON.stringify({ stat, dst: 'framerate' })}
+                    onMouseEnter={e => {
+                      setHovered(e.currentTarget);
+                    }}
+                    key={`stat-frame-${stat.at}`}
+                    style={{
+                      position: 'absolute',
+                      height: '100%',
+                      width: 2,
+                      bottom: 0,
+                      right: 0,
+                      transform: `translateX(-${(stats.end - stat.at) / 500}px)`,
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: '100%',
+                        height: `${Math.min(stat.framerate, 100)}%`,
+                        backgroundColor: 'red',
+                        position: 'absolute',
+                        bottom: 0,
+                      }}
+                    ></div>
+                  </li>
+                );
+              })}
+            </ul>
+            <ul
+              id="ul2"
+              className="relative w-full h-20 bg-slate-100 overflow-hidden"
+            >
+              {stats.stats.map(stat => {
+                return (
+                  <li
+                    onMouseEnter={e => {
+                      setHovered(e.currentTarget);
+                    }}
+                    data-stat={JSON.stringify({ stat, dst: 'memory' })}
+                    key={`stat-memory-${stat.at}`}
+                    style={{
+                      position: 'absolute',
+                      height: '100%',
+                      // height: `${stat.framerate / (stats.maxFrameRate + 0.001)}%`,
+                      width: 2,
+                      bottom: 0,
+                      right: 0,
+                      transform: `translateX(-${(stats.end - stat.at) / 500}px)`,
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: '100%',
+                        height: `${Math.min((100 * stat.highestMemoryUsage) / (window as any).performance.memory.jsHeapSizeLimit, 100)}%`,
+                        position: 'absolute',
+                        backgroundColor: 'blue',
+                        bottom: 0,
+                      }}
+                    ></div>
+                  </li>
+                );
+              })}
+            </ul>
+            {hovered && relativePosition(hovered) && (
+              <div
+                className="absolute top-0 left-0 bg-slate-400"
+                style={{
+                  transform: `translate(calc(${relativePosition(hovered)!.left}px - 50%), -10px)`,
+                }}
+              >
+                {hoveredStat(hovered).dst === 'memory'
+                  ? `${byteToMB(hoveredStat(hovered).stat.highestMemoryUsage)}mb`
+                  : `${hoveredStat(hovered).stat.framerate}fps`}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+};
+
 const SceneInfo = () => {
   // const [env, setEnv] = useAtom(envAtom);
   const threeExports = useAtomValue(threeExportsAtom);
@@ -1413,7 +1599,7 @@ const SceneInfo = () => {
   }
 
   const { scene } = threeExports;
-  const totals = groupInfo(scene);
+  // const totals = groupInfo(scene);
 
   return (
     <div
@@ -1427,6 +1613,7 @@ const SceneInfo = () => {
         gap: 12,
       }}
     >
+      <GeneralStats></GeneralStats>
       <GeneralButtons></GeneralButtons>
       <GeneralMaterialControl></GeneralMaterialControl>
       <GeneralEnvironmentControl></GeneralEnvironmentControl>
