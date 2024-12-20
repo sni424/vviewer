@@ -1439,8 +1439,9 @@ const byteToMB = (byte: number) => {
 };
 
 const GeneralStats = () => {
+  const [on, setOn] = useState(false);
   const [stats, setStats] = useState<VStats>();
-  const getStats = useStats(STAT_INTERVAL);
+  const getStats = useStats(on, STAT_INTERVAL);
   const [hovered, setHovered] = useState<HTMLLIElement>();
 
   useEffect(() => {
@@ -1462,10 +1463,28 @@ const GeneralStats = () => {
     [stats?.highestMemoryUsage],
   );
 
+  if (!on) {
+    return (
+      <section>
+        <strong>통계</strong>
+        <input
+          type="checkbox"
+          checked={on}
+          onChange={e => setOn(e.target.checked)}
+        ></input>
+      </section>
+    );
+  }
+
   if (!stats) {
     return (
       <section>
         <strong>통계</strong>
+        <input
+          type="checkbox"
+          checked={on}
+          onChange={e => setOn(e.target.checked)}
+        ></input>
         <div>
           <div>로딩중...</div>
         </div>
@@ -1476,8 +1495,13 @@ const GeneralStats = () => {
   return (
     <section>
       <div>
-        <strong>통계</strong> -{' '}
-        <span>{Math.round(stats.elapsed / 1000)}초</span>
+        <strong>통계</strong>
+        <input
+          type="checkbox"
+          checked={on}
+          onChange={e => setOn(e.target.checked)}
+        ></input>{' '}
+        - <span>{Math.round(stats.elapsed / 1000)}초</span>
       </div>
       <div>
         <div>

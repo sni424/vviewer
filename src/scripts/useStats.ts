@@ -22,7 +22,7 @@ export type VStats = {
 }
 
 const MAX_STATS = 300;
-function useFramerate(interval: number = 1000) {
+function useFramerate(on: boolean, interval: number = 1000) {
   const startRef = useRef(Date.now());
   const animRef = useRef<number>(0);
   const stats = useRef<StatPerSecond[]>([]); // [at, framerate][];
@@ -40,7 +40,17 @@ function useFramerate(interval: number = 1000) {
     jsHeapSizeLimit: number
   }>();
 
+  const cleanup = () => {
+    if (animRef.current !== 0) {
+      cancelAnimationFrame(animRef.current);
+    }
+  }
+
   useEffect(() => {
+    if (!on) {
+      return cleanup;
+    }
+
     const perf = window.performance as {
       memory?: {
         totalJSHeapSize: number,
@@ -93,12 +103,8 @@ function useFramerate(interval: number = 1000) {
 
     loop();
 
-    return () => {
-      if (animRef.current !== 0) {
-        cancelAnimationFrame(animRef.current);
-      }
-    }
-  }, []);
+    return cleanup
+  }, [on]);
 
   const getStats: () => VStats = () => {
     const end = Date.now();
