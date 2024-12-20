@@ -1,6 +1,8 @@
+import { GainMapLoader, HDRJPGLoader } from '@monogrid/gainmap-js';
 import { Canvas, useThree } from '@react-three/fiber';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import { useEffect, useRef } from 'react';
+import { EXRLoader } from 'three/examples/jsm/Addons.js';
 import { Layer } from '../../Constants';
 import { getSettings } from '../../pages/useSettings';
 import {
@@ -45,25 +47,45 @@ const MainGrid = () => {
   return <Grid layers={View.Shared}></Grid>;
 };
 
-function Renderer() {
-  // useStats();
-  const threeExports = useThree();
+const applyTexture = (
+  object: THREE.Object3D,
+  texture: THREE.Texture,
+  mapDst?: 'lightmap' | 'emissivemap' | 'gainmap',
+) => {
+  object.traverseAll(obj => {
+    console.log('obj : ', obj);
+    if (obj.type === 'Mesh') {
+      const material = (obj as THREE.Mesh)
+        .material as THREE.MeshStandardMaterial;
+      if (!material) {
+        (obj as THREE.Mesh).material = new THREE.MeshStandardMaterial();
+      }
+      if (mapDst === 'lightmap' || !mapDst) {
+        material.lightMap = texture;
+        // material.map = texture;
+      } else if (mapDst === 'emissivemap') {
+        //three.js 특성상 emissiveMap을 적용하려면 emissive를 설정해야함
+        material.emissive = new THREE.Color(0xffffff);
+        material.emissiveMap = texture;
+        material.emissiveIntensity = 0.5;
+      } else {
+        throw new Error('Invalid mapDst @Renderer');
+      }
+
+      material.needsUpdate = true;
+    }
+  });
+};
+
+const useLoadModel = ({
+  gl,
+  scene,
+}: {
+  gl: THREE.WebGLRenderer;
+  scene: THREE.Scene;
+}) => {
   const sources = useAtomValue(sourceAtom);
   const setLoadHistoryAtom = useSetAtom(loadHistoryAtom);
-  const setThreeExportsAtom = useSetAtom(threeExportsAtom);
-  // const setSharedExports = useSetAtom(sharedThreeAtom);
-  const setSharedExports = useSetThreeExports();
-  const { scene, camera } = threeExports;
-  const setCameraAtom = useSetAtom(cameraMatrixAtom);
-
-  useEffect(() => {
-    setThreeExportsAtom(threeExports);
-    camera.position.set(1, 1, 1);
-    const mat = camera.matrix.clone();
-    setCameraAtom(mat);
-
-    setSharedExports(threeExports);
-  }, []);
 
   useEffect(() => {
     sources.forEach(source => {
@@ -81,41 +103,103 @@ function Renderer() {
         return newHistory;
       });
 
-      new VGLTFLoader().loadAsync(url).then(gltf => {
-        if (map) {
-          const texture = new THREE.TextureLoader().load(
-            URL.createObjectURL(map),
-          );
-          texture.flipY = !texture.flipY;
-          texture.channel = 1;
-          texture.needsUpdate = true;
-          gltf.scene.traverseAll(obj => {
-            console.log('obj : ', obj);
-            if (obj.type === 'Mesh') {
-              const material = (obj as THREE.Mesh)
-                .material as THREE.MeshStandardMaterial;
-              if (!material) {
-                (obj as THREE.Mesh).material = new THREE.MeshStandardMaterial();
-              }
-              if (mapDst === 'lightmap' || !mapDst) {
-                material.lightMap = texture;
-              } else if (mapDst === 'emissivemap') {
-                //three.js 특성상 emissiveMap을 적용하려면 emissive를 설정해야함
-                material.emissive = new THREE.Color(0xffffff);
-                material.emissiveMap = texture;
-                material.emissiveIntensity = 0.5;
-              } else {
-                throw new Error('Invalid mapDst @Renderer');
-              }
+      new VGLTFLoader().loadAsync(url).then(async gltf => {
+        const disposes: { dispose?: Function }[] = [];
+        const disposeUrls = [];
 
-              material.needsUpdate = true;
+        if (map && Array.isArray(map)) {
+          // gainmap array
+          // [file].glb <- gltf
+          // [file].jpg <- map.find(file=>file.name.endsWith('.jpg') && !file.name.includes("-gainmap"))
+          // [file].json <- map.find(file=>file.name.endsWith('.json'))
+          // [file]-gainmap.jpg <- map.find(file=>file.name.endsWith('-gainmap.jpg'))
+
+          const sdrTexture = map.find(
+            file =>
+              file.name.endsWith('.jpg') && !file.name.includes('-gainmap'),
+          );
+          const gainmap = map.find(file => file.name.endsWith('-gainmap.jpg'));
+          const meta = map.find(file => file.name.endsWith('.json'));
+          const files = [sdrTexture, gainmap, meta] as File[]; // 중요! 순서를 지켜야함
+          if (!files.every(Boolean)) {
+            console.error(map, files);
+            debugger;
+            throw new Error('Invalid gainmap files');
+          }
+
+          const urls = files.map(file => URL.createObjectURL(file)) as [
+            string,
+            string,
+            string,
+          ];
+          disposeUrls.push(...urls);
+          const renderer = gl;
+          const result = await new GainMapLoader(renderer).loadAsync(urls);
+          const texture = result.renderTarget.texture;
+          // texture.colorSpace = THREE.LinearSRGBColorSpace;
+          // debugger;
+          // texture.colorSpace = THREE.SRGBColorSpace;
+          disposes.push(result);
+
+          if (texture) {
+            // texture.flipY = !texture.flipY;
+            texture.channel = 1;
+            texture.needsUpdate = true;
+            applyTexture(gltf.scene, texture, mapDst);
+          } else {
+            console.error(map);
+            debugger;
+            throw new Error('Invalid texture type');
+          }
+        }
+
+        if (map && !Array.isArray(map)) {
+          let texture: THREE.Texture | null = null;
+          const url = URL.createObjectURL(map);
+          disposeUrls.push(url);
+          if (map.name.endsWith('.exr')) {
+            const loader = new EXRLoader();
+            texture = await loader.loadAsync(url);
+            console.log('EXR');
+          } else if (map.type === 'image/jpeg') {
+            const renderer = gl;
+            const loader = new HDRJPGLoader(renderer);
+            const result = await loader.loadAsync(url);
+            console.log(result);
+            if (result.renderTarget.depthTexture) {
+              console.log('d');
+              result.renderTarget.depthTexture.flipY =
+                !result.renderTarget.depthTexture.flipY;
             }
-          });
+            texture = result.renderTarget.texture;
+            disposes.push(result);
+            console.log('JPEG');
+          } else if (map.type === 'image/png') {
+            texture = new THREE.TextureLoader().load(url);
+            console.log('PNG');
+          } else {
+          }
+
+          console.log(texture);
+          // debugger;
+
+          if (texture) {
+            texture.flipY = !texture.flipY;
+            texture.channel = 1;
+            texture.needsUpdate = true;
+            applyTexture(gltf.scene, texture, mapDst);
+          } else {
+            console.error(map);
+            debugger;
+            throw new Error('Invalid texture type');
+          }
         }
 
         scene.add(gltf.scene);
         // revoke object url
         URL.revokeObjectURL(url);
+        disposeUrls.forEach(URL.revokeObjectURL);
+        disposes.forEach(d => d.dispose?.());
         setLoadHistoryAtom(history => {
           const newHistory = new Map(history);
           newHistory.get(url)!.end = Date.now();
@@ -125,6 +209,26 @@ function Renderer() {
       });
     });
   }, [sources]);
+};
+
+function Renderer() {
+  // useStats();
+  const threeExports = useThree();
+
+  const setThreeExportsAtom = useSetAtom(threeExportsAtom);
+  // const setSharedExports = useSetAtom(sharedThreeAtom);
+  const setSharedExports = useSetThreeExports();
+  const { scene, camera } = threeExports;
+  useLoadModel(threeExports);
+  const setCameraAtom = useSetAtom(cameraMatrixAtom);
+
+  useEffect(() => {
+    setThreeExportsAtom(threeExports);
+    camera.position.set(1, 1, 1);
+    const mat = camera.matrix.clone();
+    setCameraAtom(mat);
+    setSharedExports(threeExports);
+  }, []);
 
   return (
     <>
