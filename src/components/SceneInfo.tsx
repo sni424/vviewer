@@ -1432,7 +1432,7 @@ const relativePosition = (element?: HTMLLIElement | null) => {
   };
 };
 
-const STAT_INTERVAL = 200; //ms
+const STAT_INTERVAL = 500; //ms
 
 const byteToMB = (byte: number) => {
   return Math.round(byte / (1024 * 1024));
