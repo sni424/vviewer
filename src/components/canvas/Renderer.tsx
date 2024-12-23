@@ -2,7 +2,6 @@ import { GainMapLoader, HDRJPGLoader } from '@monogrid/gainmap-js';
 import { Canvas, useThree } from '@react-three/fiber';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import { useEffect, useRef } from 'react';
-import { EXRLoader } from 'three/examples/jsm/Addons.js';
 import { Layer } from '../../Constants';
 import { getSettings } from '../../pages/useSettings';
 import {
@@ -21,6 +20,7 @@ import {
   treeScrollToAtom,
   viewGridAtom,
 } from '../../scripts/atoms';
+import GainmapLoader from '../../scripts/GainmapLoader';
 import {
   getIntersects,
   loadScene,
@@ -158,9 +158,12 @@ const useLoadModel = ({
           const url = URL.createObjectURL(map);
           disposeUrls.push(url);
           if (map.name.endsWith('.exr')) {
-            const loader = new EXRLoader();
-            texture = await loader.loadAsync(url);
-            console.log('EXR');
+            // const loader = new EXRLoader();
+            // texture = await loader.loadAsync(url);
+            // console.log('EXR');
+            texture = await GainmapLoader.load(map, { gl }).finally(() => {
+              GainmapLoader.dispose();
+            });
           } else if (map.type === 'image/jpeg') {
             const renderer = gl;
             const loader = new HDRJPGLoader(renderer);
@@ -198,7 +201,7 @@ const useLoadModel = ({
         scene.add(gltf.scene);
         // revoke object url
         URL.revokeObjectURL(url);
-        disposeUrls.forEach(URL.revokeObjectURL);
+        // disposeUrls.forEach(URL.revokeObjectURL);
         disposes.forEach(d => d.dispose?.());
         setLoadHistoryAtom(history => {
           const newHistory = new Map(history);
