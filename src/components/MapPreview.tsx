@@ -25,7 +25,7 @@ export interface MapPreviewProps {
   height?: number;
 }
 
-const FullscreenCanvas = ({ texture }: { texture: THREE.Texture }) => {
+export const FullscreenCanvas = ({ texture }: { texture: THREE.Texture }) => {
   const { closeModal } = useModal();
   const innerCanvasRef = useRef<HTMLCanvasElement>(null);
   const maxHeight = window.innerHeight - 100;
@@ -42,6 +42,7 @@ const FullscreenCanvas = ({ texture }: { texture: THREE.Texture }) => {
   };
 
   useEffect(() => {
+    console.log('FullscreenCanvas : ', texture);
     if (!innerCanvasRef.current) {
       return;
     }
