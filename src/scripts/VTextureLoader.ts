@@ -66,7 +66,7 @@ export default class VTextureLoader {
     const fork = isFile ? fileOrUrl.name.toLowerCase() : fileOrUrl.toLowerCase();
 
     const isHdr = fork.endsWith('.hdr') || fork.endsWith('.exr');
-    const isJpg = fork.endsWith('.jpg') || fork.endsWith('.jpeg');
+    const isJpg = isFile ? (fileOrUrl.type === "image/jpeg") : (fork.endsWith('.jpg') || fork.endsWith('.jpeg'));
     const isGainmap = isHdr || isJpg;
     const isPng = fork.endsWith('.png');
 

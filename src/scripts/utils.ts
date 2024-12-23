@@ -47,7 +47,6 @@ export const groupInfo = (
         }
       } catch (e) {
         console.error(e);
-        debugger;
       }
     }
     if (node instanceof THREE.Object3D) {
@@ -256,7 +255,6 @@ export const loadLatest = async ({
   const remoteLatestHash = await (
     await decompressFileToObject<{ hash: string }>(latestHashUrl)
   ).hash;
-
   const loadModel = async () => {
     let url;
     if (!localLatestHash || localLatestHash !== remoteLatestHash) {
@@ -283,7 +281,7 @@ export const loadLatest = async ({
       console.log('getLatest: ', blob);
       url = URL.createObjectURL(blob);
     }
-    return await new VGLTFLoader(threeExports.scene).loadAsync(url);
+    return await new VGLTFLoader().loadAsync(url);
   };
 
   return loadModel()
@@ -803,3 +801,52 @@ export const getModelArrangedScene = (scene: THREE.Scene) => {
 
   return cloned;
 };
+
+export const uploadGainmap = async (object: THREE.Object3D) => {
+  const uploadUrl = import.meta.env.VITE_UPLOAD_URL;
+
+  // 같은 라이트맵을 공유하는 material 검출
+  // { hash : [mat1, mat2] }
+  const gainmapHashes: { [key in string]: THREE.MeshStandardMaterial[] } = {};
+
+  object.traverseAll(async (obj) => {
+    if ((obj as THREE.Mesh).isMesh) {
+      const mesh = obj as THREE.Mesh;
+      const mat = mesh.material as THREE.MeshStandardMaterial;
+      if (mat && mat.lightMap && mat.userData.gainMap) {
+        const gainMapHash = mat.userData.gainMap;
+
+        if (gainMapHash) {
+          if (!gainmapHashes[gainMapHash]) {
+            gainmapHashes[gainMapHash] = [];
+          }
+          gainmapHashes[gainMapHash].push(mat);
+        }
+
+      }
+    }
+  })
+
+  const hashes = Object.keys(gainmapHashes);
+  return Promise.all(hashes.map(hash => {
+    return get(hash).then(file => {
+      if (file) {
+        const formData = new FormData();
+        formData.append('file', file);
+        return fetch(uploadUrl, {
+          method: 'POST',
+          body: formData,
+        }).finally(() => {
+          const mats = Object.values(gainmapHashes[hash]);
+          mats.forEach(mat => {
+            mat.lightMap = null;
+          })
+        })
+      } else {
+        return undefined;
+      }
+    })
+
+  }));
+
+}

@@ -12,6 +12,7 @@ import {
   resetGL,
   saveScene,
   toNthDigit,
+  uploadGainmap,
 } from '../scripts/utils';
 
 import { get, set } from 'idb-keyval';
@@ -311,6 +312,7 @@ const GeneralButtons = () => {
             return;
           }
 
+          await uploadGainmap(threeExports.scene);
           const glbArr = await new VGLTFExporter().parseAsync(
             threeExports.scene,
             { binary: true },
@@ -336,14 +338,17 @@ const GeneralButtons = () => {
             const hashFd = new FormData();
             hashFd.append('file', hashFile);
             console.log('before Upload');
-            await fetch(uploadUrl, {
-              method: 'POST',
-              body: hashFd,
-            });
-            await fetch(uploadUrl, {
-              method: 'POST',
-              body: fd,
-            });
+            await Promise.all([
+              fetch(uploadUrl, {
+                method: 'POST',
+                body: hashFd,
+              }),
+              fetch(uploadUrl, {
+                method: 'POST',
+                body: fd,
+              }),
+            ]);
+
             alert('업로드 완료');
           } else {
             console.error(

@@ -1,6 +1,7 @@
 import { HDRJPGLoader } from '@monogrid/gainmap-js';
 import { compress, encode, findTextureMinMax } from '@monogrid/gainmap-js/encode';
 import { encodeJPEGMetadata } from '@monogrid/gainmap-js/libultrahdr';
+import { set } from 'idb-keyval';
 import { EXRLoader } from 'three/examples/jsm/loaders/EXRLoader.js';
 import { THREE } from './VTHREE';
 
@@ -33,7 +34,11 @@ export default class GainmapLoader {
     return loader.loadAsync(url).then(result => {
       this.disposables.push(result);
       URL.revokeObjectURL(url);
-      return result.renderTarget.texture;
+      const texture = result.renderTarget.texture;
+
+      texture.userData.gainMap = isFile ? fileOrUrl.name : url;
+
+      return texture;
     });
   }
 
@@ -41,7 +46,9 @@ export default class GainmapLoader {
     gl: THREE.WebGLRenderer;
   }) {
     return EXRCodec.exrToJpg(fileOrUrl).then(jpg => {
-      return GainmapLoader.loadJpg(jpg, threeExports);
+      return set(jpg.name, jpg).then(() => {
+        return GainmapLoader.loadJpg(jpg, threeExports);
+      })
     })
   }
 

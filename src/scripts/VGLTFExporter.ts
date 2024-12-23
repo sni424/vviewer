@@ -121,16 +121,31 @@ export default class VGLTFExporter extends GLTFExporter {
       });
     }
 
+    function removeGainmap(obj: THREE.Object3D) {
+      const mesh = (obj as THREE.Mesh);
+      if (mesh.material) {
+        const mat = mesh.material as THREE.MeshStandardMaterial;
+        const lm = mat.lightMap;
+        if (lm && lm.userData.gainMap) {
+          mat.userData.gainMap = lm.userData.gainMap;
+          mat.lightMap = null;
+        }
+      }
+
+    }
+
     if (Array.isArray(input)) {
       const clonedArr = input.map(i => i.clone());
       for (const obj of clonedArr) {
         filterNotModelObjects(obj);
+        obj.traverse(removeGainmap);
         obj.traverse(lightMapToEmissive);
       }
       return clonedArr;
     } else {
       const cloned = input.clone();
       filterNotModelObjects(cloned);
+      cloned.traverse(removeGainmap);
       cloned.traverse(lightMapToEmissive);
       return cloned;
     }
