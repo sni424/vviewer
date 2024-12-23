@@ -1,12 +1,10 @@
 import * as THREE from 'three';
 
 export class LightmapImageContrast {
-  static min = -0.5;
-  static max = 5;
-  static step = 0.05;
   static on = false;
-  static value = 1.0;
-  static k = 2.0;
+  static gammaFactor = 2.2;
+  static standard = 0.45;
+  static k = 1.7;
 }
 
 declare module 'three' {
@@ -34,7 +32,8 @@ THREE.Material.prototype.onBeforeCompile = function (
   // if (!parameters.uniforms.lmContrastValue) {
   parameters.uniforms = {
     ...parameters.uniforms,
-    lmContrastValue: new THREE.Uniform(LightmapImageContrast.value),
+    lmContrastGamma: new THREE.Uniform(LightmapImageContrast.gammaFactor),
+    lmContrastStandard: new THREE.Uniform(LightmapImageContrast.standard),
     lmContrastK: new THREE.Uniform(LightmapImageContrast.k),
   };
 
@@ -99,7 +98,8 @@ void main() {
   #ifndef USE_LIGHTMAP_CONTRAST
   #define USE_LIGHTMAP_CONTRAST
   uniform bool lmContrastOn;
-  uniform float lmContrastValue;
+  uniform float lmContrastGamma;
+  uniform float lmContrastStandard;
   uniform float lmContrastK;
   #endif
   
@@ -126,13 +126,14 @@ void main() {
     return (1.0 - r) * denominatorInv + r;
   }
 
-  vec3 adjustContrast(vec3 color, float contrastFactor) {
+  vec3 adjustContrast(vec3 color) {
       // Apply gamma correction to linearize color
-      float gammaFactor = 2.2;
-      float standard = 0.5; // 기준값 (수식에서 t)
+      float gammaFactor = lmContrastGamma;
+      float standard = lmContrastStandard; // 기준값 (수식에서 t)
       float t = log(2.0) / log(standard);
-      float k = 4.0; // 곡률
-      float r = 0.5; // 명도 스케일링 상수
+      float k = lmContrastK; // 곡률
+      float r = 0.0; // 명도 스케일링 상수
+      float contrastFactor = 1.0; // 대비 스케일링 상수
 
       color = applyGammaCorrection(color, vec3(gammaFactor)); // Assuming sRGB
       
@@ -157,72 +158,6 @@ void main() {
       return adjustedColor;
   }
   
-  vec3 adjustContrast4(vec3 color, float contrastFactor, float k) {
-    // 감마 보정 적용 (선형화)
-    float gammaFactor = 2.2;
-    float standard = 0.5; // 기준값 (수식에서 t)
-    float t = log(2.0) / log(standard);
-    float r = 0.5; // 명도 스케일링 상수
-    color = applyGammaCorrection(color, vec3(gammaFactor)); // Assuming sRGB
-
-    // 명도 계산 (Luminance)
-    float intensity = dot(color, vec3(0.2126, 0.7152, 0.0722));
-
-    // 비선형 명도 강조: S_k_t 함수 적용
-    float adjustedIntensity = S_k_t(intensity, k, t, r);
-
-    // 명도 대비 조절: 비선형 대비 적용
-    adjustedIntensity = pow(adjustedIntensity, contrastFactor);
-
-    // Reflectance 계산 (색상과 명도 분리)
-    vec3 reflectance = color / (intensity + 0.0001);
-
-    // 새로운 명도를 반영
-    vec3 adjustedColor = reflectance * adjustedIntensity * adjustedIntensity;
-
-    // 감마 역보정 (sRGB로 복귀)
-    adjustedColor = applyGammaCorrection(adjustedColor, vec3(1.0 / gammaFactor));
-
-    return adjustedColor;
-  }
-
-  vec3 adjustContrast2(vec3 color) {
-    // vec3 lmcolor = lightMapTexel.rgb;
-    
-    // float standard = 0.5;
-    // float contrast = lmContrastValue;
-    // contrast = contrast*standard + standard;
-    // lmcolor = clamp(lmcolor, 0.0, 1.0);
-    // lmcolor = (lmcolor - 0.5) * contrast + 0.5;
-    // lmcolor = smoothstep(0.0, 1.0, lmcolor);
-    // return lmcolor;
-    return color;
-  }
-
-  vec3 adjustContrast3(vec3 color, float value) {
-    vec3 lmcolor = color;
-    float r = (lmcolor.r - 0.5) * (lmcolor.r - 0.5);
-    float g = (lmcolor.g - 0.5) * (lmcolor.g - 0.5);
-    float b = (lmcolor.b - 0.5) * (lmcolor.b - 0.5);
-    lmcolor.r = r;
-    lmcolor.g = g;
-    lmcolor.b = b;
-
-    lmcolor.r = 1.0;
-    lmcolor.g = 0.0;
-    lmcolor.b = 0.0;
-    
-    
-    // float standard = 0.5;
-    // float contrast = lmContrastValue;
-    // contrast = contrast*standard + standard;
-    // lmcolor = clamp(lmcolor, 0.0, 1.0);
-    // lmcolor = (lmcolor - 0.5) * contrast + 0.5;
-    // lmcolor = smoothstep(0.0, 1.0, lmcolor);
-    // return lmcolor;
-    return lmcolor;
-  }
-
   void main() {`;
   parameters.fragmentShader = parameters.fragmentShader.replace(
     targetHead,
@@ -237,7 +172,7 @@ void main() {
 	#ifdef USE_LIGHTMAP
 
 		vec4 lightMapTexel = texture2D( lightMap, vLightMapUv );
-    vec3 lmcolor = adjustContrast4(lightMapTexel.rgb, lmContrastValue, lmContrastK);
+    vec3 lmcolor = adjustContrast(lightMapTexel.rgb);
 
     
 		vec3 lightMapIrradiance = lmcolor * lightMapIntensity;
