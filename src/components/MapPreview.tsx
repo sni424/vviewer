@@ -86,10 +86,12 @@ const MapPreview: React.FC<MapPreviewProps> = ({
   ] as THREE.Texture;
   const { openModal, closeModal } = useModal();
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const hasImage = texture && texture.image;
+  const isGainmap = texture?.colorSpace === 'srgb-linear';
+  const hasImage = texture && texture.image && !isGainmap;
+  const cannotDraw = mapKey === 'envMap' || isGainmap;
 
   useEffect(() => {
-    if (mapKey === 'envMap') {
+    if (cannotDraw) {
       // HDR이미지를 보여줄 수가 없다
       return;
     }
@@ -108,12 +110,15 @@ const MapPreview: React.FC<MapPreviewProps> = ({
     const h = height ?? 60;
     canvasRef.current.width = w;
     canvasRef.current.height = h;
+    // const source = texture.image || texture.source.data;
+    // console.log(texture);
+    // console.log(texture.image);
     canvasRef.current.getContext('2d')?.drawImage(texture.image, 0, 0, w, h);
   }, [texture]);
 
-  if (mapKey === 'envMap') {
+  if (cannotDraw) {
     if (texture) {
-      return <div style={{ fontSize: 11, color: '#555' }}>envMap표시불가</div>;
+      return <div style={{ fontSize: 11, color: '#555' }}>표시불가(HDR)</div>;
     } else {
       return <div>없음</div>;
     }
@@ -134,7 +139,6 @@ const MapPreview: React.FC<MapPreviewProps> = ({
         ref={canvasRef}
         onClick={() => {
           if (!hasImage) {
-            console.log('11');
             return;
           }
           openModal(() => (

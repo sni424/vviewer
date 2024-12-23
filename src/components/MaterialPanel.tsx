@@ -7,6 +7,7 @@ import {
   threeExportsAtom,
 } from '../scripts/atoms';
 import { loadHDRTexture } from '../scripts/utils';
+import VTextureLoader from '../scripts/VTextureLoader';
 import { THREE } from '../scripts/VTHREE';
 import MapPreview, { MapPreviewProps } from './MapPreview';
 
@@ -76,6 +77,7 @@ const MapInfo = (props: MapInfoProps) => {
   ] as THREE.Texture;
   const [channel, setChannel] = useState(texture?.channel ?? -1);
   const setMaterialSelected = useSetAtom(materialSelectedAtom);
+  const threeExports = useAtomValue(threeExportsAtom)!;
 
   const materialRangeKey =
     materialRange?.matKey as keyof THREE.MeshStandardMaterial;
@@ -132,27 +134,35 @@ const MapInfo = (props: MapInfoProps) => {
     setIsDragging(false);
     const file = e.dataTransfer.files[0];
     if (file) {
-      if (
-        (file.name.endsWith('.hdr') || file.name.endsWith('.exr')) &&
-        mapKey === 'envMap'
-      ) {
+      const isEnvMap = props.matKey === 'envMap';
+      if (isEnvMap) {
+        if (
+          !(
+            file.name.toLowerCase().endsWith('hdr') ||
+            file.name.toLowerCase().endsWith('exr')
+          )
+        ) {
+          alert('환경맵은 HDR/EXR 형식만 지원합니다.');
+          return;
+        }
         loadHDRTexture(URL.createObjectURL(file)).then(texture => {
           setMap(material, mapKey, texture);
         });
       } else {
-        const reader = new FileReader();
-        reader.onload = e => {
-          const texture = new THREE.TextureLoader().load(
-            e.target?.result as string,
-          );
-          texture.flipY = !texture.flipY;
-          setMap(material, mapKey, texture);
+        const acceptedExtensions = ['.png', '.jpg', '.exr', '.hdr'];
+        if (
+          !acceptedExtensions.some(ext => file.name.toLowerCase().endsWith(ext))
+        ) {
+          alert('다음 확장자만 적용 가능 : ' + acceptedExtensions.join(', '));
+          return;
+        }
 
-          // 강제 리로딩
-          reload();
-        };
-        reader.readAsDataURL(file);
+        VTextureLoader.loadAsync(file, threeExports).then(texture => {
+          setMap(material, mapKey, texture);
+        });
       }
+
+      e.dataTransfer.clearData();
     }
   };
 

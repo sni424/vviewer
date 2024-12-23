@@ -1,6 +1,7 @@
 import { useAtomValue } from 'jotai';
 import { useState } from 'react';
 import { selectedAtom, threeExportsAtom, useModal } from '../scripts/atoms';
+import VTextureLoader from '../scripts/VTextureLoader';
 import { THREE } from '../scripts/VTHREE';
 
 const ApplyLightMapComponent = () => {
@@ -82,7 +83,7 @@ const ApplyLightMapComponent = () => {
         setIsDragging(false);
 
         if (event.dataTransfer.files && event.dataTransfer.files.length > 0) {
-          const acceptedExtensions = ['.png', '.jpg'];
+          const acceptedExtensions = ['.png', '.jpg', '.exr', '.hdr'];
           const files = Array.from(event.dataTransfer.files);
 
           // Filter files by .gltf and .glb extensions
@@ -93,7 +94,7 @@ const ApplyLightMapComponent = () => {
           );
 
           if (filteredFiles.length === 0) {
-            alert('Only .png and .jpg files are accepted.');
+            alert('다음 확장자만 적용 가능 : ' + acceptedExtensions.join(', '));
             return;
           }
 
@@ -191,33 +192,29 @@ const ApplyLightMapComponent = () => {
         </button>
         <button
           onClick={() => {
-            const texture = new THREE.TextureLoader().load(
-              URL.createObjectURL(imageFile!),
-            );
-            texture.flipY = !texture.flipY;
-            texture.channel = lightmapChannel;
-            texture.needsUpdate = true;
-
-            childrenMeshes.forEach(mesh => {
-              if (dst === 'lightmap') {
-                (mesh.material as THREE.MeshStandardMaterial).lightMap =
-                  texture;
-              } else if (dst === 'ao') {
-                (mesh.material as THREE.MeshStandardMaterial).aoMap = texture;
-              } else if (dst === 'diffuse') {
-                (mesh.material as THREE.MeshStandardMaterial).map = texture;
-              } else if (dst === 'emissive') {
-                (mesh.material as THREE.MeshStandardMaterial).emissiveMap =
-                  texture;
-              } else if (dst === 'normal') {
-                (mesh.material as THREE.MeshStandardMaterial).normalMap =
-                  texture;
-              } else {
-                throw new Error('Invalid dst');
-              }
-              (mesh.material as THREE.MeshStandardMaterial).needsUpdate = true;
+            VTextureLoader.load(imageFile!, threeExports).then(texture => {
+              childrenMeshes.forEach(mesh => {
+                if (dst === 'lightmap') {
+                  (mesh.material as THREE.MeshStandardMaterial).lightMap =
+                    texture;
+                } else if (dst === 'ao') {
+                  (mesh.material as THREE.MeshStandardMaterial).aoMap = texture;
+                } else if (dst === 'diffuse') {
+                  (mesh.material as THREE.MeshStandardMaterial).map = texture;
+                } else if (dst === 'emissive') {
+                  (mesh.material as THREE.MeshStandardMaterial).emissiveMap =
+                    texture;
+                } else if (dst === 'normal') {
+                  (mesh.material as THREE.MeshStandardMaterial).normalMap =
+                    texture;
+                } else {
+                  throw new Error('Invalid dst');
+                }
+                (mesh.material as THREE.MeshStandardMaterial).needsUpdate =
+                  true;
+              });
+              closeModal();
             });
-            closeModal();
           }}
           disabled={!imageFile}
         >

@@ -3,7 +3,6 @@ import CameraPanel from '../components/CameraPanel';
 import FloatingFrontView from '../components/canvas/FloatingFrontView';
 import FloatingTopView from '../components/canvas/FloatingTopView';
 import RendererContainer from '../components/canvas/Renderer';
-import GizmoPanel from '../components/GizmoPanel';
 import MaterialPanelContainer from '../components/MaterialPanel';
 import MeshInfoPanel from '../components/MeshInfoPanel';
 import Modal from '../components/Modal';
@@ -158,7 +157,7 @@ const Views = () => {
       <ViewGrid></ViewGrid>
       <FloatingTopView></FloatingTopView>
       <FloatingFrontView></FloatingFrontView>
-      <GizmoPanel></GizmoPanel>
+      {/*<GizmoPanel></GizmoPanel>*/}
     </div>
   );
 };
