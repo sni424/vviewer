@@ -71,7 +71,7 @@ export type ModelSource = {
   name: string;
   url: string;
   file: File;
-  map?: File | File[];
+  map?: File;
   mapDst?: MapDst;
 };
 export const sourceAtom = atom<ModelSource[]>([]);

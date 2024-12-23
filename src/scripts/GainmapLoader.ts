@@ -70,7 +70,7 @@ export class EXRCodec {
     }
   }
 
-  static async loadExr(file: File) { }
+  // static async loadExr(file: File) { }
 
   // url : exr 또는 hdr 파일의 경로, 또는 파일
   // https://github.com/MONOGRID/gainmap-js
@@ -83,7 +83,6 @@ export class EXRCodec {
 
     const url = isUrl ? file : URL.createObjectURL(file)
 
-    debugger;
     if (isUrl) {
       if (
         !(url.toLowerCase().endsWith('.exr') ||

@@ -1,4 +1,3 @@
-import { GainMapLoader, HDRJPGLoader } from '@monogrid/gainmap-js';
 import { Canvas, useThree } from '@react-three/fiber';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import { useEffect, useRef } from 'react';
@@ -20,7 +19,6 @@ import {
   treeScrollToAtom,
   viewGridAtom,
 } from '../../scripts/atoms';
-import GainmapLoader from '../../scripts/GainmapLoader';
 import {
   getIntersects,
   loadScene,
@@ -28,6 +26,7 @@ import {
   zoomToSelected,
 } from '../../scripts/utils';
 import VGLTFLoader from '../../scripts/VGLTFLoader';
+import VTextureLoader from '../../scripts/VTextureLoader';
 import { THREE } from '../../scripts/VTHREE';
 import { View } from '../../types';
 import UnifiedCameraControls from '../camera/UnifiedCameraControls';
@@ -53,7 +52,7 @@ const applyTexture = (
   mapDst?: 'lightmap' | 'emissivemap' | 'gainmap',
 ) => {
   object.traverseAll(obj => {
-    console.log('obj : ', obj);
+    // console.log('obj : ', obj);
     if (obj.type === 'Mesh') {
       const material = (obj as THREE.Mesh)
         .material as THREE.MeshStandardMaterial;
@@ -104,105 +103,14 @@ const useLoadModel = ({
       });
 
       new VGLTFLoader().loadAsync(url).then(async gltf => {
-        const disposes: { dispose?: Function }[] = [];
-        const disposeUrls = [];
+        if (map) {
+          const texture = await VTextureLoader.loadAsync(map, { gl });
 
-        if (map && Array.isArray(map)) {
-          // gainmap array
-          // [file].glb <- gltf
-          // [file].jpg <- map.find(file=>file.name.endsWith('.jpg') && !file.name.includes("-gainmap"))
-          // [file].json <- map.find(file=>file.name.endsWith('.json'))
-          // [file]-gainmap.jpg <- map.find(file=>file.name.endsWith('-gainmap.jpg'))
-
-          const sdrTexture = map.find(
-            file =>
-              file.name.endsWith('.jpg') && !file.name.includes('-gainmap'),
-          );
-          const gainmap = map.find(file => file.name.endsWith('-gainmap.jpg'));
-          const meta = map.find(file => file.name.endsWith('.json'));
-          const files = [sdrTexture, gainmap, meta] as File[]; // 중요! 순서를 지켜야함
-          if (!files.every(Boolean)) {
-            console.error(map, files);
-            debugger;
-            throw new Error('Invalid gainmap files');
-          }
-
-          const urls = files.map(file => URL.createObjectURL(file)) as [
-            string,
-            string,
-            string,
-          ];
-          disposeUrls.push(...urls);
-          const renderer = gl;
-          const result = await new GainMapLoader(renderer).loadAsync(urls);
-          const texture = result.renderTarget.texture;
-          // texture.colorSpace = THREE.LinearSRGBColorSpace;
-          // debugger;
-          // texture.colorSpace = THREE.SRGBColorSpace;
-          disposes.push(result);
-
-          if (texture) {
-            // texture.flipY = !texture.flipY;
-            texture.channel = 1;
-            texture.needsUpdate = true;
-            applyTexture(gltf.scene, texture, mapDst);
-          } else {
-            console.error(map);
-            debugger;
-            throw new Error('Invalid texture type');
-          }
-        }
-
-        if (map && !Array.isArray(map)) {
-          let texture: THREE.Texture | null = null;
-          const url = URL.createObjectURL(map);
-          disposeUrls.push(url);
-          if (map.name.endsWith('.exr')) {
-            // const loader = new EXRLoader();
-            // texture = await loader.loadAsync(url);
-            // console.log('EXR');
-            texture = await GainmapLoader.load(map, { gl }).finally(() => {
-              GainmapLoader.dispose();
-            });
-          } else if (map.type === 'image/jpeg') {
-            const renderer = gl;
-            const loader = new HDRJPGLoader(renderer);
-            const result = await loader.loadAsync(url);
-            console.log(result);
-            if (result.renderTarget.depthTexture) {
-              console.log('d');
-              result.renderTarget.depthTexture.flipY =
-                !result.renderTarget.depthTexture.flipY;
-            }
-            texture = result.renderTarget.texture;
-            disposes.push(result);
-            console.log('JPEG');
-          } else if (map.type === 'image/png') {
-            texture = new THREE.TextureLoader().load(url);
-            console.log('PNG');
-          } else {
-          }
-
-          console.log(texture);
-          // debugger;
-
-          if (texture) {
-            texture.flipY = !texture.flipY;
-            texture.channel = 1;
-            texture.needsUpdate = true;
-            applyTexture(gltf.scene, texture, mapDst);
-          } else {
-            console.error(map);
-            debugger;
-            throw new Error('Invalid texture type');
-          }
+          applyTexture(gltf.scene, texture, mapDst);
         }
 
         scene.add(gltf.scene);
-        // revoke object url
-        URL.revokeObjectURL(url);
-        // disposeUrls.forEach(URL.revokeObjectURL);
-        disposes.forEach(d => d.dispose?.());
+
         setLoadHistoryAtom(history => {
           const newHistory = new Map(history);
           newHistory.get(url)!.end = Date.now();
