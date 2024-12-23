@@ -210,7 +210,7 @@ const useMouseHandler = () => {
           return [...selected, intersects[0].object.uuid];
         });
       } else {
-        if (!intersects[0].object.userData.isProbeMesh) {
+        if (!intersects[0].object.vUserData.isProbeMesh) {
           setSelected([intersects[0].object.uuid]);
           setScrollTo(intersects[0].object.uuid);
           if (intersects[0].object.type === 'Mesh') {

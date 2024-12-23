@@ -78,7 +78,7 @@ export const getIntersects = (
   e: React.MouseEvent,
   threeExports: RootState | null,
   raycaster: THREE.Raycaster = new THREE.Raycaster(),
-  filterUserdataIgnoreRaycast = true, // Object3D.userData.ignoreRayCast가 true인 아이들은 무시
+  filterUserdataIgnoreRaycast = true, // Object3D.vUserData.ignoreRayCast가 true인 아이들은 무시
 ) => {
   if (!threeExports) {
     console.error(
@@ -149,7 +149,7 @@ export const isTransformControlOrChild = (object: THREE.Object3D) => {
   while (current) {
     if (
       current instanceof TransformControls ||
-      current.userData.isTransformControls
+      current.vUserData.isTransformControls
     ) {
       return true; // Skip if it's part of TransformControls
     }
@@ -161,7 +161,7 @@ export const isTransformControlOrChild = (object: THREE.Object3D) => {
 
 // Object 가 Probe 의 Mesh 인지?
 export const isProbeMesh = (object: THREE.Object3D) => {
-  return object.userData.isProbeMesh !== undefined;
+  return object.vUserData.isProbeMesh !== undefined;
 };
 
 export const loadScene = async (): Promise<THREE.Object3D | undefined> => {
@@ -815,10 +815,10 @@ export const uploadGainmap = async (object: THREE.Object3D) => {
     if ((obj as THREE.Mesh).isMesh) {
       const mesh = obj as THREE.Mesh;
       const mat = mesh.material as THREE.MeshStandardMaterial;
-      if (mat && mat.lightMap && mat.lightMap.userData.gainMap) {
-        mat.userData.gainMap = mat.lightMap.userData.gainMap;
-        mat.userData.gainMapIntensity = mat.lightMapIntensity;
-        const gainMapHash = mat.userData.gainMap;
+      if (mat && mat.lightMap && mat.lightMap.vUserData.gainMap) {
+        mat.vUserData.gainMap = mat.lightMap.vUserData.gainMap;
+        mat.vUserData.gainMapIntensity = mat.lightMapIntensity;
+        const gainMapHash = mat.vUserData.gainMap;
 
         if (gainMapHash) {
           if (!gainmapHashes[gainMapHash]) {

@@ -89,11 +89,11 @@ export default class VGLTFExporter extends GLTFExporter {
           console.log('lightMapToEmissive : ', mesh, material);
         }
         // 이미 매핑 됐으면 패스
-        if (!material.userData.isEmissiveLightMap && material.lightMap) {
+        if (!material.vUserData.isEmissiveLightMap && material.lightMap) {
           const clonedMat = material.clone();
           clonedMat.emissiveMap = clonedMat.lightMap;
-          clonedMat.userData.isEmissiveLightMap = true;
-          clonedMat.userData.lightMapIntensity = clonedMat.lightMapIntensity;
+          clonedMat.vUserData.isEmissiveLightMap = true;
+          clonedMat.vUserData.lightMapIntensity = clonedMat.lightMapIntensity;
           clonedMat.needsUpdate = true;
           mesh.material = clonedMat;
           console.log('lightmap Passed');
@@ -126,7 +126,7 @@ export default class VGLTFExporter extends GLTFExporter {
         const mat = mesh.material as THREE.MeshStandardMaterial;
         console.log("LMIntensity", mat.lightMapIntensity);
         const lm = mat.lightMap;
-        if (lm && lm.userData.gainMap) {
+        if (lm && lm.vUserData.gainMap) {
           mat.vUserData.gainMap = lm.vUserData.gainMap;
           mat.vUserData.gainMapIntensity = mat.lightMapIntensity;
           console.log(mat.lightMapIntensity);
