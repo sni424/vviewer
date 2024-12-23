@@ -94,6 +94,7 @@ async function getGainmap(object: THREE.Object3D, gl?: THREE.WebGLRenderer) {
             if (mat.vUserData.gainMapIntensity !== undefined) {
               mat.lightMapIntensity = mat.vUserData.gainMapIntensity;
             }
+            mat.needsUpdate = true;
           });
         });
       }
