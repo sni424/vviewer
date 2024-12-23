@@ -73,10 +73,10 @@ export default class VTextureLoader {
     const detectFlipY = option?.flipY === undefined;
     let flipY = inputOption.flipY;
     if (detectFlipY) {
-      flipY = isGainmap ? true : (isPng ? false : true);
+      flipY = isHdr ? true : (isJpg ? false : (isPng ? false : true));
     }
 
-    console.log(flipY);
+    // console.log(flipY);
 
     if (isGainmap) {
       if (!inputOption.gl) {
@@ -84,7 +84,9 @@ export default class VTextureLoader {
         console.error('게인맵의 경우 옵션에 gl 필요');
         throw new Error('게인맵의 경우 옵션에 gl 필요');
       }
-      return GainmapLoader.load(fileOrUrl, { gl: inputOption.gl }).then(texture => {
+      return GainmapLoader.load(fileOrUrl, {
+        gl: inputOption.gl,
+      }).then(texture => {
         texture.flipY = flipY;
         texture.channel = inputOption.channel;
         texture.needsUpdate = true;
