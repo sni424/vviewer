@@ -64,11 +64,6 @@ export const defaultSettings = async () => {
       moveSpeed: 3,
       isoView: false,
       cameraY: 1.5,
-      tour: {
-        isAnimation: false,
-        roomIndex: 0,
-        animationSpeed: 1,
-      },
     },
     orbitSetting: {
       autoRotate: false,

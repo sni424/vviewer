@@ -311,21 +311,27 @@ export const cameraSettingAtom = atom<{
   moveSpeed: number;
   isoView: boolean;
   cameraY: number
-  tour: {
-    isAnimation: boolean,
-    roomIndex: number
-    animationSpeed: number
-  }
 }>({
   moveSpeed: 3,
   isoView: false,
   cameraY: 1.5,
+});
+
+export const cameraActionAtom = atom<{
+  tour: {
+    isAnimation: boolean,
+    roomIndex: number
+    animationSpeed: number
+    path: boolean
+  }
+}>({
   tour: {
     isAnimation: false,
     roomIndex: 0,
-    animationSpeed: 1
+    animationSpeed: 1,
+    path: true
   }
-});
+})
 
 //orbit세팅
 export const orbitSettingAtom = atom<{
