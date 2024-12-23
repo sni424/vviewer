@@ -38,8 +38,8 @@ const tour: placeInfoType[] = [
   },
   {
     name: '주방',
-    position: new THREE.Vector3(0.62, 1.3, -3.34),
-    direction: new THREE.Vector3(0.88, -0.11, -0.44),
+    position: new THREE.Vector3(1.087, 1.258, -3.426),
+    direction: new THREE.Vector3(0.93, 0.03, -0.26),
   },
   {
     name: '거실',
@@ -56,93 +56,170 @@ const tour: placeInfoType[] = [
 const animationSpeed = [1, 2, 3, 4, 5];
 
 function HotSpotPanel() {
-  //저장한 위치
+  // 투어 정보
   const [placeInfo, setPlaceInfo] = useState<placeInfoType[]>([]);
-
-  const threeExports = useAtomValue(threeExportsAtom);
-  //카메라 액션 atom
-  const [cameraAction, setCameraAction] = useAtom(cameraActionAtom);
-  //카메라 설정값값
-  const cameraSetting = useAtomValue(cameraSettingAtom);
-  //바닥모델델
+  // 바닥 모델
   const [floorModel, setFloorModel] = useState<THREE.Mesh>();
-  if (!threeExports) {
-    return null; // early return
-  }
+  // 투어 실행 여부
+  const [isTour, setTour] = useState<boolean>(false);
+  //threejs useThree
+  const threeExports = useAtomValue(threeExportsAtom);
+  //카메라 액션
+  const [cameraAction, setCameraAction] = useAtom(cameraActionAtom);
+  //카메라 세팅팅
+  const cameraSetting = useAtomValue(cameraSettingAtom);
+
+  if (!threeExports) return null;
 
   const { camera, scene } = threeExports;
+  console.log(
+    'camera',
+    camera.position,
+    camera.getWorldDirection(new THREE.Vector3()),
+  );
+
+  // 투어 애니메이션 실행 함수
+  const executeTour = (roomIndex: number) => {
+    const { position, direction } = tour[roomIndex];
+    camera.moveTo('pathfinding', {
+      pathfinding: {
+        target: new THREE.Vector3(position.x, position.y, position.z),
+        speed: cameraAction.tour.animationSpeed,
+        model: floorModel,
+        direction,
+      },
+    });
+    setCameraAction(pre => ({
+      ...pre,
+      tour: {
+        ...pre.tour,
+        isAnimation: true,
+      },
+    }));
+  };
+
+  // 이전전 방으로 이동
+  const moveToPrevRoom = () => {
+    setCameraAction(pre => ({
+      ...pre,
+      tour: {
+        ...pre.tour,
+        roomIndex:
+          pre.tour.roomIndex - 1 === 0
+            ? tour.length - 1
+            : pre.tour.roomIndex - 1,
+        isAnimation: true,
+      },
+    }));
+  };
+
+  // 다음 방으로 이동
+  const moveToNextRoom = () => {
+    setCameraAction(pre => ({
+      ...pre,
+      tour: {
+        ...pre.tour,
+        roomIndex:
+          pre.tour.roomIndex + 1 === tour.length ? 0 : pre.tour.roomIndex + 1,
+        isAnimation: true,
+      },
+    }));
+  };
+  //투어하는 방 선택한 방으로로 변경
+  const changeTourRoom = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setCameraAction(pre => ({
+      ...pre,
+      tour: {
+        ...pre.tour,
+        roomIndex: Number(e.target.value),
+      },
+    }));
+  };
+
+  //투어 속도 조절
+  const changeTourSpeed = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setCameraAction(pre => ({
+      ...pre,
+      tour: {
+        ...pre.tour,
+        animationSpeed: Number(e.target.value),
+      },
+    }));
+  };
+
+  // 핫스팟 추가
+  const addHotSpot = () => {
+    setPlaceInfo(prev => [
+      ...prev,
+      {
+        name: `place-${prev.length}`,
+        position: camera.position.clone(),
+        direction: camera.getWorldDirection(new THREE.Vector3()).clone(),
+      },
+    ]);
+  };
+
+  //핫스팟 이동
+  const moveHotSpot = (place: placeInfoType) => {
+    camera.moveTo('linear', {
+      linear: {
+        target: place.position,
+        direction: place.direction,
+        duration: cameraSetting.moveSpeed,
+      },
+    });
+  };
+
+  // 핫스팟 삭제
+  const deleteHotSpot = (index: number) => {
+    setPlaceInfo(prev => prev.filter((_, i) => i !== index));
+  };
 
   useEffect(() => {
-    //투어 시작
-    if (cameraAction.tour.isAnimation) {
-      // 자동투어 시작
-      setCameraAction(pre => ({
-        ...pre,
-        tour: {
-          ...pre.tour,
-          path: true,
-        },
-      }));
-
-      //투어에 따른 카메라 이동
-      camera.moveTo('pathfinding', {
-        pathfinding: {
-          target: new THREE.Vector3(
-            tour[cameraAction.tour.roomIndex].position.x,
-            cameraSetting.cameraY,
-            tour[cameraAction.tour.roomIndex].position.z,
-          ),
-          speed: cameraAction.tour.animationSpeed,
-          model: floorModel,
-          direction: tour[cameraAction.tour.roomIndex].direction,
-        },
-      });
-    }
-    //투어 종료
-    else {
+    if (isTour) {
+      executeTour(cameraAction.tour.roomIndex);
+    } else {
       camera.moveTo('pathfinding', {
         pathfinding: {
           stopAnimtaion: true,
         },
       });
-    }
-  }, [
-    cameraAction.tour.isAnimation,
-    cameraAction.tour.animationSpeed,
-    cameraAction.tour.roomIndex,
-  ]);
-
-  useEffect(() => {
-    //투어에서 방에관한 경로가 끝나면 다음 방으로 변경
-    if (!cameraAction.tour.path) {
       setCameraAction(pre => ({
         ...pre,
         tour: {
           ...pre.tour,
-          roomIndex:
-            pre.tour.roomIndex + 1 === tour.length ? 0 : pre.tour.roomIndex + 1,
+          isAnimation: false,
         },
       }));
     }
-  }, [cameraAction.tour.path]);
+  }, [isTour]);
+
+  // 투어 애니메이션 실행
+  useEffect(() => {
+    if (cameraAction.tour.isAnimation && isTour) {
+      executeTour(cameraAction.tour.roomIndex);
+    }
+  }, [cameraAction.tour.roomIndex]);
+
+  // 바닥 메시 로드
+  useEffect(() => {
+    const navMesh = scene.getObjectByName('84B3_DP') as THREE.Mesh;
+    setFloorModel(navMesh);
+  }, [scene]);
+
+  // 투어 경로 종료 시 다음 방으로 이동
+  useEffect(() => {
+    if (!cameraAction.tour.isAnimation && isTour) {
+      moveToNextRoom();
+    }
+  }, [cameraAction.tour.isAnimation]);
+
   return (
     <>
       <div className="px-4 box-border w-full py-2">
         <button
           className="px-4 py-2 mt-2 text-white bg-blue-600 rounded-lg shadow-md hover:bg-blue-700 active:scale-95 transition-transform duration-150 ease-in-out"
-          onClick={() => {
-            //해당 위치로 핫스팟 추가가
-            setPlaceInfo((pre: placeInfoType[]) => [
-              ...pre,
-              {
-                name: `place-${pre.length}`,
-                position: camera.position.clone(),
-                direction: camera
-                  .getWorldDirection(new THREE.Vector3())
-                  .clone(),
-              },
-            ]);
-          }}
+          onClick={addHotSpot}
         >
           위치 추가
         </button>
@@ -155,14 +232,7 @@ function HotSpotPanel() {
                   key={`placeInfo-${index}`}
                   className="relative border-2 cursor-pointer border-sky-500 bg-gray-200 text-gray-700 rounded-md shadow-sm hover:bg-gray-300 active:bg-gray-400 transition-all duration-150 ease-in-out p-2"
                   onClick={() => {
-                    //핫스팟으로 이동
-                    camera.moveTo('linear', {
-                      linear: {
-                        target: place.position,
-                        direction: place.direction,
-                        duration: cameraSetting.moveSpeed,
-                      },
-                    });
+                    moveHotSpot(place);
                   }}
                 >
                   x
@@ -172,7 +242,7 @@ function HotSpotPanel() {
                     onClick={e => {
                       // 해당 핫스팟 삭제제
                       e.stopPropagation();
-                      setPlaceInfo(prev => prev.filter((_, i) => i !== index));
+                      deleteHotSpot(index);
                     }}
                   >
                     &times;
@@ -190,16 +260,7 @@ function HotSpotPanel() {
             className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-700"
             onClick={() => {
               //이전 방으로 변경경
-              setCameraAction(pre => ({
-                ...pre,
-                tour: {
-                  ...pre.tour,
-                  roomIndex:
-                    pre.tour.roomIndex < 1
-                      ? tour.length - 1
-                      : pre.tour.roomIndex - 1,
-                },
-              }));
+              moveToPrevRoom();
             }}
           >
             <span className="text-xl text-black hover:text-white leading-none flex items-center justify-center">
@@ -210,27 +271,11 @@ function HotSpotPanel() {
           <div className="flex items-center gap-4">
             {/* 실행행 버튼 */}
             <div
-              className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-700 cursor-pointer"
-              onClick={() => {
-                //투어 실행
-                //바닥 모델 찾기기
-                const navMesh = scene.getObjectByName('84B3_DP') as THREE.Mesh;
-                setFloorModel(navMesh);
-                //애니메이션 실행행
-                setCameraAction(pre => ({
-                  ...pre,
-                  tour: {
-                    ...pre.tour,
-                    isAnimation: !pre.tour.isAnimation,
-                  },
-                }));
-              }}
+              className="w-8 h-8 flex items-center justify-center 
+            rounded-full hover:bg-gray-700 cursor-pointer text-xl"
+              onClick={() => setTour(!isTour)}
             >
-              {cameraAction.tour.isAnimation ? (
-                <FaPause className="text-xl" />
-              ) : (
-                <FaAngleDoubleRight className="text-xl" />
-              )}
+              {isTour ? <FaPause /> : <FaAngleDoubleRight />}
             </div>
 
             {/* 페이지 수 */}
@@ -244,13 +289,7 @@ function HotSpotPanel() {
               value={cameraAction?.tour?.animationSpeed}
               onChange={e => {
                 //투어 속도 조절절
-                setCameraAction(pre => ({
-                  ...pre,
-                  tour: {
-                    ...pre.tour,
-                    animationSpeed: Number(e.target.value),
-                  },
-                }));
+                changeTourSpeed(e);
               }}
             >
               {animationSpeed.map((speed, index) => (
@@ -266,13 +305,7 @@ function HotSpotPanel() {
               value={cameraAction?.tour?.roomIndex}
               onChange={e => {
                 //투어하는 방 변경
-                setCameraAction(pre => ({
-                  ...pre,
-                  tour: {
-                    ...pre.tour,
-                    roomIndex: Number(e.target.value),
-                  },
-                }));
+                changeTourRoom(e);
               }}
             >
               {tour.map((room, index) => (
@@ -288,16 +321,7 @@ function HotSpotPanel() {
             className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-700"
             onClick={() => {
               //다음 방으로 변경
-              setCameraAction(pre => ({
-                ...pre,
-                tour: {
-                  ...pre.tour,
-                  roomIndex:
-                    pre.tour.roomIndex + 1 === tour.length
-                      ? 0
-                      : pre.tour.roomIndex + 1,
-                },
-              }));
+              moveToNextRoom();
             }}
           >
             <span className="text-2xl text-black hover:text-white leading-none flex items-center justify-center">

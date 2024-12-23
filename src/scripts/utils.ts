@@ -436,17 +436,19 @@ let currentAnimation: gsap.core.Tween | null = null;
 //카메라 이동 경로에따른 애니메이션션
 const handlePathfindingMove = (
   camera: THREE.Object3D,
+  target: THREE.Vector3,
   path: THREE.Vector3[],
   speed: number,
-  direction: THREE.Vector3,
+  direction?: THREE.Vector3,
 ) => {
+
   if (path.length === 0) return; // 종료 조건 추가
 
   const startPosition = camera.position.clone(); // 초기 카메라 위치
   const startDirection = camera
     .getWorldDirection(new THREE.Vector3())
     .normalize(); // 초기 카메라 방향
-  const newVector = new THREE.Vector3(path[0].x, 1, path[0].z); // 이동할 좌표
+  const newVector = new THREE.Vector3(path[0].x, target.y, path[0].z); // 이동할 좌표
   const endDirection = newVector.clone().sub(startPosition).normalize(); // 이동할 방향
   const distance = camera.position.distanceTo(newVector); // 거리 계산
   // speed가 클수록 duration을 짧게 (최소 0.1 보장)
@@ -458,14 +460,10 @@ const handlePathfindingMove = (
   // 애니메이션 실행
   currentAnimation = gsap.to(camera.position, {
     x: newVector.x,
-    y: camera.position.y,
+    y: newVector.y,
     z: newVector.z,
-    duration:
-      distance > 7
-        ? distance * 0.9 * speedFactor
-        : distance < 2
-          ? distance * 1.5 * speedFactor
-          : distance * speedFactor,
+    duration: distance * speedFactor,
+    ease: 'sine', // 자연스러운 애니메이션
     onUpdate: function () {
       // 0에서 1까지 보간 값
       const progress = this.progress();
@@ -477,11 +475,11 @@ const handlePathfindingMove = (
 
       if (progress >= 0.9 && path.length > 1) {
         path.shift();
-        handlePathfindingMove(camera, path, speed, direction); // 재귀 호출로 다음 경로 처리
+        handlePathfindingMove(camera, target, path, speed, direction); // 재귀 호출로 다음 경로 처리
         return;
       } else {
         // //마지막 경로에서 카메라 방향 설정
-        if (path.length === 1) {
+        if (path.length === 1 && direction) {
           const quaternion = rotateCameraSmoothly(
             startDirection,
             direction,
@@ -491,26 +489,26 @@ const handlePathfindingMove = (
           camera.quaternion.copy(quaternion);
         } else {
           //이동하는 경로에따라 카메라 방향 설정
-          const quaternion = rotateCameraSmoothly(
-            startDirection,
-            endDirection,
-            // adjustedProgress
-            distance > 5 ? Math.min(adjustedProgress * distance, 1) : adjustedProgress,
-          );
-          camera.quaternion.copy(quaternion);
+          if (direction) {
+            const quaternion = rotateCameraSmoothly(
+              startDirection,
+              endDirection,
+              // adjustedProgress
+              distance > 5 ? Math.min(adjustedProgress * distance, 1) : adjustedProgress,
+            );
+            camera.quaternion.copy(quaternion);
+          }
         }
       }
     },
     onComplete: () => {
       console.log('complete path');
-      const target = camera.position.clone().add(direction);
-      camera.lookAt(target.x, target.y, target.z)
       setTimeout(() => {
         setAtomValue(cameraActionAtom, pre => ({
           ...pre,
           tour: {
             ...pre.tour,
-            path: false
+            isAnimation: false
           }
         }))
       }, 500)
@@ -536,13 +534,14 @@ const handleLinearMove = (
     y: target.y,
     z: target.z,
     duration: distance * speedFactor,
-    ease: 'power2.out',
+    ease: 'linear',
     onUpdate: function () {
+      // 진행률에 따라 회전 비율 조정
       const progress = this.progress();
+
       const quaternion = rotateCameraSmoothly(
         startDirection,
         direction,
-        // progress
         progress,
       );
       camera.quaternion.copy(quaternion);
@@ -629,48 +628,39 @@ export const moveTo = (
 ) => {
   switch (action) {
     case 'pathfinding':
-      if (options.pathfinding) {
-        const { target, speed, model, direction, stopAnimtaion } = options.pathfinding;
-        if (stopAnimtaion) {
-          if (currentAnimation) {
-            currentAnimation.kill();
-          }
-          return;
-        }
-        const ZONE = 'level';
+      if (action !== 'pathfinding' || !options.pathfinding) return;
 
-        const pathFinding = new Pathfinding();
-        if (model && target && speed && direction) {
+      const { target, speed, model, direction, stopAnimtaion } = options.pathfinding;
 
-          const navMesh = model.getObjectByName('84B3_DP') as THREE.Mesh;
-          if (navMesh) {
-            const zone = Pathfinding.createZone(navMesh.geometry);
-            pathFinding.setZoneData(ZONE, zone);
+      if (stopAnimtaion && currentAnimation) {
+        currentAnimation.kill();
+        return;
+      }
 
-            const groupID = pathFinding.getGroup(ZONE, camera.position);
-            const targetGroupID = pathFinding.getGroup(ZONE, target);
-            const closestStartNode = pathFinding.getClosestNode(
-              camera.position,
-              'level',
-              groupID,
-            );
-            const closestTargetNode = pathFinding.getClosestNode(
-              target,
-              'level',
-              targetGroupID,
-            );
+      const ZONE = 'level';
+      const pathFinding = new Pathfinding();
 
-            const path = pathFinding.findPath(
-              closestStartNode.centroid,
-              closestTargetNode.centroid,
-              ZONE,
-              groupID,
-            );
+      if (model && target && speed) {
+        const navMesh = model.getObjectByName('84B3_DP') as THREE.Mesh;
+        if (!navMesh) return;
 
-            if (path) {
-              handlePathfindingMove(camera, path, speed, direction);
-            }
-          }
+        const zone = Pathfinding.createZone(navMesh.geometry);
+        pathFinding.setZoneData(ZONE, zone);
+
+        const groupID = pathFinding.getGroup(ZONE, camera.position);
+        const targetGroupID = pathFinding.getGroup(ZONE, target);
+
+        const closestStartNode = pathFinding.getClosestNode(camera.position, ZONE, groupID);
+        const closestTargetNode = pathFinding.getClosestNode(target, ZONE, targetGroupID);
+        const path = pathFinding.findPath(
+          closestStartNode.centroid,
+          closestTargetNode.centroid,
+          ZONE,
+          groupID,
+        );
+
+        if (path) {
+          handlePathfindingMove(camera, target, path, speed, direction);
         }
       }
       break;

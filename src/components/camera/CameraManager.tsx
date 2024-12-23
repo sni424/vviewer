@@ -1,5 +1,4 @@
 import { useThree } from '@react-three/fiber';
-import gsap from 'gsap';
 import { useAtomValue, useSetAtom } from 'jotai';
 import React, { useEffect, useRef, useState } from 'react';
 import {
@@ -164,30 +163,6 @@ const CameraManager: React.FC<UnifiedCameraControlsProps> = ({
     }
   };
 
-  //모바일 새로운 위치로 카메라 이동
-  const moveCameraPosition = (newVector: THREE.Vector3): void => {
-    //현재 카메라 위치와 새로운 벡터 위치의 사이의 거리를 구함
-    const distance = camera.position.distanceTo(newVector);
-    //애니메이션 속도 설정
-    const duration =
-      distance > 8 ? distance * 0.9 : distance < 2 ? distance * 1.5 : distance;
-    //애니메이션 실행
-    gsap.to(camera.position, {
-      x: newVector.x,
-      //y값은 고정
-      y: camera.position.y,
-      z: newVector.z,
-      duration,
-      ease: 'power2.out',
-      onUpdate: () => {
-        updateCameraInfo();
-      },
-      onComplete: () => {
-        console.log('Camera movement complete.');
-      },
-    });
-  };
-
   //pc에서 카메라 위치 이동 함수
   const animateCameraMovement = (currentTime: number): void => {
     //시간에 따라 일정한 속도를 유지하기위해 현재 프레임과 이전 프레임 사이의 시간을 구한다.
@@ -234,31 +209,64 @@ const CameraManager: React.FC<UnifiedCameraControlsProps> = ({
     }
   };
 
+  const downEventFun = (event: MouseEvent | TouchEvent) => {
+    if (!isTransformControlMovingRef.current && !oribitControl?.enabled) {
+      // 회전 true
+      isRotateRef.current = true;
+
+      if (event instanceof MouseEvent) {
+        // 마우스 이벤트
+        previousMousePosition.current = { x: event.clientX, y: event.clientY };
+      } else if (event instanceof TouchEvent) {
+        // 터치 이벤트
+        const touch = event.touches[0]; // 첫 번째 터치 추출
+        previousMousePosition.current = { x: touch.clientX, y: touch.clientY };
+      }
+    }
+  };
+
+  const moveEventFun = (event: MouseEvent | TouchEvent) => {
+    let clientX = 0;
+    let clientY = 0;
+
+    if (event instanceof MouseEvent) {
+      clientX = event.clientX;
+      clientY = event.clientY;
+    } else if (event instanceof TouchEvent) {
+      if (event.touches.length > 0) {
+        const touch = event.touches[0];
+        clientX = touch.clientX;
+        clientY = touch.clientY;
+      } else {
+        return; // 터치가 없으면 무시
+      }
+    }
+
+    if (isRotateRef.current && !oribitControl?.enabled) {
+      // 현재 위치와 이전 위치 차이 계산
+      const deltaX = clientX - previousMousePosition.current.x;
+      const deltaY = clientY - previousMousePosition.current.y;
+
+      // 카메라 회전 함수 호출
+      moveCameraRotation(deltaX, deltaY);
+
+      // 이전 위치 업데이트
+      previousMousePosition.current = { x: clientX, y: clientY };
+    }
+  };
+
   useEffect(() => {
     const element = document.getElementById('canvasDiv');
     if (!element) return;
 
     //마우스 클릭 눌렀을때 이벤트
     const handleMouseDown = (event: MouseEvent): void => {
-      //회전 true
-      if (!isTransformControlMovingRef.current && !oribitControl?.enabled) {
-        isRotateRef.current = true;
-        //마우스 위치값 설정
-        previousMousePosition.current = { x: event.clientX, y: event.clientY };
-      }
+      downEventFun(event);
     };
 
     //마우스 이동 이벤트
     const handleMouseMove = (event: MouseEvent): void => {
-      if (isRotateRef.current && !oribitControl?.enabled) {
-        //현재 마우스 위치와 이전 마우스 위치 차이
-        const deltaX = event.clientX - previousMousePosition.current.x;
-        const deltaY = event.clientY - previousMousePosition.current.y;
-        //카메라 회전 함수
-        moveCameraRotation(deltaX, deltaY);
-        //마우스 위치값 변경
-        previousMousePosition.current = { x: event.clientX, y: event.clientY };
-      }
+      moveEventFun(event);
     };
     //마우스 클릭 땠을때 이벤트
     const handleMouseUp = (event: MouseEvent): void => {
@@ -270,8 +278,24 @@ const CameraManager: React.FC<UnifiedCameraControlsProps> = ({
       }
     };
 
+    //모바일 터치했을때 이벤트
+    const handlePointerDown = (event: TouchEvent): void => {
+      downEventFun(event);
+    };
+
+    const handlePointerMove = (event: TouchEvent): void => {
+      moveEventFun(event);
+    };
+
     //모바일 터치땠을때 이벤트
     const handleTouchEnd = (): void => {
+      if (!oribitControl?.enabled) {
+        //회전 멈춤
+        isRotateRef.current = false;
+        //감속 하면서 멈추는 함수
+        applyInertia();
+      }
+      // window.alert('안녕');
       if (!oribitControl?.enabled) {
         //현재 시간
         const currentTime = Date.now();
@@ -286,7 +310,19 @@ const CameraManager: React.FC<UnifiedCameraControlsProps> = ({
           //교차점이 있고 orbit이 비활성화 됬을때
           if (intersects.length > 0 && !oribitControl?.enabled) {
             // 교차된 첫 번째 객체의 좌표를 기준으로 카메라 이동
-            moveCameraPosition(intersects[0].point);
+            const navMesh = scene.getObjectByName('84B3_DP') as THREE.Mesh;
+
+            camera.moveTo('pathfinding', {
+              pathfinding: {
+                target: new THREE.Vector3(
+                  intersects[0].point.x,
+                  cameraSetting.cameraY,
+                  intersects[0].point.z,
+                ),
+                speed: cameraSetting.moveSpeed,
+                model: navMesh,
+              },
+            });
           }
         }
         // 마지막 터치 이벤트 시간 갱신
@@ -303,6 +339,8 @@ const CameraManager: React.FC<UnifiedCameraControlsProps> = ({
     element.addEventListener('mousemove', handleMouseMove);
     element.addEventListener('mouseup', handleMouseUp);
     element.addEventListener('touchend', handleTouchEnd);
+    element.addEventListener('touchstart', handlePointerDown);
+    element.addEventListener('touchmove', handlePointerMove);
     window.addEventListener('contextmenu', handleContextMenu);
 
     return () => {
@@ -311,6 +349,8 @@ const CameraManager: React.FC<UnifiedCameraControlsProps> = ({
         element.removeEventListener('mousemove', handleMouseMove);
         element.removeEventListener('mouseup', handleMouseUp);
         element.removeEventListener('touchend', handleTouchEnd);
+        element.addEventListener('touchstart', handlePointerDown);
+        element.addEventListener('touchmove', handlePointerMove);
         window.removeEventListener('contextmenu', handleContextMenu);
       }
     };

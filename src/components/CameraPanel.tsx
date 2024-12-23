@@ -244,12 +244,12 @@ const CameraPanel = () => {
                   type="number"
                   value={cameraSetting.cameraY}
                   onChange={e => {
-                    // const newY =
-                    //   Number(parseFloat(e.target.value).toFixed(2)) || 0;
-                    // setCameraSetting(pre => ({
-                    //   ...pre,
-                    //   cameraY: newY,
-                    // }));
+                    const newY =
+                      Number(parseFloat(e.target.value).toFixed(2)) || 0;
+                    setCameraSetting(pre => ({
+                      ...pre,
+                      cameraY: newY,
+                    }));
                   }}
                 />
               </div>
