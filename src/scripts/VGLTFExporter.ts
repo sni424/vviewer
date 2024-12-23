@@ -80,7 +80,6 @@ export default class VGLTFExporter extends GLTFExporter {
    * **/
   onBeforeParse(input: THREE.Object3D | THREE.Object3D[]) {
     console.log('onBeforeParse START');
-
     function lightMapToEmissive(object: THREE.Object3D) {
       if ('isMesh' in object) {
         const mesh = object as THREE.Mesh;
@@ -121,13 +120,16 @@ export default class VGLTFExporter extends GLTFExporter {
       });
     }
 
-    function removeGainmap(obj: THREE.Object3D) {
+    function lightMapToGainmap(obj: THREE.Object3D) {
       const mesh = (obj as THREE.Mesh);
       if (mesh.material) {
         const mat = mesh.material as THREE.MeshStandardMaterial;
+        console.log("LMIntensity", mat.lightMapIntensity);
         const lm = mat.lightMap;
         if (lm && lm.userData.gainMap) {
-          mat.userData.gainMap = lm.userData.gainMap;
+          mat.vUserData.gainMap = lm.vUserData.gainMap;
+          mat.vUserData.gainMapIntensity = mat.lightMapIntensity;
+          console.log(mat.lightMapIntensity);
           mat.lightMap = null;
         }
       }
@@ -138,14 +140,14 @@ export default class VGLTFExporter extends GLTFExporter {
       const clonedArr = input.map(i => i.clone());
       for (const obj of clonedArr) {
         filterNotModelObjects(obj);
-        obj.traverse(removeGainmap);
+        obj.traverse(lightMapToGainmap);
         obj.traverse(lightMapToEmissive);
       }
       return clonedArr;
     } else {
       const cloned = input.clone();
       filterNotModelObjects(cloned);
-      cloned.traverse(removeGainmap);
+      cloned.traverse(lightMapToGainmap);
       cloned.traverse(lightMapToEmissive);
       return cloned;
     }

@@ -259,7 +259,9 @@ export const loadLatest = async ({
     let url;
     if (!localLatestHash || localLatestHash !== remoteLatestHash) {
       // CACHE UPDATE
-      const blob = await fetch(latestUrl).then(res => res.blob());
+      const blob = await fetch(latestUrl, {
+        cache: 'no-store',
+      }).then(res => res.blob());
       await set('latest-hash', remoteLatestHash);
       await set('latest', blob);
 
@@ -813,7 +815,9 @@ export const uploadGainmap = async (object: THREE.Object3D) => {
     if ((obj as THREE.Mesh).isMesh) {
       const mesh = obj as THREE.Mesh;
       const mat = mesh.material as THREE.MeshStandardMaterial;
-      if (mat && mat.lightMap && mat.userData.gainMap) {
+      if (mat && mat.lightMap && mat.lightMap.userData.gainMap) {
+        mat.userData.gainMap = mat.lightMap.userData.gainMap;
+        mat.userData.gainMapIntensity = mat.lightMapIntensity;
         const gainMapHash = mat.userData.gainMap;
 
         if (gainMapHash) {
@@ -828,6 +832,7 @@ export const uploadGainmap = async (object: THREE.Object3D) => {
   })
 
   const hashes = Object.keys(gainmapHashes);
+
   return Promise.all(hashes.map(hash => {
     return get(hash).then(file => {
       if (file) {
@@ -836,11 +841,13 @@ export const uploadGainmap = async (object: THREE.Object3D) => {
         return fetch(uploadUrl, {
           method: 'POST',
           body: formData,
-        }).finally(() => {
+        }).then((res) => {
+          console.log(res);
           const mats = Object.values(gainmapHashes[hash]);
           mats.forEach(mat => {
             mat.lightMap = null;
           })
+          return res;
         })
       } else {
         return undefined;

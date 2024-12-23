@@ -57,7 +57,7 @@ function updateLightMapFromEmissive(object: THREE.Object3D) {
   if ('isMesh' in object) {
     const mesh = object as THREE.Mesh;
     const material = mesh.material as THREE.MeshStandardMaterial;
-    if (material.userData.isEmissiveLightMap) {
+    if (material.vUserData.isEmissiveLightMap) {
       const emissiveMap = material.emissiveMap;
       if (emissiveMap) {
         if (emissiveMap.channel !== 1) {
@@ -65,13 +65,13 @@ function updateLightMapFromEmissive(object: THREE.Object3D) {
         }
         emissiveMap.colorSpace = '';
         material.lightMap = emissiveMap.clone();
-        material.lightMapIntensity = material.userData.lightMapIntensity;
+        material.lightMapIntensity = material.vUserData.lightMapIntensity ?? 1;
         material.emissiveMap = null;
         material.needsUpdate = true;
       }
-      // userData 초기화
-      delete material.userData.isEmissiveLightMap;
-      delete material.userData.lightMapIntensity;
+      // vUserData 초기화
+      delete material.vUserData.isEmissiveLightMap;
+      delete material.vUserData.lightMapIntensity;
     }
   }
 }
@@ -81,15 +81,22 @@ async function getGainmap(object: THREE.Object3D, gl?: THREE.WebGLRenderer) {
     const mesh = object as THREE.Mesh;
     const mat = mesh.material as THREE.MeshStandardMaterial;
     if (mat) {
-      const cacheKey = mat.userData.gainMap;
-      return get(cacheKey).then(jpg => {
-        const source =
-          jpg ??
-          `https://vra-configurator-dev.s3.ap-northeast-2.amazonaws.com/models/${cacheKey}`;
-        return VTextureLoader.load(source, { gl }).then(texture => {
-          mat.lightMap = texture;
+      const cacheKey = mat.vUserData.gainMap as string | undefined;
+      if (cacheKey) {
+        return get(cacheKey).then(jpg => {
+          const url = cacheKey.startsWith('http')
+            ? cacheKey
+            : `https://vra-configurator-dev.s3.ap-northeast-2.amazonaws.com/models/${cacheKey}`;
+          const source = jpg ?? url;
+          return VTextureLoader.load(source, { gl }).then(texture => {
+            mat.lightMap = texture;
+
+            if (mat.vUserData.gainMapIntensity !== undefined) {
+              mat.lightMapIntensity = mat.vUserData.gainMapIntensity;
+            }
+          });
         });
-      });
+      }
     }
   }
 }

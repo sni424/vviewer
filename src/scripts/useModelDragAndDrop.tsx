@@ -169,33 +169,6 @@ const useModelDragAndDrop = () => {
           file.name.toLowerCase().endsWith('.gltf') ||
           file.name.toLowerCase().endsWith('.glb'),
       );
-      const gainmaps: ModelSource[] = [];
-      gltfs.forEach(gltf => {
-        const splitted = gltf.name.split('.');
-        const filename = splitted.splice(0, splitted.length - 1).join('.');
-        const jpg = filteredFiles.find(file => file.name === filename + '.jpg');
-        const gainmap = filteredFiles.find(
-          file => file.name === filename + '-gainmap.jpg',
-        );
-        const meta = filteredFiles.find(
-          file => file.name === filename + '.json',
-        );
-        const maps = [jpg, gainmap, meta];
-        if (maps.every(Boolean)) {
-          const retval: ModelSource = {
-            name: gltf.name,
-            url: URL.createObjectURL(gltf),
-            file: gltf,
-            map: maps as File[],
-          };
-          gainmaps.push(retval);
-        }
-      });
-      if (gainmaps.length > 0) {
-        console.log('gainmaps:', gainmaps);
-        setSourceUrls(gainmaps);
-        return;
-      }
 
       // 1. 씬이 저장된 .json파일
       const jsons = filteredFiles.filter(file =>

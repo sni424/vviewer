@@ -100,7 +100,7 @@ export default class ReflectionProbe {
     const sphereMesh = createProbeSphere();
     sphereMesh.scale.set(1 / this.size.x, 1 / this.size.y, 1 / this.size.z);
     sphereMesh.material.envMap = this.getTexture();
-    sphereMesh.userData.probe = this;
+    sphereMesh.vUserData.probe = this;
 
     const boxMesh = createMeshFromBox(this.box, this.serializedId);
     boxMesh.add(sphereMesh);
@@ -109,8 +109,8 @@ export default class ReflectionProbe {
       camera,
       this.renderer.domElement,
     );
-    translateControls.userData.isTransformControls = true;
-    translateControls.userData.isProbeMesh = true;
+    translateControls.vUserData.isTransformControls = true;
+    translateControls.vUserData.isProbeMesh = true;
     translateControls.setMode('translate');
     translateControls.setSize(0.7);
     translateControls.showY = false;
@@ -118,8 +118,8 @@ export default class ReflectionProbe {
       camera,
       this.renderer.domElement,
     );
-    scaleControls.userData.isTransformControls = true;
-    scaleControls.userData.isProbeMesh = true;
+    scaleControls.vUserData.isTransformControls = true;
+    scaleControls.vUserData.isProbeMesh = true;
     scaleControls.setMode('scale');
     scaleControls.setSize(0.5);
     scaleControls.showY = false;
@@ -222,7 +222,7 @@ export default class ReflectionProbe {
     } else {
       throw new Error(
         'ReflectionProbe.setFromObject() : Object Must Be Not null or undefined : ' +
-          object,
+        object,
       );
     }
   }
@@ -304,7 +304,7 @@ export default class ReflectionProbe {
       if ('isMesh' in child) {
         const meshBox = tempBox.setFromObject(child);
         if (box.intersectsBox(meshBox)) {
-          child.userData.probe = this;
+          child.vUserData.probe = this;
           meshInBox.push(child as THREE.Mesh);
         }
       }
@@ -334,7 +334,7 @@ export default class ReflectionProbe {
 
     const filterCondition = (object: THREE.Object3D) => {
       return (
-        (object.isTransformControls || object.userData.isTransformControls) &&
+        (object.isTransformControls || object.vUserData.isTransformControls) &&
         object.visible
       );
     };
@@ -417,7 +417,7 @@ export default class ReflectionProbe {
     cubeCamera.update(this.renderer, this.scene);
     this.cubeCamera = cubeCamera;
 
-    this.boxMesh.userData.probeId = json.id;
+    this.boxMesh.vUserData.probeId = json.id;
     this.updateBoxMesh();
     return this;
   }
@@ -449,7 +449,7 @@ function getBoxHeight(scene: THREE.Scene) {
   let maxY = -Infinity;
 
   scene.traverse(child => {
-    if (child.type === 'Mesh' && !child.userData.isProbeMesh) {
+    if (child.type === 'Mesh' && !child.vUserData.isProbeMesh) {
       const object = child as THREE.Mesh;
       object.geometry.computeBoundingBox();
 
@@ -500,8 +500,8 @@ function createMeshFromBox(box: THREE.Box3, serializedId: string) {
   const mesh = new THREE.Mesh(surfaceGeometry, surfaceMaterial);
   // Set Mesh Layer not to detected on CubeCamera
   mesh.layers.set(REFLECTION_BOX_LAYER);
-  mesh.userData.isProbeMesh = true;
-  mesh.userData.probeId = serializedId;
+  mesh.vUserData.isProbeMesh = true;
+  mesh.vUserData.probeId = serializedId;
   mesh.position.copy(center);
   mesh.scale.copy(size);
 
@@ -512,7 +512,7 @@ function createMeshFromBox(box: THREE.Box3, serializedId: string) {
   );
   const boxHelper = new THREE.Box3Helper(meshBox, '#00deff');
   boxHelper.layers.set(REFLECTION_BOX_LAYER);
-  boxHelper.userData.isProbeMesh = true;
+  boxHelper.vUserData.isProbeMesh = true;
   mesh.add(boxHelper);
   return mesh;
 }
@@ -560,7 +560,7 @@ function createProbeSphere() {
     envMapIntensity: 1.0,
   });
   const mesh = new THREE.Mesh(geometry, material);
-  mesh.userData.isProbeMesh = true;
+  mesh.vUserData.isProbeMesh = true;
   return mesh;
 }
 

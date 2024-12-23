@@ -312,50 +312,54 @@ const GeneralButtons = () => {
             return;
           }
 
-          await uploadGainmap(threeExports.scene);
-          const glbArr = await new VGLTFExporter().parseAsync(
-            threeExports.scene,
-            { binary: true },
-          );
-          if (glbArr instanceof ArrayBuffer) {
-            console.log('before File Make');
-            const blob = new Blob([glbArr], {
-              type: 'application/octet-stream',
-            });
-            const file = new File([blob], 'latest.glb', {
-              type: 'model/gltf-binary',
-            });
-            const fd = new FormData();
-            fd.append('file', file);
+          uploadGainmap(threeExports.scene).then(() => {
+            new VGLTFExporter()
+              .parseAsync(threeExports.scene, { binary: true })
+              .then(glbArr => {
+                if (glbArr instanceof ArrayBuffer) {
+                  console.log('before File Make');
+                  const blob = new Blob([glbArr], {
+                    type: 'application/octet-stream',
+                  });
+                  const file = new File([blob], 'latest.glb', {
+                    type: 'model/gltf-binary',
+                  });
+                  const fd = new FormData();
+                  fd.append('file', file);
 
-            // latest 캐싱을 위한 hash
-            const uploadHash = objectHash(new Date().toISOString());
-            const hashData = {
-              hash: uploadHash,
-            };
-            // convert object to File:
-            const hashFile = compressObjectToFile(hashData, 'latest-hash');
-            const hashFd = new FormData();
-            hashFd.append('file', hashFile);
-            console.log('before Upload');
-            await Promise.all([
-              fetch(uploadUrl, {
-                method: 'POST',
-                body: hashFd,
-              }),
-              fetch(uploadUrl, {
-                method: 'POST',
-                body: fd,
-              }),
-            ]);
-
-            alert('업로드 완료');
-          } else {
-            console.error(
-              'VGLTFExporter GLB 처리 안됨, "binary: true" option 확인',
-            );
-            alert('VGLTFExporter 문제 발생함, 로그 확인');
-          }
+                  // latest 캐싱을 위한 hash
+                  const uploadHash = objectHash(new Date().toISOString());
+                  const hashData = {
+                    hash: uploadHash,
+                  };
+                  // convert object to File:
+                  const hashFile = compressObjectToFile(
+                    hashData,
+                    'latest-hash',
+                  );
+                  const hashFd = new FormData();
+                  hashFd.append('file', hashFile);
+                  console.log('before Upload');
+                  Promise.all([
+                    fetch(uploadUrl, {
+                      method: 'POST',
+                      body: hashFd,
+                    }),
+                    fetch(uploadUrl, {
+                      method: 'POST',
+                      body: fd,
+                    }),
+                  ]).then(() => {
+                    alert('업로드 완료');
+                  });
+                } else {
+                  console.error(
+                    'VGLTFExporter GLB 처리 안됨, "binary: true" option 확인',
+                  );
+                  alert('VGLTFExporter 문제 발생함, 로그 확인');
+                }
+              });
+          });
         }}
       >
         씬 업로드

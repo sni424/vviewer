@@ -8,19 +8,21 @@ import {
   MoveActionType,
   View,
 } from '../types';
+import type ReflectionProbe from './ReflectionProbe';
 import { moveTo, resetGL } from './utils';
 
 export { LightmapImageContrast } from '../scripts/postprocess/MaterialShader';
 
 export interface ThreeUserData {
-  otherUserCamera?: boolean;
-  sessionId?: string;
   ignoreRaycast?: boolean;
-  isReview?: boolean;
-  id?: string;
-  nodeId?: string;
-  // mySelectBox?: boolean;
-  selectBox?: 'mine' | string; // 내 꺼는 mine, 이 외의 경우 다른 유저의 uuid
+  gainMap?: string; // filename
+  gainMapIntensity?: number;
+  lightMapIntensity?: number;
+  probe?: ReflectionProbe;
+  isTransformControls?: boolean;
+  isProbeMesh?: boolean;
+  probeId?: string;
+  isEmissiveLightMap?: boolean;
 }
 
 declare module 'three' {
@@ -60,7 +62,19 @@ declare module 'three' {
     ): boolean;
   }
 
+  interface Material {
+    get vUserData(): ThreeUserData;
+    set vUserData(userData: Partial<ThreeUserData>);
+  }
+
+  interface Texture {
+    get vUserData(): ThreeUserData;
+    set vUserData(userData: Partial<ThreeUserData>);
+  }
+
   interface Object3D {
+    get vUserData(): ThreeUserData;
+    set vUserData(userData: Partial<ThreeUserData>);
     getUserData(): ThreeUserData;
     // extend가 true이면 기존 데이터를 유지하면서 새로운 데이터를 추가한다.
     // false이면 오버라이드
@@ -317,7 +331,7 @@ THREE.Camera.prototype.moveTo = function (
     console.error(this);
     throw new Error('not PerspectiveCamera');
   }
-  moveTo(this, action, options);
+  moveTo(this as THREE.PerspectiveCamera, action, options);
 };
 
 THREE.Object3D.prototype.getUserData = function () {
@@ -339,6 +353,33 @@ THREE.Object3D.prototype.setUserData = function (
 
   return this;
 };
+
+Object.defineProperty(THREE.Object3D.prototype, 'vUserData', {
+  get: function () {
+    return this.userData as ThreeUserData;
+  },
+  set: function (userData: Partial<ThreeUserData>) {
+    this.userData = { ...this.userData, ...userData };
+  }
+});
+
+Object.defineProperty(THREE.Texture.prototype, 'vUserData', {
+  get: function () {
+    return this.userData as ThreeUserData;
+  },
+  set: function (userData: Partial<ThreeUserData>) {
+    this.userData = { ...this.userData, ...userData };
+  }
+});
+
+Object.defineProperty(THREE.Material.prototype, 'vUserData', {
+  get: function () {
+    return this.userData as ThreeUserData;
+  },
+  set: function (userData: Partial<ThreeUserData>) {
+    this.userData = { ...this.userData, ...userData };
+  }
+});
 
 THREE.Matrix4.prototype.decomposed = function () {
   const position = new THREE.Vector3();
@@ -445,3 +486,4 @@ window.getThree = (view: View = View.Shared) => {
 
 // THREE.Material.prototype.onBeforeCompile 오버라이딩
 import '../scripts/postprocess/MaterialShader';
+

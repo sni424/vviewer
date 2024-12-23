@@ -36,7 +36,7 @@ export default class GainmapLoader {
       URL.revokeObjectURL(url);
       const texture = result.renderTarget.texture;
 
-      texture.userData.gainMap = isFile ? fileOrUrl.name : url;
+      texture.vUserData.gainMap = isFile ? fileOrUrl.name : url;
 
       return texture;
     });
