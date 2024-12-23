@@ -45,4 +45,4 @@ export enum Layer {
 }
 
 export const AOMAP_INTENSITY_MAX = 2 as const;
-export const LIGHTMAP_INTENSITY_MAX = 10 as const;
+export const LIGHTMAP_INTENSITY_MAX = 100 as const;
