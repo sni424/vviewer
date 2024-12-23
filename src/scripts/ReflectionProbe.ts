@@ -3,7 +3,7 @@ import { v4 } from 'uuid';
 import { Layer } from '../Constants.ts';
 import * as THREE from './VTHREE.ts';
 
-const DEFAULT_RESOLUTION: ReflectionProbeResolutions = 256;
+const DEFAULT_RESOLUTION: ReflectionProbeResolutions = 2048;
 const DEFAULT_POSITION: THREE.Vector3 = new THREE.Vector3(0, 0, 0);
 const DEFAULT_SIZE: THREE.Vector3 = new THREE.Vector3(4, 4, 4);
 const CUBE_CAMERA_FILTER_LAYERS = [
@@ -53,6 +53,11 @@ export default class ReflectionProbe {
   private showProbe: boolean = true;
   private showControls: boolean = true;
   private modes: Modes = 'box';
+  private autoUpdate: boolean = false;
+  private readonly quad: THREE.Mesh;
+  private textureImage: string | null = null;
+  private canvas: HTMLCanvasElement;
+  private imageData: ImageData;
 
   constructor(
     renderer: THREE.WebGLRenderer,
@@ -63,6 +68,21 @@ export default class ReflectionProbe {
     this.renderer = renderer;
     this.pmremGenerator = new THREE.PMREMGenerator(renderer);
     this.scene = scene;
+
+    this.quad = new THREE.Mesh(
+      new THREE.PlaneGeometry(1, 1),
+      new THREE.RawShaderMaterial({
+        uniforms: {
+          map: { type: 't', value: null },
+        },
+        vertexShader: rawMaterialVertexShader,
+        fragmentShader: rawMaterialFragmentShader,
+        side: THREE.DoubleSide,
+        transparent: true,
+      }),
+    );
+
+    this.quad.scale.set(1024, 1024, 1);
 
     if (!camera.layers.isEnabled(CUBE_CAMERA_LAYER)) {
       camera.layers.enableAll();
@@ -142,11 +162,15 @@ export default class ReflectionProbe {
           uuid: this.boxMesh.uuid,
           type: 'position',
           position: this.boxMesh.position.clone(),
+          probeId: this.serializedId,
         };
         document.dispatchEvent(
           new CustomEvent('probeMesh-changed', { detail }),
         );
         this.setCenterAndSize(this.boxMesh.position, this.boxMesh.scale);
+        if (this.autoUpdate) {
+          this.applyTextureOnQuad();
+        }
       }
     });
 
@@ -172,6 +196,14 @@ export default class ReflectionProbe {
     this.boxMesh = boxMesh;
     this.translateControls = translateControls;
     this.scaleControls = scaleControls;
+
+    // FOR Texture visualizing
+    const canvas = document.createElement('canvas');
+    canvas.style.width = this.resolution.toString();
+    canvas.style.height = this.resolution.toString();
+    canvas.width = this.resolution;
+    canvas.height = this.resolution;
+    this.canvas = canvas;
   }
 
   addToScene() {
@@ -354,6 +386,56 @@ export default class ReflectionProbe {
     });
   }
 
+  applyTextureOnQuad() {
+    const material = this.quad.material as THREE.RawShaderMaterial;
+    material.uniforms.map.value = this.cubeCamera.renderTarget.texture;
+    const size = this.resolution;
+    const renderer = this.renderer;
+
+    const camera = new THREE.OrthographicCamera(
+      size / -4,
+      size / 4,
+      size / 4,
+      size / -4,
+      -10000,
+      10000,
+    );
+
+    const scene = new THREE.Scene();
+    scene.add(this.quad);
+
+    const newRenderTarget = new THREE.WebGLRenderTarget(size, size, {
+      minFilter: THREE.LinearFilter,
+      magFilter: THREE.LinearFilter,
+      wrapS: THREE.ClampToEdgeWrapping,
+      wrapT: THREE.ClampToEdgeWrapping,
+      format: THREE.RGBAFormat,
+      type: THREE.UnsignedByteType,
+    });
+    const originalRenderTarget = renderer.getRenderTarget()?.clone();
+    renderer.setRenderTarget(newRenderTarget);
+    renderer.render(scene, camera);
+    if (originalRenderTarget) {
+      renderer.setRenderTarget(originalRenderTarget);
+    }
+
+    const pixels = new Uint8Array(4 * size * size);
+    renderer.readRenderTargetPixels(newRenderTarget, 0, 0, size, size, pixels);
+
+    const imageData = new ImageData(new Uint8ClampedArray(pixels), size, size);
+
+    this.imageData = imageData;
+    const context = this.canvas.getContext('2d');
+    if (context) {
+      context.reset();
+      context.putImageData(imageData, 0, 0);
+    } else {
+      alert('Canvas context를 생성할 수 없습니다.');
+    }
+
+    return imageData;
+  }
+
   renderCamera() {
     // Before render => Set No Render Objects Invisible
     const filteredObjects = this.onBeforeCubeCameraUpdate();
@@ -373,9 +455,12 @@ export default class ReflectionProbe {
     this.onAfterCubeCameraUpdate(filteredObjects);
   }
 
-  updateCameraPosition(position: THREE.Vector3) {
+  updateCameraPosition(position: THREE.Vector3, renderCamera?: boolean) {
     this.cubeCamera.position.copy(position);
-    this.renderCamera();
+    if (this.autoUpdate || renderCamera) {
+      this.renderCamera();
+      this.applyTextureOnQuad();
+    }
     return this;
   }
 
@@ -438,6 +523,29 @@ export default class ReflectionProbe {
   setShowControls(showControls: boolean) {
     this.showControls = showControls;
     this.setControlsVisible(this.showProbe && this.showControls);
+  }
+
+  isAutoUpdate() {
+    return this.autoUpdate;
+  }
+
+  setAutoUpdate(autoUpdate: boolean) {
+    if (autoUpdate) {
+      this.renderCamera();
+    }
+    this.autoUpdate = autoUpdate;
+  }
+
+  getTextureImage() {
+    return this.textureImage;
+  }
+
+  getCanvas() {
+    return this.canvas;
+  }
+
+  getImageData() {
+    return this.imageData;
   }
 }
 
@@ -672,3 +780,79 @@ function useBoxProjectedEnvMap(
             `,
       );
 }
+
+function download(imageData: ImageData) {
+  const canvas = document.createElement('canvas');
+  canvas.width = 60;
+  canvas.height = 60;
+  const context = canvas.getContext('2d');
+  if (context) {
+    context.putImageData(imageData, 0, 0);
+    canvas.toBlob(blob => {
+      if (blob) {
+        const url = URL.createObjectURL(blob);
+        const fileName = 'test.png';
+        const anchor = document.createElement('a');
+        anchor.href = url;
+        anchor.setAttribute('download', fileName);
+        anchor.innerHTML = 'downloading...';
+        anchor.style.display = 'none';
+        document.body.appendChild(anchor);
+        setTimeout(() => {
+          anchor.click();
+          document.body.removeChild(anchor);
+        }, 1);
+      } else {
+        alert('Canvas.ToBlob failed');
+        console.log('blob is null : ', canvas, context);
+      }
+    }, 'image/png');
+  } else {
+    alert('Canvas context를 생성할 수 없습니다.');
+  }
+}
+
+const rawMaterialVertexShader = `
+attribute vec3 position;
+attribute vec2 uv;
+
+uniform mat4 projectionMatrix;
+uniform mat4 modelViewMatrix;
+
+varying vec2 vUv;
+
+void main()  {
+
+	vUv = vec2( 1.- uv.x, uv.y );
+	gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
+
+}
+`;
+
+const rawMaterialFragmentShader = `
+precision mediump float;
+
+uniform samplerCube map;
+
+varying vec2 vUv;
+
+#define M_PI 3.1415926535897932384626433832795
+
+void main()  {
+
+	vec2 uv = vUv;
+
+	float longitude = uv.x * 2. * M_PI - M_PI + M_PI / 2.;
+	float latitude = uv.y * M_PI;
+
+	vec3 dir = vec3(
+		- sin( longitude ) * sin( latitude ),
+		cos( latitude ),
+		- cos( longitude ) * sin( latitude )
+	);
+	normalize( dir );
+
+	gl_FragColor = textureCube( map, dir );
+
+}
+`;

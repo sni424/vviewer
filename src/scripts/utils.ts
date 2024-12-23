@@ -10,7 +10,13 @@ import { OrbitControls, RGBELoader } from 'three/examples/jsm/Addons.js';
 import { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { Layer } from '../Constants';
 import { FileInfo, MoveActionOptions, MoveActionType, View } from '../types.ts';
-import { BenchMark, cameraActionAtom, getAtomValue, selectedAtom, setAtomValue } from './atoms';
+import {
+  BenchMark,
+  cameraActionAtom,
+  getAtomValue,
+  selectedAtom,
+  setAtomValue,
+} from './atoms';
 import VGLTFExporter from './VGLTFExporter.ts';
 import VGLTFLoader from './VGLTFLoader.tsx';
 import * as THREE from './VTHREE';
@@ -240,7 +246,7 @@ export const loadLatest = async ({
   threeExports: RootState;
   addBenchmark?: (key: keyof BenchMark, value?: number) => void;
 }) => {
-  const addBenchmark = _addBenchmark ?? (() => { });
+  const addBenchmark = _addBenchmark ?? (() => {});
 
   const latestHashUrl = import.meta.env.VITE_LATEST_HASH;
   const latestUrl = import.meta.env.VITE_LATEST;
@@ -495,7 +501,9 @@ const handlePathfindingMove = (
             startDirection,
             endDirection,
             // adjustedProgress
-            distance > 5 ? Math.min(adjustedProgress * distance, 1) : adjustedProgress,
+            distance > 5
+              ? Math.min(adjustedProgress * distance, 1)
+              : adjustedProgress,
           );
           camera.quaternion.copy(quaternion);
         }
@@ -504,17 +512,16 @@ const handlePathfindingMove = (
     onComplete: () => {
       console.log('complete path');
       const target = camera.position.clone().add(direction);
-      camera.lookAt(target.x, target.y, target.z)
+      camera.lookAt(target.x, target.y, target.z);
       setTimeout(() => {
         setAtomValue(cameraActionAtom, pre => ({
           ...pre,
           tour: {
             ...pre.tour,
-            path: false
-          }
-        }))
-      }, 500)
-
+            path: false,
+          },
+        }));
+      }, 500);
     },
   });
 };
@@ -548,7 +555,7 @@ const handleLinearMove = (
       camera.quaternion.copy(quaternion);
     },
     onComplete: () => {
-      console.log("complete handleLinearMove")
+      console.log('complete handleLinearMove');
     },
   });
 };
@@ -630,7 +637,8 @@ export const moveTo = (
   switch (action) {
     case 'pathfinding':
       if (options.pathfinding) {
-        const { target, speed, model, direction, stopAnimtaion } = options.pathfinding;
+        const { target, speed, model, direction, stopAnimtaion } =
+          options.pathfinding;
         if (stopAnimtaion) {
           if (currentAnimation) {
             currentAnimation.kill();
@@ -641,7 +649,6 @@ export const moveTo = (
 
         const pathFinding = new Pathfinding();
         if (model && target && speed && direction) {
-
           const navMesh = model.getObjectByName('84B3_DP') as THREE.Mesh;
           if (navMesh) {
             const zone = Pathfinding.createZone(navMesh.geometry);
