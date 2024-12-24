@@ -273,6 +273,11 @@ export const globalLUTAtom = atom<{
   useTetrahedralFilter: false,
 });
 
+export const globalBloomAtom = atom<{ on: boolean; intensity: number; }>({
+  on: false,
+  intensity: 1.0
+});
+
 export const globalGlAtom = atom<GLProps>({
   antialias: true,
   alpha: true,

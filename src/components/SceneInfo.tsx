@@ -29,6 +29,7 @@ import {
 import { defaultSettings, loadSettings } from '../pages/useSettings.ts';
 import {
   cameraMatrixAtom,
+  globalBloomAtom,
   globalBrightnessContrastAtom,
   globalColorManagementAtom,
   globalColorTemperatureAtom,
@@ -553,6 +554,8 @@ const GeneralPostProcessingControl = () => {
     standard: LightmapImageContrast.standard,
     k: LightmapImageContrast.k,
   });
+  const [{ on: bloomOn, intensity: bloomIntensity }, setBloom] =
+    useAtom(globalBloomAtom);
 
   const adjustContrast = (color: number[]) => {
     const gammaFactor = lmContrastValue.gammaFactor;
@@ -1174,6 +1177,48 @@ const GeneralPostProcessingControl = () => {
               />
             </div>
           </>
+        )}
+      </div>
+      <div>
+        <div>
+          <strong>Bloom</strong>
+          <input
+            type="checkbox"
+            checked={bloomOn}
+            onChange={e => {
+              setBloom(prev => ({ ...prev, on: e.target.checked }));
+            }}
+          />
+        </div>
+        {bloomOn && (
+          <div>
+            <input
+              type="range"
+              min={0}
+              max={2}
+              step={0.01}
+              value={bloomIntensity}
+              onChange={e => {
+                setBloom(prev => ({
+                  ...prev,
+                  intensity: parseFloat(e.target.value),
+                }));
+              }}
+            />
+            <input
+              type="number"
+              min={0}
+              max={2}
+              step={0.01}
+              value={bloomIntensity}
+              onChange={e => {
+                setBloom(prev => ({
+                  ...prev,
+                  intensity: parseFloat(e.target.value),
+                }));
+              }}
+            ></input>
+          </div>
         )}
       </div>
       {/* <div>

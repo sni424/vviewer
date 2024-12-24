@@ -89,6 +89,15 @@ async function getGainmap(object: THREE.Object3D, gl?: THREE.WebGLRenderer) {
             : `https://vra-configurator-dev.s3.ap-northeast-2.amazonaws.com/models/${cacheKey}`;
           const source = jpg ?? url;
           return VTextureLoader.load(source, { gl }).then(texture => {
+        const jpg = (
+          await Promise.all([
+            get(cacheKey),
+            get(cacheKey.replace('.exr', '.jpg')),
+          ])
+        ).filter(Boolean);
+
+        if (jpg.length > 0) {
+          return VTextureLoader.load(jpg[0] as File, { gl }).then(texture => {
             mat.lightMap = texture;
 
             if (mat.vUserData.gainMapIntensity !== undefined) {
@@ -96,6 +105,20 @@ async function getGainmap(object: THREE.Object3D, gl?: THREE.WebGLRenderer) {
             }
             mat.needsUpdate = true;
           });
+        }
+
+        const url = cacheKey;
+        if (!url.startsWith('http')) {
+          console.error('Invalid URL:', url);
+          return;
+        }
+        return VTextureLoader.load(url, { gl }).then(texture => {
+          mat.lightMap = texture;
+
+          if (mat.vUserData.gainMapIntensity !== undefined) {
+            mat.lightMapIntensity = mat.vUserData.gainMapIntensity;
+          }
+          mat.needsUpdate = true;
         });
       }
     }
