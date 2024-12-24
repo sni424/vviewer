@@ -32,6 +32,7 @@ export default class VTextureLoader {
     const inputOption = { ...defaultOption, ...option } as VTextureLoaderOption;
     const isFile = typeof fileOrUrl !== "string";
     const url = isFile ? URL.createObjectURL(fileOrUrl) : fileOrUrl;
+    const gainMap = isFile ? fileOrUrl.name : fileOrUrl;
     if (isFile) {
       dispoableUrls.push(url);
     }
@@ -44,6 +45,7 @@ export default class VTextureLoader {
           throw new Error('게인맵의 경우 옵션에 gl 필요');
         }
         return GainmapLoader.load(fileOrUrl, { gl: inputOption.gl }).then(texture => {
+          texture.vUserData.gainMap = gainMap;
           texture.flipY = inputOption.flipY;
           texture.channel = inputOption.channel;
           texture.needsUpdate = true;
@@ -87,6 +89,7 @@ export default class VTextureLoader {
       return GainmapLoader.load(fileOrUrl, {
         gl: inputOption.gl,
       }).then(texture => {
+        texture.vUserData.gainMap = gainMap;
         texture.flipY = flipY;
         texture.channel = inputOption.channel;
         texture.needsUpdate = true;

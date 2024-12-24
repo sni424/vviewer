@@ -308,6 +308,25 @@ const MapInfo = (props: MapInfoProps) => {
   );
 };
 
+const UserDataSection = ({ mat }: { mat: THREE.MeshStandardMaterial }) => {
+  const userData = mat.vUserData;
+  const keys = Object.keys(userData);
+
+  return (
+    <ul>
+      <strong>UserData</strong>
+      {keys.map(key => {
+        return (
+          <li className="pl-4" key={`mat-userdata-${mat.uuid}`}>
+            <span>{key}</span> :{' '}
+            {JSON.stringify(userData[key as keyof typeof userData])}
+          </li>
+        );
+      })}
+    </ul>
+  );
+};
+
 const MapSection = ({ mat }: { mat: THREE.MeshStandardMaterial }) => {
   return (
     <section
@@ -458,6 +477,9 @@ function MaterialPanelContainer() {
       </div>
       {/* <MaterialPanel style={{width:"100%"}} mat={mat}></MaterialPanel> */}
       <MapSection mat={mat as THREE.MeshStandardMaterial} />
+      <UserDataSection
+        mat={mat as THREE.MeshStandardMaterial}
+      ></UserDataSection>
       <div
         style={{
           position: 'absolute',

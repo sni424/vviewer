@@ -29,6 +29,7 @@ import {
 import { defaultSettings, loadSettings } from '../pages/useSettings.ts';
 import {
   cameraMatrixAtom,
+  globalBloomAtom,
   globalBrightnessContrastAtom,
   globalColorManagementAtom,
   globalColorTemperatureAtom,
@@ -63,6 +64,13 @@ const useEnvUrl = () => {
     });
   }, []);
   return [envUrl, setEnvUrl] as const;
+};
+
+const S_k_t = (intensity: number, k: number, t: number, r: number) => {
+  const x_exp = Math.pow(intensity, t);
+  const term = x_exp - 1.0;
+  const denominatorInv = 1.0 / (1.0 + Math.pow(term, k));
+  return (1.0 - r) * denominatorInv + r;
 };
 
 function save(blob: Blob, filename: string) {
@@ -538,11 +546,53 @@ const GeneralPostProcessingControl = () => {
   const [hueSaturation, setHueSaturation] = useAtom(globalHueSaturationAtom);
   const [lut, setLut] = useAtom(globalLUTAtom);
   const [lmContrastOn, setLmContrastOn] = useState(LightmapImageContrast.on);
-  const [lmContrastValue, setLmContrastValue] = useState(
-    LightmapImageContrast.value,
-  );
+  const [lmContrastValue, setLmContrastValue] = useState({
+    gammaFactor: LightmapImageContrast.gammaFactor,
+    standard: LightmapImageContrast.standard,
+    k: LightmapImageContrast.k,
+  });
+  const [
+    {
+      on: bloomOn,
+      intensity: bloomIntensity,
+      threshold: bloomThreshold,
+      smoothing: bloomSmoothing,
+    },
+    setBloom,
+  ] = useAtom(globalBloomAtom);
 
-  const [lmContrastK, setLmContrastK] = useState(LightmapImageContrast.k);
+  const adjustContrast = (color: number[]) => {
+    const gammaFactor = lmContrastValue.gammaFactor;
+    const standard = lmContrastValue.standard;
+    const t = Math.log(2.0) / Math.log(standard);
+    const k = lmContrastValue.k;
+    const r = 0; // lmContrastValue.r;
+
+    const corrected = color.map(value => Math.pow(value, gammaFactor));
+    // const inputColor = color;
+    const inputColor = corrected;
+    const intensity =
+      inputColor[0] * 0.2126 + inputColor[1] * 0.7152 + inputColor[2] * 0.0722;
+    const adjustedIntensity = S_k_t(intensity, k, t, r);
+    const reflectance = inputColor.map(value => value / (intensity + 0.0001));
+    const reflectanceAdjusted = reflectance.map(
+      value => (value - standard) * 1.0 + standard,
+    );
+    const adjustedColor = reflectanceAdjusted.map(
+      value => value * adjustedIntensity,
+    );
+    const adjustedColorGamma = adjustedColor.map(value =>
+      Math.pow(value, 1.0 / gammaFactor),
+    );
+
+    return adjustedColorGamma;
+  };
+
+  const lmGraphWidth = 100;
+  const linearData = Array.from(
+    { length: lmGraphWidth },
+    (_, index) => index / lmGraphWidth,
+  );
 
   if (!threeExports) {
     return null;
@@ -653,40 +703,226 @@ const GeneralPostProcessingControl = () => {
         {lmContrastOn && (
           <>
             <div>
-              <input
-                type="range"
-                min={LightmapImageContrast.min}
-                max={LightmapImageContrast.max}
-                step={LightmapImageContrast.step}
-                onChange={e => {
+              <label>Gamma</label>
+              <button
+                onClick={() => {
                   if (!threeExports) {
                     return;
                   }
-                  setLmContrastValue(parseFloat(e.target.value));
-                  LightmapImageContrast.value = parseFloat(e.target.value);
+                  const value = 2.2;
+                  setLmContrastValue(prev => ({
+                    ...prev,
+                    gammaFactor: value,
+                  }));
+                  LightmapImageContrast.gammaFactor = value;
                   resetGL(threeExports);
                 }}
-                value={lmContrastValue}
-              />
-              <span>{LightmapImageContrast.value}</span>
-            </div>
-            <div>
+              >
+                초기화
+              </button>
               <input
+                className="w-[100px]"
                 type="range"
-                min={0}
-                max={4}
-                step={0.1}
+                min={0.11}
+                max={3}
+                step={(3 - 0.1) / 200}
                 onChange={e => {
                   if (!threeExports) {
                     return;
                   }
-                  setLmContrastK(parseFloat(e.target.value));
+                  setLmContrastValue(prev => ({
+                    ...prev,
+                    gammaFactor: parseFloat(e.target.value),
+                  }));
+                  LightmapImageContrast.gammaFactor = parseFloat(
+                    e.target.value,
+                  );
+                  resetGL(threeExports);
+                }}
+                value={lmContrastValue.gammaFactor}
+              />
+              <span>{toNthDigit(lmContrastValue.gammaFactor, 2)}</span>
+            </div>
+            <div>
+              <label>대비기준</label>
+              <button
+                onClick={() => {
+                  if (!threeExports) {
+                    return;
+                  }
+                  const value = 0.45;
+                  setLmContrastValue(prev => ({
+                    ...prev,
+                    standard: value,
+                  }));
+                  LightmapImageContrast.standard = value;
+                  resetGL(threeExports);
+                }}
+              >
+                초기화
+              </button>
+              <input
+                className="w-[100px]"
+                type="range"
+                min={0.1}
+                max={0.99}
+                step={(0.99 - 0.1) / 200}
+                onChange={e => {
+                  if (!threeExports) {
+                    return;
+                  }
+                  setLmContrastValue(prev => ({
+                    ...prev,
+                    standard: parseFloat(e.target.value),
+                  }));
+                  LightmapImageContrast.standard = parseFloat(e.target.value);
+                  resetGL(threeExports);
+                }}
+                value={lmContrastValue.standard}
+              />
+              <span>{toNthDigit(lmContrastValue.standard, 2)}</span>
+            </div>
+            <div>
+              <label>명도세기</label>
+              <button
+                onClick={() => {
+                  if (!threeExports) {
+                    return;
+                  }
+                  const value = 1.7;
+                  setLmContrastValue(prev => ({
+                    ...prev,
+                    k: value,
+                  }));
+                  LightmapImageContrast.k = value;
+                  resetGL(threeExports);
+                }}
+              >
+                초기화
+              </button>
+              <input
+                className="w-[100px]"
+                type="range"
+                min={1.0}
+                max={3}
+                step={(3 - 1) / 200}
+                onChange={e => {
+                  if (!threeExports) {
+                    return;
+                  }
+                  setLmContrastValue(prev => ({
+                    ...prev,
+                    k: parseFloat(e.target.value),
+                  }));
                   LightmapImageContrast.k = parseFloat(e.target.value);
                   resetGL(threeExports);
                 }}
-                value={lmContrastK}
+                value={lmContrastValue.k}
               />
-              <span>{LightmapImageContrast.k}</span>
+              <span>{toNthDigit(lmContrastValue.k, 2)}</span>
+            </div>
+
+            <div className="w-full grid grid-cols-2">
+              <div className="w-full">
+                <span>그래프 매핑</span>
+                <div
+                  style={{
+                    width: lmGraphWidth,
+                    height: lmGraphWidth,
+                    borderBottom: '1px solid black',
+                    borderLeft: '1px solid black',
+                    boxSizing: 'border-box',
+                    position: 'relative',
+                  }}
+                >
+                  {linearData.map((val, i) => (
+                    <div
+                      key={`linear-${i}`}
+                      style={{
+                        position: 'absolute',
+                        left: i,
+                        // bottom: lmContrastGraphWidth * 0.5,
+                        bottom: i,
+                        width: 1,
+                        height: 1,
+                        backgroundColor: 'black',
+                        boxSizing: 'border-box',
+                      }}
+                    ></div>
+                  ))}
+                  {linearData.map((val, i) => (
+                    <div
+                      key={`adj-${i}`}
+                      style={{
+                        position: 'absolute',
+                        left: i,
+                        bottom:
+                          adjustContrast([val, val, val])[0] * lmGraphWidth,
+                        width: 1,
+                        height: 1,
+                        backgroundColor: 'red',
+                        boxSizing: 'border-box',
+                      }}
+                    ></div>
+                  ))}
+
+                  {linearData.map((val, i) => (
+                    <div
+                      key={`adj-${i}`}
+                      style={{
+                        position: 'absolute',
+                        left: i,
+                        bottom:
+                          S_k_t(
+                            val,
+                            lmContrastValue.k,
+                            Math.log(2.0) / Math.log(lmContrastValue.standard),
+                            0, // lmContrastValue.r,
+                          ) * lmGraphWidth,
+                        width: 1,
+                        height: 1,
+                        backgroundColor: 'gray',
+                        boxSizing: 'border-box',
+                      }}
+                    ></div>
+                  ))}
+                </div>
+              </div>
+              <div className={`w-full h-[${lmGraphWidth}px]`}>
+                <span>대비 적용 전/후</span>
+                <div className={`grid grid-cols-2 h-full`}>
+                  <ul className="w-full flex flex-col">
+                    {Array.from({ length: lmGraphWidth }).map((_, i) => {
+                      const bgColor = (255 * (i + 0.5)) / lmGraphWidth;
+                      return (
+                        <li
+                          className={`w-full flex-1`}
+                          style={{
+                            backgroundColor: `rgba(${bgColor}, ${bgColor}, ${bgColor}, 1)`,
+                          }}
+                          key={`org-color-${i}`}
+                        ></li>
+                      );
+                    })}
+                  </ul>
+                  <ul className="w-full flex flex-col h-full">
+                    {Array.from({ length: lmGraphWidth }).map((_, i) => {
+                      const bgColor = (i + 0.5) / lmGraphWidth;
+                      const adjusted =
+                        255 * adjustContrast([bgColor, bgColor, bgColor])[0];
+                      return (
+                        <li
+                          className={`w-full flex-1`}
+                          style={{
+                            backgroundColor: `rgba(${adjusted}, ${adjusted}, ${adjusted}, 1)`,
+                          }}
+                          key={`org-color-${i}`}
+                        ></li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              </div>
             </div>
           </>
         )}
@@ -943,6 +1179,110 @@ const GeneralPostProcessingControl = () => {
                   }));
                 }}
               />
+            </div>
+          </>
+        )}
+      </div>
+      <div>
+        <div>
+          <strong>Bloom</strong>
+          <input
+            type="checkbox"
+            checked={bloomOn}
+            onChange={e => {
+              setBloom(prev => ({ ...prev, on: e.target.checked }));
+            }}
+          />
+        </div>
+        {bloomOn && (
+          <>
+            <div>
+              <label>Threshold</label>
+              <input
+                type="range"
+                min={0}
+                max={1}
+                step={0.01}
+                value={bloomThreshold}
+                onChange={e => {
+                  setBloom(prev => ({
+                    ...prev,
+                    threshold: parseFloat(e.target.value),
+                  }));
+                }}
+              />
+              <input
+                type="number"
+                min={0}
+                max={1}
+                step={0.01}
+                value={bloomThreshold}
+                onChange={e => {
+                  setBloom(prev => ({
+                    ...prev,
+                    threshold: parseFloat(e.target.value),
+                  }));
+                }}
+              ></input>
+            </div>
+            <div>
+              <label>강도</label>
+              <input
+                type="range"
+                min={0}
+                max={2}
+                step={0.01}
+                value={bloomIntensity}
+                onChange={e => {
+                  setBloom(prev => ({
+                    ...prev,
+                    intensity: parseFloat(e.target.value),
+                  }));
+                }}
+              />
+              <input
+                type="number"
+                min={0}
+                max={2}
+                step={0.01}
+                value={bloomIntensity}
+                onChange={e => {
+                  setBloom(prev => ({
+                    ...prev,
+                    intensity: parseFloat(e.target.value),
+                  }));
+                }}
+              ></input>
+            </div>
+
+            <div>
+              <label>스무딩</label>
+              <input
+                type="range"
+                min={0}
+                max={1}
+                step={0.005}
+                value={bloomSmoothing}
+                onChange={e => {
+                  setBloom(prev => ({
+                    ...prev,
+                    smoothing: parseFloat(e.target.value),
+                  }));
+                }}
+              />
+              <input
+                type="number"
+                min={0}
+                max={1}
+                step={0.005}
+                value={bloomSmoothing}
+                onChange={e => {
+                  setBloom(prev => ({
+                    ...prev,
+                    smoothing: parseFloat(e.target.value),
+                  }));
+                }}
+              ></input>
             </div>
           </>
         )}

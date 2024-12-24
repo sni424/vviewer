@@ -16,6 +16,7 @@ const defaultEncodeOption: EXREncodeOption = {
 };
 
 export default class GainmapLoader {
+  static loader?: HDRJPGLoader;
   static disposables: { dispose?: Function }[] = [];
   static dispose() {
     for (const disposable of GainmapLoader.disposables) {
@@ -24,14 +25,20 @@ export default class GainmapLoader {
     EXRCodec.dispose();
   }
 
+  static getLoader(gl: THREE.WebGLRenderer) {
+    if (!this.loader) {
+      this.loader = new HDRJPGLoader(gl);
+    }
+    return this.loader;
+  }
+
   static async loadJpg(fileOrUrl: File | string, threeExports: {
     gl: THREE.WebGLRenderer;
   }) {
     const { gl } = threeExports;
     const isFile = typeof fileOrUrl !== "string";
     const url = isFile ? URL.createObjectURL(fileOrUrl) : fileOrUrl;
-    const loader = new HDRJPGLoader(gl);
-    return loader.loadAsync(url).then(result => {
+    return GainmapLoader.getLoader(gl).loadAsync(url).then(result => {
       this.disposables.push(result);
       URL.revokeObjectURL(url);
       const texture = result.renderTarget.texture;
@@ -78,6 +85,7 @@ export class EXRCodec {
   }
 
   // static async loadExr(file: File) { }
+  static _renderer = new THREE.WebGLRenderer();
 
   // url : exr 또는 hdr 파일의 경로, 또는 파일
   // https://github.com/MONOGRID/gainmap-js
@@ -112,13 +120,14 @@ export class EXRCodec {
     const image = await EXRCodec.loader.loadAsync(url)
 
     // find RAW RGB Max value of a texture
-    const textureMax = findTextureMinMax(image)
+    const textureMax = findTextureMinMax(image, "max", EXRCodec._renderer)
 
     // Encode the gainmap
     const encodingResult = encode({
       image,
       // this will encode the full HDR range
-      maxContentBoost: Math.max.apply(this, textureMax)
+      maxContentBoost: Math.max.apply(this, textureMax),
+      renderer: EXRCodec._renderer
     })
 
     // obtain the RAW RGBA SDR buffer and create an ImageData
@@ -132,7 +141,7 @@ export class EXRCodec {
         source: sdrImageData,
         mimeType,
         quality,
-        flipY // output needs to be flipped
+        flipY // output needs to be flipped,
       }),
       compress({
         source: gainMapImageData,
@@ -152,7 +161,7 @@ export class EXRCodec {
       ...encodingResult,
       ...metadata,
       sdr,
-      gainMap
+      gainMap,
     })
 
     // encoder must be manually disposed

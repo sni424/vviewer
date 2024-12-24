@@ -118,7 +118,7 @@ function ContrastTest() {
   const [_, _update] = useState(0);
   const update = () => _update(prev => prev + 1);
 
-  const graphWidth = 400;
+  const graphWidth = 200;
   const linearData = Array.from(
     { length: graphWidth },
     (_, index) => index / graphWidth,
@@ -190,16 +190,16 @@ function ContrastTest() {
   return (
     <div>
       <strong>ContrastTest</strong>
-      <div className="w-full grid grid-cols-2 mb-5">
+      <div className="w-full grid grid-cols-3 mb-5">
         <div className="w-full">
-          <Slider label="gammaFactor" update={update}></Slider>
+          <Slider label="gammaFactor" update={update} min={0.1}></Slider>
           <Slider
             label="standard"
             update={update}
             min={0.1}
             max={0.99}
           ></Slider>
-          <Slider label="k" update={update}></Slider>
+          <Slider label="k" update={update} min={1.0}></Slider>
           {/* <Slider label="r" update={update}></Slider> */}
         </div>
         <div>
@@ -266,6 +266,41 @@ function ContrastTest() {
                 ></div>
               ))}
             </div>
+          </div>
+        </div>
+        <div>
+          <strong>대비 적용 전/후</strong>
+          <div className="grid grid-cols-2 h-full">
+            <ul className="w-full flex flex-col">
+              {Array.from({ length: graphWidth }).map((_, i) => {
+                const bgColor = (255 * (i + 0.5)) / graphWidth;
+                return (
+                  <li
+                    className={`w-full flex-1`}
+                    style={{
+                      backgroundColor: `rgba(${bgColor}, ${bgColor}, ${bgColor}, 1)`,
+                    }}
+                    key={`org-color-${i}`}
+                  ></li>
+                );
+              })}
+            </ul>
+            <ul className="w-full flex flex-col">
+              {Array.from({ length: graphWidth }).map((_, i) => {
+                const bgColor = (i + 0.5) / graphWidth;
+                const adjusted =
+                  255 * adjustContrast([bgColor, bgColor, bgColor])[0];
+                return (
+                  <li
+                    className={`w-full flex-1`}
+                    style={{
+                      backgroundColor: `rgba(${adjusted}, ${adjusted}, ${adjusted}, 1)`,
+                    }}
+                    key={`org-color-${i}`}
+                  ></li>
+                );
+              })}
+            </ul>
           </div>
         </div>
       </div>

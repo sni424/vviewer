@@ -9,10 +9,14 @@ import {
 import { KTX2Loader } from 'three/examples/jsm/loaders/KTX2Loader.js';
 import { Layer } from '../Constants.ts';
 import * as THREE from '../scripts/VTHREE.ts';
-import VTextureLoader from './VTextureLoader.ts';
 import { getAtomValue, threeExportsAtom } from './atoms.ts';
+import GainmapLoader from './GainmapLoader.ts';
+import VTextureLoader from './VTextureLoader.ts';
 
 export default class VGLTFLoader extends GLTFLoader {
+  dispose() {
+    GainmapLoader.dispose();
+  }
   constructor(manager?: THREE.LoadingManager) {
     super(manager);
 
@@ -51,6 +55,12 @@ export default class VGLTFLoader extends GLTFLoader {
     }
     super.parse(data, path, customOnLoad, onError);
   }
+
+  async loadAsync(url: string) {
+    return super.loadAsync(url).finally(() => {
+      // this.dispose();
+    });
+  }
 }
 
 function updateLightMapFromEmissive(object: THREE.Object3D) {
@@ -83,18 +93,36 @@ async function getGainmap(object: THREE.Object3D, gl?: THREE.WebGLRenderer) {
     if (mat) {
       const cacheKey = mat.vUserData.gainMap as string | undefined;
       if (cacheKey) {
-        return get(cacheKey).then(jpg => {
-          const url = cacheKey.startsWith('http')
-            ? cacheKey
-            : `https://vra-configurator-dev.s3.ap-northeast-2.amazonaws.com/models/${cacheKey}`;
-          const source = jpg ?? url;
-          return VTextureLoader.load(source, { gl }).then(texture => {
+        const jpg = (
+          await Promise.all([
+            get(cacheKey),
+            get(cacheKey.replace('.exr', '.jpg')),
+          ])
+        ).filter(Boolean);
+
+        if (jpg.length > 0) {
+          return VTextureLoader.load(jpg[0] as File, { gl }).then(texture => {
             mat.lightMap = texture;
 
             if (mat.vUserData.gainMapIntensity !== undefined) {
               mat.lightMapIntensity = mat.vUserData.gainMapIntensity;
             }
+            mat.needsUpdate = true;
           });
+        }
+
+        const url = cacheKey;
+        if (!url.startsWith('http')) {
+          console.error('Invalid URL:', url);
+          return;
+        }
+        return VTextureLoader.load(url, { gl }).then(texture => {
+          mat.lightMap = texture;
+
+          if (mat.vUserData.gainMapIntensity !== undefined) {
+            mat.lightMapIntensity = mat.vUserData.gainMapIntensity;
+          }
+          mat.needsUpdate = true;
         });
       }
     }
