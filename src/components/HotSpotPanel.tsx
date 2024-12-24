@@ -72,11 +72,6 @@ function HotSpotPanel() {
   if (!threeExports) return null;
 
   const { camera, scene } = threeExports;
-  console.log(
-    'camera',
-    camera.position,
-    camera.getWorldDirection(new THREE.Vector3()),
-  );
 
   // 투어 애니메이션 실행 함수
   const executeTour = (roomIndex: number) => {

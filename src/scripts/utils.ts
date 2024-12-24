@@ -660,7 +660,17 @@ export const moveTo = (
         );
 
         if (path) {
-          handlePathfindingMove(camera, target, path, speed, direction);
+          if (direction) {
+            //마지막에 내가 정한 좌표가 아닌 closestTargetNode 근처 좌표로 이동하기에 
+            //배열의 마지막 좌표를 target좌표로 변경경
+            const newPath = [...path]
+            newPath.pop();
+            newPath.push(target)
+            handlePathfindingMove(camera, target, newPath, speed, direction);
+          } else {
+            handlePathfindingMove(camera, target, path, speed);
+          }
+
         }
       }
       break;
