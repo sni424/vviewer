@@ -109,11 +109,11 @@ const MeshView = ({
         }}
       >
         <div style={{ fontSize: 10 }}>{object.uuid}</div>
-        {Object.keys(object.userData).length > 0 && (
+        {Object.keys(object.vUserData).length > 0 && (
           <div style={{ fontSize: 11 }}>
             유저데이터
             <div style={{ fontSize: 10 }}>
-              {Object.entries(object.userData as Record<string, any>).map(
+              {Object.entries(object.vUserData as Record<string, any>).map(
                 ([key, value]) => {
                   if (key === 'probe') {
                     return null;

@@ -12,12 +12,13 @@ import {
   resetGL,
   saveScene,
   toNthDigit,
+  uploadGainmap,
 } from '../scripts/utils';
 
 import { get, set } from 'idb-keyval';
 import objectHash from 'object-hash';
 import { ToneMappingMode } from 'postprocessing';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   __UNDEFINED__,
@@ -46,7 +47,7 @@ import {
   LUTPresets,
 } from '../scripts/postprocess/PostProcessUtils.ts';
 import useFilelist from '../scripts/useFilelist';
-import useStats from '../scripts/useStats.ts';
+import useStats, { StatPerSecond, VStats } from '../scripts/useStats.ts';
 import VGLTFExporter from '../scripts/VGLTFExporter.ts';
 import {
   LightmapImageContrast,
@@ -66,6 +67,13 @@ const useEnvUrl = () => {
     });
   }, []);
   return [envUrl, setEnvUrl] as const;
+};
+
+const S_k_t = (intensity: number, k: number, t: number, r: number) => {
+  const x_exp = Math.pow(intensity, t);
+  const term = x_exp - 1.0;
+  const denominatorInv = 1.0 / (1.0 + Math.pow(term, k));
+  return (1.0 - r) * denominatorInv + r;
 };
 
 function save(blob: Blob, filename: string) {
@@ -160,7 +168,6 @@ const GeneralButtons = () => {
   const { openModal, closeModal } = useModal();
   const navigate = useNavigate();
   const [statsOn, setStatsOn] = useState(false);
-  useStats(statsOn);
 
   const handleResetSettings = async () => {
     await defaultSettings();
@@ -313,46 +320,54 @@ const GeneralButtons = () => {
             return;
           }
 
-          const glbArr = await new VGLTFExporter().parseAsync(
-            threeExports.scene,
-            { binary: true },
-          );
-          if (glbArr instanceof ArrayBuffer) {
-            console.log('before File Make');
-            const blob = new Blob([glbArr], {
-              type: 'application/octet-stream',
-            });
-            const file = new File([blob], 'latest.glb', {
-              type: 'model/gltf-binary',
-            });
-            const fd = new FormData();
-            fd.append('file', file);
+          uploadGainmap(threeExports.scene).then(() => {
+            new VGLTFExporter()
+              .parseAsync(threeExports.scene, { binary: true })
+              .then(glbArr => {
+                if (glbArr instanceof ArrayBuffer) {
+                  console.log('before File Make');
+                  const blob = new Blob([glbArr], {
+                    type: 'application/octet-stream',
+                  });
+                  const file = new File([blob], 'latest.glb', {
+                    type: 'model/gltf-binary',
+                  });
+                  const fd = new FormData();
+                  fd.append('file', file);
 
-            // latest 캐싱을 위한 hash
-            const uploadHash = objectHash(new Date().toISOString());
-            const hashData = {
-              hash: uploadHash,
-            };
-            // convert object to File:
-            const hashFile = compressObjectToFile(hashData, 'latest-hash');
-            const hashFd = new FormData();
-            hashFd.append('file', hashFile);
-            console.log('before Upload');
-            await fetch(uploadUrl, {
-              method: 'POST',
-              body: hashFd,
-            });
-            await fetch(uploadUrl, {
-              method: 'POST',
-              body: fd,
-            });
-            alert('업로드 완료');
-          } else {
-            console.error(
-              'VGLTFExporter GLB 처리 안됨, "binary: true" option 확인',
-            );
-            alert('VGLTFExporter 문제 발생함, 로그 확인');
-          }
+                  // latest 캐싱을 위한 hash
+                  const uploadHash = objectHash(new Date().toISOString());
+                  const hashData = {
+                    hash: uploadHash,
+                  };
+                  // convert object to File:
+                  const hashFile = compressObjectToFile(
+                    hashData,
+                    'latest-hash',
+                  );
+                  const hashFd = new FormData();
+                  hashFd.append('file', hashFile);
+                  console.log('before Upload');
+                  Promise.all([
+                    fetch(uploadUrl, {
+                      method: 'POST',
+                      body: hashFd,
+                    }),
+                    fetch(uploadUrl, {
+                      method: 'POST',
+                      body: fd,
+                    }),
+                  ]).then(() => {
+                    alert('업로드 완료');
+                  });
+                } else {
+                  console.error(
+                    'VGLTFExporter GLB 처리 안됨, "binary: true" option 확인',
+                  );
+                  alert('VGLTFExporter 문제 발생함, 로그 확인');
+                }
+              });
+          });
         }}
       >
         씬 업로드
@@ -534,8 +549,43 @@ const GeneralPostProcessingControl = () => {
   const [hueSaturation, setHueSaturation] = useAtom(globalHueSaturationAtom);
   const [lut, setLut] = useAtom(globalLUTAtom);
   const [lmContrastOn, setLmContrastOn] = useState(LightmapImageContrast.on);
-  const [lmContrastValue, setLmContrastValue] = useState(
-    LightmapImageContrast.value,
+  const [lmContrastValue, setLmContrastValue] = useState({
+    gammaFactor: LightmapImageContrast.gammaFactor,
+    standard: LightmapImageContrast.standard,
+    k: LightmapImageContrast.k,
+  });
+
+  const adjustContrast = (color: number[]) => {
+    const gammaFactor = lmContrastValue.gammaFactor;
+    const standard = lmContrastValue.standard;
+    const t = Math.log(2.0) / Math.log(standard);
+    const k = lmContrastValue.k;
+    const r = 0; // lmContrastValue.r;
+
+    const corrected = color.map(value => Math.pow(value, gammaFactor));
+    // const inputColor = color;
+    const inputColor = corrected;
+    const intensity =
+      inputColor[0] * 0.2126 + inputColor[1] * 0.7152 + inputColor[2] * 0.0722;
+    const adjustedIntensity = S_k_t(intensity, k, t, r);
+    const reflectance = inputColor.map(value => value / (intensity + 0.0001));
+    const reflectanceAdjusted = reflectance.map(
+      value => (value - standard) * 1.0 + standard,
+    );
+    const adjustedColor = reflectanceAdjusted.map(
+      value => value * adjustedIntensity,
+    );
+    const adjustedColorGamma = adjustedColor.map(value =>
+      Math.pow(value, 1.0 / gammaFactor),
+    );
+
+    return adjustedColorGamma;
+  };
+
+  const lmGraphWidth = 100;
+  const linearData = Array.from(
+    { length: lmGraphWidth },
+    (_, index) => index / lmGraphWidth,
   );
 
   if (!threeExports) {
@@ -645,21 +695,230 @@ const GeneralPostProcessingControl = () => {
           }}
         />
         {lmContrastOn && (
-          <input
-            type="range"
-            min={LightmapImageContrast.min}
-            max={LightmapImageContrast.max}
-            step={LightmapImageContrast.step}
-            onChange={e => {
-              if (!threeExports) {
-                return;
-              }
-              setLmContrastValue(parseFloat(e.target.value));
-              LightmapImageContrast.value = parseFloat(e.target.value);
-              resetGL(threeExports);
-            }}
-            value={lmContrastValue}
-          ></input>
+          <>
+            <div>
+              <label>Gamma</label>
+              <button
+                onClick={() => {
+                  if (!threeExports) {
+                    return;
+                  }
+                  const value = 2.2;
+                  setLmContrastValue(prev => ({
+                    ...prev,
+                    gammaFactor: value,
+                  }));
+                  LightmapImageContrast.gammaFactor = value;
+                  resetGL(threeExports);
+                }}
+              >
+                초기화
+              </button>
+              <input
+                className="w-[100px]"
+                type="range"
+                min={0.11}
+                max={3}
+                step={(3 - 0.1) / 200}
+                onChange={e => {
+                  if (!threeExports) {
+                    return;
+                  }
+                  setLmContrastValue(prev => ({
+                    ...prev,
+                    gammaFactor: parseFloat(e.target.value),
+                  }));
+                  LightmapImageContrast.gammaFactor = parseFloat(
+                    e.target.value,
+                  );
+                  resetGL(threeExports);
+                }}
+                value={lmContrastValue.gammaFactor}
+              />
+              <span>{toNthDigit(lmContrastValue.gammaFactor, 2)}</span>
+            </div>
+            <div>
+              <label>대비기준</label>
+              <button
+                onClick={() => {
+                  if (!threeExports) {
+                    return;
+                  }
+                  const value = 0.45;
+                  setLmContrastValue(prev => ({
+                    ...prev,
+                    standard: value,
+                  }));
+                  LightmapImageContrast.standard = value;
+                  resetGL(threeExports);
+                }}
+              >
+                초기화
+              </button>
+              <input
+                className="w-[100px]"
+                type="range"
+                min={0.1}
+                max={0.99}
+                step={(0.99 - 0.1) / 200}
+                onChange={e => {
+                  if (!threeExports) {
+                    return;
+                  }
+                  setLmContrastValue(prev => ({
+                    ...prev,
+                    standard: parseFloat(e.target.value),
+                  }));
+                  LightmapImageContrast.standard = parseFloat(e.target.value);
+                  resetGL(threeExports);
+                }}
+                value={lmContrastValue.standard}
+              />
+              <span>{toNthDigit(lmContrastValue.standard, 2)}</span>
+            </div>
+            <div>
+              <label>명도세기</label>
+              <button
+                onClick={() => {
+                  if (!threeExports) {
+                    return;
+                  }
+                  const value = 1.7;
+                  setLmContrastValue(prev => ({
+                    ...prev,
+                    k: value,
+                  }));
+                  LightmapImageContrast.k = value;
+                  resetGL(threeExports);
+                }}
+              >
+                초기화
+              </button>
+              <input
+                className="w-[100px]"
+                type="range"
+                min={1.0}
+                max={3}
+                step={(3 - 1) / 200}
+                onChange={e => {
+                  if (!threeExports) {
+                    return;
+                  }
+                  setLmContrastValue(prev => ({
+                    ...prev,
+                    k: parseFloat(e.target.value),
+                  }));
+                  LightmapImageContrast.k = parseFloat(e.target.value);
+                  resetGL(threeExports);
+                }}
+                value={lmContrastValue.k}
+              />
+              <span>{toNthDigit(lmContrastValue.k, 2)}</span>
+            </div>
+
+            <div className="w-full grid grid-cols-2">
+              <div className="w-full">
+                <span>그래프 매핑</span>
+                <div
+                  style={{
+                    width: lmGraphWidth,
+                    height: lmGraphWidth,
+                    borderBottom: '1px solid black',
+                    borderLeft: '1px solid black',
+                    boxSizing: 'border-box',
+                    position: 'relative',
+                  }}
+                >
+                  {linearData.map((val, i) => (
+                    <div
+                      key={`linear-${i}`}
+                      style={{
+                        position: 'absolute',
+                        left: i,
+                        // bottom: lmContrastGraphWidth * 0.5,
+                        bottom: i,
+                        width: 1,
+                        height: 1,
+                        backgroundColor: 'black',
+                        boxSizing: 'border-box',
+                      }}
+                    ></div>
+                  ))}
+                  {linearData.map((val, i) => (
+                    <div
+                      key={`adj-${i}`}
+                      style={{
+                        position: 'absolute',
+                        left: i,
+                        bottom:
+                          adjustContrast([val, val, val])[0] * lmGraphWidth,
+                        width: 1,
+                        height: 1,
+                        backgroundColor: 'red',
+                        boxSizing: 'border-box',
+                      }}
+                    ></div>
+                  ))}
+
+                  {linearData.map((val, i) => (
+                    <div
+                      key={`adj-${i}`}
+                      style={{
+                        position: 'absolute',
+                        left: i,
+                        bottom:
+                          S_k_t(
+                            val,
+                            lmContrastValue.k,
+                            Math.log(2.0) / Math.log(lmContrastValue.standard),
+                            0, // lmContrastValue.r,
+                          ) * lmGraphWidth,
+                        width: 1,
+                        height: 1,
+                        backgroundColor: 'gray',
+                        boxSizing: 'border-box',
+                      }}
+                    ></div>
+                  ))}
+                </div>
+              </div>
+              <div className={`w-full h-[${lmGraphWidth}px]`}>
+                <span>대비 적용 전/후</span>
+                <div className={`grid grid-cols-2 h-full`}>
+                  <ul className="w-full flex flex-col">
+                    {Array.from({ length: lmGraphWidth }).map((_, i) => {
+                      const bgColor = (255 * (i + 0.5)) / lmGraphWidth;
+                      return (
+                        <li
+                          className={`w-full flex-1`}
+                          style={{
+                            backgroundColor: `rgba(${bgColor}, ${bgColor}, ${bgColor}, 1)`,
+                          }}
+                          key={`org-color-${i}`}
+                        ></li>
+                      );
+                    })}
+                  </ul>
+                  <ul className="w-full flex flex-col h-full">
+                    {Array.from({ length: lmGraphWidth }).map((_, i) => {
+                      const bgColor = (i + 0.5) / lmGraphWidth;
+                      const adjusted =
+                        255 * adjustContrast([bgColor, bgColor, bgColor])[0];
+                      return (
+                        <li
+                          className={`w-full flex-1`}
+                          style={{
+                            backgroundColor: `rgba(${adjusted}, ${adjusted}, ${adjusted}, 1)`,
+                          }}
+                          key={`org-color-${i}`}
+                        ></li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </>
         )}
       </div>
       <div>
@@ -1301,7 +1560,7 @@ const GeneralMaterialControl = () => {
               if (child instanceof THREE.Mesh) {
                 allMeshes.push(child);
               }
-            }, Layer.Model);
+            });
             allMeshes.forEach(mesh => {
               //@ts-ignore
               mesh.material.aoMapIntensity = parseFloat(e.target.value);
@@ -1321,7 +1580,7 @@ const GeneralMaterialControl = () => {
               if (child instanceof THREE.Mesh) {
                 allMeshes.push(child);
               }
-            }, Layer.Model);
+            });
             allMeshes.forEach(mesh => {
               //@ts-ignore
               mesh.material.aoMapIntensity = parseFloat(e.target.value);
@@ -1345,7 +1604,7 @@ const GeneralMaterialControl = () => {
               if (child instanceof THREE.Mesh) {
                 allMeshes.push(child);
               }
-            }, Layer.Model);
+            });
             allMeshes.forEach(mesh => {
               (mesh.material as THREE.MeshStandardMaterial).lightMapIntensity =
                 parseFloat(e.target.value);
@@ -1365,7 +1624,7 @@ const GeneralMaterialControl = () => {
               if (child instanceof THREE.Mesh) {
                 allMeshes.push(child);
               }
-            }, Layer.Model);
+            });
             allMeshes.forEach(mesh => {
               (mesh.material as THREE.MeshStandardMaterial).lightMapIntensity =
                 parseFloat(e.target.value);
@@ -1381,6 +1640,217 @@ const GeneralMaterialControl = () => {
   );
 };
 
+const hoveredStat = (hovered: HTMLLIElement) => {
+  return JSON.parse(hovered.getAttribute('data-stat')!) as {
+    stat: StatPerSecond;
+    dst: 'framerate' | 'memory';
+  };
+};
+
+const relativePosition = (element?: HTMLLIElement | null) => {
+  if (!element) {
+    return null;
+  }
+  // px relative to its parent
+  const rect = element.getBoundingClientRect();
+  const parentRect = element.parentElement?.getBoundingClientRect();
+
+  if (!parentRect) {
+    return null;
+  }
+
+  const isMemory = hoveredStat(element).dst === 'memory';
+
+  const offsetLeft = isMemory ? parentRect.width : 0;
+
+  return {
+    top: rect.top - parentRect.top,
+    left: rect.left - parentRect.left + offsetLeft,
+  };
+};
+
+const STAT_INTERVAL = 500; //ms
+
+const byteToMB = (byte: number) => {
+  return Math.round(byte / (1024 * 1024));
+};
+
+const GeneralStats = () => {
+  const [on, setOn] = useState(false);
+  const [stats, setStats] = useState<VStats>();
+  const getStats = useStats(on, STAT_INTERVAL);
+  const [hovered, setHovered] = useState<HTMLLIElement>();
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const stats = getStats();
+      setStats(stats);
+      // console.log(
+      //   stats.stats[stats.stats.length - 1].highestMemoryUsage,
+      //   stats.baseMemory!.totalJSHeapSize,
+      // );
+    }, STAT_INTERVAL);
+    return () => {
+      clearInterval(interval);
+    };
+  }, []);
+
+  const highest = useMemo(
+    () => stats?.highestMemoryUsage ?? 0,
+    [stats?.highestMemoryUsage],
+  );
+
+  if (!on) {
+    return (
+      <section>
+        <strong>통계</strong>
+        <input
+          type="checkbox"
+          checked={on}
+          onChange={e => setOn(e.target.checked)}
+        ></input>
+      </section>
+    );
+  }
+
+  if (!stats) {
+    return (
+      <section>
+        <strong>통계</strong>
+        <input
+          type="checkbox"
+          checked={on}
+          onChange={e => setOn(e.target.checked)}
+        ></input>
+        <div>
+          <div>로딩중...</div>
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <section>
+      <div>
+        <strong>통계</strong>
+        <input
+          type="checkbox"
+          checked={on}
+          onChange={e => setOn(e.target.checked)}
+        ></input>{' '}
+        - <span>{Math.round(stats.elapsed / 1000)}초</span>
+      </div>
+      <div>
+        <div>
+          <div>
+            최대메모리사용량 :{' '}
+            <span>
+              {formatNumber(byteToMB(highest))} /{' '}
+              {formatNumber(byteToMB(stats.baseMemory?.jsHeapSizeLimit ?? 0))}mb
+              (
+              {Math.round(
+                (100 * highest) / (stats.baseMemory?.jsHeapSizeLimit ?? 0),
+              )}
+              %)
+            </span>
+          </div>
+          <div>평균 프레임 : {Math.round(stats.averageFramerate)}</div>
+          <div>
+            마지막 10초 프레임 :{' '}
+            {stats.stats
+              .slice(-10)
+              .reduce((acc, cur) => acc + cur.framerate, 0) / 10}
+          </div>
+          <div>Lowest 1% : {stats.lowest1percentFramerate}fps</div>
+          <div className="w-full grid grid-cols-2 relative">
+            <ul
+              id="ul1"
+              className="relative w-full h-20 bg-slate-100 overflow-hidden"
+            >
+              {stats.stats.map(stat => {
+                return (
+                  <li
+                    data-stat={JSON.stringify({ stat, dst: 'framerate' })}
+                    onMouseEnter={e => {
+                      setHovered(e.currentTarget);
+                    }}
+                    key={`stat-frame-${stat.at}`}
+                    style={{
+                      position: 'absolute',
+                      height: '100%',
+                      width: 2,
+                      bottom: 0,
+                      right: 0,
+                      transform: `translateX(-${(stats.end - stat.at) / 500}px)`,
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: '100%',
+                        height: `${Math.min(stat.framerate, 100)}%`,
+                        backgroundColor: 'red',
+                        position: 'absolute',
+                        bottom: 0,
+                      }}
+                    ></div>
+                  </li>
+                );
+              })}
+            </ul>
+            <ul
+              id="ul2"
+              className="relative w-full h-20 bg-slate-100 overflow-hidden"
+            >
+              {stats.stats.map(stat => {
+                return (
+                  <li
+                    onMouseEnter={e => {
+                      setHovered(e.currentTarget);
+                    }}
+                    data-stat={JSON.stringify({ stat, dst: 'memory' })}
+                    key={`stat-memory-${stat.at}`}
+                    style={{
+                      position: 'absolute',
+                      height: '100%',
+                      // height: `${stat.framerate / (stats.maxFrameRate + 0.001)}%`,
+                      width: 2,
+                      bottom: 0,
+                      right: 0,
+                      transform: `translateX(-${(stats.end - stat.at) / 500}px)`,
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: '100%',
+                        height: `${Math.min((100 * stat.highestMemoryUsage) / (window as any).performance.memory.jsHeapSizeLimit, 100)}%`,
+                        position: 'absolute',
+                        backgroundColor: 'blue',
+                        bottom: 0,
+                      }}
+                    ></div>
+                  </li>
+                );
+              })}
+            </ul>
+            {hovered && relativePosition(hovered) && (
+              <div
+                className="absolute top-0 left-0 bg-slate-400"
+                style={{
+                  transform: `translate(calc(${relativePosition(hovered)!.left}px - 50%), -10px)`,
+                }}
+              >
+                {hoveredStat(hovered).dst === 'memory'
+                  ? `${byteToMB(hoveredStat(hovered).stat.highestMemoryUsage)}mb`
+                  : `${hoveredStat(hovered).stat.framerate}fps`}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+};
+
 const SceneInfo = () => {
   // const [env, setEnv] = useAtom(envAtom);
   const threeExports = useAtomValue(threeExportsAtom);
@@ -1390,7 +1860,7 @@ const SceneInfo = () => {
   }
 
   const { scene } = threeExports;
-  const totals = groupInfo(scene);
+  // const totals = groupInfo(scene);
 
   return (
     <div
@@ -1404,6 +1874,7 @@ const SceneInfo = () => {
         gap: 12,
       }}
     >
+      <GeneralStats></GeneralStats>
       <GeneralButtons></GeneralButtons>
       <GeneralMaterialControl></GeneralMaterialControl>
       <GeneralEnvironmentControl></GeneralEnvironmentControl>

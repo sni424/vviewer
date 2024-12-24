@@ -10,7 +10,13 @@ import { OrbitControls, RGBELoader } from 'three/examples/jsm/Addons.js';
 import { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { Layer } from '../Constants';
 import { FileInfo, MoveActionOptions, MoveActionType, View } from '../types.ts';
-import { BenchMark, cameraActionAtom, getAtomValue, selectedAtom, setAtomValue } from './atoms';
+import {
+  BenchMark,
+  cameraActionAtom,
+  getAtomValue,
+  selectedAtom,
+  setAtomValue,
+} from './atoms';
 import VGLTFExporter from './VGLTFExporter.ts';
 import VGLTFLoader from './VGLTFLoader.tsx';
 import * as THREE from './VTHREE';
@@ -47,7 +53,6 @@ export const groupInfo = (
         }
       } catch (e) {
         console.error(e);
-        debugger;
       }
     }
     if (node instanceof THREE.Object3D) {
@@ -79,7 +84,7 @@ export const getIntersects = (
   e: React.MouseEvent,
   threeExports: RootState | null,
   raycaster: THREE.Raycaster = new THREE.Raycaster(),
-  filterUserdataIgnoreRaycast = true, // Object3D.userData.ignoreRayCast가 true인 아이들은 무시
+  filterUserdataIgnoreRaycast = true, // Object3D.vUserData.ignoreRayCast가 true인 아이들은 무시
 ) => {
   if (!threeExports) {
     console.error(
@@ -150,7 +155,7 @@ export const isTransformControlOrChild = (object: THREE.Object3D) => {
   while (current) {
     if (
       current instanceof TransformControls ||
-      current.userData.isTransformControls
+      current.vUserData.isTransformControls
     ) {
       return true; // Skip if it's part of TransformControls
     }
@@ -162,7 +167,7 @@ export const isTransformControlOrChild = (object: THREE.Object3D) => {
 
 // Object 가 Probe 의 Mesh 인지?
 export const isProbeMesh = (object: THREE.Object3D) => {
-  return object.userData.isProbeMesh !== undefined;
+  return object.vUserData.isProbeMesh !== undefined;
 };
 
 export const loadScene = async (): Promise<THREE.Object3D | undefined> => {
@@ -256,12 +261,13 @@ export const loadLatest = async ({
   const remoteLatestHash = await (
     await decompressFileToObject<{ hash: string }>(latestHashUrl)
   ).hash;
-
   const loadModel = async () => {
     let url;
     if (!localLatestHash || localLatestHash !== remoteLatestHash) {
       // CACHE UPDATE
-      const blob = await fetch(latestUrl).then(res => res.blob());
+      const blob = await fetch(latestUrl, {
+        cache: 'no-store',
+      }).then(res => res.blob());
       await set('latest-hash', remoteLatestHash);
       await set('latest', blob);
 
@@ -283,7 +289,7 @@ export const loadLatest = async ({
       console.log('getLatest: ', blob);
       url = URL.createObjectURL(blob);
     }
-    return await new VGLTFLoader(threeExports.scene).loadAsync(url);
+    return await new VGLTFLoader().loadAsync(url);
   };
 
   return loadModel()
@@ -489,15 +495,15 @@ const handlePathfindingMove = (
           camera.quaternion.copy(quaternion);
         } else {
           //이동하는 경로에따라 카메라 방향 설정
-          if (direction) {
-            const quaternion = rotateCameraSmoothly(
-              startDirection,
-              endDirection,
-              // adjustedProgress
-              distance > 5 ? Math.min(adjustedProgress * distance, 1) : adjustedProgress,
-            );
-            camera.quaternion.copy(quaternion);
-          }
+          const quaternion = rotateCameraSmoothly(
+            startDirection,
+            endDirection,
+            // adjustedProgress
+            distance > 5
+              ? Math.min(adjustedProgress * distance, 1)
+              : adjustedProgress,
+          );
+          camera.quaternion.copy(quaternion);
         }
       }
     },
@@ -547,7 +553,7 @@ const handleLinearMove = (
       camera.quaternion.copy(quaternion);
     },
     onComplete: () => {
-      console.log("complete handleLinearMove")
+      console.log('complete handleLinearMove');
     },
   });
 };
@@ -670,7 +676,6 @@ export const moveTo = (
           } else {
             handlePathfindingMove(camera, target, path, speed);
           }
-
         }
       }
       break;
@@ -803,3 +808,57 @@ export const getModelArrangedScene = (scene: THREE.Scene) => {
 
   return cloned;
 };
+
+export const uploadGainmap = async (object: THREE.Object3D) => {
+  const uploadUrl = import.meta.env.VITE_UPLOAD_URL;
+
+  // 같은 라이트맵을 공유하는 material 검출
+  // { hash : [mat1, mat2] }
+  const gainmapHashes: { [key in string]: THREE.MeshStandardMaterial[] } = {};
+
+  object.traverseAll(async (obj) => {
+    if ((obj as THREE.Mesh).isMesh) {
+      const mesh = obj as THREE.Mesh;
+      const mat = mesh.material as THREE.MeshStandardMaterial;
+      if (mat && mat.lightMap && mat.lightMap.vUserData.gainMap) {
+        mat.vUserData.gainMap = mat.lightMap.vUserData.gainMap;
+        mat.vUserData.gainMapIntensity = mat.lightMapIntensity;
+        const gainMapHash = mat.vUserData.gainMap;
+
+        if (gainMapHash) {
+          if (!gainmapHashes[gainMapHash]) {
+            gainmapHashes[gainMapHash] = [];
+          }
+          gainmapHashes[gainMapHash].push(mat);
+        }
+
+      }
+    }
+  })
+
+  const hashes = Object.keys(gainmapHashes);
+
+  return Promise.all(hashes.map(hash => {
+    return get(hash).then(file => {
+      if (file) {
+        const formData = new FormData();
+        formData.append('file', file);
+        return fetch(uploadUrl, {
+          method: 'POST',
+          body: formData,
+        }).then((res) => {
+          console.log(res);
+          const mats = Object.values(gainmapHashes[hash]);
+          mats.forEach(mat => {
+            mat.lightMap = null;
+          })
+          return res;
+        })
+      } else {
+        return undefined;
+      }
+    })
+
+  }));
+
+}

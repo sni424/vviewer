@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { THREE } from './VTHREE';
+import VTextureLoader from './VTextureLoader';
 
 const useLightMapDragAndDrop = (
   mat: THREE.MeshStandardMaterial | THREE.MeshStandardMaterial[],
@@ -21,7 +22,7 @@ const useLightMapDragAndDrop = (
     setIsDragging(false);
 
     if (event.dataTransfer.files && event.dataTransfer.files.length > 0) {
-      const acceptedExtensions = ['.png', '.jpg'];
+      const acceptedExtensions = ['.png', '.jpg', '.exr', '.hdr'];
       const files = Array.from(event.dataTransfer.files);
 
       // Filter files by .gltf and .glb extensions
@@ -30,7 +31,7 @@ const useLightMapDragAndDrop = (
       );
 
       if (filteredFiles.length === 0) {
-        alert('Only .png and .jpg files are accepted.');
+        alert('다음 확장자만 적용 가능 : ' + acceptedExtensions.join(', '));
         return;
       }
 
@@ -42,19 +43,15 @@ const useLightMapDragAndDrop = (
       }));
 
       if (fileUrls.length > 0) {
-        const texture = new THREE.TextureLoader().load(fileUrls[0].url);
-        texture.flipY = !texture.flipY;
-        console.log(texture);
-
-        if (Array.isArray(mat)) {
-          mat.forEach(m => {
-            m.lightMap = texture;
-            m.lightMap.channel = 1;
-          });
-        } else {
-          mat.lightMap = texture;
-          mat.lightMap.channel = 1;
-        }
+        VTextureLoader.loadAsync(fileUrls[0].url).then(texture => {
+          if (Array.isArray(mat)) {
+            mat.forEach(m => {
+              m.lightMap = texture;
+            });
+          } else {
+            mat.lightMap = texture;
+          }
+        });
       }
 
       event.dataTransfer.clearData();

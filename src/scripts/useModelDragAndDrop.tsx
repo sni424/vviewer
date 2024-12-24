@@ -5,7 +5,6 @@ import {
   ModelSource,
   sourceAtom,
   threeExportsAtom,
-  useModal,
 } from '../scripts/atoms';
 import { readDirectory } from './utils';
 import VObjectLoader from './VObjectLoader.ts';
@@ -103,7 +102,6 @@ const useModelDragAndDrop = () => {
   const [isDragging, setIsDragging] = useState(false);
   const setSourceUrls = useSetAtom(sourceAtom);
   const threeExports = useAtomValue(threeExportsAtom);
-  const { openModal, closeModal } = useModal();
 
   const handleDragOver = (event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault();
@@ -119,7 +117,14 @@ const useModelDragAndDrop = () => {
     setIsDragging(false);
 
     if (event.dataTransfer.items && event.dataTransfer.items.length > 0) {
-      const acceptedExtensions = ['.gltf', '.glb', '.json', 'png'];
+      const acceptedExtensions = [
+        '.gltf',
+        '.glb',
+        '.json',
+        '.png',
+        '.jpg',
+        '.exr',
+      ];
       const items = Array.from(event.dataTransfer.items).map(item => ({
         entry: item.webkitGetAsEntry?.(),
         file: item.getAsFile(),
@@ -154,9 +159,16 @@ const useModelDragAndDrop = () => {
       );
 
       if (filteredFiles.length === 0) {
-        alert('Only .gltf and .glb, .json, .png files are accepted.');
+        alert('Only .gltf and .glb, .json, .png, .exr files are accepted.');
         return;
       }
+
+      // 1. gainmap부터 확인 - 같은 이름의 glb, json, jpg(jgpeg) 확인
+      const gltfs = filteredFiles.filter(
+        file =>
+          file.name.toLowerCase().endsWith('.gltf') ||
+          file.name.toLowerCase().endsWith('.glb'),
+      );
 
       // 1. 씬이 저장된 .json파일
       const jsons = filteredFiles.filter(file =>
@@ -182,13 +194,11 @@ const useModelDragAndDrop = () => {
         // return;
       }
 
-      const gltfs = filteredFiles.filter(
+      const inputMaps = filteredFiles.filter(
         file =>
-          file.name.toLowerCase().endsWith('.gltf') ||
-          file.name.toLowerCase().endsWith('.glb'),
-      );
-      const inputMaps = filteredFiles.filter(file =>
-        file.name.toLowerCase().endsWith('.png'),
+          file.name.toLowerCase().endsWith('.png') ||
+          file.name.toLowerCase().endsWith('.exr') ||
+          file.name.toLowerCase().endsWith('.jpg'), // 게인맵
       );
 
       // 이미지파일이 있으면 Lightmap에 넣을지 Emissive에 넣을지 등을 선택해야한다.
@@ -205,6 +215,7 @@ const useModelDragAndDrop = () => {
           };
           const filenameWithoutExtension = file.name.split('.')[0];
           // 모델명_Lightmap.png인 경우도 있고 모델명.png인 경우도 있다
+          // .jpg인 경우는 게인맵이지만 여기서 처리하지 않고 Renderer에서 처리
           const map = inputMaps.find(lightmap => {
             const lightmapeName = lightmap.name.split('.')[0];
             return (
@@ -218,6 +229,8 @@ const useModelDragAndDrop = () => {
           }
           return retval;
         });
+
+        // Renderer에서 모델 추가됨
         setSourceUrls(fileUrls);
         // openModal(props => (
         //   <MapSelectModal {...props} gltfs={gltfs} inputMaps={inputMaps} />
@@ -229,6 +242,8 @@ const useModelDragAndDrop = () => {
           url: URL.createObjectURL(file),
           file,
         }));
+
+        // Renderer에서 모델 추가됨
         setSourceUrls(fileUrls);
       }
 

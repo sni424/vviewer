@@ -65,24 +65,35 @@ export default class VGLTFExporter extends GLTFExporter {
     super.parse(cloned, onDone, onError, options);
   }
 
+  parseAsync(
+    input: THREE.Object3D | THREE.Object3D[],
+    options?: GLTFExporterOptions,
+  ): Promise<ArrayBuffer | { [key: string]: any }> {
+    return new Promise((resolve, reject) => {
+      this.parse(input, resolve, reject, options);
+    });
+  }
+
   /**
    * OnBeforeParse
    * Material 내에 lightMap 이 있을 경우, 해당 lightMap 을 emissive 에 넣어서 할당
    * **/
   onBeforeParse(input: THREE.Object3D | THREE.Object3D[]) {
     console.log('onBeforeParse START');
-
     function lightMapToEmissive(object: THREE.Object3D) {
       if ('isMesh' in object) {
         const mesh = object as THREE.Mesh;
         const material = mesh.material as THREE.MeshStandardMaterial;
 
+        if (material.lightMap) {
+          console.log('lightMapToEmissive : ', mesh, material);
+        }
         // 이미 매핑 됐으면 패스
-        if (!material.userData.isEmissiveLightMap && material.lightMap) {
+        if (!material.vUserData.isEmissiveLightMap && material.lightMap) {
           const clonedMat = material.clone();
           clonedMat.emissiveMap = clonedMat.lightMap;
-          clonedMat.userData.isEmissiveLightMap = true;
-          clonedMat.userData.lightMapIntensity = clonedMat.lightMapIntensity;
+          clonedMat.vUserData.isEmissiveLightMap = true;
+          clonedMat.vUserData.lightMapIntensity = clonedMat.lightMapIntensity;
           clonedMat.needsUpdate = true;
           mesh.material = clonedMat;
           console.log('lightmap Passed');
@@ -109,16 +120,34 @@ export default class VGLTFExporter extends GLTFExporter {
       });
     }
 
+    function lightMapToGainmap(obj: THREE.Object3D) {
+      const mesh = (obj as THREE.Mesh);
+      if (mesh.material) {
+        const mat = mesh.material as THREE.MeshStandardMaterial;
+        console.log("LMIntensity", mat.lightMapIntensity);
+        const lm = mat.lightMap;
+        if (lm && lm.vUserData.gainMap) {
+          mat.vUserData.gainMap = lm.vUserData.gainMap;
+          mat.vUserData.gainMapIntensity = mat.lightMapIntensity;
+          console.log(mat.lightMapIntensity);
+          mat.lightMap = null;
+        }
+      }
+
+    }
+
     if (Array.isArray(input)) {
       const clonedArr = input.map(i => i.clone());
       for (const obj of clonedArr) {
         filterNotModelObjects(obj);
+        obj.traverse(lightMapToGainmap);
         obj.traverse(lightMapToEmissive);
       }
       return clonedArr;
     } else {
       const cloned = input.clone();
       filterNotModelObjects(cloned);
+      cloned.traverse(lightMapToGainmap);
       cloned.traverse(lightMapToEmissive);
       return cloned;
     }

@@ -1,3 +1,4 @@
+import { get } from 'idb-keyval';
 import React, { useEffect, useRef } from 'react';
 import { THREE } from '../scripts/VTHREE';
 import { useModal } from '../scripts/atoms';
@@ -17,7 +18,6 @@ export interface MapPreviewProps {
     | 'envMap'
     | 'aoMap'
     | 'gradientMap'
-    | 'lightMap'
     | 'specularMap'
     | 'clearcoatMap'
     | 'clearcoat';
@@ -25,7 +25,7 @@ export interface MapPreviewProps {
   height?: number;
 }
 
-const FullscreenCanvas = ({ texture }: { texture: THREE.Texture }) => {
+export const FullscreenCanvas = ({ texture }: { texture: THREE.Texture }) => {
   const { closeModal } = useModal();
   const innerCanvasRef = useRef<HTMLCanvasElement>(null);
   const maxHeight = window.innerHeight - 100;
@@ -42,6 +42,7 @@ const FullscreenCanvas = ({ texture }: { texture: THREE.Texture }) => {
   };
 
   useEffect(() => {
+    console.log('FullscreenCanvas : ', texture);
     if (!innerCanvasRef.current) {
       return;
     }
@@ -86,10 +87,12 @@ const MapPreview: React.FC<MapPreviewProps> = ({
   ] as THREE.Texture;
   const { openModal, closeModal } = useModal();
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const hasImage = texture && texture.image;
+  const isGainmap = Boolean(texture?.vUserData?.gainMap);
+  const hasImage = texture && texture.image && !isGainmap;
+  const cannotDraw = mapKey === 'envMap' || isGainmap;
 
   useEffect(() => {
-    if (mapKey === 'envMap') {
+    if (cannotDraw) {
       // HDR이미지를 보여줄 수가 없다
       return;
     }
@@ -108,12 +111,66 @@ const MapPreview: React.FC<MapPreviewProps> = ({
     const h = height ?? 60;
     canvasRef.current.width = w;
     canvasRef.current.height = h;
+    // const source = texture.image || texture.source.data;
+    // console.log(texture);
+    // console.log(texture.image);
     canvasRef.current.getContext('2d')?.drawImage(texture.image, 0, 0, w, h);
   }, [texture]);
 
-  if (mapKey === 'envMap') {
+  if (cannotDraw) {
     if (texture) {
-      return <div style={{ fontSize: 11, color: '#555' }}>envMap표시불가</div>;
+      console.log(texture.vUserData.gainMap);
+
+      return (
+        <div style={{ fontSize: 11, color: '#555' }}>
+          표시불가(HDR)
+          {isGainmap && texture.vUserData.gainMap ? (
+            <>
+              <br></br>
+              <div>
+                <button
+                  onClick={() => {
+                    const a = document.createElement('a');
+                    const urlOrName = texture.vUserData.gainMap as string;
+
+                    if (urlOrName.startsWith('http')) {
+                      a.href = urlOrName as string;
+                      const name = urlOrName.split('/').pop()!;
+                      a.download = name;
+                      a.click();
+                    } else {
+                      console.log(urlOrName);
+                      get(urlOrName).then((jpg: File) => {
+                        if (jpg) {
+                          const url = URL.createObjectURL(jpg);
+                          a.href = url;
+                          a.download = jpg.name;
+                          a.click();
+                        } else {
+                          const jpgCandidate = urlOrName.replace(
+                            '.exr',
+                            '.jpg',
+                          );
+                          get(jpgCandidate).then((jpg: File) => {
+                            if (jpg) {
+                              const url = URL.createObjectURL(jpg);
+                              a.href = url;
+                              a.download = jpg.name;
+                              a.click();
+                            }
+                          });
+                        }
+                      });
+                    }
+                  }}
+                >
+                  게인맵다운로드
+                </button>
+              </div>
+            </>
+          ) : null}
+        </div>
+      );
     } else {
       return <div>없음</div>;
     }
@@ -134,7 +191,6 @@ const MapPreview: React.FC<MapPreviewProps> = ({
         ref={canvasRef}
         onClick={() => {
           if (!hasImage) {
-            console.log('11');
             return;
           }
           openModal(() => (

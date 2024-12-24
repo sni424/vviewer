@@ -26,6 +26,7 @@ import {
   zoomToSelected,
 } from '../../scripts/utils';
 import VGLTFLoader from '../../scripts/VGLTFLoader';
+import VTextureLoader from '../../scripts/VTextureLoader';
 import { THREE } from '../../scripts/VTHREE';
 import { View } from '../../types';
 import UnifiedCameraControls from '../camera/UnifiedCameraControls';
@@ -45,25 +46,45 @@ const MainGrid = () => {
   return <Grid layers={View.Shared}></Grid>;
 };
 
-function Renderer() {
-  // useStats();
-  const threeExports = useThree();
+const applyTexture = (
+  object: THREE.Object3D,
+  texture: THREE.Texture,
+  mapDst?: 'lightmap' | 'emissivemap' | 'gainmap',
+) => {
+  object.traverseAll(obj => {
+    // console.log('obj : ', obj);
+    if (obj.type === 'Mesh') {
+      const material = (obj as THREE.Mesh)
+        .material as THREE.MeshStandardMaterial;
+      if (!material) {
+        (obj as THREE.Mesh).material = new THREE.MeshStandardMaterial();
+      }
+      if (mapDst === 'lightmap' || !mapDst) {
+        material.lightMap = texture;
+        // material.map = texture;
+      } else if (mapDst === 'emissivemap') {
+        //three.js 특성상 emissiveMap을 적용하려면 emissive를 설정해야함
+        material.emissive = new THREE.Color(0xffffff);
+        material.emissiveMap = texture;
+        material.emissiveIntensity = 0.5;
+      } else {
+        throw new Error('Invalid mapDst @Renderer');
+      }
+
+      material.needsUpdate = true;
+    }
+  });
+};
+
+const useLoadModel = ({
+  gl,
+  scene,
+}: {
+  gl: THREE.WebGLRenderer;
+  scene: THREE.Scene;
+}) => {
   const sources = useAtomValue(sourceAtom);
   const setLoadHistoryAtom = useSetAtom(loadHistoryAtom);
-  const setThreeExportsAtom = useSetAtom(threeExportsAtom);
-  // const setSharedExports = useSetAtom(sharedThreeAtom);
-  const setSharedExports = useSetThreeExports();
-  const { scene, camera } = threeExports;
-  const setCameraAtom = useSetAtom(cameraMatrixAtom);
-
-  useEffect(() => {
-    setThreeExportsAtom(threeExports);
-    camera.position.set(1, 1, 1);
-    const mat = camera.matrix.clone();
-    setCameraAtom(mat);
-
-    setSharedExports(threeExports);
-  }, []);
 
   useEffect(() => {
     sources.forEach(source => {
@@ -81,41 +102,15 @@ function Renderer() {
         return newHistory;
       });
 
-      new VGLTFLoader().loadAsync(url).then(gltf => {
+      new VGLTFLoader().loadAsync(url).then(async gltf => {
         if (map) {
-          const texture = new THREE.TextureLoader().load(
-            URL.createObjectURL(map),
-          );
-          texture.flipY = !texture.flipY;
-          texture.channel = 1;
-          texture.needsUpdate = true;
-          gltf.scene.traverseAll(obj => {
-            console.log('obj : ', obj);
-            if (obj.type === 'Mesh') {
-              const material = (obj as THREE.Mesh)
-                .material as THREE.MeshStandardMaterial;
-              if (!material) {
-                (obj as THREE.Mesh).material = new THREE.MeshStandardMaterial();
-              }
-              if (mapDst === 'lightmap' || !mapDst) {
-                material.lightMap = texture;
-              } else if (mapDst === 'emissivemap') {
-                //three.js 특성상 emissiveMap을 적용하려면 emissive를 설정해야함
-                material.emissive = new THREE.Color(0xffffff);
-                material.emissiveMap = texture;
-                material.emissiveIntensity = 0.5;
-              } else {
-                throw new Error('Invalid mapDst @Renderer');
-              }
+          const texture = await VTextureLoader.loadAsync(map, { gl });
 
-              material.needsUpdate = true;
-            }
-          });
+          applyTexture(gltf.scene, texture, mapDst);
         }
 
         scene.add(gltf.scene);
-        // revoke object url
-        URL.revokeObjectURL(url);
+
         setLoadHistoryAtom(history => {
           const newHistory = new Map(history);
           newHistory.get(url)!.end = Date.now();
@@ -125,6 +120,26 @@ function Renderer() {
       });
     });
   }, [sources]);
+};
+
+function Renderer() {
+  // useStats();
+  const threeExports = useThree();
+
+  const setThreeExportsAtom = useSetAtom(threeExportsAtom);
+  // const setSharedExports = useSetAtom(sharedThreeAtom);
+  const setSharedExports = useSetThreeExports();
+  const { scene, camera } = threeExports;
+  useLoadModel(threeExports);
+  const setCameraAtom = useSetAtom(cameraMatrixAtom);
+
+  useEffect(() => {
+    setThreeExportsAtom(threeExports);
+    camera.position.set(1, 1, 1);
+    const mat = camera.matrix.clone();
+    setCameraAtom(mat);
+    setSharedExports(threeExports);
+  }, []);
 
   return (
     <>
@@ -195,7 +210,7 @@ const useMouseHandler = () => {
           return [...selected, intersects[0].object.uuid];
         });
       } else {
-        if (!intersects[0].object.userData.isProbeMesh) {
+        if (!intersects[0].object.vUserData.isProbeMesh) {
           setSelected([intersects[0].object.uuid]);
           setScrollTo(intersects[0].object.uuid);
           if (intersects[0].object.type === 'Mesh') {
