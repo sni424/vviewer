@@ -132,8 +132,12 @@ function PostProcess() {
   const _gtm = useAtomValue(globalToneMappingAtom);
   const _gsh = useAtomValue(globalHueSaturationAtom);
   const _glut = useAtomValue(globalLUTAtom);
-  const { on: bloomOn, intensity: bloomIntensity } =
-    useAtomValue(globalBloomAtom);
+  const {
+    on: bloomOn,
+    intensity: bloomIntensity,
+    threshold: bloomThreshold,
+    smoothing: bloomSmoothing,
+  } = useAtomValue(globalBloomAtom);
   // console.log(_gcm.value)
 
   return (
@@ -144,7 +148,15 @@ function PostProcess() {
       <GlobalHueSaturationEffect></GlobalHueSaturationEffect>
       <GlobalLUTEffect></GlobalLUTEffect>
       <GlobalSaturationCheck></GlobalSaturationCheck>
-      {bloomOn ? <Bloom intensity={bloomIntensity}></Bloom> : null}
+      {bloomOn ? (
+        <Bloom
+          intensity={bloomIntensity}
+          luminanceThreshold={bloomThreshold}
+          luminanceSmoothing={bloomSmoothing}
+        ></Bloom>
+      ) : (
+        <></>
+      )}
     </EffectComposer>
   );
 }

@@ -554,8 +554,15 @@ const GeneralPostProcessingControl = () => {
     standard: LightmapImageContrast.standard,
     k: LightmapImageContrast.k,
   });
-  const [{ on: bloomOn, intensity: bloomIntensity }, setBloom] =
-    useAtom(globalBloomAtom);
+  const [
+    {
+      on: bloomOn,
+      intensity: bloomIntensity,
+      threshold: bloomThreshold,
+      smoothing: bloomSmoothing,
+    },
+    setBloom,
+  ] = useAtom(globalBloomAtom);
 
   const adjustContrast = (color: number[]) => {
     const gammaFactor = lmContrastValue.gammaFactor;
@@ -1191,34 +1198,96 @@ const GeneralPostProcessingControl = () => {
           />
         </div>
         {bloomOn && (
-          <div>
-            <input
-              type="range"
-              min={0}
-              max={2}
-              step={0.01}
-              value={bloomIntensity}
-              onChange={e => {
-                setBloom(prev => ({
-                  ...prev,
-                  intensity: parseFloat(e.target.value),
-                }));
-              }}
-            />
-            <input
-              type="number"
-              min={0}
-              max={2}
-              step={0.01}
-              value={bloomIntensity}
-              onChange={e => {
-                setBloom(prev => ({
-                  ...prev,
-                  intensity: parseFloat(e.target.value),
-                }));
-              }}
-            ></input>
-          </div>
+          <>
+            <div>
+              <label>Threshold</label>
+              <input
+                type="range"
+                min={0}
+                max={1}
+                step={0.01}
+                value={bloomThreshold}
+                onChange={e => {
+                  setBloom(prev => ({
+                    ...prev,
+                    threshold: parseFloat(e.target.value),
+                  }));
+                }}
+              />
+              <input
+                type="number"
+                min={0}
+                max={1}
+                step={0.01}
+                value={bloomThreshold}
+                onChange={e => {
+                  setBloom(prev => ({
+                    ...prev,
+                    threshold: parseFloat(e.target.value),
+                  }));
+                }}
+              ></input>
+            </div>
+            <div>
+              <label>강도</label>
+              <input
+                type="range"
+                min={0}
+                max={2}
+                step={0.01}
+                value={bloomIntensity}
+                onChange={e => {
+                  setBloom(prev => ({
+                    ...prev,
+                    intensity: parseFloat(e.target.value),
+                  }));
+                }}
+              />
+              <input
+                type="number"
+                min={0}
+                max={2}
+                step={0.01}
+                value={bloomIntensity}
+                onChange={e => {
+                  setBloom(prev => ({
+                    ...prev,
+                    intensity: parseFloat(e.target.value),
+                  }));
+                }}
+              ></input>
+            </div>
+
+            <div>
+              <label>스무딩</label>
+              <input
+                type="range"
+                min={0}
+                max={1}
+                step={0.005}
+                value={bloomSmoothing}
+                onChange={e => {
+                  setBloom(prev => ({
+                    ...prev,
+                    smoothing: parseFloat(e.target.value),
+                  }));
+                }}
+              />
+              <input
+                type="number"
+                min={0}
+                max={1}
+                step={0.005}
+                value={bloomSmoothing}
+                onChange={e => {
+                  setBloom(prev => ({
+                    ...prev,
+                    smoothing: parseFloat(e.target.value),
+                  }));
+                }}
+              ></input>
+            </div>
+          </>
         )}
       </div>
       {/* <div>
