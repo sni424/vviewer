@@ -1,6 +1,8 @@
+import { Object3DEventMap } from 'three';
 import { TransformControls } from 'three-stdlib';
 import { v4 } from 'uuid';
 import { Layer } from '../Constants.ts';
+import CubePlaneControls from './CubePlaneControls.ts';
 import * as THREE from './VTHREE.ts';
 
 const DEFAULT_RESOLUTION: ReflectionProbeResolutions = 2048;
@@ -24,6 +26,10 @@ type ReflectionProbeJSON = {
   createFrom: 'probe.toJSON()';
 };
 
+export interface ProbeMeshEventMap extends Object3DEventMap {
+  updated: {};
+}
+
 type Modes = 'box' | 'sphere';
 
 export default class ReflectionProbe {
@@ -42,7 +48,11 @@ export default class ReflectionProbe {
   private size: THREE.Vector3 = DEFAULT_SIZE;
   private box: THREE.Box3;
   // RESULT OBJECTS
-  private readonly boxMesh: THREE.Mesh;
+  private readonly boxMesh: THREE.Mesh<
+    THREE.BufferGeometry,
+    THREE.Material,
+    ProbeMeshEventMap
+  >;
   private reflectionProbeSphere: THREE.Mesh;
   private effectedMeshes: THREE.Mesh[] = [];
   private readonly translateControls: TransformControls<THREE.Camera>;
@@ -131,6 +141,7 @@ export default class ReflectionProbe {
     );
     translateControls.vUserData.isTransformControls = true;
     translateControls.vUserData.isProbeMesh = true;
+    translateControls.vUserData.probeMeshType = 'controls';
     translateControls.setMode('translate');
     translateControls.setSize(0.7);
     translateControls.showY = false;
@@ -140,6 +151,7 @@ export default class ReflectionProbe {
     );
     scaleControls.vUserData.isTransformControls = true;
     scaleControls.vUserData.isProbeMesh = true;
+    scaleControls.vUserData.probeMeshType = 'controls';
     scaleControls.setMode('scale');
     scaleControls.setSize(0.5);
     scaleControls.showY = false;
@@ -185,6 +197,8 @@ export default class ReflectionProbe {
           new CustomEvent('probeMesh-changed', { detail }),
         );
         this.setCenterAndSize(this.boxMesh.position, this.boxMesh.scale);
+
+        this.boxMesh.dispatchEvent({ type: 'updated' });
       }
     });
 
@@ -196,6 +210,13 @@ export default class ReflectionProbe {
     this.boxMesh = boxMesh;
     this.translateControls = translateControls;
     this.scaleControls = scaleControls;
+    const planeControls = new CubePlaneControls(camera, this.renderer);
+
+    planeControls.attach(boxMesh);
+
+    this.boxMesh.addEventListener('updated', event => {
+      console.log('boxMesh updated', event);
+    });
 
     // FOR Texture visualizing
     const canvas = document.createElement('canvas');
@@ -254,7 +275,7 @@ export default class ReflectionProbe {
     } else {
       throw new Error(
         'ReflectionProbe.setFromObject() : Object Must Be Not null or undefined : ' +
-        object,
+          object,
       );
     }
   }
@@ -605,11 +626,16 @@ function createMeshFromBox(box: THREE.Box3, serializedId: string) {
     polygonOffsetUnits: 1,
   });
 
-  const mesh = new THREE.Mesh(surfaceGeometry, surfaceMaterial);
+  const mesh = new THREE.Mesh<
+    THREE.BufferGeometry,
+    THREE.Material,
+    ProbeMeshEventMap
+  >(surfaceGeometry, surfaceMaterial);
   // Set Mesh Layer not to detected on CubeCamera
   mesh.layers.set(REFLECTION_BOX_LAYER);
   mesh.vUserData.isProbeMesh = true;
   mesh.vUserData.probeId = serializedId;
+  mesh.vUserData.probeMeshType = 'box';
   mesh.position.copy(center);
   mesh.scale.copy(size);
 
@@ -621,6 +647,7 @@ function createMeshFromBox(box: THREE.Box3, serializedId: string) {
   const boxHelper = new THREE.Box3Helper(meshBox, '#00deff');
   boxHelper.layers.set(REFLECTION_BOX_LAYER);
   boxHelper.vUserData.isProbeMesh = true;
+  boxHelper.vUserData.probeMeshType = 'helper';
   mesh.add(boxHelper);
   return mesh;
 }
@@ -669,6 +696,7 @@ function createProbeSphere() {
   });
   const mesh = new THREE.Mesh(geometry, material);
   mesh.vUserData.isProbeMesh = true;
+  mesh.vUserData.probeMeshType = 'sphere';
   return mesh;
 }
 

@@ -790,7 +790,7 @@ export const uploadGainmap = async (object: THREE.Object3D) => {
   // { hash : [mat1, mat2] }
   const gainmapHashes: { [key in string]: THREE.MeshStandardMaterial[] } = {};
 
-  object.traverseAll(async (obj) => {
+  object.traverseAll(async obj => {
     if ((obj as THREE.Mesh).isMesh) {
       const mesh = obj as THREE.Mesh;
       const mat = mesh.material as THREE.MeshStandardMaterial;
@@ -805,34 +805,46 @@ export const uploadGainmap = async (object: THREE.Object3D) => {
           }
           gainmapHashes[gainMapHash].push(mat);
         }
-
       }
     }
-  })
+  });
 
   const hashes = Object.keys(gainmapHashes);
 
-  return Promise.all(hashes.map(hash => {
-    return get(hash).then(file => {
-      if (file) {
-        const formData = new FormData();
-        formData.append('file', file);
-        return fetch(uploadUrl, {
-          method: 'POST',
-          body: formData,
-        }).then((res) => {
-          console.log(res);
+  const files: File[] = [];
+  const afterMats: THREE.MeshStandardMaterial[] = [];
+
+  await Promise.all(
+    hashes.map(hash => {
+      return get(hash).then(file => {
+        if (file) {
+          files.push(file);
           const mats = Object.values(gainmapHashes[hash]);
-          mats.forEach(mat => {
-            mat.lightMap = null;
-          })
-          return res;
-        })
-      } else {
-        return undefined;
-      }
-    })
+          afterMats.push(...mats);
+        }
+      });
+    }),
+  );
+  const formData = new FormData();
+  for (const file of files) {
+    formData.append('files', file);
+  }
+  return fetch(uploadUrl, {
+    method: 'POST',
+    body: formData,
+  }).then(res => {
+    console.log(res);
+    afterMats.forEach(mat => {
+      mat.lightMap = null;
+    });
+    return res;
+  });
+}
 
-  }));
-
+export const splitExtension = (filename: string) => {
+  const lastDot = filename.lastIndexOf('.');
+  return {
+    name: filename.slice(0, lastDot),
+    ext: filename.slice(lastDot + 1)
+  }
 }

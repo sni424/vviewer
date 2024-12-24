@@ -6,7 +6,7 @@ import {
   sourceAtom,
   threeExportsAtom,
 } from '../scripts/atoms';
-import { readDirectory } from './utils';
+import { readDirectory, splitExtension } from './utils';
 import VObjectLoader from './VObjectLoader.ts';
 
 const MapSelectModal = ({
@@ -71,10 +71,10 @@ const MapSelectModal = ({
                 file,
                 map: undefined as File | undefined,
               };
-              const filenameWithoutExtension = file.name.split('.')[0];
+              const filenameWithoutExtension = splitExtension(file.name).name;
               // 모델명_Lightmap.png인 경우도 있고 모델명.png인 경우도 있다
               const map = inputMaps.find(lightmap => {
-                const lightmapeName = lightmap.name.split('.')[0];
+                const lightmapeName = splitExtension(lightmap.name).name;
                 return (
                   filenameWithoutExtension === lightmapeName ||
                   filenameWithoutExtension + '_Lightmap' === lightmapeName
@@ -213,11 +213,12 @@ const useModelDragAndDrop = () => {
             file,
             map: undefined as File | undefined,
           };
-          const filenameWithoutExtension = file.name.split('.')[0];
+          const filenameWithoutExtension = splitExtension(file.name).name;
+
           // 모델명_Lightmap.png인 경우도 있고 모델명.png인 경우도 있다
           // .jpg인 경우는 게인맵이지만 여기서 처리하지 않고 Renderer에서 처리
           const map = inputMaps.find(lightmap => {
-            const lightmapeName = lightmap.name.split('.')[0];
+            const lightmapeName = splitExtension(lightmap.name).name;
             return (
               filenameWithoutExtension === lightmapeName ||
               filenameWithoutExtension + '_Lightmap' === lightmapeName
