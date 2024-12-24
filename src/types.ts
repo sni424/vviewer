@@ -324,7 +324,7 @@ export interface MoveActionOptions {
     target?: THREE.Vector3; // 이동할 경로 (Pathfinding)
     direction?: THREE.Vector3; //도착했을때 카메라가 바라볼 방향
     speed?: number; // 애니메이션 속도
-    model?: THREE.Mesh; //바닥 모델
+    model?: THREE.Object3D; //바닥 모델
     stopAnimtaion?: boolean //애니메이션 중지
   };
   isoView?: {
@@ -340,6 +340,7 @@ export interface MoveActionOptions {
     target: THREE.Vector3; // 목표 좌표 (Linear)
     direction: THREE.Vector3 // 목표 방향
     duration: number; // 애니메이션 시간
+    fov?: number //카메라 fov값
   };
   teleport?: {
     target: THREE.Vector3; // 목표 좌표 (Teleport)

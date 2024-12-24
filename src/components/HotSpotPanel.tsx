@@ -1,19 +1,18 @@
 import { useAtom, useAtomValue } from 'jotai';
 import { useEffect, useState } from 'react';
 import {
-  cameraActionAtom,
-  cameraSettingAtom,
-  threeExportsAtom,
-} from '../scripts/atoms';
-import { THREE } from '../scripts/VTHREE';
-
-import gsap from 'gsap';
-import {
   FaAngleDoubleRight,
   FaAngleLeft,
   FaAngleRight,
   FaPause,
 } from 'react-icons/fa';
+
+import {
+  cameraActionAtom,
+  cameraSettingAtom,
+  threeExportsAtom,
+} from '../scripts/atoms';
+import { THREE } from '../scripts/VTHREE';
 
 type placeInfoType = {
   name: string;
@@ -54,35 +53,13 @@ const tour: placeInfoType[] = [
   },
 ];
 
-const rotateCameraSmoothly = (
-  startDirection: THREE.Vector3,
-  endDirection: THREE.Vector3,
-  t: number,
-) => {
-  startDirection.y = 0;
-  endDirection.y = 0;
-  startDirection.normalize();
-  endDirection.normalize();
-
-  const quaternionA = new THREE.Quaternion().setFromUnitVectors(
-    new THREE.Vector3(0, 0, -1),
-    endDirection,
-  );
-  const quaternionB = new THREE.Quaternion().setFromUnitVectors(
-    new THREE.Vector3(0, 0, -1),
-    startDirection,
-  );
-  //구면 선형 보간 두 벡터사이의 중간값
-  return new THREE.Quaternion().slerpQuaternions(quaternionB, quaternionA, t);
-};
-
 const animationSpeed = [1, 2, 3, 4, 5];
 
 function HotSpotPanel() {
   // 투어 정보
   const [placeInfo, setPlaceInfo] = useState<placeInfoType[]>([]);
   // 바닥 모델
-  const [floorModel, setFloorModel] = useState<THREE.Mesh>();
+  // const [floorModel, setFloorModel] = useState<THREE.Mesh>();
   // 투어 실행 여부
   const [isTour, setTour] = useState<boolean>(false);
   //threejs useThree
@@ -96,55 +73,6 @@ function HotSpotPanel() {
 
   const { camera, scene } = threeExports;
 
-  const testRotateCameraSmoothly = (
-    camera: THREE.PerspectiveCamera,
-    duration: number,
-  ) => {
-    // 현재 카메라 방향
-    const startDirection = camera
-      .getWorldDirection(new THREE.Vector3())
-      .normalize();
-
-    // 90도 회전한 방향 계산
-    const rotationMatrix = new THREE.Matrix4().makeRotationY(Math.PI / 2); // 90도 회전
-    const endDirection = startDirection
-      .clone()
-      .applyMatrix4(rotationMatrix)
-      .normalize();
-
-    // 애니메이션으로 회전 테스트
-    gsap.to(
-      { t: 0 },
-      {
-        t: 1, // 0에서 1까지 보간
-        duration: duration,
-        // ease: 'linear', // 일정한 속도로 회전
-        ease: 'power3.inOut', // 일정한 속도로 회전
-        onUpdate: function () {
-          const progress = this.targets()[0].t; // t 값을 기반으로 progress 계산
-          console.log('progress:', progress);
-
-          // 회전 계산
-          const quaternion = rotateCameraSmoothly(
-            startDirection,
-            endDirection,
-            progress,
-          );
-          camera.quaternion.copy(quaternion);
-        },
-        onComplete: () => {
-          // 애니메이션 종료 시 보정
-          const finalQuaternion = rotateCameraSmoothly(
-            startDirection,
-            endDirection,
-            1, // progress = 1로 보정
-          );
-          camera.quaternion.copy(finalQuaternion);
-          console.log('Rotation test complete');
-        },
-      },
-    );
-  };
   // 투어 애니메이션 실행 함수
   const executeTour = (roomIndex: number) => {
     const { position, direction } = tour[roomIndex];
@@ -152,7 +80,7 @@ function HotSpotPanel() {
       pathfinding: {
         target: new THREE.Vector3(position.x, position.y, position.z),
         speed: cameraAction.tour.animationSpeed,
-        model: floorModel,
+        model: scene,
         direction,
       },
     });
@@ -268,12 +196,6 @@ function HotSpotPanel() {
     }
   }, [cameraAction.tour.roomIndex]);
 
-  // 바닥 메시 로드
-  useEffect(() => {
-    const navMesh = scene.getObjectByName('84B3_DP') as THREE.Mesh;
-    setFloorModel(navMesh);
-  }, [scene]);
-
   // 투어 경로 종료 시 다음 방으로 이동
   useEffect(() => {
     if (!cameraAction.tour.isAnimation && isTour) {
@@ -340,10 +262,7 @@ function HotSpotPanel() {
             <div
               className="w-8 h-8 flex items-center justify-center 
             rounded-full hover:bg-gray-700 cursor-pointer text-xl"
-              onClick={() =>
-                // testRotateCameraSmoothly(camera, 3)
-                setTour(!isTour)
-              }
+              onClick={() => setTour(!isTour)}
             >
               {isTour ? <FaPause /> : <FaAngleDoubleRight />}
             </div>
