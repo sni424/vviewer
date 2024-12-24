@@ -7,6 +7,7 @@ import {
 } from '../scripts/atoms';
 import { THREE } from '../scripts/VTHREE';
 
+import gsap from 'gsap';
 import {
   FaAngleDoubleRight,
   FaAngleLeft,
@@ -53,6 +54,28 @@ const tour: placeInfoType[] = [
   },
 ];
 
+const rotateCameraSmoothly = (
+  startDirection: THREE.Vector3,
+  endDirection: THREE.Vector3,
+  t: number,
+) => {
+  startDirection.y = 0;
+  endDirection.y = 0;
+  startDirection.normalize();
+  endDirection.normalize();
+
+  const quaternionA = new THREE.Quaternion().setFromUnitVectors(
+    new THREE.Vector3(0, 0, -1),
+    endDirection,
+  );
+  const quaternionB = new THREE.Quaternion().setFromUnitVectors(
+    new THREE.Vector3(0, 0, -1),
+    startDirection,
+  );
+  //구면 선형 보간 두 벡터사이의 중간값
+  return new THREE.Quaternion().slerpQuaternions(quaternionB, quaternionA, t);
+};
+
 const animationSpeed = [1, 2, 3, 4, 5];
 
 function HotSpotPanel() {
@@ -73,6 +96,55 @@ function HotSpotPanel() {
 
   const { camera, scene } = threeExports;
 
+  const testRotateCameraSmoothly = (
+    camera: THREE.PerspectiveCamera,
+    duration: number,
+  ) => {
+    // 현재 카메라 방향
+    const startDirection = camera
+      .getWorldDirection(new THREE.Vector3())
+      .normalize();
+
+    // 90도 회전한 방향 계산
+    const rotationMatrix = new THREE.Matrix4().makeRotationY(Math.PI / 2); // 90도 회전
+    const endDirection = startDirection
+      .clone()
+      .applyMatrix4(rotationMatrix)
+      .normalize();
+
+    // 애니메이션으로 회전 테스트
+    gsap.to(
+      { t: 0 },
+      {
+        t: 1, // 0에서 1까지 보간
+        duration: duration,
+        // ease: 'linear', // 일정한 속도로 회전
+        ease: 'power3.inOut', // 일정한 속도로 회전
+        onUpdate: function () {
+          const progress = this.targets()[0].t; // t 값을 기반으로 progress 계산
+          console.log('progress:', progress);
+
+          // 회전 계산
+          const quaternion = rotateCameraSmoothly(
+            startDirection,
+            endDirection,
+            progress,
+          );
+          camera.quaternion.copy(quaternion);
+        },
+        onComplete: () => {
+          // 애니메이션 종료 시 보정
+          const finalQuaternion = rotateCameraSmoothly(
+            startDirection,
+            endDirection,
+            1, // progress = 1로 보정
+          );
+          camera.quaternion.copy(finalQuaternion);
+          console.log('Rotation test complete');
+        },
+      },
+    );
+  };
   // 투어 애니메이션 실행 함수
   const executeTour = (roomIndex: number) => {
     const { position, direction } = tour[roomIndex];
@@ -268,7 +340,10 @@ function HotSpotPanel() {
             <div
               className="w-8 h-8 flex items-center justify-center 
             rounded-full hover:bg-gray-700 cursor-pointer text-xl"
-              onClick={() => setTour(!isTour)}
+              onClick={() =>
+                // testRotateCameraSmoothly(camera, 3)
+                setTour(!isTour)
+              }
             >
               {isTour ? <FaPause /> : <FaAngleDoubleRight />}
             </div>
