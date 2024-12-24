@@ -246,7 +246,7 @@ export const loadLatest = async ({
   threeExports: RootState;
   addBenchmark?: (key: keyof BenchMark, value?: number) => void;
 }) => {
-  const addBenchmark = _addBenchmark ?? (() => {});
+  const addBenchmark = _addBenchmark ?? (() => { });
 
   const latestHashUrl = import.meta.env.VITE_LATEST_HASH;
   const latestUrl = import.meta.env.VITE_LATEST;
@@ -863,4 +863,12 @@ export const uploadGainmap = async (object: THREE.Object3D) => {
 
   }));
 
+}
+
+export const splitExtension = (filename: string) => {
+  const lastDot = filename.lastIndexOf('.');
+  return {
+    name: filename.slice(0, lastDot),
+    ext: filename.slice(lastDot + 1)
+  }
 }

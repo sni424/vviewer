@@ -9,10 +9,14 @@ import {
 import { KTX2Loader } from 'three/examples/jsm/loaders/KTX2Loader.js';
 import { Layer } from '../Constants.ts';
 import * as THREE from '../scripts/VTHREE.ts';
-import VTextureLoader from './VTextureLoader.ts';
 import { getAtomValue, threeExportsAtom } from './atoms.ts';
+import GainmapLoader from './GainmapLoader.ts';
+import VTextureLoader from './VTextureLoader.ts';
 
 export default class VGLTFLoader extends GLTFLoader {
+  dispose() {
+    GainmapLoader.dispose();
+  }
   constructor(manager?: THREE.LoadingManager) {
     super(manager);
 
@@ -50,6 +54,12 @@ export default class VGLTFLoader extends GLTFLoader {
       onLoad(gltf);
     }
     super.parse(data, path, customOnLoad, onError);
+  }
+
+  async loadAsync(url: string) {
+    return super.loadAsync(url).finally(() => {
+      // this.dispose();
+    });
   }
 }
 
