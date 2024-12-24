@@ -36,6 +36,21 @@ const tour: placeInfoType[] = [
     position: new THREE.Vector3(-5.36, 1.2, 1.37),
     direction: new THREE.Vector3(-0.18, -0.06, 0.98),
   },
+  {
+    name: '주방',
+    position: new THREE.Vector3(0.62, 1.3, -3.34),
+    direction: new THREE.Vector3(0.88, -0.11, -0.44),
+  },
+  {
+    name: '거실',
+    position: new THREE.Vector3(1.62, 1.2, 1.08),
+    direction: new THREE.Vector3(-0.68, 0.1, 0.72),
+  },
+  {
+    name: '화장실',
+    position: new THREE.Vector3(-5.9, 1.2, 0.33),
+    direction: new THREE.Vector3(-0.99, -0.9, 0.06),
+  },
 ];
 
 const animationSpeed = [1, 2, 3, 4, 5];
@@ -72,7 +87,11 @@ function HotSpotPanel() {
       //투어에 따른 카메라 이동
       camera.moveTo('pathfinding', {
         pathfinding: {
-          target: tour[cameraAction.tour.roomIndex].position,
+          target: new THREE.Vector3(
+            tour[cameraAction.tour.roomIndex].position.x,
+            cameraSetting.cameraY,
+            tour[cameraAction.tour.roomIndex].position.z,
+          ),
           speed: cameraAction.tour.animationSpeed,
           model: floorModel,
           direction: tour[cameraAction.tour.roomIndex].direction,

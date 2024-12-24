@@ -296,6 +296,7 @@ export const globalGlAtom = atom<GLProps>({
   failIfMajorPerformanceCaveat: false,
   toneMapping: THREE.NeutralToneMapping,
   toneMappingExposure: 1,
+  localClippingEnabled: false
 });
 
 // REFLECTION PROBES
