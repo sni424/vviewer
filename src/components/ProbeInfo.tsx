@@ -323,30 +323,41 @@ export const ProbeMeshInfo = ({ mesh }: { mesh: THREE.Mesh }) => {
     };
   }, []);
 
-  function calculatePositionOffset(newScale: THREE.Vector3) {
+  /**
+   * Mesh 의 기준 position 은 그대로 유지하면서 scale 을 변화할 수 있게 offset 계산하는 함수
+   * @param newScale THREE.Vector3
+   * @returns number
+   * **/
+  function calculatePositionOffset(newScale: THREE.Vector3): number {
     const originalScale = mesh.scale.clone();
     const originalPosition = mesh.position.clone();
-    const positionOffset = new THREE.Vector3();
 
-    const scaleDelta = new THREE.Vector3(
-      newScale.x / originalScale.x,
-      newScale.y / originalScale.y,
-      newScale.z / originalScale.z,
-    );
+    let changedCoord: 'x' | 'y' | 'z';
 
-    positionOffset
-      .copy(originalPosition)
-      .multiply(scaleDelta)
-      .sub(originalPosition);
+    if (originalScale.x !== newScale.x) {
+      changedCoord = 'x';
+    } else if (originalScale.y !== newScale.y) {
+      changedCoord = 'y';
+    } else if (originalScale.z !== newScale.z) {
+      changedCoord = 'z';
+    } else {
+      throw new Error('coord Input Error');
+    }
 
+    // Update Mesh Scale
     mesh.scale.copy(newScale);
-    mesh.position.add(positionOffset);
-
+    // Update Mesh Children Scale => Child Mesh 원본 스케일 유지
     mesh.children.forEach(child => {
       if (child.type === 'Mesh') {
-        child.scale.set(1 / newScale.x, 1 / newScale.y, 1 / newScale.z);
+        child.scale.copy(newScale.clone().revert());
       }
     });
+
+    // Offset For Mesh Position Fix In Eyes
+    const originalOffset = (originalScale[changedCoord] - 1) / 2;
+    const newOffset = (newScale[changedCoord] - 1) / 2;
+
+    return originalPosition[changedCoord] - originalOffset + newOffset;
   }
 
   useEffect(() => {
@@ -422,8 +433,11 @@ export const ProbeMeshInfo = ({ mesh }: { mesh: THREE.Mesh }) => {
           value={scaleX}
           onChange={event => {
             const value = Number(event.target.value);
-            calculatePositionOffset(new THREE.Vector3(value, scaleY, scaleZ));
+            const positionOffset = calculatePositionOffset(
+              new THREE.Vector3(value, scaleY, scaleZ),
+            );
             setScaleX(value);
+            setPositionX(positionOffset);
           }}
           style={{
             border: '1px solid gray',
@@ -440,8 +454,11 @@ export const ProbeMeshInfo = ({ mesh }: { mesh: THREE.Mesh }) => {
           value={scaleY}
           onChange={event => {
             const value = Number(event.target.value);
-            calculatePositionOffset(new THREE.Vector3(scaleX, value, scaleZ));
+            const positionOffset = calculatePositionOffset(
+              new THREE.Vector3(scaleX, value, scaleZ),
+            );
             setScaleY(value);
+            setPositionY(positionOffset);
           }}
           style={{
             border: '1px solid gray',
@@ -458,8 +475,11 @@ export const ProbeMeshInfo = ({ mesh }: { mesh: THREE.Mesh }) => {
           value={scaleZ}
           onChange={event => {
             const value = Number(event.target.value);
-            calculatePositionOffset(new THREE.Vector3(scaleX, scaleY, value));
+            const positionOffset = calculatePositionOffset(
+              new THREE.Vector3(scaleX, scaleY, value),
+            );
             setScaleZ(value);
+            setPositionZ(positionOffset);
           }}
           style={{
             border: '1px solid gray',

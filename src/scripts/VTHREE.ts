@@ -23,6 +23,8 @@ export interface ThreeUserData {
   isProbeMesh?: boolean;
   probeId?: string;
   isEmissiveLightMap?: boolean;
+  probeMeshType?: 'box' | 'controls' | 'sphere' | 'helper' | 'plane-controls';
+  probeControlDirection?: PlaneControlDirections;
 }
 
 declare module 'three' {
@@ -360,7 +362,7 @@ Object.defineProperty(THREE.Object3D.prototype, 'vUserData', {
   },
   set: function (userData: Partial<ThreeUserData>) {
     this.userData = { ...this.userData, ...userData };
-  }
+  },
 });
 
 Object.defineProperty(THREE.Texture.prototype, 'vUserData', {
@@ -369,7 +371,7 @@ Object.defineProperty(THREE.Texture.prototype, 'vUserData', {
   },
   set: function (userData: Partial<ThreeUserData>) {
     this.userData = { ...this.userData, ...userData };
-  }
+  },
 });
 
 Object.defineProperty(THREE.Material.prototype, 'vUserData', {
@@ -378,7 +380,7 @@ Object.defineProperty(THREE.Material.prototype, 'vUserData', {
   },
   set: function (userData: Partial<ThreeUserData>) {
     this.userData = { ...this.userData, ...userData };
-  }
+  },
 });
 
 THREE.Matrix4.prototype.decomposed = function () {
@@ -486,4 +488,4 @@ window.getThree = (view: View = View.Shared) => {
 
 // THREE.Material.prototype.onBeforeCompile 오버라이딩
 import '../scripts/postprocess/MaterialShader';
-
+import { PlaneControlDirections } from './CubePlaneControls.ts';

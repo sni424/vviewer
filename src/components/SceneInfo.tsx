@@ -42,10 +42,7 @@ import {
   useEnvParams,
   useModal,
 } from '../scripts/atoms';
-import {
-  getLUTTexture,
-  LUTPresets,
-} from '../scripts/postprocess/PostProcessUtils.ts';
+import { LUTPresets } from '../scripts/postprocess/PostProcessUtils.ts';
 import useFilelist from '../scripts/useFilelist';
 import useStats, { StatPerSecond, VStats } from '../scripts/useStats.ts';
 import VGLTFExporter from '../scripts/VGLTFExporter.ts';
@@ -376,7 +373,7 @@ const GeneralButtons = () => {
       </button>
       <button
         onClick={() => {
-          getLUTTexture('neutral-8');
+          console.log(scene);
         }}
       >
         테스트
