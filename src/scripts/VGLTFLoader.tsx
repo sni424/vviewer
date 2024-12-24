@@ -83,12 +83,6 @@ async function getGainmap(object: THREE.Object3D, gl?: THREE.WebGLRenderer) {
     if (mat) {
       const cacheKey = mat.vUserData.gainMap as string | undefined;
       if (cacheKey) {
-        return get(cacheKey).then(jpg => {
-          const url = cacheKey.startsWith('http')
-            ? cacheKey
-            : `https://vra-configurator-dev.s3.ap-northeast-2.amazonaws.com/models/${cacheKey}`;
-          const source = jpg ?? url;
-          return VTextureLoader.load(source, { gl }).then(texture => {
         const jpg = (
           await Promise.all([
             get(cacheKey),
