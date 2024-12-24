@@ -1,8 +1,9 @@
 import { atom, useAtom, useAtomValue } from 'jotai';
+import { cloneElement } from 'react';
 
-export type TransformType = 'onoff' | 'number' | 'dropdown';
+export type OptionTransformType = 'onoff' | 'number' | 'dropdown';
 
-export type Transformer =
+export type OptionTransformer =
   | {
       label?: string;
       type: 'number';
@@ -26,18 +27,16 @@ export type Transformer =
       };
     };
 
-export default function OptionBuilder<T = { [key in string]: Transformer }>(
-  label: string,
-  Component: React.FC,
-  defaultOption: T,
-) {
+export default function OptionBuilder<
+  T = { [key in string]: OptionTransformer },
+>(label: string, node: React.ReactNode, defaultOption: T) {
   const onoffableOption: T & { on: boolean } = {
     on: false,
     ...defaultOption,
   };
   const dedicatedAtom = atom<T & { on: boolean }>(onoffableOption);
 
-  const OptionConsumer = () => {
+  const Component = () => {
     const value = useAtomValue(dedicatedAtom);
     if (!value.on) {
       return null;
@@ -46,15 +45,16 @@ export default function OptionBuilder<T = { [key in string]: Transformer }>(
     const props = Object.entries(value).reduce(
       (prev, [key, value]) => {
         if (key === 'on') return prev;
-        return { ...prev, [key]: value };
+        return { ...prev, [key]: (value as any).value };
       },
       {} as { [key in keyof T]: any },
     );
 
-    return <Component {...props}></Component>;
+    console.log(props);
+    return <>{cloneElement(node as any, props)}</>;
   };
 
-  const OptionProvider = () => {
+  const Controller = () => {
     const [value, setValue] = useAtom(dedicatedAtom);
     const exceptOn = Object.keys(value).filter(key => key !== 'on');
 
@@ -71,22 +71,47 @@ export default function OptionBuilder<T = { [key in string]: Transformer }>(
         {value.on && (
           <>
             {exceptOn.map((optionKey: string) => {
-              const transformer: Transformer = value[optionKey as keyof T];
+              const transformed = value[
+                optionKey as keyof T
+              ] as OptionTransformer;
               const componentKey = `option-${label}-${optionKey}`;
-              if (transformer.type === 'number') {
+
+              if (transformed.type === 'number') {
+                const max = transformed.max ?? 1;
+                const min = transformed.min ?? max - 1;
+                const step = transformed.step ?? (max - min) / 100;
+
                 return (
                   <div key={componentKey}>
+                    {transformed.label && <label>{transformed.label}</label>}
+                    <button
+                      onClick={() => {
+                        setValue(prev => ({
+                          ...prev,
+                          [optionKey]: {
+                            ...transformed,
+                            value: (
+                              defaultOption[
+                                optionKey as keyof T
+                              ] as OptionTransformer
+                            ).value,
+                          },
+                        }));
+                      }}
+                    >
+                      초기화
+                    </button>
                     <input
                       type="range"
-                      min={transformer.min}
-                      max={transformer.max}
-                      step={transformer.step}
-                      value={transformer.value}
+                      min={min}
+                      max={max}
+                      step={step}
+                      value={transformed.value}
                       onChange={e => {
                         setValue(prev => ({
                           ...prev,
                           [optionKey]: {
-                            ...transformer,
+                            ...transformed,
                             value: parseFloat(e.target.value),
                           },
                         }));
@@ -94,15 +119,15 @@ export default function OptionBuilder<T = { [key in string]: Transformer }>(
                     ></input>
                     <input
                       type="number"
-                      min={transformer.min}
-                      max={transformer.max}
-                      step={transformer.step}
-                      value={transformer.value}
+                      min={transformed.min}
+                      max={transformed.max}
+                      step={transformed.step}
+                      value={transformed.value}
                       onChange={e => {
                         setValue(prev => ({
                           ...prev,
                           [optionKey]: {
-                            ...transformer,
+                            ...transformed,
                             value: parseFloat(e.target.value),
                           },
                         }));
@@ -120,8 +145,8 @@ export default function OptionBuilder<T = { [key in string]: Transformer }>(
   };
 
   return {
-    OptionConsumer,
-    OptionProvider,
+    Component,
+    Controller,
     atom: dedicatedAtom,
   };
 }

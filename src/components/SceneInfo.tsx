@@ -30,7 +30,6 @@ import { defaultSettings, loadSettings } from '../pages/useSettings.ts';
 import {
   cameraMatrixAtom,
   globalBloomAtom,
-  globalBrightnessContrastAtom,
   globalColorManagementAtom,
   globalColorTemperatureAtom,
   globalGlAtom,
@@ -56,6 +55,8 @@ import {
   THREE,
   Vector3,
 } from '../scripts/VTHREE';
+import { BloomOption } from './canvas/Bloom.tsx';
+import { BrightnessContrastOption } from './canvas/BrightnessContrast.tsx';
 import UploadPage from './UploadModal';
 
 const useEnvUrl = () => {
@@ -528,14 +529,6 @@ const GeneralSceneInfo = () => {
 const GeneralPostProcessingControl = () => {
   const threeExports = useAtomValue(threeExportsAtom);
 
-  const [brightnessContrast, setGlobalContrast] = useAtom(
-    globalBrightnessContrastAtom,
-  );
-  const {
-    on: brightnessContrastOn,
-    brightnessValue,
-    contrastValue,
-  } = brightnessContrast;
   const [globalSaturationCheckOn, setGlobalSaturationCheck] = useAtom(
     globalSaturationCheckAtom,
   );
@@ -612,82 +605,7 @@ const GeneralPostProcessingControl = () => {
       }}
     >
       {/* Brightness/Contrast Controls */}
-      <div>
-        <strong>밝기/대비</strong>
-        <input
-          type="checkbox"
-          checked={brightnessContrastOn}
-          onChange={e => {
-            console.log(e.target.checked);
-            setGlobalContrast(prev => ({ ...prev, on: e.target.checked }));
-          }}
-        />
-        {brightnessContrastOn && (
-          <>
-            <div
-              style={{
-                paddingLeft: 12,
-                boxSizing: 'border-box',
-                width: '100%',
-              }}
-            >
-              <div>
-                밝기 : {brightnessValue ?? 0}{' '}
-                <button
-                  style={{ fontSize: 11 }}
-                  onClick={() => {
-                    setGlobalContrast(prev => ({
-                      ...prev,
-                      brightnessValue: 0,
-                    }));
-                  }}
-                >
-                  초기화
-                </button>
-              </div>
-              <input
-                style={{ width: '100%' }}
-                type="range"
-                min={-1}
-                max={1}
-                step={0.01}
-                value={brightnessValue ?? 0}
-                onChange={e => {
-                  setGlobalContrast(prev => ({
-                    ...prev,
-                    brightnessValue: parseFloat(e.target.value),
-                  }));
-                }}
-              />
-              <div>
-                대비 : {contrastValue ?? 0}{' '}
-                <button
-                  style={{ fontSize: 11 }}
-                  onClick={() => {
-                    setGlobalContrast(prev => ({ ...prev, contrastValue: 0 }));
-                  }}
-                >
-                  초기화
-                </button>
-              </div>
-              <input
-                style={{ width: '100%' }}
-                type="range"
-                min={-1}
-                max={1}
-                step={0.01}
-                value={contrastValue ?? 0}
-                onChange={e => {
-                  setGlobalContrast(prev => ({
-                    ...prev,
-                    contrastValue: parseFloat(e.target.value),
-                  }));
-                }}
-              />
-            </div>
-          </>
-        )}
-      </div>
+      <BrightnessContrastOption></BrightnessContrastOption>
       {/* Saturation Control */}
       <div>
         <strong>라이트맵 이미지 대비</strong>
@@ -1290,6 +1208,7 @@ const GeneralPostProcessingControl = () => {
           </>
         )}
       </div>
+      <BloomOption></BloomOption>
       {/* <div>
             <strong>Color Management</strong>
             <input type="checkbox" checked={cmOn} onChange={(e) => {

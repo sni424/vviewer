@@ -1,6 +1,4 @@
 import {
-  Bloom,
-  BrightnessContrast,
   EffectComposer,
   HueSaturation,
   LUT,
@@ -10,8 +8,6 @@ import { useAtom, useAtomValue } from 'jotai';
 import { BlendFunction, BlendMode } from 'postprocessing';
 import { useEffect, useRef } from 'react';
 import {
-  globalBloomAtom,
-  globalBrightnessContrastAtom,
   globalColorManagementAtom,
   globalHueSaturationAtom,
   globalLUTAtom,
@@ -22,21 +18,26 @@ import {
   getLUTTexture,
   LUTPresets,
 } from '../../scripts/postprocess/PostProcessUtils.ts';
+import { Bloom, globalBloomAtom } from './Bloom.tsx';
+import {
+  BrightnessContrast,
+  globalBrightnessContrastAtom,
+} from './BrightnessContrast.tsx';
 import GlobalSaturationCheck from './GlobalSaturationCheck';
 
-const BrightnessContrastEffect = () => {
-  const { on, brightnessValue, contrastValue } = useAtomValue(
-    globalBrightnessContrastAtom,
-  );
+// const BrightnessContrastEffect = () => {
+//   const { on, brightnessValue, contrastValue } = useAtomValue(
+//     globalBrightnessContrastAtom,
+//   );
 
-  if (!on) {
-    return null;
-  }
+//   if (!on) {
+//     return null;
+//   }
 
-  return (
-    <BrightnessContrast brightness={brightnessValue} contrast={contrastValue} />
-  );
-};
+//   return (
+//     <BrightnessContrast brightness={brightnessValue} contrast={contrastValue} />
+//   );
+// };
 
 const GlobalToneMappingEffect = () => {
   const {
@@ -127,36 +128,23 @@ const GlobalLUTEffect = () => {
 function PostProcess() {
   // 각 컴포넌트 안에서 값만 바뀐다고 리렌더링되지 않음, 그냥 각 값이 바뀔 때 EffectComposer을 강제 리렌더링
   const _gbc = useAtomValue(globalBrightnessContrastAtom);
+  const _bloom = useAtomValue(globalBloomAtom);
+
   const _gSat = useAtomValue(globalSaturationCheckAtom);
   const _gcm = useAtomValue(globalColorManagementAtom);
   const _gtm = useAtomValue(globalToneMappingAtom);
   const _gsh = useAtomValue(globalHueSaturationAtom);
   const _glut = useAtomValue(globalLUTAtom);
-  const {
-    on: bloomOn,
-    intensity: bloomIntensity,
-    threshold: bloomThreshold,
-    smoothing: bloomSmoothing,
-  } = useAtomValue(globalBloomAtom);
-  // console.log(_gcm.value)
 
   return (
     <EffectComposer>
-      <BrightnessContrastEffect></BrightnessContrastEffect>
-      {/* <GlobalColorManagement></GlobalColorManagement> */}
+      <BrightnessContrast></BrightnessContrast>
+      <Bloom></Bloom>
+
       <GlobalToneMappingEffect></GlobalToneMappingEffect>
       <GlobalHueSaturationEffect></GlobalHueSaturationEffect>
       <GlobalLUTEffect></GlobalLUTEffect>
       <GlobalSaturationCheck></GlobalSaturationCheck>
-      {bloomOn ? (
-        <Bloom
-          intensity={bloomIntensity}
-          luminanceThreshold={bloomThreshold}
-          luminanceSmoothing={bloomSmoothing}
-        ></Bloom>
-      ) : (
-        <></>
-      )}
     </EffectComposer>
   );
 }
