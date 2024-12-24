@@ -144,7 +144,7 @@ function PostProcess() {
       <GlobalHueSaturationEffect></GlobalHueSaturationEffect>
       <GlobalLUTEffect></GlobalLUTEffect>
       <GlobalSaturationCheck></GlobalSaturationCheck>
-      {bloomOn ? <Bloom intensity={bloomIntensity}></Bloom> : null}
+      {bloomOn ? <Bloom intensity={bloomIntensity}></Bloom> : <></>}
     </EffectComposer>
   );
 }
