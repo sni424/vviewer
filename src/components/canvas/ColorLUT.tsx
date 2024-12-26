@@ -1,6 +1,7 @@
 import { LUT } from '@react-three/postprocessing';
 import { BlendFunction } from 'postprocessing';
 import { useEffect, useState } from 'react';
+import { forceRerenderPostProcess } from '../../scripts/atoms';
 import OptionBuilder, { OptionTransformer } from '../../scripts/OptionBuilder';
 import {
   getLUTTexture,
@@ -40,7 +41,8 @@ const ColorLUTEffect = ({
     console.log('presetChanged : ', preset);
     async function updateTexture() {
       getLUTTexture(preset).then(texture => {
-        setTexture(texture ?? null);
+        setTexture(texture);
+        forceRerenderPostProcess();
       });
     }
     updateTexture();

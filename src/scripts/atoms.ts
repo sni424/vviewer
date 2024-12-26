@@ -366,3 +366,8 @@ export const toggleGrid = (value?: boolean) => {
 };
 
 export const postprocessAtoms = atom<{ [key in string]: PrimitiveAtom<any> }>({});
+
+export const forceRerenderPostProcessAtom = atom<number>(0);
+export const forceRerenderPostProcess = () => {
+  setAtomValue(forceRerenderPostProcessAtom, prev => prev + 1);
+}

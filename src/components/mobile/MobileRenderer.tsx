@@ -4,7 +4,7 @@ import { OrbitControls } from '@react-three/drei';
 import { Canvas, useThree } from '@react-three/fiber';
 import { useSetAtom } from 'jotai';
 import { threeExportsAtom } from '../../scripts/atoms';
-import EnvironmentMap from '../canvas/EnvironmentMap';
+import PostProcess from '../canvas/PostProcess';
 
 const Renderer = () => {
   // useStats();
@@ -28,7 +28,8 @@ const MobileRenderer = () => {
   return (
     <Canvas>
       <Renderer />
-      <EnvironmentMap></EnvironmentMap>
+      {/* <EnvironmentMap></EnvironmentMap> */}
+      <PostProcess></PostProcess>
     </Canvas>
   );
 };
