@@ -335,14 +335,12 @@ export const cameraActionAtom = atom<{
     isAnimation: boolean,
     roomIndex: number
     animationSpeed: number
-    path: boolean
   }
 }>({
   tour: {
     isAnimation: false,
     roomIndex: 0,
     animationSpeed: 1,
-    path: true
   }
 })
 

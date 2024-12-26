@@ -1184,6 +1184,7 @@ const GeneralPostProcessingControl = () => {
         )}
       </div>
       <div>
+        <Clipping />
         <div>
           <strong>Bloom</strong>
           <input
