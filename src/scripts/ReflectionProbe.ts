@@ -2,7 +2,6 @@ import { Object3DEventMap } from 'three';
 import { TransformControls } from 'three-stdlib';
 import { v4 } from 'uuid';
 import { Layer } from '../Constants.ts';
-import CubePlaneControls from './CubePlaneControls.ts';
 import * as THREE from './VTHREE.ts';
 
 const DEFAULT_RESOLUTION: ReflectionProbeResolutions = 2048;
@@ -155,6 +154,11 @@ export default class ReflectionProbe {
     scaleControls.setMode('scale');
     scaleControls.setSize(0.5);
     scaleControls.showY = false;
+    // FOR DEBUG PLANE
+    // scaleControls.plane.material.visible = true;
+    // scaleControls.plane.material.wireframe = false;
+    // scaleControls.plane.material.opacity = 0.5;
+    // scaleControls.plane.material.color = new THREE.Color('#FF0000');
 
     translateControls.addEventListener('dragging-changed', event => {
       document.dispatchEvent(
@@ -210,9 +214,9 @@ export default class ReflectionProbe {
     this.boxMesh = boxMesh;
     this.translateControls = translateControls;
     this.scaleControls = scaleControls;
-    const planeControls = new CubePlaneControls(camera, this.renderer);
-
-    planeControls.attach(boxMesh);
+    // const planeControls = new CubePlaneControls(camera, this.renderer);
+    //
+    // planeControls.attach(boxMesh);
 
     this.boxMesh.addEventListener('updated', event => {
       console.log('boxMesh updated', event);

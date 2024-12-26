@@ -163,9 +163,25 @@ export default class CubePlaneControls {
         // console.log(`dragging TO: `, this.onControlDirection, ', ', pointer);
         const directionVector = this.directionVectors[this.onControlDirection];
         const intersection = this.catchCoord(pointer, this.onControlDirection);
-
         _delta.copy(intersection).sub(_startPoint);
-        console.log('delta : ', _delta);
+        console.log('delta : ', _delta.x, _delta.y, _delta.z);
+        const changed = _delta.dot(directionVector);
+        const mesh = this.mesh!!;
+        const isMinus = this.onControlDirection.includes('-');
+        const axis: 'x' | 'y' | 'z' = this.onControlDirection
+          .replace('+', '')
+          .replace('-', '') as 'x' | 'y' | 'z';
+        const originalScale = mesh.scale;
+        const originalOffset = calculatePositionScale(originalScale[axis]);
+        console.log('changed : ', changed);
+        mesh.scale[axis] += changed;
+        let newOffset = calculatePositionScale(mesh.scale[axis]);
+        if (isMinus) {
+          newOffset = -newOffset;
+        }
+
+        mesh.position[axis] = mesh.position[axis] - originalOffset + newOffset;
+
         _startPoint.copy(intersection);
       } else {
         console.warn(
@@ -212,7 +228,7 @@ export default class CubePlaneControls {
       intersection,
     );
 
-    console.log('좌표 : ', intersection);
+    console.log('좌표 : ', intersection.x, intersection.y, intersection.z);
     return intersection;
   }
 
@@ -328,4 +344,8 @@ function createSampleMesh(position: THREE.Vector3) {
   mesh.position.copy(position);
   mesh.layers.set(Layer.ReflectionBox);
   return mesh;
+}
+
+function calculatePositionScale(scaleScalar: number) {
+  return (scaleScalar - 1) / 2;
 }
