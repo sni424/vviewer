@@ -8,7 +8,7 @@ import {
   useAtom,
   useAtomValue,
   useSetAtom,
-  WritableAtom,
+  WritableAtom
 } from 'jotai';
 import React from 'react';
 import { OrbitControls } from 'three/examples/jsm/Addons.js';
@@ -159,17 +159,6 @@ export const useEnvParams = () => {
 export const GizmoModes = ['translate', 'rotate', 'scale'] as const;
 export type GizmoMode = (typeof GizmoModes)[number];
 export const mouseModeAtom = atom<'select' | GizmoMode>('select');
-
-// 값은 -1.0 ~ 1.0
-export const globalBrightnessContrastAtom = atom<{
-  on: boolean;
-  brightnessValue: number;
-  contrastValue: number;
-}>({
-  on: false,
-  brightnessValue: 0,
-  contrastValue: 0,
-});
 
 export const sceneAnalysisAtom = atom<{
   meshCount: number;
@@ -377,4 +366,4 @@ export const toggleGrid = (value?: boolean) => {
   }
 };
 
-export const postprocessAtoms = atom<(typeof atom<any>)[]>([]);
+export const postprocessAtoms = atom<PrimitiveAtom<any>[]>([]);

@@ -3,8 +3,8 @@ import {
   cameraSettingAtom,
   envAtom,
   getAtomValue,
-  globalBrightnessContrastAtom,
   orbitSettingAtom,
+  postprocessAtoms,
   setAtomValue,
   viewGridAtom,
 } from '../scripts/atoms';
@@ -17,15 +17,15 @@ export const getSettings = () => {
   const cameraSetting = getAtomValue(cameraSettingAtom);
   const orbitSetting = getAtomValue(orbitSettingAtom);
   const gridSetting = getAtomValue(viewGridAtom);
-  const brightnessContrastSetting = getAtomValue(globalBrightnessContrastAtom);
   const env = getAtomValue(envAtom);
+  const postprocesses = getAtomValue(postprocessAtoms).map(getAtomValue);
 
   return {
     cameraSetting,
     orbitSetting,
     gridSetting,
     env,
-    brightnessContrastSetting
+    ...postprocesses,
   };
 };
 
@@ -44,9 +44,8 @@ export const loadSettings = () => {
       if (undefined !== value.gridSetting) {
         setAtomValue(viewGridAtom, value.gridSetting);
       }
-      if (undefined !== value.brightnessContrastSetting) {
-        setAtomValue(globalBrightnessContrastAtom, value.brightnessContrastSetting);
-      }
+
+      console.log("Loadd", value);
     }
     return value;
   });

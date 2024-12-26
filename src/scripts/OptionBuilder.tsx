@@ -1,5 +1,6 @@
 import { atom, useAtom, useAtomValue } from 'jotai';
 import { cloneElement } from 'react';
+import { getAtomValue, postprocessAtoms, setAtomValue } from './atoms';
 
 export type OptionTransformType = 'onoff' | 'number' | 'dropdown';
 
@@ -36,7 +37,12 @@ export default function OptionBuilder<
     ...defaultOption,
   };
   const dedicatedAtom = atom<T & { on: boolean }>(onoffableOption);
-  console.log('redraw');
+  const atomAdded = getAtomValue(postprocessAtoms).some(
+    otherAtom => otherAtom === dedicatedAtom,
+  );
+  if (!atomAdded) {
+    setAtomValue(postprocessAtoms, prev => [...prev, dedicatedAtom]);
+  }
 
   const Component = () => {
     const value = useAtomValue(dedicatedAtom);

@@ -2,54 +2,12 @@ import { clear } from 'idb-keyval';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import { useRef, useState } from 'react';
 import { __UNDEFINED__ } from '../../Constants';
-import {
-  envAtom,
-  filelistAtom,
-  globalBrightnessContrastAtom,
-  openLoaderAtom,
-} from '../../scripts/atoms';
+import { envAtom, filelistAtom, openLoaderAtom } from '../../scripts/atoms';
 import useFilelist from '../../scripts/useFilelist';
 import { toNthDigit } from '../../scripts/utils';
 
 const ContrastController = () => {
-  const [globalContrast, setGlobalContrast] = useAtom(
-    globalBrightnessContrastAtom,
-  );
-  const { contrastOn: globalContrastOn, contrastValue: globalContrastValue } =
-    globalContrast;
-
-  return (
-    <section style={{ marginTop: 16 }}>
-      <div>
-        <strong>대비</strong>
-        <input
-          type="checkbox"
-          checked={globalContrastOn}
-          onChange={e => {
-            setGlobalContrast({
-              contrastOn: e.target.checked,
-              contrastValue: globalContrastValue ?? 1,
-            });
-          }}
-        />
-        {globalContrastOn && (
-          <input
-            type="range"
-            min={0}
-            max={1}
-            step={0.005}
-            value={globalContrastValue ?? 1}
-            onChange={e => {
-              setGlobalContrast({
-                contrastOn: true,
-                contrastValue: parseFloat(e.target.value),
-              });
-            }}
-          />
-        )}
-      </div>
-    </section>
-  );
+  return null;
 };
 
 const EnvController = () => {
