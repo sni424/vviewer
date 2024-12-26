@@ -1,4 +1,5 @@
 import { get, set } from 'idb-keyval';
+import { WritableAtom } from 'jotai';
 import {
   cameraSettingAtom,
   envAtom,
@@ -18,14 +19,31 @@ export const getSettings = () => {
   const orbitSetting = getAtomValue(orbitSettingAtom);
   const gridSetting = getAtomValue(viewGridAtom);
   const env = getAtomValue(envAtom);
-  const postprocesses = getAtomValue(postprocessAtoms).map(getAtomValue);
+
+  // 라이트맵 이미지 대비는 임시제외
+  // const lmContrast = Object.getOwnPropertyNames(LightmapImageContrast).reduce((acc, key) => {
+  //   if (["prototype", "name"].includes(key)) {
+  //     return acc;
+  //   }
+  //   acc[key] = LightmapImageContrast[key];
+  //   return acc;
+  // }, {});
+
+
+  const postProcessOptions: Record<string, any> = {};
+  const postProcessAtoms = Object.entries(getAtomValue(postprocessAtoms));
+  postProcessAtoms.forEach(
+    ([label, value]: [string, WritableAtom<any, any, any>]) => {
+      postProcessOptions[label] = getAtomValue(value);
+    });
 
   return {
     cameraSetting,
     orbitSetting,
     gridSetting,
     env,
-    ...postprocesses,
+    ...postProcessOptions,
+    // lmContrast,
   };
 };
 
@@ -45,7 +63,26 @@ export const loadSettings = () => {
         setAtomValue(viewGridAtom, value.gridSetting);
       }
 
-      console.log("Loadd", value);
+      setAtomValue(postprocessAtoms, prev => {
+        const copied = { ...prev };
+        const loadedKeys = Object.keys(value);
+        const postprocessKeys = Object.keys(copied);
+        postprocessKeys.forEach(key => {
+          if (loadedKeys.includes(key)) {
+            setAtomValue(copied[key], (eachPrev: any) => {
+              return {
+                ...eachPrev,
+                ...(value as any)[key]
+              };
+            });
+            // copied[key] = { ...(value as any)[key] };
+          }
+        });
+
+        return copied;
+      })
+
+      // console.log("Loadd", value);
     }
     return value;
   });

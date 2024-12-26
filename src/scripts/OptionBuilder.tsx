@@ -37,11 +37,12 @@ export default function OptionBuilder<
     ...defaultOption,
   };
   const dedicatedAtom = atom<T & { on: boolean }>(onoffableOption);
-  const atomAdded = getAtomValue(postprocessAtoms).some(
-    otherAtom => otherAtom === dedicatedAtom,
-  );
+  const atomAdded = Boolean(getAtomValue(postprocessAtoms)[label]);
   if (!atomAdded) {
-    setAtomValue(postprocessAtoms, prev => [...prev, dedicatedAtom]);
+    setAtomValue(postprocessAtoms, prev => ({
+      ...prev,
+      [label]: dedicatedAtom,
+    }));
   }
 
   const Component = () => {

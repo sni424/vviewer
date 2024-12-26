@@ -365,4 +365,4 @@ export const toggleGrid = (value?: boolean) => {
   }
 };
 
-export const postprocessAtoms = atom<PrimitiveAtom<any>[]>([]);
+export const postprocessAtoms = atom<{ [key in string]: PrimitiveAtom<any> }>({});
