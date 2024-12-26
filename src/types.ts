@@ -345,5 +345,6 @@ export interface MoveActionOptions {
   };
   teleport?: {
     target: THREE.Vector3; // 목표 좌표 (Teleport)
+    direction: THREE.Vector3; //방향
   };
 } // 타입 정의

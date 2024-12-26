@@ -56,10 +56,10 @@ const tour: placeInfoType[] = [
 const animationSpeed = [1, 2, 3, 4, 5];
 
 function HotSpotPanel() {
-  // 투어 정보
+  // 핫스팟 정보
   const [placeInfo, setPlaceInfo] = useState<placeInfoType[]>([]);
-  // 바닥 모델
-  // const [floorModel, setFloorModel] = useState<THREE.Mesh>();
+  // 순간이동 정보보
+  const [telePort, setTelePort] = useState<placeInfoType[]>([]);
   // 투어 실행 여부
   const [isTour, setTour] = useState<boolean>(false);
   //threejs useThree
@@ -189,6 +189,33 @@ function HotSpotPanel() {
     }
   }, [isTour]);
 
+  // 텔레포트트 추가
+  const addTelePort = () => {
+    setTelePort(prev => [
+      ...prev,
+      {
+        name: `place-${prev.length}`,
+        position: camera.position.clone(),
+        direction: camera.getWorldDirection(new THREE.Vector3()).clone(),
+      },
+    ]);
+  };
+
+  //텔레포트트 이동
+  const moveTelePort = (place: placeInfoType) => {
+    camera.moveTo('teleport', {
+      teleport: {
+        target: place.position,
+        direction: place.direction,
+      },
+    });
+  };
+
+  // 텔레포트 삭제
+  const deleteTelePort = (index: number) => {
+    setTelePort(prev => prev.filter((_, i) => i !== index));
+  };
+
   // 투어 애니메이션 실행
   useEffect(() => {
     if (cameraAction.tour.isAnimation && isTour) {
@@ -317,6 +344,43 @@ function HotSpotPanel() {
               <FaAngleRight />
             </span>
           </button>
+        </div>
+      </div>
+      <div className="px-4 box-border w-full py-2">
+        <button
+          className="px-4 py-2 mt-2 text-white bg-blue-600 rounded-lg shadow-md hover:bg-blue-700 active:scale-95 transition-transform duration-150 ease-in-out"
+          onClick={addTelePort}
+        >
+          순간이동 위치 추가
+        </button>
+
+        <div className="mt-2 flex items-center gap-2 flex-wrap">
+          {telePort.length > 0 &&
+            telePort.map((place: placeInfoType, index: number) => {
+              return (
+                <div
+                  key={`placeInfo-${index}`}
+                  className="relative border-2 cursor-pointer border-sky-500 bg-gray-200 text-gray-700 rounded-md shadow-sm hover:bg-gray-300 active:bg-gray-400 transition-all duration-150 ease-in-out p-2"
+                  onClick={() => {
+                    moveTelePort(place);
+                  }}
+                >
+                  x
+                  <div
+                    id={place.name}
+                    className="absolute bottom-4 right-1 text-sm text-gray-500 hover:text-red-600 cursor-pointer"
+                    onClick={e => {
+                      // 해당 핫스팟 삭제제
+                      e.stopPropagation();
+                      deleteTelePort(index);
+                    }}
+                  >
+                    &times;
+                  </div>
+                  {place.name}
+                </div>
+              );
+            })}
         </div>
       </div>
     </>
