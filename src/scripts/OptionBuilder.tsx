@@ -20,11 +20,12 @@ export type OptionTransformer =
   | {
       label?: string;
       type: 'dropdown';
+      parse?: 'integer' | 'float'; // 기본이 string
       value: any;
       values: {
         label: string;
         value: any;
-      };
+      }[];
     };
 
 export default function OptionBuilder<
@@ -35,6 +36,7 @@ export default function OptionBuilder<
     ...defaultOption,
   };
   const dedicatedAtom = atom<T & { on: boolean }>(onoffableOption);
+  console.log('redraw');
 
   const Component = () => {
     const value = useAtomValue(dedicatedAtom);
@@ -50,7 +52,6 @@ export default function OptionBuilder<
       {} as { [key in keyof T]: any },
     );
 
-    console.log(props);
     return <>{cloneElement(node as any, props)}</>;
   };
 
@@ -118,6 +119,7 @@ export default function OptionBuilder<
                       }}
                     ></input>
                     <input
+                      className="w-12"
                       type="number"
                       min={transformed.min}
                       max={transformed.max}
@@ -129,6 +131,58 @@ export default function OptionBuilder<
                           [optionKey]: {
                             ...transformed,
                             value: parseFloat(e.target.value),
+                          },
+                        }));
+                      }}
+                    ></input>
+                  </div>
+                );
+              } else if (transformed.type === 'dropdown') {
+                return (
+                  <div key={componentKey}>
+                    {transformed.label && <label>{transformed.label}</label>}
+                    <select
+                      value={transformed.value}
+                      onChange={e => {
+                        const transformer =
+                          transformed.parse === 'integer'
+                            ? parseInt
+                            : transformed.parse === 'float'
+                              ? parseFloat
+                              : (value: any) => value;
+                        setValue(prev => ({
+                          ...prev,
+                          [optionKey]: {
+                            ...transformed,
+                            value: transformer(e.target.value),
+                          },
+                        }));
+                      }}
+                    >
+                      {transformed.values.map(({ label, value }, i) => (
+                        <option
+                          key={`${componentKey}-${value}-${i}`}
+                          value={value}
+                        >
+                          {label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                );
+              } else if (transformed.type === 'onoff') {
+                return (
+                  <div key={componentKey}>
+                    {transformed.label && <label>{transformed.label}</label>}
+                    <input
+                      type="checkbox"
+                      checked={transformed.value}
+                      onChange={e => {
+                        setValue(prev => ({
+                          ...prev,
+                          [optionKey]: {
+                            ...transformed,
+                            value: e.target.checked,
                           },
                         }));
                       }}

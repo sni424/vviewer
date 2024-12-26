@@ -31,7 +31,6 @@ import { THREE } from '../../scripts/VTHREE';
 import { View } from '../../types';
 import UnifiedCameraControls from '../camera/UnifiedCameraControls';
 import MyEnvironment from './EnvironmentMap';
-import GlobalSaturationCheck from './GlobalSaturationCheck';
 import Grid from './Grid';
 import PostProcess from './PostProcess';
 import SelectBox from './SelectBox';
@@ -57,7 +56,7 @@ const applyTexture = (
       const material = (obj as THREE.Mesh)
         .material as THREE.MeshStandardMaterial;
       if (!material) {
-        (obj as THREE.Mesh).material = new THREE.MeshStandardMaterial();
+        (obj as THREE.Mesh).material = new THREE.MeshPhysicalMaterial();
       }
       if (mapDst === 'lightmap' || !mapDst) {
         material.lightMap = texture;
@@ -147,7 +146,6 @@ function Renderer() {
       <MyEnvironment></MyEnvironment>
       <SelectBox></SelectBox>
       <PostProcess></PostProcess>
-      <GlobalSaturationCheck></GlobalSaturationCheck>
       <MainGrid></MainGrid>
     </>
   );

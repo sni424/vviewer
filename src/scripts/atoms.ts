@@ -10,18 +10,11 @@ import {
   useSetAtom,
   WritableAtom,
 } from 'jotai';
-import { LookupTexture, ToneMappingMode } from 'postprocessing';
 import React from 'react';
-import { Texture } from 'three';
 import { OrbitControls } from 'three/examples/jsm/Addons.js';
-import {
-  DEFAULT_COLOR_TEMPERATURE,
-  DEFAULT_TONEMAPPING_VALUES,
-} from '../Constants';
 import { FileInfo, GLProps, View, ViewportOption } from '../types';
 import ReflectionProbe from './ReflectionProbe.ts';
 import { THREE, Vector3 } from './VTHREE';
-import { LUTPresets } from './postprocess/PostProcessUtils.ts';
 
 type AtomArgType<T> = T | ((prev: T) => T);
 export type Store = ReturnType<typeof createStore>;
@@ -224,67 +217,6 @@ export const filelistAtom = atom<{
   scenes: FileInfo[];
 }>({ all: [], models: [], envs: [], scenes: [] });
 
-export const globalSaturationCheckAtom = atom<boolean>(false);
-
-export const globalColorTemperatureAtom = atom<{
-  on: boolean;
-  value: number;
-}>({
-  on: false,
-  value: DEFAULT_COLOR_TEMPERATURE,
-});
-
-const TONEMAPPING_RESOLUTIONS = [4, 8, 16, 64, 128, 256, 512, 1024] as const;
-export type ToneMappingResolutions = (typeof TONEMAPPING_RESOLUTIONS)[number];
-
-export const globalToneMappingAtom = atom<{
-  on: boolean;
-  resolution: ToneMappingResolutions;
-  middleGrey: number;
-  maxLuminance: number;
-  averageLuminance: number;
-  adaptationRate: number;
-  mode: ToneMappingMode;
-  opacity: number;
-}>({
-  on: false,
-  ...DEFAULT_TONEMAPPING_VALUES,
-});
-
-export const globalHueSaturationAtom = atom<{
-  on: boolean;
-  hue: number;
-  saturation: number;
-}>({
-  on: false,
-  hue: 0,
-  saturation: 0,
-});
-
-export const globalLUTAtom = atom<{
-  on: boolean;
-  preset: LUTPresets;
-  texture: Texture;
-  useTetrahedralFilter: boolean;
-}>({
-  on: false,
-  preset: 'neutral-2',
-  texture: LookupTexture.createNeutral(2),
-  useTetrahedralFilter: false,
-});
-
-export const globalBloomAtom = atom<{
-  on: boolean;
-  intensity: number;
-  threshold: number;
-  smoothing: number
-}>({
-  on: false,
-  intensity: 1.0,
-  threshold: 0.9,
-  smoothing: 0.025
-});
-
 export const globalGlAtom = atom<GLProps>({
   antialias: true,
   alpha: true,
@@ -294,7 +226,6 @@ export const globalGlAtom = atom<GLProps>({
   powerPreference: 'high-performance',
   depth: true,
   failIfMajorPerformanceCaveat: false,
-  toneMapping: THREE.NeutralToneMapping,
   toneMappingExposure: 1,
 });
 
@@ -352,43 +283,6 @@ export const orbitSettingAtom = atom<{
 }>({
   autoRotate: false,
   enabled: true,
-});
-
-export enum LookType {
-  None = 'None',
-  VERY_LOW_CONTRAST = 'Very Low Contrast',
-  LOW_CONTRAST = 'Low Contrast',
-  MEDIUM_CONTRAST = 'Medium Contrast',
-  HIGH_CONTRAST = 'High Contrast',
-  VERY_HIGH_CONTRAST = 'Very High Contrast',
-}
-export enum ViewTransform {
-  Standard = 'Standard',
-  KhronosPBRNeutral = 'KhronosPBRNeutral',
-  AgX = 'AgX',
-  Filmic = 'Filmic',
-  FilmicLog = 'FilmicLog',
-  FalseColor = 'FalseColor',
-  Raw = 'Raw',
-}
-
-export type ColorManagement = {
-  exposure: number;
-  gamma: number;
-  look: LookType;
-  viewTransform: ViewTransform;
-};
-export const globalColorManagementAtom = atom<{
-  on: boolean;
-  value: ColorManagement;
-}>({
-  on: false,
-  value: {
-    exposure: 1.0,
-    gamma: 1.0,
-    look: LookType.HIGH_CONTRAST,
-    viewTransform: ViewTransform.Raw,
-  },
 });
 
 // export const testCameraPosAtom = atom<[number, number]>();
@@ -482,3 +376,5 @@ export const toggleGrid = (value?: boolean) => {
     setAtomValue(viewGridAtom, prev => !prev);
   }
 };
+
+export const postprocessAtoms = atom<(typeof atom<any>)[]>([]);
