@@ -6,6 +6,7 @@ import {
   lastCameraInfoAtom,
   oribitControlAtom,
 } from '../../scripts/atoms';
+import { calculateTargetPosition } from '../../scripts/utils';
 import { THREE } from '../../scripts/VTHREE';
 
 interface UnifiedCameraControlsProps {
@@ -68,12 +69,7 @@ const CameraManager: React.FC<UnifiedCameraControlsProps> = ({
         distance,
       );
       // 마지막 카메라 정보 업데이트
-      if (cameraSetting.isoView) {
-        setLastCameraInfo(pre => ({
-          ...pre,
-          target,
-        }));
-      } else {
+      if (!cameraSetting.isoView) {
         setLastCameraInfo(pre => ({
           ...pre,
           position: cameraPosition,
@@ -82,21 +78,6 @@ const CameraManager: React.FC<UnifiedCameraControlsProps> = ({
       }
     }
   };
-
-  function calculateTargetPosition(
-    cameraPosition: THREE.Vector3,
-    direction: THREE.Vector3,
-    distance: number,
-  ) {
-    // direction이 정규화되지 않았을 경우 정규화
-    const normalizedDirection = direction.clone().normalize();
-
-    // 방향 벡터에 거리(distance)를 곱해 이동한 벡터 계산
-    const offset = normalizedDirection.multiplyScalar(distance);
-
-    // 카메라 위치에 offset을 더해 타겟 위치 계산
-    return cameraPosition.clone().add(offset);
-  }
 
   // 마우스 드래그로 카메라 회전
   const moveCameraRotation = (deltaX: number, deltaY: number): void => {

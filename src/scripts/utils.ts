@@ -422,129 +422,188 @@ const rotateCameraSmoothly = (
   startDirection: THREE.Vector3,
   endDirection: THREE.Vector3,
   t: number,
-  flipY: boolean = true,
+  flipY: boolean = true
 ) => {
   if (flipY) {
-    startDirection.y = 0;
-    endDirection.y = 0;
+    startDirection.normalize();
+    endDirection.normalize();
   }
-  startDirection.normalize();
-  endDirection.normalize();
-
   const from = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, -1), startDirection);
   const to = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, -1), endDirection);
-  // (3) 부드러운 slerp
+  //선형 보간 좌표값
   const result = new THREE.Quaternion().slerpQuaternions(from, to, t);
 
-  // (4) 만약 "카메라가 옆으로 뒤집힘" 문제를 방지하고 싶다면
-  // roll을 0으로 고정할 수도 있습니다.
-  // (원치 않으면 이 부분은 삭제)
+  //회전값 각도 설정
   const euler = new THREE.Euler().setFromQuaternion(result, "YXZ");
-  euler.z = 0; // roll 제거
+  // 카메라가 옆으로 뒤집힘 문제를 방지
+  euler.z = 0;
   result.setFromEuler(euler);
 
   return result;
 };
 // 현재 애니메이션 인스턴스를 저장
 let currentAnimation: gsap.core.Tween | null = null;
-//카메라 이동 경로에따른 애니메이션션
+// 이미 세그먼트를 바꿨는지 여부
+let didShift = false;
+
+/**
+사전 세팅
+ */
+function setupPathData(
+  camera: THREE.Object3D,
+  target: THREE.Vector3,
+  initialPath: THREE.Vector3[]
+) {
+  if (!initialPath || initialPath.length === 0) {
+    return {
+      pathPoints: [],
+      segments: [],
+      totalDistance: 0,
+      ratiosSumOne: [], // 전체 합이 1이 되는 비율 배열
+    };
+  }
+
+  // 경로 점들 설정
+  const pathPoints = [
+    camera.position.clone(),
+    ...initialPath.map((p) => new THREE.Vector3(p.x, target.y, p.z)),
+  ];
+
+  // 세그먼트와 전체 거리 계산
+  const segments: { start: THREE.Vector3; end: THREE.Vector3; distance: number }[] = [];
+  let totalDistance = 0;
+  for (let i = 0; i < pathPoints.length - 1; i++) {
+    const start = pathPoints[i];
+    const end = pathPoints[i + 1];
+    const dist = start.distanceTo(end);
+    segments.push({ start, end, distance: dist });
+    totalDistance += dist;
+  }
+
+  // "각 구간 비율" = 구간 길이 / 전체 길이
+  // --> 이 배열 원소들을 전부 더하면 이론상 1이어야 함.
+  let ratios = segments.map((seg) => {
+    if (totalDistance === 0) return 0;
+    return seg.distance / totalDistance;
+  });
+
+  // 혹시 부동소수점 오차가 있으면 마지막 원소를 보정해서 합이 정확히 1이 되도록
+  const sum = ratios.reduce((acc, r) => acc + r, 0);
+  if (ratios.length > 0) {
+    const diff = 1 - sum;
+    // 강제로 맞추기
+    ratios[ratios.length - 1] += diff;
+  }
+
+  return {
+    // 3D 좌표들
+    pathPoints,
+    // start, end, distance 등
+    segments,
+    // 총 거리
+    totalDistance,
+    // 총거리에 따른 비율율
+    ratiosSumOne: ratios,
+  };
+}
+
+//경로 이동
 const handlePathfindingMove = (
   camera: THREE.Object3D,
   target: THREE.Vector3,
-  path: THREE.Vector3[],
+  initialPath: THREE.Vector3[],
   speed: number,
-  direction?: THREE.Vector3,
+  direction?: THREE.Vector3
 ) => {
+  // path없으면 동작x
+  if (initialPath.length === 0) return;
 
-  if (path.length === 0) return; // 종료 조건 추가
-
-  const startPosition = camera.position.clone(); // 초기 카메라 위치
-  const startDirection = camera
-    .getWorldDirection(new THREE.Vector3())
-    .normalize(); // 초기 카메라 방향
-  const newVector = new THREE.Vector3(path[0].x, target.y, path[0].z); // 이동할 좌표
-  const endDirection = newVector.clone().sub(startPosition).normalize(); // 이동할 방향
-  const distance = camera.position.distanceTo(newVector); // 거리 계산
-  // speed가 클수록 duration을 짧게 (최소 0.1 보장)
+  // 경로 세팅 (한 번만)
+  const { segments } = setupPathData(
+    camera,
+    target,
+    initialPath
+  );
+  //  세그먼트를 순차로 이동
+  let currentSegmentIndex = 0;
   const speedFactor = Math.max(0.1, 1 / speed);
-  // 기존 애니메이션 종료
-  if (currentAnimation) {
-    currentAnimation.kill();
-  }
-  // 애니메이션 실행
-  currentAnimation = gsap.to({ t: 0 }, {
-    t: 1,
-    duration: distance * speedFactor,
-    ease: 'power1.out', // 자연스러운 애니메이션
-    onUpdate: function () {
-      // 0에서 1까지 보간 값
-      const progress = this.targets()[0].t;
-      // 회전이 빨리 끝나도록 설정
-      //앞으로 남은 경로가 있을때 거의 다다랐을때 다음 경로 실행
-      if (progress >= 0.9 && path.length > 1) {
-        path.shift();
-        handlePathfindingMove(camera, target, path, speed, direction); // 재귀 호출로 다음 경로 처리
-        return;
-      } else {
-        //마지막 경로에서 카메라 방향 설정
-        if (direction) {
-          if (path.length === 1) {
 
-            const adjustedProgress = Math.min(progress * (distance / 2), 1);
-            const currentPosition = new THREE.Vector3().lerpVectors(
-              startPosition,
-              newVector,
-              progress
-            );
-            camera.position.copy(currentPosition);
+  function moveToNextSegment() {
+    if (currentSegmentIndex >= segments.length) {
+      console.log("All path segments completed");
+      return;
+    }
 
-            const quaternion = rotateCameraSmoothly(
-              startDirection,
-              direction,
-              // progress
-              adjustedProgress
-            );
-            camera.quaternion.copy(quaternion);
-          } else {
+    const { start, end, distance } = segments[currentSegmentIndex];
+    //카메라가 보는 방향
+    const startDirection = camera.getWorldDirection(new THREE.Vector3()).normalize();
 
-            const currentPosition = new THREE.Vector3().lerpVectors(
-              startPosition,
-              newVector,
-              progress
-            );
-            camera.position.copy(currentPosition);
-            //이동하는 경로에따라 카메라 방향 설정
-            const quaternion = rotateCameraSmoothly(
-              startDirection,
-              endDirection,
-              // adjustedProgress
-              progress
-            );
-            camera.quaternion.copy(quaternion);
+    const isLastSegment = (currentSegmentIndex === segments.length - 1);
+    //카메라가 마지막에에 바라볼 방향
+    const segDirection = end.clone().sub(start).normalize();
+    const endDirection = isLastSegment && direction ? direction : segDirection;
+
+    currentAnimation = gsap.to({ t: 0 }, {
+      t: 1,
+      duration: distance * speedFactor,
+      ease: "power2.inOut",
+      onStart() {
+        // 새로운 세그먼트를 시작할 때마다 false 리셋
+        didShift = false;
+      },
+      onUpdate() {
+        const progress = this.targets()[0].t;
+        // 90% 도달 & 아직 세그먼트 전환 안했다면
+        if (progress > 0.99 && !didShift && currentSegmentIndex < segments.length - 1) {
+          // 중복호출 방지
+          didShift = true;
+          if (currentAnimation) {
+            currentAnimation.kill();
+            // 세그먼트 인덱스 하나 증가
+            currentSegmentIndex++;
+            // 다음 세그먼트 시작 
+            moveToNextSegment();
           }
+          return;
         }
 
-      }
-    },
-    onComplete: () => {
-      console.log('complete path');
-      setTimeout(() => {
-        setAtomValue(cameraActionAtom, pre => ({
-          ...pre,
-          tour: {
-            ...pre.tour,
-            isAnimation: false
-          }
-        }))
-      }, 500)
+        // 카메라 이동
+        const pos = new THREE.Vector3().lerpVectors(start, end, progress);
+        camera.position.copy(pos);
+        //카메라 회전
+        if (direction) {
+          const newQuat = rotateCameraSmoothly(startDirection, endDirection, progress);
+          camera.quaternion.copy(newQuat);
+        }
+      },
+      onComplete() {
+        // 세그먼트가 100% 끝났을 때 할 작업이 있으면 여기서
+        if (currentAnimation) {
+          currentAnimation.kill();
+        }
+        setTimeout(() => {
+          setAtomValue(cameraActionAtom, pre => ({
+            ...pre,
+            tour: {
+              ...pre.tour,
+              isAnimation: false
+            }
+          }))
+        }, 500)
+      },
+    });
+  }
 
-    },
-  });
+  // 최초 호출
+  moveToNextSegment();
 };
 
 
 
 //직선거리 이동
+
+
+
 const handleLinearMove = (
   camera: THREE.PerspectiveCamera,
   target: THREE.Vector3,
@@ -565,17 +624,10 @@ const handleLinearMove = (
       ease: "power2.inOut",
       onUpdate: function () {
         const progress = this.targets()[0].t;
-        // // 현재 위치 계산
-        // const currentPosition = new THREE.Vector3().lerpVectors(
-        //   startPosition,
-        //   target,
-        //   progress
-        // );
-        // camera.position.copy(currentPosition);
+        //카메라 이동
         camera.position.lerpVectors(startPosition, target, progress);
       },
       onComplete: () => {
-        // camera.position.copy(target);
       },
     });
   // 카메라 회전
@@ -586,15 +638,14 @@ const handleLinearMove = (
       duration: speed,
       ease: "power2.inOut",
       onUpdate: function () {
-        if (cameraFov) {
-          camera.lookAt(direction)
-          camera.updateProjectionMatrix();
-        } else {
-          const progress = this.targets()[0].t;
-          camera.quaternion.copy(
-            rotateCameraSmoothly(startDirection, direction, progress, cameraFov === undefined)
-          );
-        }
+        const progress = this.targets()[0].t;
+        // 최종 바라볼 방향(‘도착 지점에서 center를 보는’ 벡터)
+        const finalDir = new THREE.Vector3()
+          .subVectors(direction, target)
+          .normalize();
+        // 회전 보간: startDir → finalDir
+        const newQuat = rotateCameraSmoothly(startDirection, finalDir, progress, false);
+        camera.quaternion.copy(newQuat);
       },
       onComplete: () => {
         console.log("Rotation completed");
@@ -849,4 +900,20 @@ export const splitExtension = (filename: string) => {
     name: filename.slice(0, lastDot),
     ext: filename.slice(lastDot + 1)
   }
+}
+
+
+export const calculateTargetPosition = (
+  cameraPosition: THREE.Vector3,
+  direction: THREE.Vector3,
+  distance: number,
+) => {
+  // direction이 정규화되지 않았을 경우 정규화
+  const normalizedDirection = direction.clone().normalize();
+
+  // 방향 벡터에 거리(distance)를 곱해 이동한 벡터 계산
+  const offset = normalizedDirection.multiplyScalar(distance);
+
+  // 카메라 위치에 offset을 더해 타겟 위치 계산
+  return cameraPosition.clone().add(offset);
 }

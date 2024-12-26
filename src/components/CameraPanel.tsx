@@ -113,7 +113,7 @@ const CameraPanel = () => {
       camera.moveTo('linear', {
         linear: {
           target: lastCameraInfo.position,
-          direction: lastCameraInfo.direction,
+          direction: lastCameraInfo.target,
           duration: cameraSetting.moveSpeed,
           fov: 75,
         },
