@@ -672,6 +672,25 @@ const handleLinearMove = (
   }
 };
 
+const handleTeleportMove = (
+  camera: THREE.PerspectiveCamera,
+  target: THREE.Vector3,
+  direction: THREE.Vector3,
+) => {
+  //매트릭스 일 경우 포지션 이동
+  //camera.position.setFromMatrixPosition(matrix);
+  //camera.updateMatrixWorld(true); 
+  camera.position.set(target.x, target.y, target.z)
+  //메트릭스 일경우
+  // camera.rotation.setFromRotationMatrix(camera.matrix);
+  // camera.matrixWorldNeedsUpdate = true; 
+  //방향일경우
+  const newTarget = camera.position.clone().add(direction);
+  camera.lookAt(newTarget)
+  //좌표일경우
+  // camera.lookAt(target)
+}
+
 
 //카메라 moveTo함수
 export const moveTo = (
@@ -741,7 +760,8 @@ export const moveTo = (
 
     case 'teleport':
       if (options.teleport) {
-        // handleTeleportMove(camera, options.teleport.target);
+        const { target, direction } = options.teleport;
+        handleTeleportMove(camera, target, direction);
       }
       break;
 
