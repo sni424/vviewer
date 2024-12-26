@@ -1,4 +1,5 @@
 import { OrbitControls } from '@react-three/drei';
+import { useThree } from '@react-three/fiber';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import React, { useEffect, useRef, useState } from 'react';
 import {
@@ -8,10 +9,13 @@ import {
   orbitSettingAtom,
   oribitControlAtom,
 } from '../../scripts/atoms';
+import { calculateTargetPosition } from '../../scripts/utils';
 import { THREE } from '../../scripts/VTHREE';
 
 const OrbitManager: React.FC = () => {
   const orbitRef = useRef<any>(null);
+  //threejs 객체 가져오기
+  const { camera } = useThree();
   const [orbitSetting, setOrbitSetting] = useAtom(orbitSettingAtom);
   //카메라 세팅
   const cameraSetting = useAtomValue(cameraSettingAtom);
@@ -39,7 +43,21 @@ const OrbitManager: React.FC = () => {
         if (outControlled) {
           setOutControlled(false);
         } else {
-          updateOrbitTarget(lastCameraInfo.target);
+          const originalTarget = orbitRef.current.target;
+          const cameraPosition = camera.position.clone();
+
+          const distance = cameraPosition.distanceTo(originalTarget);
+
+          // 카메라의 방향 벡터
+          const direction = camera.getWorldDirection(new THREE.Vector3());
+
+          // 목표 좌표 계산 (카메라 위치 + 방향 벡터)
+          const target = calculateTargetPosition(
+            cameraPosition,
+            direction,
+            distance,
+          );
+          updateOrbitTarget(target);
         }
       }
     }

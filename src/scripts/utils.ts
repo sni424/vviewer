@@ -420,15 +420,12 @@ const rotateCameraSmoothly = (
   startDirection: THREE.Vector3,
   endDirection: THREE.Vector3,
   t: number,
-  flipY: boolean = true,
+  flipY: boolean = true
 ) => {
   if (flipY) {
-    startDirection.y = 0;
-    endDirection.y = 0;
+    startDirection.normalize();
+    endDirection.normalize();
   }
-  startDirection.normalize();
-  endDirection.normalize();
-
   const from = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, -1), startDirection);
   const to = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, -1), endDirection);
   //선형 보간 좌표값
@@ -625,17 +622,10 @@ const handleLinearMove = (
       ease: "power2.inOut",
       onUpdate: function () {
         const progress = this.targets()[0].t;
-        // // 현재 위치 계산
-        // const currentPosition = new THREE.Vector3().lerpVectors(
-        //   startPosition,
-        //   target,
-        //   progress
-        // );
-        // camera.position.copy(currentPosition);
+        //카메라 이동
         camera.position.lerpVectors(startPosition, target, progress);
       },
       onComplete: () => {
-        // camera.position.copy(target);
       },
     });
   // 카메라 회전
@@ -646,15 +636,14 @@ const handleLinearMove = (
       duration: speed,
       ease: "power2.inOut",
       onUpdate: function () {
-        if (cameraFov) {
-          camera.lookAt(direction)
-          camera.updateProjectionMatrix();
-        } else {
-          const progress = this.targets()[0].t;
-          camera.quaternion.copy(
-            rotateCameraSmoothly(startDirection, direction, progress, cameraFov === undefined)
-          );
-        }
+        const progress = this.targets()[0].t;
+        // 최종 바라볼 방향(‘도착 지점에서 center를 보는’ 벡터)
+        const finalDir = new THREE.Vector3()
+          .subVectors(direction, target)
+          .normalize();
+        // 회전 보간: startDir → finalDir
+        const newQuat = rotateCameraSmoothly(startDirection, finalDir, progress, false);
+        camera.quaternion.copy(newQuat);
       },
       onComplete: () => {
         console.log("Rotation completed");
@@ -909,4 +898,20 @@ export const splitExtension = (filename: string) => {
     name: filename.slice(0, lastDot),
     ext: filename.slice(lastDot + 1)
   }
+}
+
+
+export const calculateTargetPosition = (
+  cameraPosition: THREE.Vector3,
+  direction: THREE.Vector3,
+  distance: number,
+) => {
+  // direction이 정규화되지 않았을 경우 정규화
+  const normalizedDirection = direction.clone().normalize();
+
+  // 방향 벡터에 거리(distance)를 곱해 이동한 벡터 계산
+  const offset = normalizedDirection.multiplyScalar(distance);
+
+  // 카메라 위치에 offset을 더해 타겟 위치 계산
+  return cameraPosition.clone().add(offset);
 }
