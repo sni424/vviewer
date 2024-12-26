@@ -77,18 +77,6 @@ const CameraPanel = () => {
     }));
   }, [cameraSetting.cameraY]); // cameraY 값만 감지
 
-  //아래 코드 실행시 처음에 설정해둔 카메라 값이 아니라 기본값 1로 변경됨
-  // // useEffect는 항상 최상위에서 호출되도록 함
-  // useEffect(() => {
-  //   if (threeExports && threeExports.camera) {
-  //     const newY = Number(threeExports.camera.position.y.toFixed(2));
-  //     setCameraSetting(pre => ({
-  //       ...pre,
-  //       cameraY: newY,
-  //     }));
-  //   }
-  // }, [threeExports, cameraMatrix]);
-
   if (!threeExports) {
     return null; // early return
   }
@@ -98,6 +86,44 @@ const CameraPanel = () => {
   const rotation = new Quaternion();
   const scale = new Vector3();
   cameraMatrix?.decompose(position, rotation, scale);
+
+  const cameraView = (value: boolean) => {
+    if (value) {
+      if (scene) {
+        const boundingBox = new THREE.Box3().setFromObject(scene);
+        const size = boundingBox.getSize(new THREE.Vector3()); // 모델 크기
+        const center = boundingBox.getCenter(new THREE.Vector3()); // 모델 중심
+        const centerPosition = new THREE.Vector3(
+          center.x + size.x,
+          center.y + size.y * 6,
+          center.z + size.z,
+        );
+        camera.moveTo('linear', {
+          linear: {
+            target: centerPosition,
+            direction: center,
+            duration: cameraSetting.moveSpeed,
+            fov: 45,
+          },
+        });
+      } else {
+        console.log('no scene');
+      }
+    } else {
+      camera.moveTo('linear', {
+        linear: {
+          target: lastCameraInfo.position,
+          direction: lastCameraInfo.direction,
+          duration: cameraSetting.moveSpeed,
+          fov: 75,
+        },
+      });
+    }
+    setCameraSetting(pre => ({
+      ...pre,
+      isoView: value,
+    }));
+  };
 
   return (
     <div
@@ -146,30 +172,7 @@ const CameraPanel = () => {
                   name="isoView"
                   checked={cameraSetting.isoView}
                   onChange={e => {
-                    if (e.target.checked) {
-                      if (scene) {
-                        camera.moveTo('isoView', {
-                          isoView: {
-                            speed: 3,
-                            model: scene,
-                          },
-                        });
-                      } else {
-                        console.log('no scene');
-                      }
-                    } else {
-                      camera.moveTo('walkView', {
-                        walkView: {
-                          target: lastCameraInfo.position,
-                          direction: lastCameraInfo.direction,
-                          speed: 3,
-                        },
-                      });
-                    }
-                    setCameraSetting(pre => ({
-                      ...pre,
-                      isoView: e.target.checked,
-                    }));
+                    cameraView(e.target.checked);
                   }}
                 />
               </div>
@@ -244,12 +247,12 @@ const CameraPanel = () => {
                   type="number"
                   value={cameraSetting.cameraY}
                   onChange={e => {
-                    // const newY =
-                    //   Number(parseFloat(e.target.value).toFixed(2)) || 0;
-                    // setCameraSetting(pre => ({
-                    //   ...pre,
-                    //   cameraY: newY,
-                    // }));
+                    const newY =
+                      Number(parseFloat(e.target.value).toFixed(2)) || 0;
+                    setCameraSetting(pre => ({
+                      ...pre,
+                      cameraY: newY,
+                    }));
                   }}
                 />
               </div>
