@@ -365,6 +365,9 @@ export const toggleGrid = (value?: boolean) => {
   }
 };
 
+// OptionBuilder를 이용해 추가한 atom들이 여기에 자동으로 등록
+// * PostProcess.tsx에서 이들을 이용해 이펙트 리렌더링
+// * useSettings에서 활용하여 세팅 저장/로드
 export const postprocessAtoms = atom<{ [key in string]: PrimitiveAtom<any> }>({});
 
 export const forceRerenderPostProcessAtom = atom<number>(0);
