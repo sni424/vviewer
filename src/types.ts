@@ -245,8 +245,9 @@ export type ModelFile = {
   hash: string;
 };
 
+import { Properties } from '@react-three/fiber';
 import { THREE } from './scripts/VTHREE';
-export declare type GLProps = {
+export declare type GLProps = Partial<Properties<THREE.WebGLRenderer> | THREE.WebGLRendererParameters> & {
   toneMapping?: THREE.ToneMapping;
   toneMappingExposure?: number;
 

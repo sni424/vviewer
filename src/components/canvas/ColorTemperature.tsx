@@ -1,13 +1,15 @@
 import { extend } from '@react-three/fiber';
-import { EffectComposer } from '@react-three/postprocessing';
-import { useAtomValue } from 'jotai';
 import { BlendFunction, Effect } from 'postprocessing';
 import { Uniform } from 'three';
-import { globalColorTemperatureAtom } from '../../scripts/atoms';
+import { DEFAULT_COLOR_TEMPERATURE } from '../../Constants';
+import OptionBuilder, { OptionTransformer } from '../../scripts/OptionBuilder';
 
 const colorTemperatureShader = /* glsl */ `
+    #ifndef USE_COLOR_TEMPERATURE
+    #define USE_COLOR_TEMPERATURE
     uniform sampler2D tDiffuse;
     uniform float uTemperature; // Temperature in Kelvin
+    #endif
 
     vec3 kelvinToRGB(float kelvin) {
     float temp = kelvin / 100.0;
@@ -57,20 +59,30 @@ class GlobalColorTemperatureEffect extends Effect {
 // Extend the custom effect
 extend({ GlobalColorTemperatureEffect });
 
-const GlobalColorTemperature = () => {
-  const { on, value } = useAtomValue(globalColorTemperatureAtom);
+const defaultColorTemperatureOption: { [key in string]: OptionTransformer } = {
+  value: {
+    label: '온도',
+    type: 'number',
+    value: DEFAULT_COLOR_TEMPERATURE,
+    min: 4800,
+    max: 8400,
+    step: 1,
+  },
+} as const;
 
-  if (!on) {
-    return null;
-  }
-
+const ColorTemperatureEffect = ({ value }: { value: number }) => {
   const customEffect = new GlobalColorTemperatureEffect(value);
 
-  return (
-    <EffectComposer>
-      <primitive object={customEffect} />
-    </EffectComposer>
-  );
+  return <primitive object={customEffect} />;
 };
 
-export default GlobalColorTemperature;
+export const {
+  Component: ColorTemperature,
+  Controller: ColorTemperatureOption,
+  atom: globalColorTemperatureAtom,
+} = OptionBuilder(
+  '색온도',
+  //@ts-ignore
+  <ColorTemperatureEffect />,
+  defaultColorTemperatureOption,
+);

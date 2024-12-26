@@ -17,7 +17,6 @@ import {
 
 import { get, set } from 'idb-keyval';
 import objectHash from 'object-hash';
-import { ToneMappingMode } from 'postprocessing';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -29,21 +28,11 @@ import {
 import { defaultSettings, loadSettings } from '../pages/useSettings.ts';
 import {
   cameraMatrixAtom,
-  globalBloomAtom,
-  globalBrightnessContrastAtom,
-  globalColorManagementAtom,
-  globalColorTemperatureAtom,
-  globalGlAtom,
-  globalHueSaturationAtom,
-  globalLUTAtom,
-  globalSaturationCheckAtom,
-  globalToneMappingAtom,
   selectedAtom,
   threeExportsAtom,
   useEnvParams,
   useModal,
 } from '../scripts/atoms';
-import { LUTPresets } from '../scripts/postprocess/PostProcessUtils.ts';
 import useFilelist from '../scripts/useFilelist';
 import useStats, { StatPerSecond, VStats } from '../scripts/useStats.ts';
 import VGLTFExporter from '../scripts/VGLTFExporter.ts';
@@ -53,6 +42,12 @@ import {
   THREE,
   Vector3,
 } from '../scripts/VTHREE';
+import { BloomOption } from './canvas/Bloom.tsx';
+import { BrightnessContrastOption } from './canvas/BrightnessContrast.tsx';
+import { ColorLUTOption } from './canvas/ColorLUT.tsx';
+import { ColorTemperatureOption } from './canvas/ColorTemperature.tsx';
+import { HueSaturationOption } from './canvas/HueSaturation.tsx';
+import { ToneMappingOption } from './canvas/ToneMapping.tsx';
 import UploadPage from './UploadModal';
 
 const useEnvUrl = () => {
@@ -525,41 +520,12 @@ const GeneralSceneInfo = () => {
 const GeneralPostProcessingControl = () => {
   const threeExports = useAtomValue(threeExportsAtom);
 
-  const [brightnessContrast, setGlobalContrast] = useAtom(
-    globalBrightnessContrastAtom,
-  );
-  const {
-    on: brightnessContrastOn,
-    brightnessValue,
-    contrastValue,
-  } = brightnessContrast;
-  const [globalSaturationCheckOn, setGlobalSaturationCheck] = useAtom(
-    globalSaturationCheckAtom,
-  );
-  const [globalColorTemperature, setGlobalColorTemperature] = useAtom(
-    globalColorTemperatureAtom,
-  );
-  const [cm, setCm] = useAtom(globalColorManagementAtom);
-  // const { on: cmOn, value: cmValue } = cm;
-  const [glSetting, setGlSetting] = useAtom(globalGlAtom);
-  const [toneMapping, setToneMapping] = useAtom(globalToneMappingAtom);
-  const [hueSaturation, setHueSaturation] = useAtom(globalHueSaturationAtom);
-  const [lut, setLut] = useAtom(globalLUTAtom);
   const [lmContrastOn, setLmContrastOn] = useState(LightmapImageContrast.on);
   const [lmContrastValue, setLmContrastValue] = useState({
     gammaFactor: LightmapImageContrast.gammaFactor,
     standard: LightmapImageContrast.standard,
     k: LightmapImageContrast.k,
   });
-  const [
-    {
-      on: bloomOn,
-      intensity: bloomIntensity,
-      threshold: bloomThreshold,
-      smoothing: bloomSmoothing,
-    },
-    setBloom,
-  ] = useAtom(globalBloomAtom);
 
   const adjustContrast = (color: number[]) => {
     const gammaFactor = lmContrastValue.gammaFactor;
@@ -608,84 +574,9 @@ const GeneralPostProcessingControl = () => {
         gap: 6,
       }}
     >
-      {/* Brightness/Contrast Controls */}
-      <div>
-        <strong>밝기/대비</strong>
-        <input
-          type="checkbox"
-          checked={brightnessContrastOn}
-          onChange={e => {
-            console.log(e.target.checked);
-            setGlobalContrast(prev => ({ ...prev, on: e.target.checked }));
-          }}
-        />
-        {brightnessContrastOn && (
-          <>
-            <div
-              style={{
-                paddingLeft: 12,
-                boxSizing: 'border-box',
-                width: '100%',
-              }}
-            >
-              <div>
-                밝기 : {brightnessValue ?? 0}{' '}
-                <button
-                  style={{ fontSize: 11 }}
-                  onClick={() => {
-                    setGlobalContrast(prev => ({
-                      ...prev,
-                      brightnessValue: 0,
-                    }));
-                  }}
-                >
-                  초기화
-                </button>
-              </div>
-              <input
-                style={{ width: '100%' }}
-                type="range"
-                min={-1}
-                max={1}
-                step={0.01}
-                value={brightnessValue ?? 0}
-                onChange={e => {
-                  setGlobalContrast(prev => ({
-                    ...prev,
-                    brightnessValue: parseFloat(e.target.value),
-                  }));
-                }}
-              />
-              <div>
-                대비 : {contrastValue ?? 0}{' '}
-                <button
-                  style={{ fontSize: 11 }}
-                  onClick={() => {
-                    setGlobalContrast(prev => ({ ...prev, contrastValue: 0 }));
-                  }}
-                >
-                  초기화
-                </button>
-              </div>
-              <input
-                style={{ width: '100%' }}
-                type="range"
-                min={-1}
-                max={1}
-                step={0.01}
-                value={contrastValue ?? 0}
-                onChange={e => {
-                  setGlobalContrast(prev => ({
-                    ...prev,
-                    contrastValue: parseFloat(e.target.value),
-                  }));
-                }}
-              />
-            </div>
-          </>
-        )}
-      </div>
-      {/* Saturation Control */}
+      <HueSaturationOption></HueSaturationOption>
+      <ColorTemperatureOption></ColorTemperatureOption>
+      <BrightnessContrastOption></BrightnessContrastOption>
       <div>
         <strong>라이트맵 이미지 대비</strong>
         <input
@@ -927,448 +818,9 @@ const GeneralPostProcessingControl = () => {
           </>
         )}
       </div>
-      <div>
-        <strong>새츄레이션보기</strong>
-        <input
-          type="checkbox"
-          checked={globalSaturationCheckOn}
-          onChange={e => {
-            setGlobalSaturationCheck(e.target.checked);
-          }}
-        />
-      </div>
-      {/* ToneMapping Control */}
-      <div>
-        <div>
-          <strong>ToneMapping</strong>
-          <input
-            type="checkbox"
-            checked={toneMapping.on}
-            onChange={e => {
-              setToneMapping(prev => ({ ...prev, on: e.target.checked }));
-            }}
-          />
-        </div>
-        {toneMapping.on && (
-          <div style={{ paddingLeft: 8 }}>
-            <div>
-              <select
-                value={toneMapping.mode}
-                onChange={e => {
-                  console.log(e.target.value);
-                  //@ts-ignore
-                  setToneMapping(prev => ({
-                    ...prev,
-                    //@ts-ignore
-                    mode: Number(e.target.value) as ToneMappingMode,
-                  }));
-                }}
-              >
-                <option value={ToneMappingMode.LINEAR}>LINEAR</option>
-                <option value={ToneMappingMode.REINHARD}>REINHARD</option>
-                <option value={ToneMappingMode.REINHARD2}>REINHARD2</option>
-                <option value={ToneMappingMode.REINHARD2_ADAPTIVE}>
-                  REINHARD2_ADAPTIVE
-                </option>
-                <option value={ToneMappingMode.UNCHARTED2}>UNCHARTED2</option>
-                <option value={ToneMappingMode.OPTIMIZED_CINEON}>
-                  OPTIMIZED_CINEON
-                </option>
-                <option value={ToneMappingMode.CINEON}>CINEON</option>
-                <option value={ToneMappingMode.ACES_FILMIC}>ACES_FILMIC</option>
-                <option value={ToneMappingMode.AGX}>AGX</option>
-                <option value={ToneMappingMode.NEUTRAL}>NEUTRAL</option>
-              </select>
-            </div>
-            <div>
-              <div>
-                <span>노출</span>
-                <span style={{ fontSize: 10 }}>
-                  (toneMappingExposure)
-                </span> : {glSetting.toneMappingExposure ?? 0}{' '}
-                <button
-                  style={{ fontSize: 11 }}
-                  onClick={() => {
-                    setGlSetting(prev => ({
-                      ...prev,
-                      toneMappingExposure: 1,
-                    }));
-                  }}
-                >
-                  초기화
-                </button>
-              </div>
-              <input
-                style={{ width: '100%' }}
-                type="range"
-                min={0}
-                max={5}
-                step={0.01}
-                value={glSetting.toneMappingExposure ?? 0}
-                onChange={e => {
-                  setGlSetting(prev => ({
-                    ...prev,
-                    toneMappingExposure: parseFloat(e.target.value),
-                  }));
-                }}
-              />
-            </div>
-            <div>
-              <div>
-                <span>투명도</span>
-                <span style={{ fontSize: 10 }}>(opacity)</span> :{' '}
-                {toneMapping.opacity ?? 0}{' '}
-                <button
-                  style={{ fontSize: 11 }}
-                  onClick={() => {
-                    setToneMapping(prev => ({
-                      ...prev,
-                      opacity: 1,
-                    }));
-                  }}
-                >
-                  초기화
-                </button>
-              </div>
-              <input
-                style={{ width: '100%' }}
-                type="range"
-                min={0}
-                max={1}
-                step={0.01}
-                value={toneMapping.opacity ?? 0}
-                onChange={e => {
-                  setToneMapping(prev => ({
-                    ...prev,
-                    opacity: parseFloat(e.target.value),
-                  }));
-                }}
-              />
-            </div>
-          </div>
-        )}
-      </div>
-      {/* HueSaturation */}
-      <div>
-        <div>
-          <strong>HueSaturation</strong>
-          <input
-            type="checkbox"
-            checked={hueSaturation.on}
-            onChange={e => {
-              setHueSaturation(pre => ({
-                ...pre,
-                on: e.target.checked,
-              }));
-            }}
-          />
-        </div>
-        {hueSaturation.on && (
-          <>
-            <div>
-              <div>
-                <span>Hue : </span>
-                {hueSaturation.hue ?? 0}{' '}
-                <button
-                  style={{ fontSize: 11 }}
-                  onClick={() => {
-                    setHueSaturation(prev => ({
-                      ...prev,
-                      hue: 0,
-                    }));
-                  }}
-                >
-                  초기화
-                </button>
-              </div>
-              <input
-                style={{ width: '100%' }}
-                type="range"
-                min={0}
-                max={2 * Math.PI}
-                step={1e-3}
-                value={hueSaturation.hue ?? 0}
-                onChange={e => {
-                  setHueSaturation(prev => ({
-                    ...prev,
-                    hue: parseFloat(e.target.value),
-                  }));
-                }}
-              />
-            </div>
-            <div>
-              <div>
-                <span>Saturation : </span>
-                {hueSaturation.saturation ?? 0}{' '}
-                <button
-                  style={{ fontSize: 11 }}
-                  onClick={() => {
-                    setHueSaturation(prev => ({
-                      ...prev,
-                      saturation: 0,
-                    }));
-                  }}
-                >
-                  초기화
-                </button>
-              </div>
-              <input
-                style={{ width: '100%' }}
-                type="range"
-                min={-1}
-                max={1}
-                step={1e-3}
-                value={hueSaturation.saturation ?? 0}
-                onChange={e => {
-                  setHueSaturation(prev => ({
-                    ...prev,
-                    saturation: parseFloat(e.target.value),
-                  }));
-                }}
-              />
-            </div>
-          </>
-        )}
-      </div>
-      <div>
-        <div>
-          <strong>LUT</strong>
-          <input
-            type="checkbox"
-            checked={lut.on}
-            onChange={e => {
-              setLut(pre => ({
-                ...pre,
-                on: e.target.checked,
-              }));
-            }}
-          />
-        </div>
-        {lut.on && (
-          <>
-            <div style={{ display: 'flex' }}>
-              <span>PRESET: </span>
-              <select
-                value={lut.preset}
-                onChange={e => {
-                  console.log(e.target.value);
-                  //@ts-ignore
-                  setLut(prev => ({
-                    ...prev,
-                    //@ts-ignore
-                    preset: e.target.value,
-                  }));
-                }}
-              >
-                {LUTPresets.map(preset => (
-                  <option value={preset}>{preset}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <span style={{ fontSize: 12, marginRight: 4 }}>
-                tetrahedral interpolation
-              </span>
-              <input
-                type="checkbox"
-                checked={lut.useTetrahedralFilter}
-                onChange={e => {
-                  setLut(pre => ({
-                    ...pre,
-                    useTetrahedralFilter: e.target.checked,
-                  }));
-                }}
-              />
-            </div>
-          </>
-        )}
-      </div>
-      <div>
-        <Clipping />
-        <div>
-          <strong>Bloom</strong>
-          <input
-            type="checkbox"
-            checked={bloomOn}
-            onChange={e => {
-              setBloom(prev => ({ ...prev, on: e.target.checked }));
-            }}
-          />
-        </div>
-        {bloomOn && (
-          <>
-            <div>
-              <label>Threshold</label>
-              <input
-                type="range"
-                min={0}
-                max={1}
-                step={0.01}
-                value={bloomThreshold}
-                onChange={e => {
-                  setBloom(prev => ({
-                    ...prev,
-                    threshold: parseFloat(e.target.value),
-                  }));
-                }}
-              />
-              <input
-                type="number"
-                min={0}
-                max={1}
-                step={0.01}
-                value={bloomThreshold}
-                onChange={e => {
-                  setBloom(prev => ({
-                    ...prev,
-                    threshold: parseFloat(e.target.value),
-                  }));
-                }}
-              ></input>
-            </div>
-            <div>
-              <label>강도</label>
-              <input
-                type="range"
-                min={0}
-                max={2}
-                step={0.01}
-                value={bloomIntensity}
-                onChange={e => {
-                  setBloom(prev => ({
-                    ...prev,
-                    intensity: parseFloat(e.target.value),
-                  }));
-                }}
-              />
-              <input
-                type="number"
-                min={0}
-                max={2}
-                step={0.01}
-                value={bloomIntensity}
-                onChange={e => {
-                  setBloom(prev => ({
-                    ...prev,
-                    intensity: parseFloat(e.target.value),
-                  }));
-                }}
-              ></input>
-            </div>
-
-            <div>
-              <label>스무딩</label>
-              <input
-                type="range"
-                min={0}
-                max={1}
-                step={0.005}
-                value={bloomSmoothing}
-                onChange={e => {
-                  setBloom(prev => ({
-                    ...prev,
-                    smoothing: parseFloat(e.target.value),
-                  }));
-                }}
-              />
-              <input
-                type="number"
-                min={0}
-                max={1}
-                step={0.005}
-                value={bloomSmoothing}
-                onChange={e => {
-                  setBloom(prev => ({
-                    ...prev,
-                    smoothing: parseFloat(e.target.value),
-                  }));
-                }}
-              ></input>
-            </div>
-          </>
-        )}
-      </div>
-      {/* <div>
-            <strong>Color Management</strong>
-            <input type="checkbox" checked={cmOn} onChange={(e) => {
-                setCm(prev => ({ ...prev, on: e.target.checked }));
-            }
-            } />
-            {cmOn && <div>
-                <div style={{ width: "100%" }}>
-                    Exposure : <div style={{ maxWidth: 40 }}>{toNthDigit(cmValue.exposure, 2)}</div> <input type="range" min={0.0} max={3} step={0.01} value={cmValue.exposure} onChange={e => {
-                        setCm(prev => ({
-                            ...prev, value: {
-                                ...prev.value,
-                                exposure: parseFloat(e.target.value)
-                            }
-                        }))
-                    }} />
-                </div>
-                <div style={{ width: "100%" }}>
-                    Gamma : <div style={{ maxWidth: 40 }}>{toNthDigit(cmValue.gamma, 2)}</div> <input type="range" min={0.0} max={3} step={0.01} value={cmValue.gamma} onChange={e => {
-                        setCm(prev => ({
-                            ...prev, value: {
-                                ...prev.value,
-                                gamma: parseFloat(e.target.value)
-                            }
-                        }))
-                    }} />
-                </div>
-                <div>
-                    <strong>Contrast</strong> :
-                    <select value={cmValue.look} onChange={e => {
-                        setCm(prev => ({
-                            ...prev, value: {
-                                ...prev.value,
-                                look: e.target.value as LookType
-                            }
-                        }))
-                    }}>
-                        <option value={LookType.VERY_HIGH_CONTRAST}>Very High</option>
-                        <option value={LookType.HIGH_CONTRAST}>High</option>
-                        <option value={LookType.MEDIUM_CONTRAST}>Medium</option>
-                        <option value={LookType.LOW_CONTRAST}>Low</option>
-                        <option value={LookType.VERY_LOW_CONTRAST}>Very Low</option>
-                    </select>
-                </div>
-
-                <div>
-                    <strong>View Transform</strong> :
-                    <select value={cmValue.viewTransform} onChange={e => {
-                        setCm(prev => ({
-                            ...prev, value: {
-                                ...prev.value,
-                                viewTransform: e.target.value as ViewTransform
-                            }
-                        }))
-                    }}>
-                        <option value={ViewTransform.Standard}>Standard</option>
-                        <option value={ViewTransform.KhronosPBRNeutral}>KhronosPBRNeutral</option>
-                        <option value={ViewTransform.AgX}>AgX</option>
-                        <option value={ViewTransform.Filmic}>Filmic</option>
-                        <option value={ViewTransform.FilmicLog}>FilmicLog</option>
-                        <option value={ViewTransform.FalseColor}>FalseColor</option>
-                        <option value={ViewTransform.Raw}>Raw</option>
-                    </select>
-                </div>
-
-            </div>}
-        </div> */}
-      {/* <div>
-            <div>
-                <strong>색온도</strong>{globalColorTemperatureOn && <span>: {globalColorTemperatureValue}K </span>}
-            </div>
-
-            <input type="checkbox" checked={globalColorTemperatureOn} onChange={(e) => {
-                setGlobalColorTemperature({ on: e.target.checked, value: globalColorTemperatureValue ?? DEFAULT_COLOR_TEMPERATURE });
-            }
-            } />
-            {globalColorTemperatureOn && <input type="range" min={3000} max={10000} step={10} value={globalColorTemperatureValue ?? DEFAULT_COLOR_TEMPERATURE} onChange={(e) => {
-                setGlobalColorTemperature({ on: true, value: parseInt(e.target.value) });
-            }} />}
-        </div> */}
-      {/* <GlobalRenderOptions></GlobalRenderOptions> */}
+      <BloomOption></BloomOption>
+      <ColorLUTOption></ColorLUTOption>
+      <ToneMappingOption></ToneMappingOption>
     </section>
   );
 };

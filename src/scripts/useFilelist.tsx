@@ -39,7 +39,11 @@ const _fetchFunction = async () => {
         };
         return retval;
       },
-    );
+    )
+    .catch(e => {
+      console.error(e);
+      alert('파일리스트를 불러오는데 실패했습니다. (콘솔확인)');
+    });
 };
 
 export default function useFilelist() {

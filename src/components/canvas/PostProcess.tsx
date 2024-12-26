@@ -1,162 +1,39 @@
+import { EffectComposer } from '@react-three/postprocessing';
+import { useAtomValue, WritableAtom } from 'jotai';
 import {
-  Bloom,
-  BrightnessContrast,
-  EffectComposer,
-  HueSaturation,
-  LUT,
-  ToneMapping,
-} from '@react-three/postprocessing';
-import { useAtom, useAtomValue } from 'jotai';
-import { BlendFunction, BlendMode } from 'postprocessing';
-import { useEffect, useRef } from 'react';
-import {
-  globalBloomAtom,
-  globalBrightnessContrastAtom,
-  globalColorManagementAtom,
-  globalHueSaturationAtom,
-  globalLUTAtom,
-  globalSaturationCheckAtom,
-  globalToneMappingAtom,
-} from '../../scripts/atoms';
-import {
-  getLUTTexture,
-  LUTPresets,
-} from '../../scripts/postprocess/PostProcessUtils.ts';
-import GlobalSaturationCheck from './GlobalSaturationCheck';
+  forceRerenderPostProcessAtom,
+  postprocessAtoms,
+} from '../../scripts/atoms.ts';
+import { Bloom } from './Bloom.tsx';
+import { BrightnessContrast } from './BrightnessContrast.tsx';
+import { ColorLUT } from './ColorLUT.tsx';
+import { ColorTemperature } from './ColorTemperature.tsx';
+import { HueSaturation } from './HueSaturation.tsx';
+import { ToneMapping } from './ToneMapping.tsx';
 
-const BrightnessContrastEffect = () => {
-  const { on, brightnessValue, contrastValue } = useAtomValue(
-    globalBrightnessContrastAtom,
-  );
-
-  if (!on) {
-    return null;
-  }
-
-  return (
-    <BrightnessContrast brightness={brightnessValue} contrast={contrastValue} />
-  );
-};
-
-const GlobalToneMappingEffect = () => {
-  const {
-    on,
-    resolution,
-    middleGrey,
-    maxLuminance,
-    averageLuminance,
-    adaptationRate,
-    mode,
-    opacity,
-  } = useAtomValue(globalToneMappingAtom);
-  const blendMode = useRef(new BlendMode(BlendFunction.NORMAL, 1));
-
-  useEffect(() => {
-    if (on) {
-      // blendMode.current.blendFunction = BlendFunction.ADD;
-      blendMode.current.setOpacity(opacity);
-    }
-  }, [on, opacity]);
-
-  if (!on) {
-    return null;
-  }
-
-  return (
-    <ToneMapping
-      adaptive={true}
-      resolution={resolution}
-      middleGrey={middleGrey}
-      maxLuminance={maxLuminance}
-      averageLuminance={averageLuminance}
-      adaptationRate={adaptationRate}
-      mode={mode}
-      blendMode={blendMode.current}
-    />
-  );
-};
-
-const GlobalHueSaturationEffect = () => {
-  const { on, hue, saturation } = useAtomValue(globalHueSaturationAtom);
-
-  // folder.addBinding(effect, "hue", { min: 0, max: 2 * Math.PI, step: 1e-3 });
-  // folder.addBinding(effect, "saturation", { min: -1, max: 1, step: 1e-3 });
-
-  if (!on) {
-    return null;
-  }
-
-  return (
-    <HueSaturation
-      blendFunction={BlendFunction.NORMAL}
-      hue={hue}
-      saturation={saturation}
-    />
-  );
-};
-
-const GlobalLUTEffect = () => {
-  const [{ on, preset, texture, useTetrahedralFilter }, setLut] =
-    useAtom(globalLUTAtom);
-
-  useEffect(() => {
-    console.log('presetChanged : ', preset);
-    updateTexture(preset);
-  }, [preset]);
-
-  if (!on) {
-    return null;
-  }
-
-  async function updateTexture(preset: LUTPresets) {
-    const texture = await getLUTTexture(preset);
-    if (texture) {
-      setLut(pre => ({ ...pre, texture }));
-    }
-  }
-
-  return (
-    <>
-      {texture && (
-        <LUT lut={texture} tetrahedralInterpolation={useTetrahedralFilter} />
-      )}
-    </>
-  );
+// postprocessAtom : { key1:atom, key2:atom2 } 형태
+// 하위 아톰의 변경 감지 후 리렌더링 촉발
+const usePostprocessUpdate = () => {
+  const forceUpdate = useAtomValue(forceRerenderPostProcessAtom);
+  const postprocesses = useAtomValue(postprocessAtoms);
+  const useInnerAtomUpdate = (atom: WritableAtom<any, any, any>) => {
+    useAtomValue(atom);
+  };
+  Object.values(postprocesses).forEach(useInnerAtomUpdate);
 };
 
 function PostProcess() {
   // 각 컴포넌트 안에서 값만 바뀐다고 리렌더링되지 않음, 그냥 각 값이 바뀔 때 EffectComposer을 강제 리렌더링
-  const _gbc = useAtomValue(globalBrightnessContrastAtom);
-  const _gSat = useAtomValue(globalSaturationCheckAtom);
-  const _gcm = useAtomValue(globalColorManagementAtom);
-  const _gtm = useAtomValue(globalToneMappingAtom);
-  const _gsh = useAtomValue(globalHueSaturationAtom);
-  const _glut = useAtomValue(globalLUTAtom);
-  const {
-    on: bloomOn,
-    intensity: bloomIntensity,
-    threshold: bloomThreshold,
-    smoothing: bloomSmoothing,
-  } = useAtomValue(globalBloomAtom);
-  // console.log(_gcm.value)
+  usePostprocessUpdate();
 
   return (
     <EffectComposer>
-      <BrightnessContrastEffect></BrightnessContrastEffect>
-      {/* <GlobalColorManagement></GlobalColorManagement> */}
-      <GlobalToneMappingEffect></GlobalToneMappingEffect>
-      <GlobalHueSaturationEffect></GlobalHueSaturationEffect>
-      <GlobalLUTEffect></GlobalLUTEffect>
-      <GlobalSaturationCheck></GlobalSaturationCheck>
-      {bloomOn ? (
-        <Bloom
-          intensity={bloomIntensity}
-          luminanceThreshold={bloomThreshold}
-          luminanceSmoothing={bloomSmoothing}
-        ></Bloom>
-      ) : (
-        <></>
-      )}
+      <HueSaturation></HueSaturation>
+      <ColorTemperature></ColorTemperature>
+      <BrightnessContrast></BrightnessContrast>
+      <Bloom></Bloom>
+      <ColorLUT></ColorLUT>
+      <ToneMapping></ToneMapping>
     </EffectComposer>
   );
 }

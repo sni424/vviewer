@@ -4,12 +4,10 @@ import { OrbitControls } from '@react-three/drei';
 import { Canvas, useThree } from '@react-three/fiber';
 import { useSetAtom } from 'jotai';
 import { threeExportsAtom } from '../../scripts/atoms';
-import useStats from '../../scripts/useStats';
-import EnvironmentMap from '../canvas/EnvironmentMap';
-import GlobalContrast from '../canvas/GlobalContrast';
+import PostProcess from '../canvas/PostProcess';
 
 const Renderer = () => {
-  useStats();
+  // useStats();
   const setThreeExports = useSetAtom(threeExportsAtom);
   const threeExports = useThree();
 
@@ -30,8 +28,8 @@ const MobileRenderer = () => {
   return (
     <Canvas>
       <Renderer />
-      <EnvironmentMap></EnvironmentMap>
-      <GlobalContrast></GlobalContrast>
+      {/* <EnvironmentMap></EnvironmentMap> */}
+      <PostProcess></PostProcess>
     </Canvas>
   );
 };

@@ -7,14 +7,10 @@ import MaterialPanelContainer from '../components/MaterialPanel';
 import MeshInfoPanel from '../components/MeshInfoPanel';
 import Modal from '../components/Modal';
 import ThePanel from '../components/ThePanel';
-import {
-  loadHistoryAtom,
-  modalAtom,
-  threeExportsAtom,
-  viewGridAtom,
-} from '../scripts/atoms';
+import { modalAtom, threeExportsAtom, viewGridAtom } from '../scripts/atoms';
 import useFiles from '../scripts/useFiles';
 import useModelDragAndDrop from '../scripts/useModelDragAndDrop';
+import { getSettings, loadSettings } from './useSettings';
 
 function Loading() {
   const files = useFiles();
@@ -96,15 +92,11 @@ const MyModal = ({ closeModal }: { closeModal?: () => any }) => {
 
 const ControlPanel = () => {
   const threeExports = useAtomValue(threeExportsAtom);
-  const setLoadHistoryAtom = useSetAtom(loadHistoryAtom);
-  // const { openModal } = useModal();
   const setModal = useSetAtom(modalAtom);
 
   if (!threeExports) {
     return null;
   }
-
-  // return null;
 
   return (
     <div
@@ -119,21 +111,14 @@ const ControlPanel = () => {
     >
       <button
         onClick={() => {
-          setModal(MyModal);
+          console.log('getsettings:', getSettings());
+          loadSettings().then(s => {
+            // console.log('Loaded:', s);
+          });
         }}
       >
-        Modal
+        세팅
       </button>
-
-      {/* <button onClick={() => {
-      //@ts-ignore
-      threeExports.scene.children.forEach(child => {
-        //@ts-ignore
-        threeExports.scene.remove(child);
-      })
-
-      setLoadHistoryAtom(new Map());
-    }}>Reset</button> */}
     </div>
   );
 };
@@ -180,16 +165,15 @@ const ViewerPage = () => {
         onDrop={handleDrop}
       >
         <RendererContainer />
-
         <Views></Views>
         <CameraPanel />
       </div>
       <div className="relative h-full w-1/4 max-w-[400px] min-w-[240px]">
         <ThePanel />
       </div>
-      {/* <ControlPanel></ControlPanel> */}
       <MaterialPanelContainer></MaterialPanelContainer>
       <MeshInfoPanel></MeshInfoPanel>
+      {/* <ControlPanel></ControlPanel> */}
       <Modal></Modal>
       <Loading />
     </div>
