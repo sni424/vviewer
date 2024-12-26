@@ -315,9 +315,9 @@ const UserDataSection = ({ mat }: { mat: THREE.MeshStandardMaterial }) => {
   return (
     <ul>
       <strong>UserData</strong>
-      {keys.map(key => {
+      {keys.map((key, i) => {
         return (
-          <li className="pl-4" key={`mat-userdata-${mat.uuid}`}>
+          <li className="pl-4" key={`mat-userdata-${mat.uuid}-${i}`}>
             <span>{key}</span> :{' '}
             {JSON.stringify(userData[key as keyof typeof userData])}
           </li>

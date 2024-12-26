@@ -124,12 +124,10 @@ export default class VGLTFExporter extends GLTFExporter {
       const mesh = (obj as THREE.Mesh);
       if (mesh.material) {
         const mat = mesh.material as THREE.MeshStandardMaterial;
-        console.log("LMIntensity", mat.lightMapIntensity);
         const lm = mat.lightMap;
         if (lm && lm.vUserData.gainMap) {
           mat.vUserData.gainMap = lm.vUserData.gainMap;
           mat.vUserData.gainMapIntensity = mat.lightMapIntensity;
-          console.log(mat.lightMapIntensity);
           mat.lightMap = null;
         }
       }

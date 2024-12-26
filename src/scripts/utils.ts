@@ -208,7 +208,9 @@ export function compressObjectToFile(obj: object, fileName: string): File {
 }
 
 export async function decompressFileToObject<T = any>(url: string): Promise<T> {
-  return fetch(url)
+  return fetch(url, {
+    cache: "no-store"
+  })
     .then(res => res.arrayBuffer())
     .then(buffer => {
       const decompressed = pako.ungzip(buffer, { to: 'string' });

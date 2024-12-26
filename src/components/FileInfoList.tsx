@@ -2,6 +2,37 @@ import React, { useEffect } from 'react';
 import { cached, formatNumber } from '../scripts/utils';
 import { FileInfo } from '../types';
 
+const FileInfoComponent = ({
+  fileInfo,
+  i,
+  itemStyle = {},
+  itemProps = {},
+}: {
+  fileInfo: FileInfo;
+  i: number;
+  itemStyle?: React.CSSProperties;
+  itemProps?: React.HTMLProps<HTMLLIElement>;
+}) => {
+  const [isCached, setIsCached] = React.useState(false);
+  useEffect(() => {
+    cached(fileInfo).then(isCached => {
+      setIsCached(isCached);
+    });
+  }, []);
+  return (
+    <li
+      style={{ ...itemStyle }}
+      {...itemProps}
+      data-fileinfo={JSON.stringify(fileInfo)}
+    >
+      {isCached && <span style={{ fontWeight: 'bold' }}>(캐시됨)</span>}
+      {i + 1}. {fileInfo.filename} (
+      {formatNumber(fileInfo.fileSize / (1024 * 1024))}mb) -{' '}
+      {new Date(fileInfo.uploadDate).toLocaleString()}{' '}
+    </li>
+  );
+};
+
 const FileInfoList = ({
   filelist = [],
   containerStyle = {},
@@ -15,27 +46,15 @@ const FileInfoList = ({
 }) => {
   return (
     <ul style={{ ...containerStyle }}>
-      {filelist.map((fileinfo, i) => {
-        const [isCached, setIsCached] = React.useState(false);
-        useEffect(() => {
-          cached(fileinfo).then(isCached => {
-            setIsCached(isCached);
-          });
-        }, []);
-        return (
-          <li
-            style={{ fontSize: 12, marginBottom: 3, ...itemStyle }}
-            key={'filelist' + fileinfo.fileUrl}
-            {...itemProps}
-            data-fileinfo={JSON.stringify(fileinfo)}
-          >
-            {isCached && <span style={{ fontWeight: 'bold' }}>(캐시됨)</span>}
-            {i + 1}. {fileinfo.filename} (
-            {formatNumber(fileinfo.fileSize / (1024 * 1024))}mb) -{' '}
-            {new Date(fileinfo.uploadDate).toLocaleString()}{' '}
-          </li>
-        );
-      })}
+      {filelist.map((fileInfo, i) => (
+        <FileInfoComponent
+          key={'filelist' + fileInfo.fileUrl}
+          fileInfo={fileInfo}
+          itemStyle={itemStyle}
+          itemProps={itemProps}
+          i={i}
+        ></FileInfoComponent>
+      ))}
     </ul>
   );
 };
