@@ -433,11 +433,13 @@ const rotateCameraSmoothly = (
   //선형 보간 좌표값
   const result = new THREE.Quaternion().slerpQuaternions(from, to, t);
 
+
   //회전값 각도 설정
   const euler = new THREE.Euler().setFromQuaternion(result, "YXZ");
   // 카메라가 옆으로 뒤집힘 문제를 방지
   euler.z = 0;
   result.setFromEuler(euler);
+
 
   return result;
 };
@@ -644,8 +646,13 @@ const handleLinearMove = (
           .subVectors(direction, target)
           .normalize();
         // 회전 보간: startDir → finalDir
-        const newQuat = rotateCameraSmoothly(startDirection, finalDir, progress, false);
-        camera.quaternion.copy(newQuat);
+        if (cameraFov) {
+          const newQuat = rotateCameraSmoothly(startDirection, finalDir, progress, false);
+          camera.quaternion.copy(newQuat);
+        } else {
+          const newQuat = rotateCameraSmoothly(startDirection, direction, progress);
+          camera.quaternion.copy(newQuat);
+        }
       },
       onComplete: () => {
         console.log("Rotation completed");
