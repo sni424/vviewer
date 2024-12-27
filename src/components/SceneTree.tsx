@@ -412,7 +412,6 @@ const SearchResults = () => {
   if (!threeExports || !query || query.length === 0) {
     return null;
   }
-  console.log('SearchResults', query);
 
   const { scene } = threeExports;
   const types: THREE.Object3D[] = [];
@@ -445,12 +444,6 @@ const SearchResults = () => {
         meshesUsingMaterial.push(obj);
       }
     }
-  }, Layer.Model);
-
-  console.log({
-    types,
-    names,
-    ids,
   });
 
   return (

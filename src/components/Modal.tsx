@@ -25,8 +25,6 @@ function Modal() {
     return null;
   }
 
-  // console.log(Content);
-
   return (
     <div
       style={{
@@ -46,7 +44,6 @@ function Modal() {
       }}
     >
       {React.cloneElement(Content as any, { closeModal })}
-      {/* <Content closeModal={closeModal} /> */}
     </div>
   );
 }

@@ -124,7 +124,7 @@ export const useForceUpdate = () => {
 
 export const materialSelectedAtom = atom<THREE.Material | null>(null);
 
-export const modalAtom = atom<React.FC<{ closeModal?: () => any }> | null>(
+export const modalAtom = atom<React.FC<{ closeModal?: () => any }> | React.ReactNode | null>(
   null,
 );
 
@@ -133,7 +133,7 @@ export const useModal = () => {
   return {
     // ()=>Element instead of Element
     // openModal: (modal: React.ReactElement<{ closeModal?: () => any }>) => setModal(modal),
-    openModal: (modal: React.FC<{ closeModal?: () => any }>) => setModal(modal),
+    openModal: (modal: (React.FC<{ closeModal?: () => any }>) | React.ReactNode) => setModal(modal),
     closeModal: () => setModal(null),
   };
 };
