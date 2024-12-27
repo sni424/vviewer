@@ -13,15 +13,10 @@
     "deploy": "node deploy.js"
   },
   "dependencies": {
-    "@esbuild/darwin-arm64": "^0.24.0",
     "@monogrid/gainmap-js": "^3.1.0",
     "@react-three/drei": "^9.117.3",
     "@react-three/fiber": "^8.17.10",
     "@react-three/postprocessing": "^2.16.3",
-    "@rollup/rollup-darwin-arm64": "^4.28.0",
-    "@types/object-hash": "^3.0.6",
-    "@types/pako": "^2.0.3",
-    "@types/three": "^0.170.0",
     "gsap": "^3.12.5",
     "idb-keyval": "^6.2.1",
     "jotai": "^2.10.3",
@@ -37,6 +32,11 @@
     "three-viewport-gizmo": "^2.0.2"
   },
   "devDependencies": {
+    "@types/object-hash": "^3.0.6",
+    "@types/pako": "^2.0.3",
+    "@types/three": "^0.170.0",
+    "@esbuild/darwin-arm64": "^0.24.0",
+    "@rollup/rollup-darwin-arm64": "^4.28.0",
     "@eslint/js": "^9.15.0",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
