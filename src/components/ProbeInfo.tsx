@@ -27,6 +27,61 @@ const ProbeInfo = () => {
     setProbes(prev => [...prev, probe]);
   }
 
+  function importProbe() {
+    const input = document.createElement('input');
+    input.onchange = (e: Event) => {
+      const target = e.target as HTMLInputElement;
+      const file = target.files?.[0]; // 선택된 파일 가져오기
+
+      if (!file) return;
+
+      const reader = new FileReader();
+
+      // 3. 파일 읽기 완료 후 처리
+      reader.onload = () => {
+        try {
+          const result = reader.result as string;
+          const jsonObject = JSON.parse(result); // JSON 문자열을 객체로 변환
+          if (!ReflectionProbe.isProbeJson(jsonObject)) {
+            alert('올바르지 않은 JSON 파일 형식입니다.');
+            return;
+          }
+          const newProbe = new ReflectionProbe(gl, scene, camera).fromJSON(
+            jsonObject,
+          );
+          for (const probe of probes) {
+            // 프로브가 완전히 겹쳤을 때 => 컨트롤이 오버랩 돼서 분리가 안됨
+            const newProbeCenter = newProbe.getCenter();
+            if (probe.getCenter().equals(newProbeCenter)) {
+              newProbe.setCenter(
+                newProbe.getCenter().add(new THREE.Vector3(0.5, 0, 0.5)),
+              );
+              newProbe.updateBoxMesh();
+            }
+            // ID 겹쳤을 때 => 동일 JSON 을 여러 번 불러오는 경우
+            if (newProbe.getId() === probe.getId()) {
+              newProbe.createNewId();
+            }
+          }
+          newProbe.addToScene();
+          newProbe.updateCameraPosition(newProbe.getCenter(), true);
+          setProbes(pre => {
+            return [...pre, newProbe];
+          });
+        } catch (error) {
+          console.error('JSON 파일을 파싱하는 중 오류 발생:', error);
+          alert('잘못된 JSON 파일입니다.');
+        }
+      };
+
+      // 4. 파일 읽기 시작 (텍스트로 읽기)
+      reader.readAsText(file);
+    };
+    input.type = 'file';
+    input.accept = '.json';
+    input.click();
+  }
+
   function updateAllProbes() {
     probes.forEach(probe => {
       probe.updateCameraPosition(probe.getBoxMesh().position, true);
@@ -58,6 +113,12 @@ const ProbeInfo = () => {
           onClick={addProbe}
         >
           + 새 프로브 생성
+        </button>
+        <button
+          style={{ fontSize: 12, padding: '4px 8px', cursor: 'pointer' }}
+          onClick={importProbe}
+        >
+          JSON 으로부터 받아오기
         </button>
         {probes.length > 0 && (
           <button
@@ -150,13 +211,13 @@ export const ProbeComponent = ({ probe }: { probe: ReflectionProbe }) => {
 
   function copyProbe() {
     const json = probe.toJSON();
+    // 새로 만들어야 하므로 겹치지 않게 ID, box 위치 변동
     json.id = v4();
     json.center[0] = json.center[0] + 1;
     json.center[2] = json.center[2] + 1;
     const newProbe = new ReflectionProbe(gl, scene, camera).fromJSON(json);
     newProbe.addToScene();
     setProbes(prev => [...prev, newProbe]);
-    console.log(scene);
   }
 
   function showEffectedMeshes() {
@@ -167,6 +228,13 @@ export const ProbeComponent = ({ probe }: { probe: ReflectionProbe }) => {
     });
     setSelecteds(emUUIDs);
   }
+
+  function exportProbe() {
+    const json = probe.toJSON();
+    downloadObjectJsonFile(json, `probe_${probe.getId()}.json`);
+  }
+
+  async function exportEnv() {}
 
   return (
     <div className="probe-document">
@@ -245,7 +313,6 @@ export const ProbeComponent = ({ probe }: { probe: ReflectionProbe }) => {
             fontSize: 12,
             padding: '4px 8px',
             cursor: 'pointer',
-            marginLeft: '4px',
           }}
           onClick={copyProbe}
         >
@@ -256,11 +323,30 @@ export const ProbeComponent = ({ probe }: { probe: ReflectionProbe }) => {
             fontSize: 12,
             padding: '4px 8px',
             cursor: 'pointer',
-            marginLeft: '4px',
           }}
           onClick={showEffectedMeshes}
         >
           적용된 메시 보기
+        </button>
+        <button
+          style={{
+            fontSize: 12,
+            padding: '4px 8px',
+            cursor: 'pointer',
+          }}
+          onClick={exportProbe}
+        >
+          JSON 으로 추출
+        </button>
+        <button
+          style={{
+            fontSize: 12,
+            padding: '4px 8px',
+            cursor: 'pointer',
+          }}
+          onClick={exportEnv}
+        >
+          EXR 추출
         </button>
       </div>
       <div className="probe-detail">
@@ -275,7 +361,7 @@ export const ProbeComponent = ({ probe }: { probe: ReflectionProbe }) => {
         >
           <span>env Image : </span>
           {imageData ? (
-            <DocumentElementContainer probe={probe} imageData={imageData} />
+            <DocumentElementContainer probe={probe} />
           ) : (
             <span>아직 렌더되지 않음</span>
           )}
@@ -494,13 +580,7 @@ export const ProbeMeshInfo = ({ mesh }: { mesh: THREE.Mesh }) => {
   );
 };
 
-const DocumentElementContainer = ({
-  probe,
-  imageData,
-}: {
-  probe: ReflectionProbe;
-  imageData: ImageData;
-}) => {
+const DocumentElementContainer = ({ probe }: { probe: ReflectionProbe }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const { openModal } = useModal();
 
@@ -512,7 +592,7 @@ const DocumentElementContainer = ({
         .getContext('2d')
         ?.drawImage(probe.getCanvas(), 0, 0, 60, 60);
     }
-  }, [probe, imageData]);
+  }, [probe]);
 
   return (
     <div
@@ -569,6 +649,30 @@ function scaleCanvas(
   }
 
   return scaledCanvas;
+}
+
+function downloadObjectJsonFile(obj: object, fileName: string = 'data.json') {
+  // 1. 객체를 JSON 문자열로 변환
+  const jsonString = JSON.stringify(obj, null, 2); // 들여쓰기 포함
+
+  // 2. Blob 생성 (MIME 타입: application/json)
+  const blob = new Blob([jsonString], { type: 'application/json' });
+
+  // 3. Blob을 URL로 변환
+  const url = URL.createObjectURL(blob);
+
+  // 4. a 태그를 동적으로 생성하여 다운로드 트리거
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = fileName;
+
+  // 5. a 태그 클릭 이벤트 트리거
+  document.body.appendChild(a);
+  a.click();
+
+  // 6. a 태그 제거 및 URL 해제
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }
 
 export default ProbeInfo;
