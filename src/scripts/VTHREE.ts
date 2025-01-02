@@ -9,6 +9,7 @@ import {
   View,
 } from '../types';
 import type ReflectionProbe from './ReflectionProbe';
+import type { ReflectionProbeJSON } from './ReflectionProbe';
 import { moveTo, resetGL } from './utils';
 
 export { LightmapImageContrast } from '../scripts/postprocess/MaterialShader';
@@ -25,6 +26,7 @@ export interface ThreeUserData {
   isEmissiveLightMap?: boolean;
   probeMeshType?: 'box' | 'controls' | 'sphere' | 'helper' | 'plane-controls';
   probeControlDirection?: PlaneControlDirections;
+  probes?: ReflectionProbeJSON[];
 }
 
 declare module 'three' {
@@ -321,7 +323,7 @@ THREE.Vector3.prototype.revert = function () {
   this.x = 1 / this.x;
   this.y = 1 / this.y;
   this.z = 1 / this.z;
-  console.log('revert : ', this);
+
   return this;
 };
 

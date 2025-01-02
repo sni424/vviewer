@@ -17,12 +17,14 @@ const CUBE_CAMERA_LAYER = 10;
 
 export type ReflectionProbeResolutions = 256 | 512 | 1024 | 2048;
 
-type ReflectionProbeJSON = {
+export type ReflectionProbeJSON = {
   id: string;
   center: number[];
   size: number[];
   resolution: ReflectionProbeResolutions;
   createFrom: 'probe.toJSON()';
+  showProbe?: boolean;
+  showControls?: boolean;
 };
 
 export interface ProbeMeshEventMap extends Object3DEventMap {
@@ -45,7 +47,7 @@ export default class ReflectionProbe {
   // RENDER MEASURES
   private center: THREE.Vector3 = DEFAULT_POSITION;
   private size: THREE.Vector3 = DEFAULT_SIZE;
-  private box: THREE.Box3;
+  private readonly box: THREE.Box3;
   // RESULT OBJECTS
   private readonly boxMesh: THREE.Mesh<
     THREE.BufferGeometry,
@@ -319,6 +321,7 @@ export default class ReflectionProbe {
   updateBoxMesh() {
     this.boxMesh.position.copy(this.center);
     this.boxMesh.scale.copy(this.size);
+    this.reflectionProbeSphere.scale.copy(this.size.clone().revert());
   }
 
   updateSphere() {
@@ -478,13 +481,17 @@ export default class ReflectionProbe {
     this.updateObjectChildrenEnv();
     // After Render => set No Render Objects Visible
     this.onAfterCubeCameraUpdate(filteredObjects);
+    // Canvas Update
+    this.applyTextureOnQuad();
   }
 
-  updateCameraPosition(position: THREE.Vector3, renderCamera?: boolean) {
+  updateCameraPosition(
+    position: THREE.Vector3 = this.center,
+    renderCamera?: boolean,
+  ) {
     this.cubeCamera.position.copy(position);
     if (this.autoUpdate || renderCamera) {
       this.renderCamera();
-      this.applyTextureOnQuad();
     }
     return this;
   }
@@ -494,6 +501,14 @@ export default class ReflectionProbe {
     return this.pmremGenerator.fromCubemap(cubeTexture).texture;
   }
 
+  getRenderTargetTexture() {
+    return this.renderTarget.texture;
+  }
+
+  getRenderTarget() {
+    return this.renderTarget;
+  }
+
   toJSON(): ReflectionProbeJSON {
     return {
       id: this.serializedId,
@@ -501,10 +516,13 @@ export default class ReflectionProbe {
       size: this.size.toArray(),
       resolution: this.resolution,
       createFrom: 'probe.toJSON()',
+      showProbe: this.showProbe,
+      showControls: this.showControls,
     };
   }
 
   fromJSON(json: ReflectionProbeJSON) {
+    console.log('fromJSON', json);
     this.serializedId = json.id;
     this.center = new THREE.Vector3().fromArray(json.center);
     this.size = new THREE.Vector3().fromArray(json.size);
@@ -529,6 +547,18 @@ export default class ReflectionProbe {
 
     this.boxMesh.vUserData.probeId = json.id;
     this.updateBoxMesh();
+
+    if (json.showProbe !== undefined) {
+      this.showProbe = json.showProbe;
+    }
+
+    if (json.showControls !== undefined) {
+      this.showControls = json.showControls;
+    }
+
+    this.boxMesh.visible = this.showProbe;
+    this.setControlsVisible(this.showProbe && this.showControls);
+
     return this;
   }
 
@@ -571,6 +601,32 @@ export default class ReflectionProbe {
 
   getImageData() {
     return this.imageData;
+  }
+
+  getCenter() {
+    return this.center;
+  }
+
+  static isProbeJson(obj: any): obj is ReflectionProbeJSON {
+    const validResolutions: ReflectionProbeResolutions[] = [
+      256, 512, 1024, 2048,
+    ];
+
+    return (
+      typeof obj === 'object' &&
+      obj !== null &&
+      typeof obj.id === 'string' &&
+      Array.isArray(obj.center) &&
+      obj.center.every((val: any) => typeof val === 'number') &&
+      Array.isArray(obj.size) &&
+      obj.size.every((val: any) => typeof val === 'number') &&
+      validResolutions.includes(obj.resolution) &&
+      obj.createFrom === 'probe.toJSON()'
+    );
+  }
+
+  createNewId(id: string = v4()) {
+    this.serializedId = id;
   }
 }
 
