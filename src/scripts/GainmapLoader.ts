@@ -26,10 +26,10 @@ export default class GainmapLoader {
   }
 
   static getLoader(gl: THREE.WebGLRenderer) {
-    if (!this.loader) {
-      this.loader = new HDRJPGLoader(gl);
+    if (!GainmapLoader.loader) {
+      GainmapLoader.loader = new HDRJPGLoader(gl);
     }
-    return this.loader;
+    return GainmapLoader.loader;
   }
 
   static async loadJpg(fileOrUrl: File | string, threeExports: {
@@ -39,7 +39,7 @@ export default class GainmapLoader {
     const isFile = typeof fileOrUrl !== "string";
     const url = isFile ? URL.createObjectURL(fileOrUrl) : fileOrUrl;
     return GainmapLoader.getLoader(gl).loadAsync(url).then(result => {
-      this.disposables.push(result);
+      GainmapLoader.disposables.push(result);
       URL.revokeObjectURL(url);
       const texture = result.renderTarget.texture;
 
@@ -67,10 +67,10 @@ export default class GainmapLoader {
 
     const isJpg = isFile ? (fileOrUrl).type === 'image/jpeg' : fileOrUrl.toLowerCase().endsWith('.jpg');
     if (isJpg) {
-      return this.loadJpg(fileOrUrl, threeExports);
+      return GainmapLoader.loadJpg(fileOrUrl, threeExports);
     } else {
       // exr, hdr
-      return this.loadExrHdr(fileOrUrl, threeExports);
+      return GainmapLoader.loadExrHdr(fileOrUrl, threeExports);
     }
   }
 }
@@ -127,7 +127,7 @@ export class EXRCodec {
       image,
       // this will encode the full HDR range
       maxContentBoost: Math.max.apply(this, textureMax),
-      renderer: EXRCodec._renderer
+      renderer: EXRCodec._renderer,
     })
 
     // obtain the RAW RGBA SDR buffer and create an ImageData

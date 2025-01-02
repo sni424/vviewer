@@ -7,7 +7,7 @@ import {
   GLTFLoader,
 } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { KTX2Loader } from 'three/examples/jsm/loaders/KTX2Loader.js';
-import { Layer } from '../Constants.ts';
+import { ENV, Layer } from '../Constants.ts';
 import * as THREE from '../scripts/VTHREE.ts';
 import { getAtomValue, threeExportsAtom } from './atoms.ts';
 import GainmapLoader from './GainmapLoader.ts';
@@ -103,20 +103,10 @@ async function getGainmap(object: THREE.Object3D, gl?: THREE.WebGLRenderer) {
           ])
         ).filter(Boolean);
 
-        if (jpg.length > 0) {
-          return VTextureLoader.load(jpg[0] as File, { gl }).then(texture => {
-            mat.lightMap = texture;
+        const imageUrl =
+          jpg.length > 0 ? (jpg[0] as File) : encodeURI(ENV.base + cacheKey);
 
-            if (mat.vUserData.gainMapIntensity !== undefined) {
-              mat.lightMapIntensity = mat.vUserData.gainMapIntensity;
-            }
-            mat.needsUpdate = true;
-          });
-        }
-
-        const url = import.meta.env.VITE_MODELS_URL + cacheKey;
-
-        return VTextureLoader.load(encodeURI(url), { gl }).then(texture => {
+        return VTextureLoader.load(imageUrl, { gl }).then(texture => {
           mat.lightMap = texture;
 
           if (mat.vUserData.gainMapIntensity !== undefined) {
