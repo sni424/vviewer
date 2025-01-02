@@ -8,7 +8,7 @@ import pako from 'pako';
 import { TransformControls } from 'three-stdlib';
 import { OrbitControls, RGBELoader } from 'three/examples/jsm/Addons.js';
 import { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { Layer } from '../Constants';
+import { ENV, Layer } from '../Constants';
 import { FileInfo, MoveActionOptions, MoveActionType, View } from '../types.ts';
 import {
   BenchMark,
@@ -248,10 +248,10 @@ export const loadLatest = async ({
   threeExports: RootState;
   addBenchmark?: (key: keyof BenchMark, value?: number) => void;
 }) => {
-  const addBenchmark = _addBenchmark ?? (() => { });
+  const addBenchmark = _addBenchmark ?? (() => {});
 
-  const latestHashUrl = import.meta.env.VITE_LATEST_HASH;
-  const latestUrl = import.meta.env.VITE_LATEST;
+  const latestHashUrl = ENV.latestHash;
+  const latestUrl = ENV.latest;
   if (!latestUrl || !latestHashUrl) {
     alert('.env에 환경변수를 설정해주세요, latestUrl latestHashUrl');
     return;
@@ -643,7 +643,7 @@ const handleLinearMove = (
         //카메라 이동
         camera.position.lerpVectors(startPosition, target, progress);
       },
-      onComplete: () => { },
+      onComplete: () => {},
     },
   );
   // 카메라 회전
@@ -933,7 +933,7 @@ export const uploadGainmap = async (object: THREE.Object3D) => {
           const mats = Object.values(gainmapHashes[hash]);
           afterMats.push(...mats);
         } else {
-          return get(hash.replace(".exr", ".jpg")).then(file => {
+          return get(hash.replace('.exr', '.jpg')).then(file => {
             if (file) {
               files.push(file);
               const mats = Object.values(gainmapHashes[hash]);
