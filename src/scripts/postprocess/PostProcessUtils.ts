@@ -1,5 +1,6 @@
 import { LookupTexture, LUT3dlLoader, LUTCubeLoader } from 'postprocessing';
 import { Simulate } from 'react-dom/test-utils';
+import { ENV } from '../../Constants.ts';
 import * as THREE from '../../scripts/VTHREE.ts';
 import load = Simulate.load;
 
@@ -49,7 +50,7 @@ export async function getLUTTexture(
   key: LUTPresets,
 ): Promise<THREE.Texture | null> {
   const uri = luts.get(key);
-  const lutURL = import.meta.env.VITE_LUT_URL;
+  const lutURL = ENV.lut;
   if (!lutURL) {
     alert('.env에 환경변수를 설정해주세요, VITE_LUT_URL');
     return null;

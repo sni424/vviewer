@@ -59,4 +59,12 @@ export const roomColor = (index: number) => {
 
 export const roomColorString = (index: number) => {
   return '#' + roomColor(index).toString(16).padStart(6, '0');
-}
+};
+
+const base: string = import.meta.env.VITE_MODELS_URL as string;
+export const ENV = {
+  latest: base + 'latest.glb',
+  latestHash: base + 'latest-hash',
+  fileList: base + 'uploads.json',
+  lut: base.replace('models/', '') + 'static/lut',
+};

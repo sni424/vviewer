@@ -1,10 +1,11 @@
 import { useAtom } from 'jotai';
 import { useEffect } from 'react';
+import { ENV } from '../Constants.ts';
 import { FileInfo } from '../types';
 import { filelistAtom } from './atoms';
 
 const _fetchFunction = async () => {
-  const filelistUrl = import.meta.env.VITE_FILELIST_URL;
+  const filelistUrl = ENV.fileList;
   if (!filelistUrl) {
     alert('.env에 환경변수를 설정해주세요');
     return;
