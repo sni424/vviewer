@@ -390,7 +390,7 @@ const GeneralButtons = () => {
                     type: 'model/gltf-binary',
                   });
                   const fd = new FormData();
-                  fd.append('file', file);
+                  fd.append('files', file);
 
                   // latest 캐싱을 위한 hash
                   const uploadHash = objectHash(new Date().toISOString());
@@ -403,7 +403,7 @@ const GeneralButtons = () => {
                     'latest-hash',
                   );
                   const hashFd = new FormData();
-                  hashFd.append('file', hashFile);
+                  hashFd.append('files', hashFile);
                   console.log('before Upload');
                   Promise.all([
                     fetch(uploadUrl, {
