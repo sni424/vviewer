@@ -223,7 +223,7 @@ export const globalGlAtom = atom<GLProps>({
 export const ProbeAtom = atom<ReflectionProbe[]>([]);
 export const treeScrollToAtom = atom<string | null>(null);
 
-export const Tabs = ['scene', 'tree', 'probe', 'hotspot', 'room'] as const;
+export const Tabs = ['scene', 'tree', 'probe', 'room', "tour", 'hotspot',] as const;
 export type Tab = (typeof Tabs)[number];
 export const panelTabAtom = atom<Tab>('scene');
 
@@ -388,3 +388,7 @@ export type RoomCreateOption = Room & {
 export const roomAtom = atom<RoomCreateOption[]>([]);
 
 export const insideRoomAtom = atom<Room>();
+
+export type Hotspot = {};
+export type HotspotCreateOption = Hotspot & {};
+export const hotspotAtom = atom<HotspotCreateOption[]>([]);
