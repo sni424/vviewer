@@ -10,6 +10,7 @@ import {
   materialSelectedAtom,
   orbitSettingAtom,
   panelTabAtom,
+  roomAtom,
   selectedAtom,
   setAtomValue,
   sourceAtom,
@@ -33,6 +34,7 @@ import UnifiedCameraControls from '../camera/UnifiedCameraControls';
 import MyEnvironment from './EnvironmentMap';
 import Grid from './Grid';
 import PostProcess from './PostProcess';
+import Rooms from './Rooms';
 import SelectBox from './SelectBox';
 import { useSetThreeExports } from './Viewport';
 
@@ -146,6 +148,7 @@ function Renderer() {
       <MyEnvironment></MyEnvironment>
       <SelectBox></SelectBox>
       <PostProcess></PostProcess>
+      <Rooms></Rooms>
       <MainGrid></MainGrid>
     </>
   );
@@ -157,6 +160,10 @@ const useMouseHandler = () => {
   const setScrollTo = useSetAtom(treeScrollToAtom);
   const lastClickRef = useRef<number>(0);
   const mouseDownPosition = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+  const isRoomCreating = useAtomValue(roomAtom).some(room =>
+    Boolean(room.creating),
+  );
+
   // 드래그로 간주할 최소 거리
   const dragThreshold = 5;
 
@@ -165,12 +172,20 @@ const useMouseHandler = () => {
   }
 
   const handleMouseDown = (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
+    if (isRoomCreating) {
+      return;
+    }
+
     lastClickRef.current = Date.now();
     // 마우스 다운 시 위치 저장
     mouseDownPosition.current = { x: e.clientX, y: e.clientY };
   };
 
   const handleMouseUp = (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
+    if (isRoomCreating) {
+      return;
+    }
+
     if (!threeExports) {
       return;
     }

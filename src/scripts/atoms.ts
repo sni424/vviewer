@@ -223,7 +223,7 @@ export const globalGlAtom = atom<GLProps>({
 export const ProbeAtom = atom<ReflectionProbe[]>([]);
 export const treeScrollToAtom = atom<string | null>(null);
 
-export const Tabs = ['scene', 'tree', 'probe', 'hotspot'] as const;
+export const Tabs = ['scene', 'tree', 'probe', 'hotspot', 'room'] as const;
 export type Tab = (typeof Tabs)[number];
 export const panelTabAtom = atom<Tab>('scene');
 
@@ -374,3 +374,14 @@ export const forceRerenderPostProcessAtom = atom<number>(0);
 export const forceRerenderPostProcess = () => {
   setAtomValue(forceRerenderPostProcessAtom, prev => prev + 1);
 }
+
+export type Room = {
+  name: string;
+  border: [number, number][]; // [x, z]
+}
+export type RoomCreateOption = Room & {
+  show?: boolean;
+  creating?: boolean; // 생성중이면 좌표값의 배열
+  color?: number;
+};
+export const roomAtom = atom<RoomCreateOption[]>([]);

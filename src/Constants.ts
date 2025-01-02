@@ -42,7 +42,21 @@ export enum Layer {
   GizmoHelper = 11,
   Selected = 12,
   ReflectionBox = 13,
+  Room = 14,
 }
 
 export const AOMAP_INTENSITY_MAX = 2 as const;
 export const LIGHTMAP_INTENSITY_MAX = 100 as const;
+
+export const ROOM_COLORS = [
+  0xcc0033, 0x33cc00, 0x3333cc, 0x773300, 0x00ccf3, 0x8844aa, 0xaa8844,
+  0xaa4444, 0x44aa44, 0x3399aa, 0x0033aa,
+];
+
+export const roomColor = (index: number) => {
+  return ROOM_COLORS[index % ROOM_COLORS.length];
+};
+
+export const roomColorString = (index: number) => {
+  return '#' + roomColor(index).toString(16).padStart(6, '0');
+}

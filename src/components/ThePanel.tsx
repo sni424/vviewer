@@ -5,17 +5,19 @@ import SceneInfo from '../components/SceneInfo';
 import SceneTree from '../components/SceneTree';
 import { loadHistoryAtom, panelTabAtom, Tab, Tabs } from '../scripts/atoms';
 import ProbeInfo from './ProbeInfo';
+import RoomPanel from './RoomPanel';
+
+const tabMap: { [key in Tab]: React.ReactNode } = {
+  scene: <SceneInfo />,
+  tree: <SceneTree></SceneTree>,
+  probe: <ProbeInfo></ProbeInfo>,
+  hotspot: <HotSpotPanel></HotSpotPanel>,
+  room: <RoomPanel></RoomPanel>,
+} as const;
 
 const ThePanel = () => {
   const loadHistory = useAtomValue(loadHistoryAtom);
   const [tab, setTab] = useAtom(panelTabAtom);
-
-  const tabMap: { [key in Tab]: React.ReactNode } = {
-    scene: <SceneInfo />,
-    tree: <SceneTree></SceneTree>,
-    probe: <ProbeInfo></ProbeInfo>,
-    hotspot: <HotSpotPanel></HotSpotPanel>,
-  };
 
   return (
     <div
