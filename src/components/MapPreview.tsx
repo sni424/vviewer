@@ -119,8 +119,6 @@ const MapPreview: React.FC<MapPreviewProps> = ({
 
   if (cannotDraw) {
     if (texture) {
-      console.log(texture.vUserData.gainMap);
-
       return (
         <div style={{ fontSize: 11, color: '#555' }}>
           표시불가(HDR)

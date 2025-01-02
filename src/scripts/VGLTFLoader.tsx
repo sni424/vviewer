@@ -91,7 +91,10 @@ async function getGainmap(object: THREE.Object3D, gl?: THREE.WebGLRenderer) {
     const mesh = object as THREE.Mesh;
     const mat = mesh.material as THREE.MeshStandardMaterial;
     if (mat) {
-      const cacheKey = mat.vUserData.gainMap as string | undefined;
+      const cacheKey = (mat.vUserData.gainMap as string | undefined)?.replace(
+        '.exr',
+        '.jpg',
+      );
       if (cacheKey) {
         const jpg = (
           await Promise.all([
@@ -111,12 +114,9 @@ async function getGainmap(object: THREE.Object3D, gl?: THREE.WebGLRenderer) {
           });
         }
 
-        const url = cacheKey;
-        if (!url.startsWith('http')) {
-          console.error('Invalid URL:', url);
-          return;
-        }
-        return VTextureLoader.load(url, { gl }).then(texture => {
+        const url = import.meta.env.VITE_MODELS_URL + cacheKey;
+
+        return VTextureLoader.load(encodeURI(url), { gl }).then(texture => {
           mat.lightMap = texture;
 
           if (mat.vUserData.gainMapIntensity !== undefined) {
