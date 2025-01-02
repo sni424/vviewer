@@ -75,3 +75,24 @@ export const HotspotIcon = {
   plusBlue: base + "Frame+26998.png",
   circleGray: base + "Frame+162727.png",
 };
+
+
+
+export const hotspotImage = (image?: string) => {
+  if (image === undefined || image?.length === 0) {
+    return undefined;
+  }
+
+  // 사용 전에 이미지를 S3에 업로드할 것
+  return `${base}${image}.png`;
+}
+export const hotspotImages = {
+  ac: hotspotImage("ac")!,
+  cooktop: hotspotImage("cooktop")!,
+  dishwasher: hotspotImage("dishwasher")!,
+  fridge: hotspotImage("fridge")!,
+  laundary: hotspotImage("laundary")!,
+  oven: hotspotImage("oven")!,
+  ventilator: hotspotImage("ventilator")!,
+
+};

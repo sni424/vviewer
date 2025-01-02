@@ -4,9 +4,11 @@ import { roomColorString } from '../Constants';
 import {
   cameraMatrixAtom,
   cameraSettingAtom,
+  getAtomValue,
   insideRoomAtom,
   lastCameraInfoAtom,
   orbitSettingAtom,
+  panelTabAtom,
   threeExportsAtom,
 } from '../scripts/atoms';
 import { Quaternion, THREE, Vector3 } from '../scripts/VTHREE';
@@ -27,6 +29,10 @@ const CameraPanel = () => {
   useEffect(() => {
     // space 입력 시 카메라 상승
     const handleKeydown = (e: KeyboardEvent) => {
+      if (getAtomValue(panelTabAtom) === 'hotspot') {
+        return;
+      }
+
       // 카메라 y값 상승
       const velocity = 0.1;
       if (e.key === ' ') {

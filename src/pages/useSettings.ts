@@ -4,6 +4,7 @@ import {
   cameraSettingAtom,
   envAtom,
   getAtomValue,
+  hotspotAtom,
   orbitSettingAtom,
   postprocessAtoms,
   roomAtom,
@@ -20,6 +21,7 @@ export const getSettings = () => {
   const orbitSetting = getAtomValue(orbitSettingAtom);
   const gridSetting = getAtomValue(viewGridAtom);
   const rooms = getAtomValue(roomAtom);
+  const hotspots = getAtomValue(hotspotAtom);
   const env = getAtomValue(envAtom);
 
   // 라이트맵 이미지 대비는 임시제외
@@ -45,6 +47,7 @@ export const getSettings = () => {
     gridSetting,
     env,
     rooms,
+    hotspots,
     ...postProcessOptions,
     // lmContrast,
   };
@@ -67,6 +70,9 @@ export const loadSettings = () => {
       }
       if (undefined !== value.rooms) {
         setAtomValue(roomAtom, value.rooms);
+      }
+      if (undefined !== value.hotspots) {
+        setAtomValue(hotspotAtom, value.hotspots);
       }
 
       setAtomValue(postprocessAtoms, prev => {

@@ -395,10 +395,12 @@ export type Hotspot = {
   rooms: number[]; // 방에 들어갔을 때 표시, 방 인덱스
   position?: [number, number, number]; // x, y, z
   content: {
-    title?: string;
-    header?: string;
-    footer?: string;
-    image?: string; // url
+    title: string;
+    header: string; // 모델
+    headerDetail: string; // 품번
+    footer: string[]; // array갯수만큼 그리드로 나눔
+    image: string; // url
+    price: string;
   };
 };
 export type HotspotCreateOption = Hotspot & {

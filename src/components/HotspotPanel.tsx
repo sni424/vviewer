@@ -1,10 +1,12 @@
 import { useAtom, useAtomValue } from 'jotai';
+import { useState } from 'react';
 import { hotspotAtom, roomAtom, threeExportsAtom } from '../scripts/atoms';
 
 function HotspotPanel() {
   const [hotspots, setHotspots] = useAtom(hotspotAtom);
   const rooms = useAtomValue(roomAtom);
   const threeExports = useAtomValue(threeExportsAtom);
+  const [writeContent, setWriteContent] = useState(false);
   const createHotspot = () => {
     setHotspots(prev => {
       const copied = [...prev];
@@ -12,7 +14,14 @@ function HotspotPanel() {
         name: '핫스팟',
         index: prev.length + 1,
         rooms: [],
-        content: {},
+        content: {
+          title: '제목',
+          header: '',
+          headerDetail: '',
+          image: '',
+          footer: [''],
+          price: '',
+        },
       });
       return copied;
     });
@@ -20,10 +29,13 @@ function HotspotPanel() {
 
   return (
     <div className="w-full h-full overflow-y-auto">
-      <ul>
+      <ul className="mb-4">
         {hotspots.map((hotspot, i) => {
           return (
-            <li className="p-2" key={`hotspot-list-${hotspot.index}`}>
+            <li
+              className="p-2 border-b-2 border-b-slate-600"
+              key={`hotspot-list-${hotspot.index}`}
+            >
               <div className="mb-1">
                 {i + 1}.{' '}
                 <input
@@ -37,8 +49,19 @@ function HotspotPanel() {
                     });
                   }}
                 />
+                <button
+                  onClick={() => {
+                    setHotspots(prev => {
+                      const copied = [...prev];
+                      copied.splice(i, 1);
+                      return copied;
+                    });
+                  }}
+                >
+                  삭제
+                </button>
               </div>
-              <div className="mb-1">
+              <div className="pl-3 mb-2">
                 <button
                   onClick={() => {
                     setHotspots(prev => {
@@ -132,8 +155,8 @@ function HotspotPanel() {
                   </div>
                 )}
               </div>
-              <div>
-                <div className="mb-1">
+              <div className="pl-3 ">
+                <div className="mb-2">
                   <button
                     onClick={() => {
                       setHotspots(prev => {
@@ -186,6 +209,107 @@ function HotspotPanel() {
                   })}
                 </select>
               </div>
+
+              <button
+                className="mt-3 ml-3 "
+                onClick={() => {
+                  setWriteContent(prev => !prev);
+                }}
+              >
+                {writeContent ? '내용 접기' : '내용 작성'}
+              </button>
+
+              {writeContent && (
+                <div className="pl-3 ">
+                  <label>제목</label>
+                  <input
+                    type="text"
+                    value={hotspot.content.title}
+                    onChange={e => {
+                      setHotspots(prev => {
+                        const copied = [...prev];
+                        copied[i].content.title = e.target.value;
+                        return copied;
+                      });
+                    }}
+                  />
+                  <br></br>
+                  <label>품명</label>
+                  <input
+                    type="text"
+                    value={hotspot.content.header}
+                    onChange={e => {
+                      setHotspots(prev => {
+                        const copied = [...prev];
+                        copied[i].content.header = e.target.value;
+                        return copied;
+                      });
+                    }}
+                  />
+                  <br></br>
+                  <label>품명 상세</label>
+                  <input
+                    type="text"
+                    value={hotspot.content.headerDetail}
+                    onChange={e => {
+                      setHotspots(prev => {
+                        const copied = [...prev];
+                        copied[i].content.headerDetail = e.target.value;
+                        return copied;
+                      });
+                    }}
+                  />
+                  <br></br>
+                  <label>이미지</label>
+                  <input
+                    type="text"
+                    value={hotspot.content.image}
+                    onChange={e => {
+                      setHotspots(prev => {
+                        const copied = [...prev];
+                        copied[i].content.image = e.target.value;
+                        return copied;
+                      });
+                    }}
+                  />
+                  <br></br>
+                  <label>바디1</label>
+                  <textarea
+                    value={hotspot.content.footer[0] ?? ''}
+                    onChange={e => {
+                      setHotspots(prev => {
+                        const copied = [...prev];
+                        copied[i].content.footer[0] = e.target.value;
+                        return copied;
+                      });
+                    }}
+                  />
+                  <br></br>
+                  <label>바디2</label>
+                  <textarea
+                    value={hotspot.content.footer[1] ?? ''}
+                    onChange={e => {
+                      setHotspots(prev => {
+                        const copied = [...prev];
+                        copied[i].content.footer[1] = e.target.value;
+                        return copied;
+                      });
+                    }}
+                  />
+                  <br></br>
+                  <label>가격</label>
+                  <textarea
+                    value={hotspot.content.price ?? ''}
+                    onChange={e => {
+                      setHotspots(prev => {
+                        const copied = [...prev];
+                        copied[i].content.price = e.target.value;
+                        return copied;
+                      });
+                    }}
+                  />
+                </div>
+              )}
             </li>
           );
         })}

@@ -5,10 +5,12 @@ import { Layer } from '../../Constants';
 import { getSettings } from '../../pages/useSettings';
 import {
   cameraMatrixAtom,
+  getAtomValue,
   globalGlAtom,
   hotspotAtom,
   loadHistoryAtom,
   materialSelectedAtom,
+  modalAtom,
   orbitSettingAtom,
   panelTabAtom,
   roomAtom,
@@ -19,6 +21,7 @@ import {
   threeExportsAtom,
   toggleGrid,
   treeScrollToAtom,
+  useModal,
   viewGridAtom,
 } from '../../scripts/atoms';
 import {
@@ -33,6 +36,7 @@ import VTextureLoader from '../../scripts/VTextureLoader';
 import { THREE } from '../../scripts/VTHREE';
 import { View } from '../../types';
 import UnifiedCameraControls from '../camera/UnifiedCameraControls';
+import HotspotDialog from '../HotspotDialog';
 import MyEnvironment from './EnvironmentMap';
 import Grid from './Grid';
 import Hotspot from './Hotspot';
@@ -170,6 +174,7 @@ const useMouseHandler = () => {
   const isSettingHotspot = useAtomValue(hotspotAtom).some(hotspot =>
     Boolean(hotspot.positionSetting),
   );
+  const { openModal, closeModal } = useModal();
 
   // 드래그로 간주할 최소 거리
   const dragThreshold = 5;
@@ -214,8 +219,11 @@ const useMouseHandler = () => {
     // 모델 인터섹트 이전에 핫스팟 인터섹트 확인
     const hotspotIntersects = getIntersectLayer(e, threeExports, Layer.Hotspot);
     if (hotspotIntersects.length > 0) {
-      // console.log('hotspotIntersects:', hotspotIntersects);
-      // console.log(hotspotIntersects[0].object.vUserData.hotspotIndex);
+      const hotspotIndex = hotspotIntersects[0].object.vUserData.hotspotIndex;
+      console.log({ hotspotIndex });
+      if (typeof hotspotIndex === 'number') {
+        openModal(<HotspotDialog index={hotspotIndex} />);
+      }
       return;
     }
 
@@ -298,8 +306,14 @@ const useKeyHandler = () => {
         setSelected([]);
         setMaterialSelected(null);
         setScrollTo(null);
+        setAtomValue(modalAtom, null);
         return;
       }
+
+      if (getAtomValue(panelTabAtom) === 'hotspot') {
+        return;
+      }
+
       if (e.ctrlKey && e.key.toLowerCase() === 'a') {
         e.preventDefault();
         const everyObject: string[] = [];

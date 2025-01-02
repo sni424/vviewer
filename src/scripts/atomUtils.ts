@@ -69,3 +69,4 @@ export const cameraInRoom = (camera?: THREE.Matrix4) => {
   }
   return undefined;
 };
+
