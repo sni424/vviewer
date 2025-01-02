@@ -114,7 +114,7 @@ function Upload() {
     setIsDragging(false);
 
     if (event.dataTransfer.files && event.dataTransfer.files.length > 0) {
-      const acceptedExtensions = ['.gltf', '.glb', '.hdr', '.exr'];
+      const acceptedExtensions = ['.gltf', '.glb', '.hdr', '.exr', '.png'];
       const files = Array.from(event.dataTransfer.files);
 
       // Filter files by .gltf and .glb extensions

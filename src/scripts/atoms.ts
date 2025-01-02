@@ -389,6 +389,19 @@ export const roomAtom = atom<RoomCreateOption[]>([]);
 
 export const insideRoomAtom = atom<Room>();
 
-export type Hotspot = {};
-export type HotspotCreateOption = Hotspot & {};
+export type Hotspot = {
+  index: number;
+  name: string;
+  rooms: number[]; // 방에 들어갔을 때 표시, 방 인덱스
+  position?: [number, number, number]; // x, y, z
+  content: {
+    title?: string;
+    header?: string;
+    footer?: string;
+    image?: string; // url
+  };
+};
+export type HotspotCreateOption = Hotspot & {
+  positionSetting?: boolean;
+};
 export const hotspotAtom = atom<HotspotCreateOption[]>([]);

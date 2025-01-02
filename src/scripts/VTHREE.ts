@@ -27,6 +27,7 @@ export interface ThreeUserData {
   probeMeshType?: 'box' | 'controls' | 'sphere' | 'helper' | 'plane-controls';
   probeControlDirection?: PlaneControlDirections;
   probes?: ReflectionProbeJSON[];
+  hotspotIndex?: number;
 }
 
 declare module 'three' {
@@ -491,3 +492,4 @@ window.getThree = (view: View = View.Shared) => {
 // THREE.Material.prototype.onBeforeCompile 오버라이딩
 import '../scripts/postprocess/MaterialShader';
 import { PlaneControlDirections } from './CubePlaneControls.ts';
+

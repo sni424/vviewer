@@ -1,5 +1,4 @@
 import { ToneMappingMode } from 'postprocessing';
-import { ToneMappingResolutions } from './scripts/atoms.ts';
 
 export const EnvirontmentPresets = [
   'apartment',
@@ -20,7 +19,7 @@ export const __UNDEFINED__ = '__UNDEFINED__' as const;
 export const DEFAULT_COLOR_TEMPERATURE = 6500;
 
 export const DEFAULT_TONEMAPPING_VALUES: {
-  resolution: ToneMappingResolutions;
+  resolution: number;
   middleGrey: number;
   maxLuminance: number;
   averageLuminance: number;
@@ -43,6 +42,7 @@ export enum Layer {
   Selected = 12,
   ReflectionBox = 13,
   Room = 14,
+  Hotspot = 15,
 }
 
 export const AOMAP_INTENSITY_MAX = 2 as const;
@@ -67,4 +67,11 @@ export const ENV = {
   latestHash: base + 'latest-hash',
   fileList: base + 'uploads.json',
   lut: base.replace('models/', '') + 'static/lut',
+};
+
+export const HotspotIcon = {
+  gearBlue: base + 'Frame+26893.png',
+  gearBlack: base + "Frame+26997.png",
+  plusBlue: base + "Frame+26998.png",
+  circleGray: base + "Frame+162727.png",
 };

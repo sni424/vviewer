@@ -6,6 +6,7 @@ import { getSettings } from '../../pages/useSettings';
 import {
   cameraMatrixAtom,
   globalGlAtom,
+  hotspotAtom,
   loadHistoryAtom,
   materialSelectedAtom,
   orbitSettingAtom,
@@ -21,6 +22,7 @@ import {
   viewGridAtom,
 } from '../../scripts/atoms';
 import {
+  getIntersectLayer,
   getIntersects,
   loadScene,
   saveScene,
@@ -33,6 +35,7 @@ import { View } from '../../types';
 import UnifiedCameraControls from '../camera/UnifiedCameraControls';
 import MyEnvironment from './EnvironmentMap';
 import Grid from './Grid';
+import Hotspot from './Hotspot';
 import PostProcess from './PostProcess';
 import Rooms from './Rooms';
 import SelectBox from './SelectBox';
@@ -150,6 +153,7 @@ function Renderer() {
       <PostProcess></PostProcess>
       <Rooms></Rooms>
       <MainGrid></MainGrid>
+      <Hotspot></Hotspot>
     </>
   );
 }
@@ -162,6 +166,9 @@ const useMouseHandler = () => {
   const mouseDownPosition = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   const isRoomCreating = useAtomValue(roomAtom).some(room =>
     Boolean(room.creating),
+  );
+  const isSettingHotspot = useAtomValue(hotspotAtom).some(hotspot =>
+    Boolean(hotspot.positionSetting),
   );
 
   // 드래그로 간주할 최소 거리
@@ -203,10 +210,32 @@ const useMouseHandler = () => {
       return;
     }
 
-    const { intersects, mesh } = getIntersects(e, threeExports);
+    // debugger;
+    // 모델 인터섹트 이전에 핫스팟 인터섹트 확인
+    const hotspotIntersects = getIntersectLayer(e, threeExports, Layer.Hotspot);
+    if (hotspotIntersects.length > 0) {
+      // console.log('hotspotIntersects:', hotspotIntersects);
+      // console.log(hotspotIntersects[0].object.vUserData.hotspotIndex);
+      return;
+    }
 
+    const { intersects, mesh } = getIntersects(e, threeExports);
     if (intersects.length > 0) {
       // console.log(intersects[0].object.uuid);
+      if (isSettingHotspot) {
+        const position = intersects[0].point;
+        setAtomValue(hotspotAtom, prev => {
+          if (!prev.some(hotspot => hotspot.positionSetting)) {
+            return prev;
+          }
+          const copied = [...prev];
+          const index = copied.findIndex(hotspot => hotspot.positionSetting);
+          copied[index].positionSetting = false;
+          copied[index].position = [position.x, position.y, position.z];
+          return copied;
+        });
+        return;
+      }
 
       if (e.ctrlKey) {
         setSelected(selected => {

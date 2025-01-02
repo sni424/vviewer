@@ -80,11 +80,36 @@ export const toNthDigit = (num: number, digit: number): string => {
   return `${isNegative ? '-' : ''}${integerPart.length === 0 ? '0' : integerPart}.${decimalPart}`;
 };
 
+export const getIntersectLayer = (
+  e: React.MouseEvent,
+  threeExports: RootState | null,
+  layer: Layer,
+  raycaster: THREE.Raycaster = new THREE.Raycaster(),
+) => {
+  if (!threeExports) {
+    console.error(
+      'Three가 셋업되지 않은 상태에서 Intersect가 불림 @useEditorInputEvents',
+    );
+    return []
+  }
+  const { scene, camera } = threeExports;
+  const mouse = new THREE.Vector2();
+  const rect = e.currentTarget.getBoundingClientRect();
+  const xRatio = (e.clientX - rect.left) / rect.width;
+  const yRatio = (e.clientY - rect.top) / rect.height;
+
+  mouse.x = xRatio * 2 - 1;
+  mouse.y = -yRatio * 2 + 1;
+  raycaster.setFromCamera(mouse, camera);
+  raycaster.layers.set(layer);
+
+  return raycaster.intersectObjects(scene.children, true);
+};
+
 export const getIntersects = (
   e: React.MouseEvent,
   threeExports: RootState | null,
   raycaster: THREE.Raycaster = new THREE.Raycaster(),
-  filterUserdataIgnoreRaycast = true, // Object3D.vUserData.ignoreRayCast가 true인 아이들은 무시
 ) => {
   if (!threeExports) {
     console.error(
@@ -107,10 +132,7 @@ export const getIntersects = (
   mouse.y = -yRatio * 2 + 1;
   raycaster.setFromCamera(mouse, camera);
 
-  const dstObjects = filterUserdataIgnoreRaycast
-    ? scene.children.filter(obj => !obj.getUserData().ignoreRaycast)
-    : scene.children;
-  const defaultFilteredObjects = dstObjects.filter(
+  const defaultFilteredObjects = scene.children.filter(
     obj => !obj.isTransformControl() && !obj.isBoxHelper(),
   );
   const intersects = (
@@ -248,7 +270,7 @@ export const loadLatest = async ({
   threeExports: RootState;
   addBenchmark?: (key: keyof BenchMark, value?: number) => void;
 }) => {
-  const addBenchmark = _addBenchmark ?? (() => {});
+  const addBenchmark = _addBenchmark ?? (() => { });
 
   const latestHashUrl = ENV.latestHash;
   const latestUrl = ENV.latest;
@@ -643,7 +665,7 @@ const handleLinearMove = (
         //카메라 이동
         camera.position.lerpVectors(startPosition, target, progress);
       },
-      onComplete: () => {},
+      onComplete: () => { },
     },
   );
   // 카메라 회전
