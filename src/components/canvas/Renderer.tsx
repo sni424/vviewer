@@ -93,6 +93,7 @@ const useLoadModel = ({
 }) => {
   const sources = useAtomValue(sourceAtom);
   const setLoadHistoryAtom = useSetAtom(loadHistoryAtom);
+  const loaderRef = useRef(new VGLTFLoader());
 
   useEffect(() => {
     sources.forEach(source => {
@@ -110,7 +111,7 @@ const useLoadModel = ({
         return newHistory;
       });
 
-      new VGLTFLoader().loadAsync(url).then(async gltf => {
+      loaderRef.current.loadAsync(url).then(async gltf => {
         if (map) {
           const texture = await VTextureLoader.loadAsync(map, { gl });
 

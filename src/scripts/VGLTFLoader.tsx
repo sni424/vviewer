@@ -17,23 +17,35 @@ export default class VGLTFLoader extends GLTFLoader {
   dispose() {
     GainmapLoader.dispose();
   }
+  static dracoLoader: DRACOLoader;
+  static ktx2Loader: KTX2Loader;
+  static meshOptDecoder = MeshoptDecoder;
+  static instance = new VGLTFLoader();
+
   constructor(manager?: THREE.LoadingManager) {
     super(manager);
 
     //DRACO
-    const dracoLoader = new DRACOLoader();
-    dracoLoader.setDecoderPath('https://www.gstatic.com/draco/v1/decoders/');
-    this.setDRACOLoader(dracoLoader);
+    if (!VGLTFLoader.dracoLoader) {
+      VGLTFLoader.dracoLoader = new DRACOLoader();
+      VGLTFLoader.dracoLoader.setDecoderPath(
+        'https://www.gstatic.com/draco/v1/decoders/',
+      );
+    }
+
+    this.setDRACOLoader(VGLTFLoader.dracoLoader);
 
     //KTX2
-    const ktx2loader = new KTX2Loader();
-    ktx2loader.setTranscoderPath(
-      'https://unpkg.com/three@0.168.0/examples/jsm/libs/basis/',
-    );
-    this.setKTX2Loader(ktx2loader);
+    if (!VGLTFLoader.ktx2Loader) {
+      VGLTFLoader.ktx2Loader = new KTX2Loader();
+      VGLTFLoader.ktx2Loader.setTranscoderPath(
+        'https://unpkg.com/three@0.168.0/examples/jsm/libs/basis/',
+      );
+    }
+    this.setKTX2Loader(VGLTFLoader.ktx2Loader);
 
     // MeshOptimizer
-    this.setMeshoptDecoder(MeshoptDecoder);
+    this.setMeshoptDecoder(VGLTFLoader.meshOptDecoder);
     return this;
   }
 

@@ -203,7 +203,7 @@ export const loadScene = async (): Promise<THREE.Object3D | undefined> => {
         }
         // const loader = new THREE.ObjectLoader();
         // const scene = loader.parse(json);
-        const loader = new VGLTFLoader();
+        const loader = VGLTFLoader.instance;
         const url = URL.createObjectURL(blob);
         const gltf = await loader.loadAsync(url);
         resolve(gltf.scene);
@@ -313,7 +313,7 @@ export const loadLatest = async ({
       console.log('getLatest: ', blob);
       url = URL.createObjectURL(blob);
     }
-    return await new VGLTFLoader().loadAsync(url);
+    return VGLTFLoader.instance.loadAsync(url);
   };
 
   return loadModel()
