@@ -28,11 +28,13 @@ import {
 import { defaultSettings, loadSettings } from '../pages/useSettings.ts';
 import {
   cameraMatrixAtom,
+  ProbeAtom,
   selectedAtom,
   threeExportsAtom,
   useEnvParams,
   useModal,
 } from '../scripts/atoms';
+import ReflectionProbe from '../scripts/ReflectionProbe.ts';
 import useFilelist from '../scripts/useFilelist';
 import useStats, { StatPerSecond, VStats } from '../scripts/useStats.ts';
 import VGLTFExporter from '../scripts/VGLTFExporter.ts';
@@ -160,6 +162,7 @@ const GeneralButtons = () => {
   const { openModal, closeModal } = useModal();
   const navigate = useNavigate();
   const [statsOn, setStatsOn] = useState(false);
+  const [probes, setProbes] = useAtom<ReflectionProbe[]>(ProbeAtom);
 
   const handleResetSettings = async () => {
     await defaultSettings();
@@ -178,7 +181,58 @@ const GeneralButtons = () => {
     return null;
   }
 
-  const { scene } = threeExports;
+  const { scene, gl, camera } = threeExports;
+
+  // Scene Export 전처리
+  function onBeforeSceneExport(): void {
+    // 프로브 정보 Scene 에 담기
+    scene.vUserData.probes = probes.map(probe => probe.toJSON());
+  }
+
+  // Scene Export 후처리
+  function onAfterSceneExport(): void {
+    // userData 에 들어간 probes 정보 삭제
+    delete scene.vUserData.probes;
+  }
+
+  // Scene Load 전처리
+  function onBeforeSceneLoad() {}
+
+  // Scene Load 후처리
+  function onAfterSceneLoad(loadedScene: THREE.Object3D) {
+    checkProbeJson(loadedScene);
+  }
+
+  // Scene Load 시 ReflectionProbe Handle
+  function checkProbeJson(loadedScene: THREE.Object3D) {
+    const probeJsons = loadedScene.vUserData.probes;
+    if (probeJsons) {
+      probeJsons.forEach(probeJson => {
+        const newProbe = new ReflectionProbe(gl, scene, camera).fromJSON(
+          probeJson,
+        );
+        for (const probe of probes) {
+          // 프로브가 완전히 겹쳤을 때 => 컨트롤이 오버랩 돼서 분리가 안됨
+          const newProbeCenter = newProbe.getCenter();
+          if (probe.getCenter().equals(newProbeCenter)) {
+            newProbe.setCenter(
+              newProbe.getCenter().add(new THREE.Vector3(0.5, 0, 0.5)),
+            );
+            newProbe.updateBoxMesh();
+          }
+          // ID 겹쳤을 때 => 동일 JSON 을 여러 번 불러오는 경우
+          if (newProbe.getId() === probe.getId()) {
+            newProbe.createNewId();
+          }
+        }
+        newProbe.addToScene();
+        newProbe.updateCameraPosition(newProbe.getCenter(), true);
+        setProbes(pre => {
+          return [...pre, newProbe];
+        });
+      });
+    }
+  }
 
   return (
     <section
@@ -207,6 +261,7 @@ const GeneralButtons = () => {
         style={{ fontSize: 10 }}
         disabled={scene.children.length === 0}
         onClick={() => {
+          onBeforeSceneExport();
           new VGLTFExporter()
             .parseAsync(threeExports.scene, { binary: true })
             .then(result => {
@@ -220,6 +275,7 @@ const GeneralButtons = () => {
                 const output = JSON.stringify(result, null, 2);
                 saveString(output, `scene-${new Date().toISOString()}.gltf`);
               }
+              onAfterSceneExport();
             })
             .catch(err => {
               console.log('GLTFExporter ERROR : ', err);
@@ -256,11 +312,15 @@ const GeneralButtons = () => {
       <button
         style={{ fontSize: 10 }}
         onClick={() => {
+          onBeforeSceneExport();
           saveScene(scene)
             .then(() => {
               get('savedScene').then(val => {
                 if (val) {
                   setHasSaved(true);
+                  // 저장 후 삭제
+                  onAfterSceneExport();
+                  alert('저장되었습니다.');
                 } else {
                   setHasSaved(false);
                   alert('크아악 저장하지 못했습니다.');
@@ -278,10 +338,14 @@ const GeneralButtons = () => {
       <button
         style={{ fontSize: 10 }}
         onClick={() => {
+          onBeforeSceneLoad();
           loadScene()
             .then(loaded => {
               if (loaded) {
+                // Scene 추가
                 scene.add(loaded);
+                // ReflectionProbe 로드
+                onAfterSceneLoad(loaded);
               }
             })
             .catch(() => {
@@ -312,6 +376,7 @@ const GeneralButtons = () => {
             return;
           }
 
+          onBeforeSceneExport();
           uploadGainmap(threeExports.scene).then(() => {
             new VGLTFExporter()
               .parseAsync(threeExports.scene, { binary: true })
@@ -351,6 +416,7 @@ const GeneralButtons = () => {
                     }),
                   ]).then(() => {
                     alert('업로드 완료');
+                    onAfterSceneExport();
                   });
                 } else {
                   console.error(
