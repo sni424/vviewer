@@ -3,9 +3,12 @@ import { useAtomValue, useSetAtom } from 'jotai';
 import React, { useEffect, useRef, useState } from 'react';
 import {
   cameraSettingAtom,
+  insideRoomAtom,
   lastCameraInfoAtom,
   oribitControlAtom,
+  setAtomValue,
 } from '../../scripts/atoms';
+import { cameraInRoom } from '../../scripts/atomUtils';
 import { calculateTargetPosition } from '../../scripts/utils';
 import { THREE } from '../../scripts/VTHREE';
 
@@ -77,6 +80,9 @@ const CameraManager: React.FC<UnifiedCameraControlsProps> = ({
         }));
       }
     }
+
+    // 방 업데이트
+    setAtomValue(insideRoomAtom, cameraInRoom(camera.matrix));
   };
 
   // 마우스 드래그로 카메라 회전

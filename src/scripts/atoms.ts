@@ -376,6 +376,7 @@ export const forceRerenderPostProcess = () => {
 }
 
 export type Room = {
+  index: number;
   name: string;
   border: [number, number][]; // [x, z]
 }
@@ -385,3 +386,5 @@ export type RoomCreateOption = Room & {
   color?: number;
 };
 export const roomAtom = atom<RoomCreateOption[]>([]);
+
+export const insideRoomAtom = atom<Room>();

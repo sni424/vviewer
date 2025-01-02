@@ -1,8 +1,10 @@
 import { useAtom, useAtomValue } from 'jotai';
 import React, { useEffect, useState } from 'react';
+import { roomColorString } from '../Constants';
 import {
   cameraMatrixAtom,
   cameraSettingAtom,
+  insideRoomAtom,
   lastCameraInfoAtom,
   orbitSettingAtom,
   threeExportsAtom,
@@ -20,6 +22,8 @@ const CameraPanel = () => {
   const [lastCameraInfo, setLastCameraInfo] = useAtom(lastCameraInfoAtom);
   const posYRef = React.useRef(0);
   const lastSpace = React.useRef(0);
+  const insideRoom = useAtomValue(insideRoomAtom);
+
   useEffect(() => {
     // space 입력 시 카메라 상승
     const handleKeydown = (e: KeyboardEvent) => {
@@ -75,7 +79,7 @@ const CameraPanel = () => {
       ...pre,
       position: camera.position.clone(),
     }));
-  }, [cameraSetting.cameraY]); // cameraY 값만 감지
+  }, [cameraSetting.cameraY, threeExports]); // cameraY 값만 감지
 
   if (!threeExports) {
     return null; // early return
@@ -164,6 +168,23 @@ const CameraPanel = () => {
                 fontSize: '14px',
               }}
             >
+              <div className="text-sm">
+                방 :
+                {insideRoom ? (
+                  <span
+                    className="inline-block text-white"
+                    style={{
+                      backgroundColor: insideRoom
+                        ? roomColorString(insideRoom?.index)
+                        : undefined,
+                    }}
+                  >
+                    {insideRoom.name}
+                  </span>
+                ) : (
+                  '-'
+                )}
+              </div>
               <div>
                 <label>isoView</label>
                 <input

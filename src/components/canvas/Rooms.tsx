@@ -1,5 +1,5 @@
 import { useThree } from '@react-three/fiber';
-import { atom, useAtom, useAtomValue } from 'jotai';
+import { useAtom, useAtomValue } from 'jotai';
 import { Fragment, useRef } from 'react';
 import { Layer, roomColor } from '../../Constants';
 import { panelTabAtom, roomAtom, threeExportsAtom } from '../../scripts/atoms';
@@ -195,13 +195,10 @@ const Marker: React.FC<MarkerProps> = ({ position }) => {
   );
 };
 
-const markerPositionAtom = atom<[number, number, number][]>([]);
 const XZPlane: React.FC = () => {
   const [rooms, setRooms] = useAtom(roomAtom);
   const meshRef = useRef<Mesh>(null);
-  const { raycaster } = useThree();
-
-  // const [markerPosition, setMarkerPosition] = useAtom(markerPositionAtom);
+  const { camera, raycaster } = useThree();
 
   const isCreating = rooms.some(room => Boolean(room.creating));
   if (!isCreating) {
@@ -247,6 +244,8 @@ const XZPlane: React.FC = () => {
   );
 };
 
+function CameraProjected() {}
+
 function Rooms() {
   const threeExports = useAtomValue(threeExportsAtom);
   const [rooms, setRooms] = useAtom(roomAtom);
@@ -275,7 +274,7 @@ function Rooms() {
         }));
         const surface =
           points.length > 2
-            ? createClosedConcaveSurface(points, roomColor(i))
+            ? createClosedConcaveSurface(points, roomColor(room.index))
             : null;
         return (
           <Fragment key={`canvas-room-${i}`}>

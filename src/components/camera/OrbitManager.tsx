@@ -5,10 +5,13 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
   cameraMatrixAtom,
   cameraSettingAtom,
+  insideRoomAtom,
   lastCameraInfoAtom,
   orbitSettingAtom,
   oribitControlAtom,
+  setAtomValue,
 } from '../../scripts/atoms';
+import { cameraInRoom } from '../../scripts/atomUtils';
 import { calculateTargetPosition } from '../../scripts/utils';
 import { THREE } from '../../scripts/VTHREE';
 
@@ -93,6 +96,7 @@ const OrbitManager: React.FC = () => {
         if (!cameraSetting.isoView) {
           const matrix = e?.target.object.matrix.clone();
           setCameraAtom(matrix);
+          setAtomValue(insideRoomAtom, cameraInRoom(matrix));
         }
       }}
     />

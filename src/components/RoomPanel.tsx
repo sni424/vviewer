@@ -12,6 +12,7 @@ function RoomSetting() {
           name: '방',
           border: [],
           show: true,
+          index: prev.length + 1,
         },
       ];
     });
@@ -62,7 +63,7 @@ function RoomSetting() {
               {i + 1}.{' '}
               <span
                 className="w-3 inline-block h-3"
-                style={{ backgroundColor: roomColorString(i) }}
+                style={{ backgroundColor: roomColorString(room.index) }}
               ></span>
               이름 :
               <input

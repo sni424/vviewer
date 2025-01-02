@@ -88,7 +88,6 @@ export const ProbeComponent = ({ probe }: { probe: ReflectionProbe }) => {
   const setSelecteds = useSetAtom(selectedAtom);
   const [mesh, setMesh] = useState<THREE.Mesh>();
   const [imageData, setImageData] = useState<ImageData | null>(null);
-  const { openModal, closeModal } = useModal();
 
   useEffect(() => {
     setMesh(probe.getBoxMesh());
