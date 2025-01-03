@@ -1,6 +1,25 @@
 import { useAtom } from 'jotai';
 import { roomColorString } from '../Constants';
-import { roomAtom } from '../scripts/atoms';
+import { getAtomValue, roomAtom } from '../scripts/atoms';
+import { loadRooms, uploadJson } from '../scripts/atomUtils';
+
+const uploadRooms = async () => {
+  const hotspots = getAtomValue(roomAtom);
+
+  uploadJson('rooms.json', hotspots)
+    .then(res => res.json())
+    .then(res => {
+      if (res?.success === true) {
+        alert('업로드 완료');
+      } else {
+        throw res;
+      }
+    })
+    .catch(err => {
+      console.error(err);
+      alert('업로드 실패');
+    });
+};
 
 function RoomSetting() {
   const [rooms, setRooms] = useAtom(roomAtom);
@@ -158,7 +177,16 @@ function RoomSetting() {
           전체삭제
         </button>
         <button onClick={createRoom}>방 추가</button>
-        <button onClick={exportRooms}>방 내보내기</button>
+        <button onClick={uploadRooms}>업로드</button>
+        <button
+          onClick={() => {
+            loadRooms().then(res => {
+              setRooms(res);
+            });
+          }}
+        >
+          불러오기
+        </button>
       </div>
     </div>
   );

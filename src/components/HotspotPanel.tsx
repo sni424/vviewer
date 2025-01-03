@@ -1,6 +1,31 @@
 import { useAtom, useAtomValue } from 'jotai';
 import { useState } from 'react';
-import { hotspotAtom, roomAtom, threeExportsAtom } from '../scripts/atoms';
+import {
+  getAtomValue,
+  hotspotAtom,
+  roomAtom,
+  setAtomValue,
+  threeExportsAtom,
+} from '../scripts/atoms';
+import { loadHotspot, uploadJson } from '../scripts/atomUtils';
+
+const uploadHotspot = async () => {
+  const hotspots = getAtomValue(hotspotAtom);
+
+  uploadJson('hotspots.json', hotspots)
+    .then(res => res.json())
+    .then(res => {
+      if (res?.success === true) {
+        alert('업로드 완료');
+      } else {
+        throw res;
+      }
+    })
+    .catch(err => {
+      console.error(err);
+      alert('업로드 실패');
+    });
+};
 
 function HotspotPanel() {
   const [hotspots, setHotspots] = useAtom(hotspotAtom);
@@ -323,6 +348,26 @@ function HotspotPanel() {
           }}
         >
           전체삭제
+        </button>
+        <button onClick={uploadHotspot}>업로드</button>
+        <button
+          onClick={() => {
+            loadHotspot()
+              .then(hotspot => {
+                if (hotspot) {
+                  setAtomValue(hotspotAtom, hotspot);
+                  alert('핫스팟 로드완료');
+                } else {
+                  throw hotspot;
+                }
+              })
+              .catch(err => {
+                console.error(err);
+                alert('핫스팟 로드실패');
+              });
+          }}
+        >
+          불러오기
         </button>
       </div>
     </div>

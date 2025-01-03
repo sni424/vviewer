@@ -1,3 +1,4 @@
+import { ENV } from "../Constants";
 import { cameraMatrixAtom, getAtomValue, roomAtom } from "./atoms";
 import { THREE } from "./VTHREE";
 
@@ -70,3 +71,31 @@ export const cameraInRoom = (camera?: THREE.Matrix4) => {
   return undefined;
 };
 
+
+
+export const uploadJson = (name: string, value: Record<string, any>) => {
+  let jsonName: string = name;
+  if (!jsonName.endsWith('.json')) {
+    jsonName += '.json';
+  }
+  const json = typeof value === "string" ? value : JSON.stringify(value);
+
+  const fd = new FormData();
+  fd.append(
+    'files',
+    new Blob([json], { type: 'application/json' }),
+    jsonName,
+  );
+  return fetch(import.meta.env.VITE_UPLOAD_URL as string, {
+    method: 'POST',
+    body: fd,
+  });
+}
+
+export const loadHotspot = async () => {
+  return fetch(ENV.base + "hotspots.json").then(res => res.json());
+}
+
+export const loadRooms = async () => {
+  return fetch(ENV.base + "rooms.json").then(res => res.json());
+}
