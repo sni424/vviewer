@@ -9,12 +9,12 @@ import { THREE } from '../../scripts/VTHREE';
 function SingleHotspot({
   texture,
   camera,
-  position,
+  target,
   index: hotspotIndex,
 }: {
   texture: THREE.Texture;
   camera: THREE.Camera;
-  position?: [number, number, number];
+  target?: [number, number, number];
   index: number;
 }) {
   const meshRef = useRef<THREE.Mesh | null>(null);
@@ -25,6 +25,11 @@ function SingleHotspot({
     }
   });
 
+  if (hotspotIndex === 3) {
+    console.log('Pos:', target);
+    // console.log(position[0], position[1], position[2]);
+  }
+
   return (
     <mesh
       ref={meshRef}
@@ -32,7 +37,7 @@ function SingleHotspot({
       onClick={() => {
         alert('hi');
       }}
-      position={position}
+      position={target}
       userData={{ hotspotIndex }}
     >
       {/* Create a CircleGeometry */}

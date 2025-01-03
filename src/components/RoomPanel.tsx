@@ -39,6 +39,11 @@ function RoomSetting() {
 
   const creatingRoom = rooms.find(room => Boolean(room.creating));
 
+  const sorted = [...rooms];
+  sorted.sort((l, r) => {
+    return l.index - r.index;
+  });
+
   return (
     <div className="w-full h-full overflow-y-auto">
       <div className="p-2">
@@ -71,11 +76,11 @@ function RoomSetting() {
           전체숨기기
         </button>
       </div>
-      {rooms.map((room, i) => {
+      {sorted.map((room, i) => {
         return (
-          <div className="mb-1 p-1 box-border" key={`room-${i}`}>
+          <div className="mb-1 p-1 box-border" key={`room-panel-${room.index}`}>
             <div>
-              {i + 1}.{' '}
+              {room.index}.{' '}
               <span
                 className="w-3 inline-block h-3"
                 style={{ backgroundColor: roomColorString(room.index) }}

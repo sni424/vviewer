@@ -387,7 +387,7 @@ export type RoomCreateOption = Room & {
 };
 export const roomAtom = atom<RoomCreateOption[]>([]);
 
-export const insideRoomAtom = atom<Room>();
+export const insideRoomAtom = atom<Room[]>([]);
 
 export type Hotspot = {
   index: number;

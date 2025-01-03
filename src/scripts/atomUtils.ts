@@ -1,5 +1,5 @@
 import { ENV } from "../Constants";
-import { cameraMatrixAtom, getAtomValue, roomAtom } from "./atoms";
+import { cameraMatrixAtom, getAtomValue, roomAtom, RoomCreateOption } from "./atoms";
 import { THREE } from "./VTHREE";
 
 interface PointXZ {
@@ -47,10 +47,10 @@ function isPointInsidePolygon(point: PointXZ, polygon: PointXZ[]): boolean {
 
   return count % 2 === 1; // Odd number of crossings = inside
 }
-export const cameraInRoom = (camera?: THREE.Matrix4) => {
+export const cameraInRoom = (camera?: THREE.Matrix4): RoomCreateOption[] => {
   camera = camera ?? getAtomValue(cameraMatrixAtom);
   if (!camera) {
-    return undefined;
+    return [];
   }
 
   const rooms = getAtomValue(roomAtom);
@@ -59,16 +59,17 @@ export const cameraInRoom = (camera?: THREE.Matrix4) => {
     z: camera.elements[14],
   };
 
+  const retvals: RoomCreateOption[] = [];
   for (const room of rooms) {
     const points: PointXZ[] = room.border.map(border => ({
       x: border[0],
       z: border[1],
     }));
     if (isPointInsidePolygon(cameraXZ, points)) {
-      return room;
+      retvals.push(room);
     }
   }
-  return undefined;
+  return retvals;
 };
 
 

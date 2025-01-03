@@ -24,7 +24,7 @@ const CameraPanel = () => {
   const [lastCameraInfo, setLastCameraInfo] = useAtom(lastCameraInfoAtom);
   const posYRef = React.useRef(0);
   const lastSpace = React.useRef(0);
-  const insideRoom = useAtomValue(insideRoomAtom);
+  const insideRooms = useAtomValue(insideRoomAtom);
 
   useEffect(() => {
     // space 입력 시 카메라 상승
@@ -176,20 +176,21 @@ const CameraPanel = () => {
             >
               <div className="text-sm">
                 방 :
-                {insideRoom ? (
-                  <span
-                    className="inline-block text-white"
-                    style={{
-                      backgroundColor: insideRoom
-                        ? roomColorString(insideRoom?.index)
-                        : undefined,
-                    }}
-                  >
-                    {insideRoom.name}
-                  </span>
-                ) : (
-                  '-'
-                )}
+                {insideRooms.length === 0
+                  ? '-'
+                  : insideRooms.map(room => (
+                      <span
+                        key={`roomname-${room.index}`}
+                        className="inline-block text-white"
+                        style={{
+                          backgroundColor: insideRooms
+                            ? roomColorString(room.index)
+                            : undefined,
+                        }}
+                      >
+                        {room.name}
+                      </span>
+                    ))}
               </div>
               <div>
                 <label>isoView</label>

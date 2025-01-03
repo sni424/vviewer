@@ -95,10 +95,10 @@ function HotspotPanel() {
           return (
             <li
               className="p-2 border-b-2 border-b-slate-600"
-              key={`hotspot-list-${hotspot.index}`}
+              key={`hotspot-list-${hotspot.index}-${i}`}
             >
               <div className="mb-1">
-                {i + 1}.{' '}
+                {hotspot.index}.{' '}
                 <input
                   type="text"
                   value={hotspot.name}

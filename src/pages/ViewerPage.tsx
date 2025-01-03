@@ -150,7 +150,7 @@ const ViewGrid = () => {
 
 const Options = () => {
   const hide = !useAtomValue(settingsAtom).detectHotspotRoom;
-  const insideRoom = useAtomValue(insideRoomAtom);
+  const insideRooms = useAtomValue(insideRoomAtom);
   const options = useAtomValue(hotspotAtom);
   const { openModal } = useModal();
 
@@ -158,12 +158,12 @@ const Options = () => {
     return null;
   }
 
-  if (!insideRoom) {
+  if (insideRooms.length === 0) {
     return null;
   }
 
   const toShows = options.filter(option =>
-    option.rooms.includes(insideRoom.index),
+    insideRooms.some(room => option.rooms.includes(room.index)),
   );
 
   return (
@@ -200,7 +200,7 @@ const Options = () => {
                 linear: {
                   target: pos,
                   direction: new Vector3(...option.target).sub(pos),
-                  duration: 1,
+                  duration: 2,
                 },
                 onComplete: () => {
                   openModal(<HotspotDialog index={option.index} />);
