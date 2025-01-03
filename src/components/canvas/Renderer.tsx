@@ -173,7 +173,7 @@ const useMouseHandler = () => {
     Boolean(room.creating),
   );
   const isSettingHotspot = useAtomValue(hotspotAtom).some(hotspot =>
-    Boolean(hotspot.positionSetting),
+    Boolean(hotspot.targetSetting),
   );
   const { openModal, closeModal } = useModal();
 
@@ -234,13 +234,13 @@ const useMouseHandler = () => {
       if (isSettingHotspot) {
         const position = intersects[0].point;
         setAtomValue(hotspotAtom, prev => {
-          if (!prev.some(hotspot => hotspot.positionSetting)) {
+          if (!prev.some(hotspot => hotspot.targetSetting)) {
             return prev;
           }
           const copied = [...prev];
-          const index = copied.findIndex(hotspot => hotspot.positionSetting);
-          copied[index].positionSetting = false;
-          copied[index].position = [position.x, position.y, position.z];
+          const index = copied.findIndex(hotspot => hotspot.targetSetting);
+          copied[index].targetSetting = false;
+          copied[index].target = [position.x, position.y, position.z];
           return copied;
         });
         return;

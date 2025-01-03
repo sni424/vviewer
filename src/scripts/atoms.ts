@@ -12,7 +12,7 @@ import {
 } from 'jotai';
 import React from 'react';
 import { OrbitControls } from 'three/examples/jsm/Addons.js';
-import { FileInfo, GLProps, View, ViewportOption } from '../types';
+import { FileInfo, GLProps, Matrix4Array, View, ViewportOption } from '../types';
 import ReflectionProbe from './ReflectionProbe.ts';
 import { THREE, Vector3 } from './VTHREE';
 
@@ -393,7 +393,8 @@ export type Hotspot = {
   index: number;
   name: string;
   rooms: number[]; // 방에 들어갔을 때 표시, 방 인덱스
-  position?: [number, number, number]; // x, y, z
+  target?: [number, number, number]; // x, y, z
+  cameraMatrix?: Matrix4Array; // 16자리 매트릭스
   content: {
     title: string;
     header: string; // 모델
@@ -404,7 +405,7 @@ export type Hotspot = {
   };
 };
 export type HotspotCreateOption = Hotspot & {
-  positionSetting?: boolean;
+  targetSetting?: boolean;
 };
 export const hotspotAtom = atom<HotspotCreateOption[]>([]);
 

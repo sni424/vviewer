@@ -1,4 +1,5 @@
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
+import { Vector3 } from 'three';
 import CameraPanel from '../components/CameraPanel';
 import FloatingFrontView from '../components/canvas/FloatingFrontView';
 import FloatingTopView from '../components/canvas/FloatingTopView';
@@ -9,6 +10,7 @@ import MeshInfoPanel from '../components/MeshInfoPanel';
 import Modal from '../components/Modal';
 import ThePanel from '../components/ThePanel';
 import {
+  getAtomValue,
   hotspotAtom,
   insideRoomAtom,
   modalAtom,
@@ -19,6 +21,7 @@ import {
 } from '../scripts/atoms';
 import useFiles from '../scripts/useFiles';
 import useModelDragAndDrop from '../scripts/useModelDragAndDrop';
+import { THREE } from '../scripts/VTHREE';
 import { getSettings, loadSettings } from './useSettings';
 
 function Loading() {
@@ -171,7 +174,38 @@ const Options = () => {
             key={`bottom-option-${i}-${option.index}`}
             className="bg-white p-2 rounded-md shadow-md cursor-pointer"
             onClick={() => {
-              openModal(<HotspotDialog index={option.index} />);
+              // openModal(<HotspotDialog index={option.index} />);
+              const three = getAtomValue(threeExportsAtom);
+              if (!three) {
+                return;
+              }
+
+              if (!option.target) {
+                return;
+              }
+              const mat = option.cameraMatrix;
+              if (!mat) {
+                return;
+              }
+              const matrix = new THREE.Matrix4().fromArray(mat);
+              const pos = new THREE.Vector3();
+              matrix.decompose(
+                pos,
+                new THREE.Quaternion(),
+                new THREE.Vector3(),
+              );
+
+              const { camera } = three;
+              camera.moveTo('linear', {
+                linear: {
+                  target: pos,
+                  direction: new Vector3(...option.target).sub(pos),
+                  duration: 1,
+                },
+                onComplete: () => {
+                  openModal(<HotspotDialog index={option.index} />);
+                },
+              });
             }}
           >
             {option.name}

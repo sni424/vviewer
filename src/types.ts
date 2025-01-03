@@ -347,4 +347,20 @@ export interface MoveActionOptions {
     target: THREE.Vector3; // 목표 좌표 (Teleport)
     direction: THREE.Vector3; //방향
   };
+  onComplete?: () => any
 } // 타입 정의
+
+type Actions = {
+  pathfinding: {
+    target?: THREE.Vector3; // 이동할 경로 (Pathfinding)
+    direction?: THREE.Vector3; //도착했을때 카메라가 바라볼 방향
+    speed?: number; // 애니메이션 속도
+    model?: THREE.Object3D; //바닥 모델
+    stopAnimtaion?: boolean //애니메이션 중지
+  }
+} & {
+  isoView: {
+    speed: number; // 애니메이션 속도
+    model: THREE.Object3D; //바라볼 모델 (중앙 값을 구하기 위해)
+  };
+}

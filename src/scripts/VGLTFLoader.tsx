@@ -116,7 +116,11 @@ async function getGainmap(object: THREE.Object3D, gl?: THREE.WebGLRenderer) {
         ).filter(Boolean);
 
         const imageUrl =
-          jpg.length > 0 ? (jpg[0] as File) : encodeURI(ENV.base + cacheKey);
+          jpg.length > 0
+            ? (jpg[0] as File)
+            : cacheKey.startsWith('http')
+              ? cacheKey
+              : encodeURI(ENV.base + cacheKey);
 
         return VTextureLoader.load(imageUrl, { gl }).then(texture => {
           mat.lightMap = texture;

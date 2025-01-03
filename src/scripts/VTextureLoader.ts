@@ -7,6 +7,7 @@ const disposables: { dispose?: Function }[] = [];
 export type VTextureLoaderOption = {
   flipY: boolean;
   channel: number;
+  forceExrToJpg?: boolean; // exr로 입력되어도 jpg로 변환해서 처리
   gl?: THREE.WebGLRenderer;
   as?: "gainmap" | "texture";
 };
@@ -14,6 +15,7 @@ export type VTextureLoaderOption = {
 const defaultOption: VTextureLoaderOption = {
   flipY: true,
   channel: 1,
+  forceExrToJpg: true,
 };
 
 export default class VTextureLoader {
@@ -32,7 +34,11 @@ export default class VTextureLoader {
     const inputOption = { ...defaultOption, ...option } as VTextureLoaderOption;
     const isFile = typeof fileOrUrl !== "string";
     const url = isFile ? URL.createObjectURL(fileOrUrl) : fileOrUrl;
-    const gainMap = isFile ? fileOrUrl.name : fileOrUrl;
+    let gainMap = isFile ? fileOrUrl.name : fileOrUrl;
+    if (option?.forceExrToJpg) {
+      gainMap = gainMap.replace('.exr', '.jpg');
+    }
+
     if (isFile) {
       dispoableUrls.push(url);
     }

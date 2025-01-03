@@ -647,6 +647,7 @@ const handleLinearMove = (
   direction: THREE.Vector3,
   speed: number,
   cameraFov?: number,
+  onComplete: gsap.Callback = () => { },
 ) => {
   const startDirection = camera
     .getWorldDirection(new THREE.Vector3())
@@ -665,7 +666,7 @@ const handleLinearMove = (
         //카메라 이동
         camera.position.lerpVectors(startPosition, target, progress);
       },
-      onComplete: () => { },
+      onComplete,
     },
   );
   // 카메라 회전
@@ -814,6 +815,7 @@ export const moveTo = (
           options.linear.direction,
           options.linear.duration,
           options.linear.fov,
+          options.onComplete
         );
       }
       break;

@@ -122,99 +122,132 @@ function HotspotPanel() {
                   삭제
                 </button>
               </div>
-              <div className="pl-3 mb-2">
-                <button
-                  onClick={() => {
-                    setHotspots(prev => {
-                      const copied = [...prev];
-                      copied[i].positionSetting = !copied[i].positionSetting;
-                      return copied;
-                    });
-                  }}
-                  disabled={
-                    hotspots.some(hotspot => hotspot.positionSetting)
-                      ? hotspots.find(hotspot => hotspot.positionSetting)
-                          ?.index !== hotspot.index
-                      : false
-                  }
-                >
-                  {hotspot.positionSetting ? '위치설정 종료' : '위치 설정하기'}
-                </button>
-                {hotspot.position && (
-                  <div>
-                    X:
-                    <input
-                      type="number"
-                      value={hotspot.position[0]}
-                      step={0.01}
-                      onChange={e => {
-                        setHotspots(prev => {
-                          const copied = [...prev];
-                          copied.find(
-                            h => h.index === hotspot.index,
-                          )!.position![0] = parseFloat(e.target.value);
-                          return copied;
-                        });
-                        const scene = threeExports?.scene;
-                        if (scene) {
-                          scene.traverseAll(obj => {
-                            if (obj.vUserData.hotspotIndex === hotspot.index) {
-                              obj.position.x = parseFloat(e.target.value);
-                            }
+              <div className="pl-3 mb-2 grid grid-cols-2">
+                <div>
+                  <button
+                    onClick={() => {
+                      setHotspots(prev => {
+                        const copied = [...prev];
+                        copied[i].targetSetting = !copied[i].targetSetting;
+                        return copied;
+                      });
+                    }}
+                    disabled={
+                      hotspots.some(hotspot => hotspot.targetSetting)
+                        ? hotspots.find(hotspot => hotspot.targetSetting)
+                            ?.index !== hotspot.index
+                        : false
+                    }
+                  >
+                    {hotspot.targetSetting ? '타겟설정 종료' : '타겟 설정하기'}
+                  </button>
+                  {hotspot.target && (
+                    <div>
+                      X:
+                      <input
+                        type="number"
+                        value={hotspot.target[0]}
+                        step={0.01}
+                        onChange={e => {
+                          setHotspots(prev => {
+                            const copied = [...prev];
+                            copied.find(
+                              h => h.index === hotspot.index,
+                            )!.target![0] = parseFloat(e.target.value);
+                            return copied;
                           });
-                        }
-                      }}
-                    ></input>{' '}
-                    <br></br>
-                    Y:
-                    <input
-                      type="number"
-                      value={hotspot.position[1]}
-                      step={0.01}
-                      onChange={e => {
-                        setHotspots(prev => {
-                          const copied = [...prev];
-                          copied.find(
-                            h => h.index === hotspot.index,
-                          )!.position![1] = parseFloat(e.target.value);
-                          return copied;
-                        });
-                        const scene = threeExports?.scene;
-                        if (scene) {
-                          scene.traverseAll(obj => {
-                            if (obj.vUserData.hotspotIndex === hotspot.index) {
-                              obj.position.y = parseFloat(e.target.value);
-                            }
+                          const scene = threeExports?.scene;
+                          if (scene) {
+                            scene.traverseAll(obj => {
+                              if (
+                                obj.vUserData.hotspotIndex === hotspot.index
+                              ) {
+                                obj.position.x = parseFloat(e.target.value);
+                              }
+                            });
+                          }
+                        }}
+                      ></input>{' '}
+                      <br></br>
+                      Y:
+                      <input
+                        type="number"
+                        value={hotspot.target[1]}
+                        step={0.01}
+                        onChange={e => {
+                          setHotspots(prev => {
+                            const copied = [...prev];
+                            copied.find(
+                              h => h.index === hotspot.index,
+                            )!.target![1] = parseFloat(e.target.value);
+                            return copied;
                           });
-                        }
-                      }}
-                    ></input>{' '}
-                    <br></br>
-                    Z:
-                    <input
-                      type="number"
-                      value={hotspot.position[2]}
-                      step={0.01}
-                      onChange={e => {
-                        setHotspots(prev => {
-                          const copied = [...prev];
-                          copied.find(
-                            h => h.index === hotspot.index,
-                          )!.position![2] = parseFloat(e.target.value);
-                          return copied;
-                        });
-                        const scene = threeExports?.scene;
-                        if (scene) {
-                          scene.traverseAll(obj => {
-                            if (obj.vUserData.hotspotIndex === hotspot.index) {
-                              obj.position.z = parseFloat(e.target.value);
-                            }
+                          const scene = threeExports?.scene;
+                          if (scene) {
+                            scene.traverseAll(obj => {
+                              if (
+                                obj.vUserData.hotspotIndex === hotspot.index
+                              ) {
+                                obj.position.y = parseFloat(e.target.value);
+                              }
+                            });
+                          }
+                        }}
+                      ></input>{' '}
+                      <br></br>
+                      Z:
+                      <input
+                        type="number"
+                        value={hotspot.target[2]}
+                        step={0.01}
+                        onChange={e => {
+                          setHotspots(prev => {
+                            const copied = [...prev];
+                            copied.find(
+                              h => h.index === hotspot.index,
+                            )!.target![2] = parseFloat(e.target.value);
+                            return copied;
                           });
-                        }
-                      }}
-                    ></input>
-                  </div>
-                )}
+                          const scene = threeExports?.scene;
+                          if (scene) {
+                            scene.traverseAll(obj => {
+                              if (
+                                obj.vUserData.hotspotIndex === hotspot.index
+                              ) {
+                                obj.position.z = parseFloat(e.target.value);
+                              }
+                            });
+                          }
+                        }}
+                      ></input>
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <button
+                    onClick={() => {
+                      const three = getAtomValue(threeExportsAtom);
+                      if (!three) {
+                        return;
+                      }
+                      const { camera } = three;
+                      setHotspots(prev => {
+                        const copied = [...prev];
+                        copied[i].cameraMatrix = camera.matrix.toArray();
+                        return copied;
+                      });
+                    }}
+                  >
+                    카메라위치 설정하기
+                  </button>
+                  {hotspot.cameraMatrix && (
+                    <div>
+                      <div>X : {hotspot.cameraMatrix[12]}</div>
+                      <div>Y : {hotspot.cameraMatrix[13]}</div>
+                      <div>Z : {hotspot.cameraMatrix[14]}</div>
+                    </div>
+                  )}
+                </div>
               </div>
               <div className="pl-3 ">
                 <div className="mb-2">

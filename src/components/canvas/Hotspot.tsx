@@ -54,9 +54,7 @@ function Hotspot() {
     return null;
   }
 
-  const viewableHotspots = hotspots.filter(hotspot =>
-    Boolean(hotspot.position),
-  );
+  const viewableHotspots = hotspots.filter(hotspot => Boolean(hotspot.target));
 
   return (
     <Fragment>
