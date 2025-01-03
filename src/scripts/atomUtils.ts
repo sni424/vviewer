@@ -93,9 +93,13 @@ export const uploadJson = (name: string, value: Record<string, any>) => {
 }
 
 export const loadHotspot = async () => {
-  return fetch(ENV.base + "hotspots.json").then(res => res.json());
+  return fetch(ENV.base + "hotspots.json", {
+    cache: 'no-store',
+  }).then(res => res.json());
 }
 
 export const loadRooms = async () => {
-  return fetch(ENV.base + "rooms.json").then(res => res.json());
+  return fetch(ENV.base + "rooms.json", {
+    cache: 'no-store',
+  }).then(res => res.json());
 }
