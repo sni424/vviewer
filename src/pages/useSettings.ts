@@ -9,6 +9,7 @@ import {
   postprocessAtoms,
   roomAtom,
   setAtomValue,
+  settingsAtom,
   viewGridAtom,
 } from '../scripts/atoms';
 
@@ -23,6 +24,7 @@ export const getSettings = () => {
   const rooms = getAtomValue(roomAtom);
   const hotspots = getAtomValue(hotspotAtom);
   const env = getAtomValue(envAtom);
+  const settings = getAtomValue(settingsAtom);
 
   // 라이트맵 이미지 대비는 임시제외
   // const lmContrast = Object.getOwnPropertyNames(LightmapImageContrast).reduce((acc, key) => {
@@ -48,6 +50,7 @@ export const getSettings = () => {
     env,
     rooms,
     hotspots,
+    settings,
     ...postProcessOptions,
     // lmContrast,
   };
@@ -73,6 +76,9 @@ export const loadSettings = () => {
       }
       if (undefined !== value.hotspots) {
         setAtomValue(hotspotAtom, value.hotspots);
+      }
+      if (undefined !== value.settings) {
+        setAtomValue(settingsAtom, value.settings);
       }
 
       setAtomValue(postprocessAtoms, prev => {

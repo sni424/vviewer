@@ -3,7 +3,7 @@ import { useAtomValue } from 'jotai';
 import { Fragment, useRef } from 'react';
 import { TextureLoader } from 'three';
 import { HotspotIcon, Layer } from '../../Constants';
-import { hotspotAtom, insideRoomAtom } from '../../scripts/atoms';
+import { hotspotAtom, settingsAtom } from '../../scripts/atoms';
 import { THREE } from '../../scripts/VTHREE';
 
 function SingleHotspot({
@@ -48,13 +48,12 @@ function Hotspot() {
   const texture = useLoader(TextureLoader, HotspotIcon.gearBlack);
   const hotspots = useAtomValue(hotspotAtom);
   const { camera } = useThree();
-  const insideRoom = useAtomValue(insideRoomAtom);
+  const hide = !useAtomValue(settingsAtom).shotHotspots;
 
-  // const viewableHotspots = insideRoom
-  //   ? hotspots
-  //       .filter(hotspot => Boolean(hotspot.position))
-  //       .filter(hotspot => hotspot.rooms.includes(insideRoom.index))
-  //   : [];
+  if (hide) {
+    return null;
+  }
+
   const viewableHotspots = hotspots.filter(hotspot =>
     Boolean(hotspot.position),
   );

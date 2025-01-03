@@ -5,6 +5,7 @@ import {
   hotspotAtom,
   roomAtom,
   setAtomValue,
+  settingsAtom,
   threeExportsAtom,
 } from '../scripts/atoms';
 import { loadHotspot, uploadJson } from '../scripts/atomUtils';
@@ -32,6 +33,8 @@ function HotspotPanel() {
   const rooms = useAtomValue(roomAtom);
   const threeExports = useAtomValue(threeExportsAtom);
   const [writeContent, setWriteContent] = useState(false);
+  const [settings, setSettings] = useAtom(settingsAtom);
+
   const createHotspot = () => {
     setHotspots(prev => {
       const copied = [...prev];
@@ -54,6 +57,39 @@ function HotspotPanel() {
 
   return (
     <div className="w-full h-full overflow-y-auto">
+      <div className="p-2 flex gap-3">
+        <div>
+          <label>핫스팟 보기</label>
+          <input
+            type="checkbox"
+            checked={settings.shotHotspots}
+            onChange={e => {
+              setSettings(prev => {
+                return {
+                  ...prev,
+                  shotHotspots: e.target.checked,
+                };
+              });
+            }}
+          ></input>
+        </div>
+
+        <div>
+          <label>방에 따른 옵션 보기</label>
+          <input
+            type="checkbox"
+            checked={settings.detectHotspotRoom}
+            onChange={e => {
+              setSettings(prev => {
+                return {
+                  ...prev,
+                  detectHotspotRoom: e.target.checked,
+                };
+              });
+            }}
+          ></input>
+        </div>
+      </div>
       <ul className="mb-4">
         {hotspots.map((hotspot, i) => {
           return (

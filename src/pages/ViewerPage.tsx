@@ -3,11 +3,20 @@ import CameraPanel from '../components/CameraPanel';
 import FloatingFrontView from '../components/canvas/FloatingFrontView';
 import FloatingTopView from '../components/canvas/FloatingTopView';
 import RendererContainer from '../components/canvas/Renderer';
+import HotspotDialog from '../components/HotspotDialog';
 import MaterialPanelContainer from '../components/MaterialPanel';
 import MeshInfoPanel from '../components/MeshInfoPanel';
 import Modal from '../components/Modal';
 import ThePanel from '../components/ThePanel';
-import { modalAtom, threeExportsAtom, viewGridAtom } from '../scripts/atoms';
+import {
+  hotspotAtom,
+  insideRoomAtom,
+  modalAtom,
+  settingsAtom,
+  threeExportsAtom,
+  useModal,
+  viewGridAtom,
+} from '../scripts/atoms';
 import useFiles from '../scripts/useFiles';
 import useModelDragAndDrop from '../scripts/useModelDragAndDrop';
 import { getSettings, loadSettings } from './useSettings';
@@ -136,6 +145,43 @@ const ViewGrid = () => {
   );
 };
 
+const Options = () => {
+  const hide = !useAtomValue(settingsAtom).detectHotspotRoom;
+  const insideRoom = useAtomValue(insideRoomAtom);
+  const options = useAtomValue(hotspotAtom);
+  const { openModal } = useModal();
+
+  if (hide) {
+    return null;
+  }
+
+  if (!insideRoom) {
+    return null;
+  }
+
+  const toShows = options.filter(option =>
+    option.rooms.includes(insideRoom.index),
+  );
+
+  return (
+    <ul className="absolute flex left-0 right-0 bottom-3 gap-3 items-center justify-center">
+      {toShows.map((option, i) => {
+        return (
+          <li
+            key={`bottom-option-${i}-${option.index}`}
+            className="bg-white p-2 rounded-md shadow-md cursor-pointer"
+            onClick={() => {
+              openModal(<HotspotDialog index={option.index} />);
+            }}
+          >
+            {option.name}
+          </li>
+        );
+      })}
+    </ul>
+  );
+};
+
 const Views = () => {
   return (
     <div className="absolute bottom-2 right-2 flex flex-row gap-2 items-end ">
@@ -167,6 +213,7 @@ const ViewerPage = () => {
         <RendererContainer />
         <Views></Views>
         <CameraPanel />
+        <Options></Options>
       </div>
       <div className="relative h-full w-1/4 max-w-[400px] min-w-[240px]">
         <ThePanel />

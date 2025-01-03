@@ -37,10 +37,6 @@ function RoomSetting() {
     });
   };
 
-  const exportRooms = () => {
-    alert('구현중');
-  };
-
   const creatingRoom = rooms.find(room => Boolean(room.creating));
 
   return (
