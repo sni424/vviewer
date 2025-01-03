@@ -11,11 +11,13 @@ function SingleHotspot({
   camera,
   target,
   index: hotspotIndex,
+  hotspotSize = 0.12,
 }: {
   texture: THREE.Texture;
   camera: THREE.Camera;
   target?: [number, number, number];
   index: number;
+  hotspotSize?: number;
 }) {
   const meshRef = useRef<THREE.Mesh | null>(null);
 
@@ -24,11 +26,6 @@ function SingleHotspot({
       meshRef.current.quaternion.copy(camera.quaternion);
     }
   });
-
-  if (hotspotIndex === 3) {
-    console.log('Pos:', target);
-    // console.log(position[0], position[1], position[2]);
-  }
 
   return (
     <mesh
@@ -40,9 +37,7 @@ function SingleHotspot({
       position={target}
       userData={{ hotspotIndex }}
     >
-      {/* Create a CircleGeometry */}
-      <circleGeometry args={[0.1, 32]} /> {/* args: [radius, segments] */}
-      {/* Apply the PNG texture to a MeshBasicMaterial */}
+      <circleGeometry args={[hotspotSize, 32]} />
       <meshBasicMaterial map={texture} transparent />
     </mesh>
   );
@@ -53,7 +48,8 @@ function Hotspot() {
   const texture = useLoader(TextureLoader, HotspotIcon.gearBlack);
   const hotspots = useAtomValue(hotspotAtom);
   const { camera } = useThree();
-  const hide = !useAtomValue(settingsAtom).shotHotspots;
+  const settings = useAtomValue(settingsAtom);
+  const hide = !settings.shotHotspots;
 
   if (hide) {
     return null;
@@ -70,6 +66,7 @@ function Hotspot() {
             texture={texture}
             camera={camera}
             {...hotspot}
+            {...settings}
           />
         );
       })}

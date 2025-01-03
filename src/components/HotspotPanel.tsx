@@ -89,6 +89,24 @@ function HotspotPanel() {
             }}
           ></input>
         </div>
+        <div>
+          <label>아이콘사이즈</label>
+          <input
+            type="number"
+            value={settings.hotspotSize ?? 0.12}
+            onChange={e => {
+              setSettings(prev => {
+                return {
+                  ...prev,
+                  hotspotSize: parseFloat(e.target.value),
+                };
+              });
+            }}
+            min={0.01}
+            max={0.5}
+            step={0.005}
+          ></input>
+        </div>
       </div>
       <ul className="mb-4">
         {hotspots.map((hotspot, i) => {

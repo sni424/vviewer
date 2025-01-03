@@ -410,11 +410,13 @@ export type HotspotCreateOption = Hotspot & {
 export const hotspotAtom = atom<HotspotCreateOption[]>([]);
 
 export type Settings = {
+  hotspotSize: number;
   shotHotspots: boolean;
   detectHotspotRoom: boolean;
 
 };
 export const settingsAtom = atom<Settings>({
+  hotspotSize: 0.12,
   shotHotspots: true,
   detectHotspotRoom: true,
 });

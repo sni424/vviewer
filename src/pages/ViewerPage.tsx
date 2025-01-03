@@ -200,7 +200,7 @@ const Options = () => {
                 linear: {
                   target: pos,
                   direction: new Vector3(...option.target).sub(pos),
-                  duration: 2,
+                  duration: 1.5,
                 },
                 onComplete: () => {
                   openModal(<HotspotDialog index={option.index} />);
