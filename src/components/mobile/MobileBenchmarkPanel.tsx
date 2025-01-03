@@ -55,8 +55,8 @@ const MobileBenchmarkPanel = () => {
       style={{
         position: 'absolute',
         top: 0,
-        right: 0,
-        zIndex: 1001,
+        left: 0,
+        zIndex: 1,
         display: 'flex',
         fontSize: '0.8rem',
         gap: 8,

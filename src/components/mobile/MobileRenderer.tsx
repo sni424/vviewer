@@ -1,9 +1,10 @@
 import { useEffect } from 'react';
 
-import { OrbitControls } from '@react-three/drei';
 import { Canvas, useThree } from '@react-three/fiber';
 import { useSetAtom } from 'jotai';
 import { threeExportsAtom } from '../../scripts/atoms';
+import OrbitManager from '../camera/OrbitManager';
+import MyEnvironment from '../canvas/EnvironmentMap';
 import PostProcess from '../canvas/PostProcess';
 
 const Renderer = () => {
@@ -17,7 +18,7 @@ const Renderer = () => {
 
   return (
     <>
-      <OrbitControls />
+      <OrbitManager />
       {/* <ambientLight intensity={0.5} />
       <pointLight position={[10, 10, 10]} /> */}
     </>
@@ -26,11 +27,20 @@ const Renderer = () => {
 
 const MobileRenderer = () => {
   return (
-    <Canvas>
-      <Renderer />
-      {/* <EnvironmentMap></EnvironmentMap> */}
-      <PostProcess></PostProcess>
-    </Canvas>
+    <div
+      id="mobileCanvasDiv"
+      style={{
+        width: '100%',
+        height: '100%',
+      }}
+    >
+      <Canvas>
+        <Renderer />
+        <MyEnvironment></MyEnvironment>
+        {/* <EnvironmentMap></EnvironmentMap> */}
+        <PostProcess></PostProcess>
+      </Canvas>
+    </div>
   );
 };
 
