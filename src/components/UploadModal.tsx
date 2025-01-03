@@ -56,24 +56,6 @@ function Upload() {
         alert('업로드 완료');
         // window.location.reload();
       });
-    // Promise.all(
-    //   uploadSource.map(({ name, url, file }) => {
-    //     const data = new FormData();
-    //     data.append('file', file);
-    //     setUploading(true);
-    //     return fetch(uploadUrl, {
-    //       method: 'POST',
-    //       body: data,
-    //     })
-    //       .then(res => res.json())
-    //       .then(console.log);
-    //   }),
-    // ).finally(() => {
-    //   setUploading(false);
-    //   setUploadSource([]);
-    //   alert('업로드 완료');
-    //   // window.location.reload();
-    // });
   }, [uploadSource]);
 
   if (uploading) {

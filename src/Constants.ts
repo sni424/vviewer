@@ -66,5 +66,9 @@ export const ENV = {
   latest: base + 'latest.glb',
   latestHash: base + 'latest-hash',
   fileList: base + 'uploads.json',
+  baseHash: base + 'base-hash',
+  dpHash: base + 'dp-hash',
+  model_base: base + 'model_base.glb',
+  model_dp: base + 'model_dp.glb',
   lut: base.replace('models/', '') + 'static/lut',
 };

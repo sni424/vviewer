@@ -110,7 +110,7 @@ const useLoadModel = ({
           applyTexture(gltf.scene, texture, mapDst);
         }
 
-        scene.add(gltf.scene);
+        scene.add(...gltf.scene.children);
 
         setLoadHistoryAtom(history => {
           const newHistory = new Map(history);
