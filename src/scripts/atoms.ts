@@ -12,6 +12,7 @@ import {
 } from 'jotai';
 import React from 'react';
 import { OrbitControls } from 'three/examples/jsm/Addons.js';
+import { DPConfiguratorMode } from '../components/DPConfigurator.tsx';
 import { FileInfo, GLProps, Matrix4Array, View, ViewportOption } from '../types';
 import ReflectionProbe from './ReflectionProbe.ts';
 import { THREE } from './VTHREE';
@@ -42,10 +43,10 @@ export const createAtomCombo = <T = any>(
   initalValue?: T,
   store?: Store,
 ): [
-    WritableAtom<T, unknown[], unknown>,
-    () => T | undefined,
-    (arg: AtomArgType<T>) => void,
-  ] => {
+  WritableAtom<T, unknown[], unknown>,
+  () => T | undefined,
+  (arg: AtomArgType<T>) => void,
+] => {
   const dstStore = store ?? defaultStore;
   // @ts-ignore
   const theAtom = atom<T>(initalValue);
@@ -123,16 +124,25 @@ export const useForceUpdate = () => {
 
 export const materialSelectedAtom = atom<THREE.Material | null>(null);
 
-export const modalAtom = atom<React.FC<{ closeModal?: () => any }> | React.ReactNode | null>(
-  null,
-);
+export const modalAtom = atom<
+  React.FC<{ closeModal?: () => any }> | React.ReactNode | null
+>(null);
+
+export const onModalCloseAtom = atom<() => void>();
 
 export const useModal = () => {
   const setModal = useSetAtom(modalAtom);
+  const setOnModalClose = useSetAtom(onModalCloseAtom);
   return {
     // ()=>Element instead of Element
     // openModal: (modal: React.ReactElement<{ closeModal?: () => any }>) => setModal(modal),
-    openModal: (modal: (React.FC<{ closeModal?: () => any }>) | React.ReactNode) => setModal(modal),
+    openModal: (
+      modal: React.FC<{ closeModal?: () => any }> | React.ReactNode,
+      onModalClose?: () => void,
+    ) => {
+      setModal(modal);
+      if (onModalClose) setOnModalClose(onModalClose);
+    },
     closeModal: () => setModal(null),
   };
 };
@@ -243,7 +253,7 @@ export const lastCameraInfoAtom = atom<{
 export const cameraSettingAtom = atom<{
   moveSpeed: number;
   isoView: boolean;
-  cameraY: number
+  cameraY: number;
 }>({
   moveSpeed: 3,
   isoView: false,
@@ -252,17 +262,17 @@ export const cameraSettingAtom = atom<{
 
 export const cameraActionAtom = atom<{
   tour: {
-    isAnimation: boolean,
-    roomIndex: number
-    animationSpeed: number
-  }
+    isAnimation: boolean;
+    roomIndex: number;
+    animationSpeed: number;
+  };
 }>({
   tour: {
     isAnimation: false,
     roomIndex: 0,
     animationSpeed: 1,
-  }
-})
+  },
+});
 
 //orbit세팅
 export const orbitSettingAtom = atom<{
@@ -373,13 +383,21 @@ export const postprocessAtoms = atom<{ [key in string]: PrimitiveAtom<any> }>({}
 export const forceRerenderPostProcessAtom = atom<number>(0);
 export const forceRerenderPostProcess = () => {
   setAtomValue(forceRerenderPostProcessAtom, prev => prev + 1);
-}
+};
+
+export const ModelSelectorAtom = atom<THREE.Object3D[]>([]);
+export const DPAtom = atom<{ objects: THREE.Object3D[]; on: boolean }>({
+  objects: [],
+  on: false,
+});
+
+export const DPCModeAtom = atom<DPConfiguratorMode>('select');
 
 export type Room = {
   index: number;
   name: string;
   border: [number, number][]; // [x, z]
-}
+};
 export type RoomCreateOption = Room & {
   show?: boolean;
   creating?: boolean; // 생성중이면 좌표값의 배열
