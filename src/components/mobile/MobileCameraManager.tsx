@@ -48,110 +48,118 @@ const MobileCameraManager = ({
   // 마지막 회전 속도 저장
   const velocity = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
 
-  const handleTouchDown = (e: TouchEvent) => {
-    setIsDragging(true);
-
+  const handleTouchStart = (e: TouchEvent) => {
+    // 모든 터치 이벤트를 배열로 변환
     const touches = Array.from(e.touches);
-    const canvasTouch = touches.find(touch => touch.target.id === 'joystick');
-    if (canvasTouch) {
+
+    // 조이스틱 터치 찾기
+    const joystickTouch = touches.find(
+      touch => (touch.target as HTMLElement).id === 'joystick',
+    );
+
+    // 캔버스 터치 찾기 (tagName으로 구분)
+    const canvasTouch = touches.find(
+      touch => (touch.target as HTMLElement).tagName.toLowerCase() === 'canvas',
+    );
+
+    // 조이스틱 터치 처리
+    if (joystickTouch) {
+      setIsDragging(true);
       setCameraAction(true);
       setMouseStart({
+        x: joystickTouch.clientX,
+        y: joystickTouch.clientY,
+      });
+    }
+
+    // 캔버스 터치 처리
+    if (canvasTouch && !oribitControl?.enabled) {
+      isRotateRef.current = true;
+      previousMousePosition.current = {
         x: canvasTouch.clientX,
         y: canvasTouch.clientY,
-      });
-    } else {
-      console.log('no joystick');
+      };
     }
   };
 
-  const handleTouchMove = (e: TouchEvent, container) => {
+  const handleTouchMove = (e: TouchEvent) => {
     const touches = Array.from(e.touches);
-    const canvasTouch = touches.find(touch => touch.target.id === 'joystick');
-    if (!isDragging) return;
-    if (canvasTouch) {
-      // 부모 컨테이너 크기 가져오기
-      const rect = container.getBoundingClientRect();
-      // 시작 위치와 현재 위치의 차이 계산 (X)
-      const offsetX = canvasTouch.clientX - mouseStart.x;
-      // 시작 위치와 현재 위치의 차이 계산 (Y)
-      const offsetY = canvasTouch.clientY - mouseStart.y;
 
-      // 최대 반경 (컨테이너의 반지름)
+    // 조이스틱 터치 찾기
+    const joystickTouch = touches.find(
+      touch => (touch.target as HTMLElement).id === 'joystick',
+    );
+
+    // 캔버스 터치 찾기 (tagName으로 구분)
+    const canvasTouch = touches.find(
+      touch => (touch.target as HTMLElement).tagName.toLowerCase() === 'canvas',
+    );
+
+    // 조이스틱 처리
+    if (joystickTouch && isDragging) {
+      const rect = document
+        .getElementById('joystickArea')
+        ?.getBoundingClientRect();
+      if (!rect) return;
+
+      const offsetX = joystickTouch.clientX - mouseStart.x;
+      const offsetY = joystickTouch.clientY - mouseStart.y;
+
       const maxRadius = rect.width / 2;
-      // 이동 거리 계산 유클리드
       const distance = Math.hypot(offsetX, offsetY);
-      // 최대 반경 제한
       const clampedDistance = Math.min(distance, maxRadius);
-      // 기울기 계산
       const angle = Math.atan2(offsetY, offsetX);
-      //극좌표계(Polar Coordinates)**에서 **직교좌표계(Cartesian Coordinates)**로 변환
-      //점의 위치를 X, Y 좌표로 표현
-      // 이동 거리 X 좌표 코사인  X축과 점의 관계
+
       const moveX = Math.cos(angle) * clampedDistance;
-      // 이동 거리 Y 좌표 라디안 단위의 숫자의 사인 Y축과 점의 관계
       const moveY = Math.sin(angle) * clampedDistance;
-      //마우스 이동거리
+
       movePosition.current = { x: moveX, y: moveY };
-      // UI 업데이트
+
       setJoystickPosition({ x: moveX, y: moveY });
-    } else {
-      console.log('no  handleTouchMove joystick');
-    }
-  };
-
-  const handleTouchEnd = () => {
-    setIsDragging(false);
-    // joystick을 중앙으로 복귀
-    //마우스 이동거리
-    movePosition.current = { x: 0, y: 0 };
-    // UI
-    setJoystickPosition({ x: 0, y: 0 });
-    //마우스 첫 위치
-    setMouseStart({ x: 0, y: 0 });
-    setCameraAction(false);
-  };
-
-  const rotationEndTouch = () => {
-    //회전 멈춤
-    isRotateRef.current = false;
-    //감속 하면서 멈추는 함수
-    applyInertia();
-  };
-
-  //모바일 터치했을때 이벤트
-  const handlePointerDown = (event: TouchEvent): void => {
-    if (!oribitControl?.enabled) {
-      // 회전 true
-      isRotateRef.current = true;
-
-      // 터치 이벤트
-      const touch = event.touches[0]; // 첫 번째 터치 추출
-      previousMousePosition.current = { x: touch.clientX, y: touch.clientY };
-    }
-  };
-  //모바일 터치하고 움직일때 이벤트
-  const handlePointerMove = (event: TouchEvent): void => {
-    let clientX = 0;
-    let clientY = 0;
-
-    if (event.touches.length > 0) {
-      const touch = event.touches[0];
-      clientX = touch.clientX;
-      clientY = touch.clientY;
-    } else {
-      return; // 터치가 없으면 무시
     }
 
-    if (isRotateRef.current && !oribitControl?.enabled) {
-      // 현재 위치와 이전 위치 차이 계산
-      const deltaX = clientX - previousMousePosition.current.x;
-      const deltaY = clientY - previousMousePosition.current.y;
-      console.log(clientX, previousMousePosition.current.x);
-      // 카메라 회전 함수 호출
+    // 캔버스 처리
+    if (canvasTouch && isRotateRef.current && !oribitControl?.enabled) {
+      const deltaX = canvasTouch.clientX - previousMousePosition.current.x;
+      const deltaY = canvasTouch.clientY - previousMousePosition.current.y;
+
       moveCameraRotation(deltaX, deltaY);
 
-      // 이전 위치 업데이트
-      previousMousePosition.current = { x: clientX, y: clientY };
+      previousMousePosition.current = {
+        x: canvasTouch.clientX,
+        y: canvasTouch.clientY,
+      };
+    }
+  };
+  const handleTouchEnd = (e: TouchEvent) => {
+    const changedTouches = Array.from(e.changedTouches);
+
+    // 조이스틱 터치 찾기
+    const joystickTouch = changedTouches.find(
+      touch => (touch.target as HTMLElement).id === 'joystick',
+    );
+
+    // 캔버스 터치 찾기 (tagName으로 구분)
+    const canvasTouch = changedTouches.find(
+      touch => (touch.target as HTMLElement).tagName.toLowerCase() === 'canvas',
+    );
+
+    if (joystickTouch) {
+      setIsDragging(false);
+      // joystick을 중앙으로 복귀
+      //마우스 이동거리
+      movePosition.current = { x: 0, y: 0 };
+      // UI
+      setJoystickPosition({ x: 0, y: 0 });
+      //마우스 첫 위치
+      setMouseStart({ x: 0, y: 0 });
+      setCameraAction(false);
+    }
+    if (canvasTouch) {
+      //회전 멈춤
+      isRotateRef.current = false;
+      //감속 하면서 멈추는 함수
+      applyInertia();
     }
   };
 
@@ -198,7 +206,6 @@ const MobileCameraManager = ({
   //  드래그로 카메라 회전
   const moveCameraRotation = (deltaX: number, deltaY: number): void => {
     velocity.current = { x: deltaX * rotationSpeed, y: deltaY * rotationSpeed };
-
     if (camera) {
       // X축과 Y축 회전을 위한 쿼터니언 생성
       const quaternionX = new THREE.Quaternion();
@@ -227,14 +234,12 @@ const MobileCameraManager = ({
   // 관성 효과 적용
   const applyInertia = (): void => {
     // 회전 중이 아니고, 현재 회전 속도가 특정 임계값(0.001)보다 클 경우에만 관성 적용
-
     if (
       !isRotateRef.current &&
       camera &&
       (Math.abs(velocity.current.x) > 0.001 ||
         Math.abs(velocity.current.y) > 0.001)
     ) {
-      console.log('회전1');
       // 회전 속도에 관성을 곱해 점점 줄어들도록 설정
       velocity.current.x *= inertia;
       velocity.current.y *= inertia;
@@ -310,21 +315,20 @@ const MobileCameraManager = ({
       }
     }
   }, [cameraAction]);
+
   useEffect(() => {
     const joystickArea = document.getElementById('joystickArea');
     const joystick = document.getElementById('joystick');
     const element = document.getElementById('mobileCanvasDiv');
     if (!element || !joystick || !joystickArea) return;
     if (camera) {
-      joystick.addEventListener('touchstart', handleTouchDown);
-      joystick.addEventListener('touchmove', e => {
-        handleTouchMove(e, joystickArea);
-      });
+      joystick.addEventListener('touchstart', handleTouchStart);
+      joystick.addEventListener('touchmove', handleTouchMove);
       joystick.addEventListener('touchend', handleTouchEnd);
       joystickArea.addEventListener('touchend', handleTouchEnd);
-      element.addEventListener('touchend', rotationEndTouch);
-      element.addEventListener('touchstart', handlePointerDown);
-      element.addEventListener('touchmove', handlePointerMove);
+      element.addEventListener('touchstart', handleTouchStart);
+      element.addEventListener('touchmove', handleTouchMove);
+      element.addEventListener('touchend', handleTouchEnd);
     }
   }, [isDragging, camera]);
 
