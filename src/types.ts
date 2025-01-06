@@ -317,16 +317,14 @@ export type ViewportOption = {
   grid?: boolean;
 };
 
-export type MoveActionType = 'pathfinding' | 'linear' | 'teleport'
-  | 'isoView' | 'walkView';
 
 export interface MoveActionOptions {
-  pathfinding?: {
-    target?: THREE.Vector3; // 이동할 경로 (Pathfinding)
-    direction?: THREE.Vector3; //도착했을때 카메라가 바라볼 방향
+  pathFinding?: {
     speed?: number; // 애니메이션 속도
     model?: THREE.Object3D; //바닥 모델
-    stopAnimtaion?: boolean //애니메이션 중지
+    stopAnimation?: boolean //애니메이션 중지
+    isTour: boolean //투어인지 모바일에서 클릭한 경로찾기인지지 
+    matrix?: number[];
   };
   isoView?: {
     speed: number; // 애니메이션 속도
@@ -338,29 +336,61 @@ export interface MoveActionOptions {
     speed: number; // 애니메이션 속도
   }
   linear?: {
-    target: THREE.Vector3; // 목표 좌표 (Linear)
-    direction: THREE.Vector3 // 목표 방향
+    matrix: number[];
     duration: number; // 애니메이션 시간
     fov?: number //카메라 fov값
   };
   teleport?: {
-    target: THREE.Vector3; // 목표 좌표 (Teleport)
-    direction: THREE.Vector3; //방향
+    matrix: number[];
   };
   onComplete?: () => any
 } // 타입 정의
 
-type Actions = {
-  pathfinding: {
-    target?: THREE.Vector3; // 이동할 경로 (Pathfinding)
-    direction?: THREE.Vector3; //도착했을때 카메라가 바라볼 방향
-    speed?: number; // 애니메이션 속도
-    model?: THREE.Object3D; //바닥 모델
-    stopAnimtaion?: boolean //애니메이션 중지
-  }
-} & {
-  isoView: {
-    speed: number; // 애니메이션 속도
-    model: THREE.Object3D; //바라볼 모델 (중앙 값을 구하기 위해)
-  };
-}
+// export type MoveToActions = {
+//   pathfinding: {
+//     target?: THREE.Vector3; // 이동할 경로 (Pathfinding)
+//     direction?: THREE.Vector3; //도착했을때 카메라가 바라볼 방향
+//     speed?: number; // 애니메이션 속도
+//     model?: THREE.Object3D; //바닥 모델
+//     stopAnimtaion?: boolean //애니메이션 중지
+//   }
+// } & {
+//   isoView: {
+//     speed: number; // 애니메이션 속도
+//     model: THREE.Object3D; //바라볼 모델 (중앙 값을 구하기 위해)
+//   } & {
+//     walkView?: {
+//       target: THREE.Vector3; // 이동할 경로 (Pathfinding)
+//       direction: THREE.Vector3; //도착했을때 카메라가 바라볼 방향
+//       speed: number; // 애니메이션 속도
+//     }
+//   } & {
+//     linear?: {
+//       target: THREE.Vector3; // 목표 좌표 (Linear)
+//       direction: THREE.Vector3 // 목표 방향
+//       duration: number; // 애니메이션 시간
+//       fov?: number //카메라 fov값
+//     };
+//   } & {
+//     teleport?: {
+//       target: THREE.Vector3; // 목표 좌표 (Teleport)
+//       direction: THREE.Vector3; //방향
+//     };
+//   }
+//   onComplete?: () => any
+// }
+
+// type tt = {
+//   linear: {
+//     target: THREE.Vector3; // 목표 좌표 (Linear)
+//     direction: THREE.Vector3 // 목표 방향
+//     duration: number; // 애니메이션 시간
+//     fov?: number //카메라 fov값
+//   };
+// } & {
+//   linear: {
+//     matrix:THREE.Matrix4;
+//     duration: number; // 애니메이션 시간
+//     fov?: number //카메라 fov값
+//   };
+// }

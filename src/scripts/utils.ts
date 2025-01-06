@@ -9,7 +9,7 @@ import { TransformControls } from 'three-stdlib';
 import { OrbitControls, RGBELoader } from 'three/examples/jsm/Addons.js';
 import { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { ENV, Layer } from '../Constants';
-import { FileInfo, MoveActionOptions, MoveActionType, View } from '../types.ts';
+import { FileInfo, MoveActionOptions, View } from '../types.ts';
 import {
   BenchMark,
   cameraActionAtom,
@@ -437,33 +437,26 @@ export const zoomToSelected = (obj?: THREE.Object3D) => {
   camera.updateProjectionMatrix();
 };
 
-//카메라 moveTo함수시 카메라 회전 함수수
+//카메라 moveTo함수시 카메라 회전 함수
 const rotateCameraSmoothly = (
-  startDirection: THREE.Vector3,
-  endDirection: THREE.Vector3,
+  startQuaternion: THREE.Quaternion,
+  endQuaternion: THREE.Quaternion,
   t: number,
-  flipY: boolean = true,
+  preventFlip: boolean = true, // 카메라 뒤집힘 방지 옵션
 ) => {
-  if (flipY) {
-    startDirection.normalize();
-    endDirection.normalize();
-  }
-  const from = new THREE.Quaternion().setFromUnitVectors(
-    new THREE.Vector3(0, 0, -1),
-    startDirection,
+  // 두 쿼터니언 간 부드러운 회전 보간
+  const result = new THREE.Quaternion().slerpQuaternions(
+    startQuaternion,
+    endQuaternion,
+    t,
   );
-  const to = new THREE.Quaternion().setFromUnitVectors(
-    new THREE.Vector3(0, 0, -1),
-    endDirection,
-  );
-  //선형 보간 좌표값
-  const result = new THREE.Quaternion().slerpQuaternions(from, to, t);
 
-  //회전값 각도 설정
-  const euler = new THREE.Euler().setFromQuaternion(result, 'YXZ');
-  // 카메라가 옆으로 뒤집힘 문제를 방지
-  euler.z = 0;
-  result.setFromEuler(euler);
+  if (preventFlip) {
+    // 회전값 각도로 변환하여 Z축 회전 방지
+    const euler = new THREE.Euler().setFromQuaternion(result, 'YXZ');
+    euler.z = 0;
+    result.setFromEuler(euler);
+  }
 
   return result;
 };
@@ -538,12 +531,12 @@ function setupPathData(
 }
 
 //경로 이동
-const handlePathfindingMove = (
+const handlePathFindingMove = (
   camera: THREE.Object3D,
   target: THREE.Vector3,
   initialPath: THREE.Vector3[],
   speed: number,
-  direction?: THREE.Vector3,
+  quaternion?: THREE.Quaternion,
 ) => {
   // path없으면 동작x
   if (initialPath.length === 0) return;
@@ -561,15 +554,21 @@ const handlePathfindingMove = (
     }
 
     const { start, end, distance } = segments[currentSegmentIndex];
-    //카메라가 보는 방향
-    const startDirection = camera
-      .getWorldDirection(new THREE.Vector3())
-      .normalize();
 
     const isLastSegment = currentSegmentIndex === segments.length - 1;
-    //카메라가 마지막에에 바라볼 방향
+    // 각 세그먼트의 회전 계산
+    //현재 카메라의 회전값값
+    const startQuat = camera.quaternion.clone();
+    //끝점과 시작점을 이용해 normalize로 바라볼 방향을 결정
     const segDirection = end.clone().sub(start).normalize();
-    const endDirection = isLastSegment && direction ? direction : segDirection;
+    //setFromUnitVectors로 두 벡터 간의 회전을 정의하는 쿼터니언을 생성
+    const segQuat = new THREE.Quaternion().setFromUnitVectors(
+      new THREE.Vector3(0, 0, -1), // 카메라 기본 방향
+      segDirection,
+    );
+
+    //마지막 경로면 quaternion설정해둔 회전값 그게 아니면 segQuat 생성한 회전값
+    const endQuat = isLastSegment && quaternion ? quaternion : segQuat;
 
     currentAnimation = gsap.to(
       { t: 0 },
@@ -605,10 +604,10 @@ const handlePathfindingMove = (
           const pos = new THREE.Vector3().lerpVectors(start, end, progress);
           camera.position.copy(pos);
           //카메라 회전
-          if (direction) {
+          if (quaternion) {
             const newQuat = rotateCameraSmoothly(
-              startDirection,
-              endDirection,
+              startQuat,
+              endQuat,
               progress,
             );
             camera.quaternion.copy(newQuat);
@@ -642,16 +641,16 @@ const handlePathfindingMove = (
 const handleLinearMove = (
   camera: THREE.PerspectiveCamera,
   target: THREE.Vector3,
-  direction: THREE.Vector3,
+  quaternion: THREE.Quaternion,
   speed: number,
   cameraFov?: number,
   onComplete: gsap.Callback = () => { },
 ) => {
-  const startDirection = camera
-    .getWorldDirection(new THREE.Vector3())
-    .normalize();
+
   const startPosition = camera.position.clone();
   const timeline = gsap.timeline();
+
+  const startQuat = camera.quaternion.clone();
   // 카메라 이동
   timeline.to(
     { t: 0 },
@@ -662,50 +661,21 @@ const handleLinearMove = (
       onUpdate: function () {
         const progress = this.targets()[0].t;
         //카메라 이동
-        camera.position.lerpVectors(startPosition, target, progress);
+        const pos = new THREE.Vector3().lerpVectors(startPosition, target, progress);
+        camera.position.copy(pos);
+
+        // 카메라 회전
+        const newQuat = rotateCameraSmoothly(
+          startQuat,
+          quaternion,
+          progress,
+        );
+        camera.quaternion.copy(newQuat);
       },
       onComplete,
     },
   );
-  // 카메라 회전
-  timeline.to(
-    { t: 0 },
-    {
-      t: 1,
-      duration: speed,
-      ease: 'power2.inOut',
-      onUpdate: function () {
-        const progress = this.targets()[0].t;
-        // 최종 바라볼 방향(‘도착 지점에서 center를 보는’ 벡터)
-        const finalDir = new THREE.Vector3()
-          .subVectors(direction, target)
-          .normalize();
-        // 회전 보간: startDir → finalDir
-        if (cameraFov) {
-          const newQuat = rotateCameraSmoothly(
-            startDirection,
-            finalDir,
-            progress,
-            false,
-          );
-          camera.quaternion.copy(newQuat);
-        } else {
-          const newQuat = rotateCameraSmoothly(
-            startDirection,
-            direction,
-            progress,
-          );
-          camera.quaternion.copy(newQuat);
-        }
-      },
-      onComplete: () => {
-        console.log('Rotation completed');
-        // camera.lookAt(direction)
-      },
-    },
-    // 이동과 회전을 동시에 실행
-    '<',
-  );
+
   //카메라 fov값 변경경
   if (cameraFov !== undefined) {
     timeline.to(
@@ -725,19 +695,21 @@ const handleLinearMove = (
 
 const handleTeleportMove = (
   camera: THREE.PerspectiveCamera,
-  target: THREE.Vector3,
-  direction: THREE.Vector3,
+  matrix: number[]
 ) => {
+  //배열을 matrix4로 변형
+  const threeMatrix = new THREE.Matrix4().fromArray(matrix);
+
   //매트릭스 일 경우 포지션 이동
-  //camera.position.setFromMatrixPosition(matrix);
-  //camera.updateMatrixWorld(true);
-  camera.position.set(target.x, target.y, target.z);
+  camera.position.setFromMatrixPosition(threeMatrix);
+  camera.updateMatrixWorld(true);
+  // camera.position.set(target.x, target.y, target.z);
   //메트릭스 일경우
-  // camera.rotation.setFromRotationMatrix(camera.matrix);
-  // camera.matrixWorldNeedsUpdate = true;
+  camera.rotation.setFromRotationMatrix(threeMatrix);
+  camera.matrixWorldNeedsUpdate = true;
   //방향일경우
-  const newTarget = camera.position.clone().add(direction);
-  camera.lookAt(newTarget);
+  // const newTarget = camera.position.clone().add(direction);
+  // camera.lookAt(newTarget);
   //좌표일경우
   // camera.lookAt(target)
 };
@@ -745,90 +717,87 @@ const handleTeleportMove = (
 //카메라 moveTo함수
 export const moveTo = (
   camera: THREE.PerspectiveCamera,
-  action: MoveActionType,
-  options: MoveActionOptions,
+  action: MoveActionOptions,
 ) => {
-  switch (action) {
-    case 'pathfinding':
-      if (action !== 'pathfinding' || !options.pathfinding) return;
 
-      const { target, speed, model, direction, stopAnimtaion } =
-        options.pathfinding;
+  if (action.pathFinding) {
+    const { speed, model, stopAnimation, isTour, matrix } = action.pathFinding;
 
-      if (stopAnimtaion && currentAnimation) {
-        currentAnimation.kill();
-        return;
-      }
+    if (stopAnimation && currentAnimation) {
+      currentAnimation.kill();
+      return;
+    }
 
-      const ZONE = 'level';
-      const pathFinding = new Pathfinding();
+    const ZONE = 'level';
+    const pathFinding = new Pathfinding();
 
-      if (model && target && speed) {
-        const navMesh = model.getObjectByName('84B3_DP') as THREE.Mesh;
-        if (!navMesh) return;
+    if (model && matrix && speed) {
+      //배열을 matrix4로 변형
+      const threeMatrix = new THREE.Matrix4().fromArray(matrix);
+      // 위치, 회전, 스케일을 저장할 객체 생성
+      const position = new THREE.Vector3();
+      const quaternion = new THREE.Quaternion();
+      const scale = new THREE.Vector3();
+      // 행렬에서 position, rotation, scale 추출
+      threeMatrix.decompose(position, quaternion, scale);
+      const navMesh = model.getObjectByName('84B3_DP') as THREE.Mesh;
+      if (!navMesh) return;
 
-        const zone = Pathfinding.createZone(navMesh.geometry);
-        pathFinding.setZoneData(ZONE, zone);
+      const zone = Pathfinding.createZone(navMesh.geometry);
+      pathFinding.setZoneData(ZONE, zone);
 
-        const groupID = pathFinding.getGroup(ZONE, camera.position);
-        const targetGroupID = pathFinding.getGroup(ZONE, target);
+      const groupID = pathFinding.getGroup(ZONE, camera.position);
+      const targetGroupID = pathFinding.getGroup(ZONE, position);
 
-        const closestStartNode = pathFinding.getClosestNode(
-          camera.position,
-          ZONE,
-          groupID,
-        );
-        const closestTargetNode = pathFinding.getClosestNode(
-          target,
-          ZONE,
-          targetGroupID,
-        );
-        const path = pathFinding.findPath(
-          closestStartNode.centroid,
-          closestTargetNode.centroid,
-          ZONE,
-          groupID,
-        );
+      const closestStartNode = pathFinding.getClosestNode(camera.position, ZONE, groupID);
+      const closestTargetNode = pathFinding.getClosestNode(position, ZONE, targetGroupID);
+      const path = pathFinding.findPath(
+        closestStartNode.centroid,
+        closestTargetNode.centroid,
+        ZONE,
+        groupID,
+      );
 
-        if (path) {
-          if (direction) {
-            //마지막에 내가 정한 좌표가 아닌 closestTargetNode 근처 좌표로 이동하기에
-            //배열의 마지막 좌표를 target좌표로 변경경
-            const newPath = [...path];
-            newPath.pop();
-            newPath.push(target);
-            console.log('newPath', newPath);
-            handlePathfindingMove(camera, target, newPath, speed, direction);
-          } else {
-            handlePathfindingMove(camera, target, path, speed);
-          }
+      if (path) {
+        //direction 추가 이유 pc에서 투어에는 필요하고 모바일에서 클릭 이동에는 필요x
+        if (isTour) {
+          const newPath = [...path];
+          newPath.pop();
+          newPath.push(position);
+          handlePathFindingMove(camera, position, newPath, speed, quaternion);
+        } else {
+          handlePathFindingMove(camera, position, path, speed);
         }
       }
-      break;
-    case 'linear':
-      if (options.linear) {
-        handleLinearMove(
-          camera,
-          options.linear.target,
-          options.linear.direction,
-          options.linear.duration,
-          options.linear.fov,
-          options.onComplete
-        );
-      }
-      break;
+    }
+  }
 
-    case 'teleport':
-      if (options.teleport) {
-        const { target, direction } = options.teleport;
-        handleTeleportMove(camera, target, direction);
-      }
-      break;
+  if (action.linear) {
+    const { matrix, duration, fov } = action.linear;
+    //배열을 matrix4로 변형
+    const threeMatrix = new THREE.Matrix4().fromArray(matrix);
+    // 위치, 회전, 스케일을 저장할 객체 생성
+    const position = new THREE.Vector3();
+    const quaternion = new THREE.Quaternion();
+    const scale = new THREE.Vector3();
+    // 행렬에서 position, rotation, scale 추출
+    threeMatrix.decompose(position, quaternion, scale);
+    handleLinearMove(
+      camera,
+      position,
+      quaternion,
+      duration,
+      fov,
+      action.onComplete,
+    );
+  }
 
-    default:
-      console.error('Invalid action type');
+  if (action.teleport) {
+    const { matrix } = action.teleport;
+    handleTeleportMove(camera, matrix);
   }
 };
+
 export const setAsModel = (object: THREE.Object3D) => {
   object.layers.enable(Layer.Model);
   object.children.forEach(setAsModel);

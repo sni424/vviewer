@@ -10,56 +10,54 @@ import {
 import {
   cameraActionAtom,
   cameraSettingAtom,
+  getAtomValue,
+  setAtomValue,
   threeExportsAtom,
+  tourAtom,
 } from '../scripts/atoms';
-import { THREE } from '../scripts/VTHREE';
+import { loadTourSpot, uploadJson } from '../scripts/atomUtils';
 
 type placeInfoType = {
   name: string;
-  position: THREE.Vector3;
-  direction: THREE.Vector3;
+  matrix: number[];
 };
 
-const tour: placeInfoType[] = [
-  {
-    name: '안방',
-    position: new THREE.Vector3(3.35, 1.2, 0.686),
-    direction: new THREE.Vector3(0.6, -0.05, 0.79),
-  },
-  {
-    name: '서재방',
-    position: new THREE.Vector3(-3.056, 1.2, 2.08),
-    direction: new THREE.Vector3(-0.07, -0.01, 0.99),
-  },
-  {
-    name: '아이방',
-    position: new THREE.Vector3(-5.36, 1.2, 1.37),
-    direction: new THREE.Vector3(-0.18, -0.06, 0.98),
-  },
-  {
-    name: '주방',
-    position: new THREE.Vector3(1.087, 1.258, -3.426),
-    direction: new THREE.Vector3(0.93, 0.03, -0.26),
-  },
-  {
-    name: '거실',
-    position: new THREE.Vector3(1.62, 1.2, 1.08),
-    direction: new THREE.Vector3(-0.68, 0.1, 0.72),
-  },
-  {
-    name: '화장실',
-    position: new THREE.Vector3(-5.9, 1.2, 0.33),
-    direction: new THREE.Vector3(-0.99, -0.9, 0.06),
-  },
-];
+type telePortType = {
+  name: string;
+  matrix: number[];
+};
 
 const animationSpeed = [1, 2, 3, 4, 5];
+
+const uploadTourSpot = async () => {
+  const tourSpots = getAtomValue(tourAtom);
+
+  uploadJson('tourSpot.json', tourSpots)
+    .then(res => res.json())
+    .then(res => {
+      if (res?.success === true) {
+        alert('업로드 완료');
+      } else {
+        throw res;
+      }
+    })
+    .catch(err => {
+      console.error(err);
+      alert('업로드 실패');
+    });
+};
 
 function HotSpotPanel() {
   // 핫스팟 정보
   const [placeInfo, setPlaceInfo] = useState<placeInfoType[]>([]);
   // 순간이동 정보보
-  const [telePort, setTelePort] = useState<placeInfoType[]>([]);
+  const [telePort, setTelePort] = useState<telePortType[]>([]);
+  //방 이름
+  const [placeName, setPlaceName] = useState<string>('');
+  //투어 방 정보
+  const [tourPlace, setTourPlace] = useAtom(tourAtom);
+
+  const [isTourInput, setTourInput] = useState<boolean>(false);
   // 투어 실행 여부
   const [isTour, setTour] = useState<boolean>(false);
   //threejs useThree
@@ -72,25 +70,40 @@ function HotSpotPanel() {
   if (!threeExports) return null;
 
   const { camera, scene } = threeExports;
+  // 투어 추가 함수수
+  const addTour = () => {
+    if (placeName.length > 0) {
+      setTourPlace(pre => [
+        ...pre,
+        { name: placeName, matrix: camera.matrix.toArray() },
+      ]);
+      setPlaceName('');
+      setTourInput(false);
+    } else {
+      window.alert('이름을 입력해주세요.');
+    }
+  };
 
   // 투어 애니메이션 실행 함수
   const executeTour = (roomIndex: number) => {
-    const { position, direction } = tour[roomIndex];
-    camera.moveTo('pathfinding', {
-      pathfinding: {
-        target: new THREE.Vector3(position.x, position.y, position.z),
-        speed: cameraAction.tour.animationSpeed,
-        model: scene,
-        direction,
-      },
-    });
-    setCameraAction(pre => ({
-      ...pre,
-      tour: {
-        ...pre.tour,
-        isAnimation: true,
-      },
-    }));
+    if (tourPlace.length > 0) {
+      const { matrix } = tourPlace[roomIndex];
+      camera.moveTo({
+        pathFinding: {
+          speed: cameraAction.tour.animationSpeed,
+          model: scene,
+          isTour: true,
+          matrix,
+        },
+      });
+      setCameraAction(pre => ({
+        ...pre,
+        tour: {
+          ...pre.tour,
+          isAnimation: true,
+        },
+      }));
+    }
   };
 
   // 이전전 방으로 이동
@@ -101,7 +114,7 @@ function HotSpotPanel() {
         ...pre.tour,
         roomIndex:
           pre.tour.roomIndex - 1 === 0
-            ? tour.length - 1
+            ? tourPlace.length - 1
             : pre.tour.roomIndex - 1,
         isAnimation: true,
       },
@@ -115,7 +128,9 @@ function HotSpotPanel() {
       tour: {
         ...pre.tour,
         roomIndex:
-          pre.tour.roomIndex + 1 === tour.length ? 0 : pre.tour.roomIndex + 1,
+          pre.tour.roomIndex + 1 === tourPlace.length
+            ? 0
+            : pre.tour.roomIndex + 1,
         isAnimation: true,
       },
     }));
@@ -148,18 +163,16 @@ function HotSpotPanel() {
       ...prev,
       {
         name: `place-${prev.length}`,
-        position: camera.position.clone(),
-        direction: camera.getWorldDirection(new THREE.Vector3()).clone(),
+        matrix: camera.matrix.toArray(),
       },
     ]);
   };
 
   //핫스팟 이동
   const moveHotSpot = (place: placeInfoType) => {
-    camera.moveTo('linear', {
+    camera.moveTo({
       linear: {
-        target: place.position,
-        direction: place.direction,
+        matrix: place.matrix,
         duration: cameraSetting.moveSpeed,
       },
     });
@@ -174,9 +187,10 @@ function HotSpotPanel() {
     if (isTour) {
       executeTour(cameraAction.tour.roomIndex);
     } else {
-      camera.moveTo('pathfinding', {
-        pathfinding: {
-          stopAnimtaion: true,
+      camera.moveTo({
+        pathFinding: {
+          stopAnimation: true,
+          isTour: true,
         },
       });
       setCameraAction(pre => ({
@@ -195,18 +209,16 @@ function HotSpotPanel() {
       ...prev,
       {
         name: `place-${prev.length}`,
-        position: camera.position.clone(),
-        direction: camera.getWorldDirection(new THREE.Vector3()).clone(),
+        matrix: camera.matrix.toArray(),
       },
     ]);
   };
 
   //텔레포트트 이동
-  const moveTelePort = (place: placeInfoType) => {
-    camera.moveTo('teleport', {
+  const moveTelePort = (place: telePortType) => {
+    camera.moveTo({
       teleport: {
-        target: place.position,
-        direction: place.direction,
+        matrix: place.matrix,
       },
     });
   };
@@ -237,7 +249,7 @@ function HotSpotPanel() {
           className="px-4 py-2 mt-2 text-white bg-blue-600 rounded-lg shadow-md hover:bg-blue-700 active:scale-95 transition-transform duration-150 ease-in-out"
           onClick={addHotSpot}
         >
-          위치 추가
+          핫스팟 테스트 위치 추가
         </button>
 
         <div className="mt-2 flex items-center gap-2 flex-wrap">
@@ -269,6 +281,35 @@ function HotSpotPanel() {
             })}
         </div>
       </div>
+      <div className="px-4 box-border w-full py-2">
+        <button
+          className="px-4 py-2 mt-2 text-white bg-blue-600 rounded-lg shadow-md hover:bg-blue-700 active:scale-95 transition-transform duration-150 ease-in-out"
+          onClick={() => {
+            setTourInput(true);
+          }}
+        >
+          현재 위치 투어에 추가
+        </button>
+      </div>
+      {isTourInput && (
+        <div className="px-4 box-border w-full pb-2">
+          <input
+            className="py-2 px-2"
+            placeholder="방 이름"
+            value={placeName}
+            onChange={e => {
+              setPlaceName(e.target.value);
+            }}
+          />
+          <button
+            className="px-4 py-2 mt-2 text-white bg-blue-600 rounded-lg shadow-md hover:bg-blue-700 active:scale-95 transition-transform duration-150 ease-in-out"
+            onClick={addTour}
+          >
+            추가
+          </button>
+        </div>
+      )}
+
       <div className="px-2">
         <div className=" flex items-center justify-between w-full p-2 rounded-full bg-gray-800 shadow-lg text-white">
           {/* 이전 버튼 */}
@@ -296,7 +337,7 @@ function HotSpotPanel() {
 
             {/* 페이지 수 */}
             <div className="px-3 py-1 bg-blue-600 rounded-lg">
-              {cameraAction?.tour?.roomIndex + 1} / {tour.length}
+              {cameraAction?.tour?.roomIndex + 1} / {tourPlace.length}
             </div>
 
             {/* 배속 */}
@@ -324,7 +365,7 @@ function HotSpotPanel() {
                 changeTourRoom(e);
               }}
             >
-              {tour.map((room, index) => (
+              {tourPlace.map((room, index) => (
                 <option key={`tour_${index}`} value={index}>
                   {room.name}
                 </option>
@@ -356,7 +397,7 @@ function HotSpotPanel() {
 
         <div className="mt-2 flex items-center gap-2 flex-wrap">
           {telePort.length > 0 &&
-            telePort.map((place: placeInfoType, index: number) => {
+            telePort.map((place: telePortType, index: number) => {
               return (
                 <div
                   key={`placeInfo-${index}`}
@@ -382,6 +423,40 @@ function HotSpotPanel() {
               );
             })}
         </div>
+      </div>
+      <div className="px-4 box-border w-full flex items-center gap-2">
+        <button
+          className="px-4 py-2 mt-2 text-white bg-blue-600 rounded-lg shadow-md hover:bg-blue-700 active:scale-95 transition-transform duration-150 ease-in-out"
+          onClick={() => setTourPlace([])}
+        >
+          투어 정보 전부 삭제
+        </button>
+        <button
+          className="px-4 py-2 mt-2 text-white bg-blue-600 rounded-lg shadow-md hover:bg-blue-700 active:scale-95 transition-transform duration-150 ease-in-out"
+          onClick={() => uploadTourSpot()}
+        >
+          업로드
+        </button>
+        <button
+          className="px-4 py-2 mt-2 text-white bg-blue-600 rounded-lg shadow-md hover:bg-blue-700 active:scale-95 transition-transform duration-150 ease-in-out"
+          onClick={() => {
+            loadTourSpot()
+              .then(tourSpot => {
+                if (tourSpot) {
+                  setAtomValue(tourAtom, tourSpot);
+                  alert('투어정보 로드완료');
+                } else {
+                  throw tourSpot;
+                }
+              })
+              .catch(err => {
+                console.error(err);
+                alert('투어정보 로드실패');
+              });
+          }}
+        >
+          불러오기
+        </button>
       </div>
     </>
   );
