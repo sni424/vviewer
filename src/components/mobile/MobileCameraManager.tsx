@@ -123,13 +123,14 @@ const MobileCameraManager = ({
     if (canvasTouch && isRotateRef.current && !oribitControl?.enabled) {
       const deltaX = canvasTouch.clientX - previousMousePosition.current.x;
       const deltaY = canvasTouch.clientY - previousMousePosition.current.y;
+      if (canvasTouch.clientX !== previousMousePosition.current.x) {
+        moveCameraRotation(deltaX, deltaY);
 
-      moveCameraRotation(deltaX, deltaY);
-
-      previousMousePosition.current = {
-        x: canvasTouch.clientX,
-        y: canvasTouch.clientY,
-      };
+        previousMousePosition.current = {
+          x: canvasTouch.clientX,
+          y: canvasTouch.clientY,
+        };
+      }
     }
   };
   const handleTouchEnd = (e: TouchEvent) => {
@@ -312,6 +313,16 @@ const MobileCameraManager = ({
       element.addEventListener('touchstart', handleTouchStart);
       element.addEventListener('touchmove', handleTouchMove);
       element.addEventListener('touchend', handleTouchEnd);
+      // Cleanup: 이벤트 리스너 제거
+      return () => {
+        joystick.removeEventListener('touchstart', handleTouchStart);
+        joystick.removeEventListener('touchmove', handleTouchMove);
+        joystick.removeEventListener('touchend', handleTouchEnd);
+        joystickArea.removeEventListener('touchend', handleTouchEnd);
+        element.removeEventListener('touchstart', handleTouchStart);
+        element.removeEventListener('touchmove', handleTouchMove);
+        element.removeEventListener('touchend', handleTouchEnd);
+      };
     }
   }, [isDragging, camera]);
 
