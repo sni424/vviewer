@@ -12,6 +12,7 @@ import {
   resetGL,
   saveScene,
   toNthDigit,
+  uploadExrLightmap,
   uploadGainmap,
 } from '../scripts/utils';
 
@@ -377,7 +378,10 @@ const GeneralButtons = () => {
           }
 
           onBeforeSceneExport();
-          uploadGainmap(threeExports.scene).then(() => {
+          Promise.all([
+            uploadExrLightmap(threeExports.scene),
+            uploadGainmap(threeExports.scene),
+          ]).then(() => {
             new VGLTFExporter()
               .parseAsync(threeExports.scene, { binary: true })
               .then(glbArr => {
@@ -1241,7 +1245,7 @@ const GeneralMaterialControl = () => {
           }}
           min={0}
           max={LIGHTMAP_INTENSITY_MAX}
-          step={0.01}
+          step={0.1}
         ></input>
         <input
           type="number"
@@ -1260,8 +1264,8 @@ const GeneralMaterialControl = () => {
             setlmIntensityValue(parseFloat(e.target.value));
           }}
           min={0}
-          max={1}
-          step={0.01}
+          max={LIGHTMAP_INTENSITY_MAX}
+          step={0.1}
         ></input>
       </div>
     </section>

@@ -1,3 +1,5 @@
+import { set } from "idb-keyval";
+import { EXRLoader } from "three/examples/jsm/Addons.js";
 import GainmapLoader from "./GainmapLoader";
 import { THREE } from "./VTHREE";
 
@@ -58,9 +60,25 @@ export default class VTextureLoader {
           return texture;
         })
       } else if (inputOption.as === 'texture') {
-        return new THREE.TextureLoader().loadAsync(url).then(texture => {
-          texture.flipY = inputOption.flipY;
+        let loader: THREE.Loader;
+        const isExr = (isFile && fileOrUrl.name.toLowerCase().endsWith(".exr")) || (fileOrUrl as string).toLowerCase().endsWith(".exr");
+        if (isExr) {
+          loader = new EXRLoader();
+        } else {
+          loader = new THREE.TextureLoader();
+        }
+        return loader.loadAsync(url).then((_texture) => {
+          const texture = _texture as THREE.Texture;
           texture.channel = inputOption.channel;
+          texture.flipY = inputOption.flipY;
+          if (isExr) {
+            texture.vUserData.isExr = true;
+            if (isFile) {
+              texture.vUserData.lightMap = fileOrUrl.name;
+              set(fileOrUrl.name, fileOrUrl as File);
+            }
+            // texture.flipY = !texture.flipY;
+          }
           texture.needsUpdate = true;
           return texture;
         });

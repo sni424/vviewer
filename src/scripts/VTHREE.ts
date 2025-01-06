@@ -27,6 +27,7 @@ export interface ThreeUserData {
   probeControlDirection?: PlaneControlDirections;
   probes?: ReflectionProbeJSON[];
   hotspotIndex?: number;
+  isExr?: boolean;
 }
 
 declare module 'three' {

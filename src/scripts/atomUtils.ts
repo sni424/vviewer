@@ -1,5 +1,5 @@
 import { ENV } from "../Constants";
-import { cameraMatrixAtom, getAtomValue, roomAtom, RoomCreateOption } from "./atoms";
+import { cameraMatrixAtom, getAtomValue, roomAtom, RoomCreateOption, threeExportsAtom } from "./atoms";
 import { THREE } from "./VTHREE";
 
 interface PointXZ {
@@ -103,4 +103,18 @@ export const loadRooms = async () => {
   return fetch(ENV.base + "rooms.json", {
     cache: 'no-store',
   }).then(res => res.json());
+}
+
+export const threes = () => {
+  return getAtomValue(threeExportsAtom);
+};
+
+export const rerender = () => {
+  const t = threes();
+  if (!t) {
+    return;
+  }
+
+  const { gl, scene, camera } = t;
+  gl.render(scene, camera);
 }
