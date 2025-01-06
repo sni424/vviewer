@@ -6,7 +6,6 @@ import {
   cameraMatrixAtom,
   cameraSettingAtom,
   insideRoomAtom,
-  lastCameraInfoAtom,
   orbitSettingAtom,
   oribitControlAtom,
   setAtomValue,
@@ -26,8 +25,7 @@ const OrbitManager: React.FC = () => {
   const setCameraAtom = useSetAtom(cameraMatrixAtom);
   //orbitControl atom에 저장
   const setOribitControl = useSetAtom(oribitControlAtom);
-  //마지막 카메라 정보
-  const lastCameraInfo = useAtomValue(lastCameraInfoAtom);
+
   // 외부 이벤트에 의해 핸들링 되고있는지에 대한 상태
   const [outControlled, setOutControlled] = useState(false);
 

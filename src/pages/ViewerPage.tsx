@@ -1,5 +1,4 @@
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
-import { Vector3 } from 'three';
 import CameraPanel from '../components/CameraPanel';
 import FloatingFrontView from '../components/canvas/FloatingFrontView';
 import FloatingTopView from '../components/canvas/FloatingTopView';
@@ -194,12 +193,11 @@ const Options = () => {
                 new THREE.Quaternion(),
                 new THREE.Vector3(),
               );
-              console.log('linear');
+
               const { camera } = three;
               camera.moveTo({
                 linear: {
-                  target: pos,
-                  direction: new Vector3(...option.target).sub(pos),
+                  matrix: mat,
                   duration: 1.5,
                 },
                 onComplete: () => {

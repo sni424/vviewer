@@ -12,44 +12,71 @@ import {
   cameraSettingAtom,
   threeExportsAtom,
 } from '../scripts/atoms';
-import { THREE } from '../scripts/VTHREE';
 
 type placeInfoType = {
   name: string;
-  position: THREE.Vector3;
-  direction: THREE.Vector3;
+  matrix: number[];
+};
+
+type telePortType = {
+  name: string;
+  matrix: number[];
 };
 
 const tour: placeInfoType[] = [
   {
     name: '안방',
-    position: new THREE.Vector3(3.35, 1.2, 0.686),
-    direction: new THREE.Vector3(0.6, -0.05, 0.79),
+    matrix: [
+      -0.5329339073372636, 3.469446951953614e-18, 0.8461568710411993, 0,
+      0.05697991453500144, 0.9977301090097825, 0.03588758719824091, 0,
+      -0.8442361871833124, 0.0673396582655972, -0.5317242054626172, 0,
+      3.311632136105409, 1.3, 0.5719457803921064, 1,
+    ],
   },
   {
     name: '서재방',
-    position: new THREE.Vector3(-3.056, 1.2, 2.08),
-    direction: new THREE.Vector3(-0.07, -0.01, 0.99),
+    matrix: [
+      -0.9999265181483143, 2.1399440379432644e-17, 0.012122636008008862, 0,
+      0.00017949058508560353, 0.9998903817097062, 0.014805145981984267, 0,
+      -0.012121307145375808, 0.014806233971472935, -0.9998169079129755, 0,
+      -3.0381199462568924, 1.3, 1.6171479942690246, 1,
+    ],
   },
   {
     name: '아이방',
-    position: new THREE.Vector3(-5.36, 1.2, 1.37),
-    direction: new THREE.Vector3(-0.18, -0.06, 0.98),
+    matrix: [
+      -0.9744084601245122, 2.168404344971009e-17, -0.22478468105671554, 0,
+      0.0023790498516392173, 0.9999439912565127, -0.010312830445551155, 0,
+      0.22477209114917437, -0.010583683196093477, -0.9743538847310174, 0,
+      -5.616611393897269, 1.3, 1.468183937788956, 1,
+    ],
   },
   {
     name: '주방',
-    position: new THREE.Vector3(1.087, 1.258, -3.426),
-    direction: new THREE.Vector3(0.93, 0.03, -0.26),
+    matrix: [
+      0.3473993845619663, 8.673617379884035e-18, 0.9377172642145218, 0,
+      0.0281272983886304, 0.9995500337489875, -0.010420418309975359, 0,
+      -0.9372953230926336, 0.02999550020249571, 0.34724306656329085, 0,
+      1.1313022019166767, 1.3, -3.4098870812899422, 1,
+    ],
   },
   {
     name: '거실',
-    position: new THREE.Vector3(1.62, 1.2, 1.08),
-    direction: new THREE.Vector3(-0.68, 0.1, 0.72),
+    matrix: [
+      -0.5621641191337814, -2.7755575615628914e-17, -0.8270256967945624, 0,
+      0.0363563517143836, 0.9990332758651205, -0.0247129400158306, 0,
+      0.8262261910933055, -0.043960365264701845, -0.5616206615120514, 0,
+      1.7408389015426144, 1.3, 1.0047105823256879, 1,
+    ],
   },
   {
     name: '화장실',
-    position: new THREE.Vector3(-5.9, 1.2, 0.33),
-    direction: new THREE.Vector3(-0.99, -0.9, 0.06),
+    matrix: [
+      -0.05818603514227472, -2.6020852139652106e-18, -0.9983057574282613, 0,
+      -0.011396529980215113, 0.99993483681885, 0.0006642442848742878, 0,
+      0.998240704649347, 0.01141587123525533, -0.05818224355512647, 0,
+      -5.3982047017446035, 1.3, 0.4802408040181217, 1,
+    ],
   },
 ];
 
@@ -59,7 +86,7 @@ function HotSpotPanel() {
   // 핫스팟 정보
   const [placeInfo, setPlaceInfo] = useState<placeInfoType[]>([]);
   // 순간이동 정보보
-  const [telePort, setTelePort] = useState<placeInfoType[]>([]);
+  const [telePort, setTelePort] = useState<telePortType[]>([]);
   // 투어 실행 여부
   const [isTour, setTour] = useState<boolean>(false);
   //threejs useThree
@@ -75,13 +102,13 @@ function HotSpotPanel() {
 
   // 투어 애니메이션 실행 함수
   const executeTour = (roomIndex: number) => {
-    const { position, direction } = tour[roomIndex];
+    const { matrix } = tour[roomIndex];
     camera.moveTo({
       pathFinding: {
-        target: new THREE.Vector3(position.x, position.y, position.z),
         speed: cameraAction.tour.animationSpeed,
         model: scene,
-        direction,
+        isTour: true,
+        matrix,
       },
     });
     setCameraAction(pre => ({
@@ -148,8 +175,7 @@ function HotSpotPanel() {
       ...prev,
       {
         name: `place-${prev.length}`,
-        position: camera.position.clone(),
-        direction: camera.getWorldDirection(new THREE.Vector3()).clone(),
+        matrix: camera.matrix.toArray(),
       },
     ]);
   };
@@ -158,8 +184,7 @@ function HotSpotPanel() {
   const moveHotSpot = (place: placeInfoType) => {
     camera.moveTo({
       linear: {
-        target: place.position,
-        direction: place.direction,
+        matrix: place.matrix,
         duration: cameraSetting.moveSpeed,
       },
     });
@@ -177,6 +202,7 @@ function HotSpotPanel() {
       camera.moveTo({
         pathFinding: {
           stopAnimation: true,
+          isTour: true,
         },
       });
       setCameraAction(pre => ({
@@ -195,18 +221,16 @@ function HotSpotPanel() {
       ...prev,
       {
         name: `place-${prev.length}`,
-        position: camera.position.clone(),
-        direction: camera.getWorldDirection(new THREE.Vector3()).clone(),
+        matrix: camera.matrix.toArray(),
       },
     ]);
   };
 
   //텔레포트트 이동
-  const moveTelePort = (place: placeInfoType) => {
+  const moveTelePort = (place: telePortType) => {
     camera.moveTo({
       teleport: {
-        target: place.position,
-        direction: place.direction,
+        matrix: place.matrix,
       },
     });
   };
@@ -356,7 +380,7 @@ function HotSpotPanel() {
 
         <div className="mt-2 flex items-center gap-2 flex-wrap">
           {telePort.length > 0 &&
-            telePort.map((place: placeInfoType, index: number) => {
+            telePort.map((place: telePortType, index: number) => {
               return (
                 <div
                   key={`placeInfo-${index}`}

@@ -7,7 +7,6 @@ import {
   oribitControlAtom,
   threeExportsAtom,
 } from '../../scripts/atoms';
-import { calculateTargetPosition } from '../../scripts/utils';
 
 const MobileCameraManager = ({
   rotationSpeed = 0.002,
@@ -272,29 +271,11 @@ const MobileCameraManager = ({
 
   // 카메라 이동 및 회전시 카메라 데이터 저장
   const updateCameraInfo = () => {
-    if (oribitControl && camera) {
-      const originalTarget = oribitControl.target;
-      const cameraPosition = camera.position.clone();
-
-      const distance = cameraPosition.distanceTo(originalTarget);
-
-      // 카메라의 방향 벡터
-      const direction = camera.getWorldDirection(new THREE.Vector3());
-
-      // 목표 좌표 계산 (카메라 위치 + 방향 벡터)
-      const target = calculateTargetPosition(
-        cameraPosition,
-        direction,
-        distance,
-      );
-      // 마지막 카메라 정보 업데이트
-      if (!cameraSetting.isoView) {
-        setLastCameraInfo(pre => ({
-          ...pre,
-          position: cameraPosition,
-          target,
-        }));
-      }
+    if (oribitControl && camera && !cameraSetting.isoView) {
+      setLastCameraInfo(pre => ({
+        ...pre,
+        matrix: camera.matrix.toArray(),
+      }));
     }
 
     // // 방 업데이트
