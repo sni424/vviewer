@@ -12,6 +12,7 @@ import {
   threeExportsAtom,
 } from '../scripts/atoms';
 import { Quaternion, THREE, Vector3 } from '../scripts/VTHREE';
+import Clipping from './clipping/Clipping';
 
 const CameraPanel = () => {
   const [isCameraPanel, setCameraPanel] = useState(true);
@@ -92,6 +93,7 @@ const CameraPanel = () => {
   }
 
   const { camera, scene } = threeExports;
+
   const position = new Vector3();
   const rotation = new Quaternion();
   const scale = new Vector3();
@@ -264,6 +266,9 @@ const CameraPanel = () => {
                     );
                     perCam.position.set(1, 200, 1);
                     perCam.updateProjectionMatrix();
+
+                    // 최신 카메라로 동기화
+                    threeExports.camera = perCam;
                     return {
                       ...state,
                       camera: perCam,
@@ -275,22 +280,66 @@ const CameraPanel = () => {
               </button>
               <button
                 onClick={() => {
-                  camera.position.set(1, cameraSetting.cameraY, 1);
-                  // 목표 방향 계산
-                  const target = new THREE.Vector3(1, cameraSetting.cameraY, 1);
-                  const direction = target
-                    .clone()
-                    .sub(camera.position)
-                    .normalize();
+                  console.log('Updated camera:', threeExports.camera);
+                  if (threeExports.camera.type === 'PerspectiveCamera') {
+                    camera.position.set(1, cameraSetting.cameraY, 1);
+                    // 목표 방향 계산
+                    const target = new THREE.Vector3(
+                      1,
+                      cameraSetting.cameraY,
+                      1,
+                    );
+                    const direction = target
+                      .clone()
+                      .sub(camera.position)
+                      .normalize();
 
-                  // 카메라의 "앞 방향"(`-Z`)을 목표 방향으로 회전
-                  const quaternion = new THREE.Quaternion().setFromUnitVectors(
-                    new THREE.Vector3(0, 0, -1), // 기본 카메라의 앞 방향
-                    direction,
-                  );
+                    // 카메라의 "앞 방향"(`-Z`)을 목표 방향으로 회전
+                    const quaternion =
+                      new THREE.Quaternion().setFromUnitVectors(
+                        new THREE.Vector3(0, 0, -1), // 기본 카메라의 앞 방향
+                        direction,
+                      );
 
-                  // 카메라의 회전값 적용
-                  camera.quaternion.copy(quaternion);
+                    // 카메라의 회전값 적용
+                    camera.quaternion.copy(quaternion);
+                  } else {
+                    threeExports.set(state => {
+                      const perCam = new THREE.PerspectiveCamera(
+                        75,
+                        window.innerWidth / window.innerHeight,
+                        0.1,
+                        1000,
+                      );
+                      perCam.position.set(1, cameraSetting.cameraY, 1);
+
+                      const target = new THREE.Vector3(
+                        1,
+                        cameraSetting.cameraY,
+                        1,
+                      );
+                      const direction = target
+                        .clone()
+                        .sub(perCam.position)
+                        .normalize();
+
+                      // 카메라의 "앞 방향"(`-Z`)을 목표 방향으로 회전
+                      const quaternion =
+                        new THREE.Quaternion().setFromUnitVectors(
+                          new THREE.Vector3(0, 0, -1), // 기본 카메라의 앞 방향
+                          direction,
+                        );
+
+                      // 카메라의 회전값 적용
+                      perCam.quaternion.copy(quaternion);
+                      perCam.updateProjectionMatrix();
+                      threeExports.camera = perCam;
+                      return {
+                        ...state,
+                        camera: perCam,
+                      };
+                    });
+                  }
                 }}
               >
                 카메라 위치 초기화
@@ -343,6 +392,7 @@ const CameraPanel = () => {
                 />
               </div>
             </div>
+            <Clipping />
           </section>
         </div>
       ) : (

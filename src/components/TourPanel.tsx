@@ -10,8 +10,12 @@ import {
 import {
   cameraActionAtom,
   cameraSettingAtom,
+  getAtomValue,
+  setAtomValue,
   threeExportsAtom,
+  tourAtom,
 } from '../scripts/atoms';
+import { loadTourSpot, uploadJson } from '../scripts/atomUtils';
 
 type placeInfoType = {
   name: string;
@@ -23,70 +27,37 @@ type telePortType = {
   matrix: number[];
 };
 
-const tour: placeInfoType[] = [
-  {
-    name: '안방',
-    matrix: [
-      -0.5329339073372636, 3.469446951953614e-18, 0.8461568710411993, 0,
-      0.05697991453500144, 0.9977301090097825, 0.03588758719824091, 0,
-      -0.8442361871833124, 0.0673396582655972, -0.5317242054626172, 0,
-      3.311632136105409, 1.3, 0.5719457803921064, 1,
-    ],
-  },
-  {
-    name: '서재방',
-    matrix: [
-      -0.9999265181483143, 2.1399440379432644e-17, 0.012122636008008862, 0,
-      0.00017949058508560353, 0.9998903817097062, 0.014805145981984267, 0,
-      -0.012121307145375808, 0.014806233971472935, -0.9998169079129755, 0,
-      -3.0381199462568924, 1.3, 1.6171479942690246, 1,
-    ],
-  },
-  {
-    name: '아이방',
-    matrix: [
-      -0.9744084601245122, 2.168404344971009e-17, -0.22478468105671554, 0,
-      0.0023790498516392173, 0.9999439912565127, -0.010312830445551155, 0,
-      0.22477209114917437, -0.010583683196093477, -0.9743538847310174, 0,
-      -5.616611393897269, 1.3, 1.468183937788956, 1,
-    ],
-  },
-  {
-    name: '주방',
-    matrix: [
-      0.3473993845619663, 8.673617379884035e-18, 0.9377172642145218, 0,
-      0.0281272983886304, 0.9995500337489875, -0.010420418309975359, 0,
-      -0.9372953230926336, 0.02999550020249571, 0.34724306656329085, 0,
-      1.1313022019166767, 1.3, -3.4098870812899422, 1,
-    ],
-  },
-  {
-    name: '거실',
-    matrix: [
-      -0.5621641191337814, -2.7755575615628914e-17, -0.8270256967945624, 0,
-      0.0363563517143836, 0.9990332758651205, -0.0247129400158306, 0,
-      0.8262261910933055, -0.043960365264701845, -0.5616206615120514, 0,
-      1.7408389015426144, 1.3, 1.0047105823256879, 1,
-    ],
-  },
-  {
-    name: '화장실',
-    matrix: [
-      -0.05818603514227472, -2.6020852139652106e-18, -0.9983057574282613, 0,
-      -0.011396529980215113, 0.99993483681885, 0.0006642442848742878, 0,
-      0.998240704649347, 0.01141587123525533, -0.05818224355512647, 0,
-      -5.3982047017446035, 1.3, 0.4802408040181217, 1,
-    ],
-  },
-];
-
 const animationSpeed = [1, 2, 3, 4, 5];
+
+const uploadTourSpot = async () => {
+  const tourSpots = getAtomValue(tourAtom);
+
+  uploadJson('tourSpot.json', tourSpots)
+    .then(res => res.json())
+    .then(res => {
+      if (res?.success === true) {
+        alert('업로드 완료');
+      } else {
+        throw res;
+      }
+    })
+    .catch(err => {
+      console.error(err);
+      alert('업로드 실패');
+    });
+};
 
 function HotSpotPanel() {
   // 핫스팟 정보
   const [placeInfo, setPlaceInfo] = useState<placeInfoType[]>([]);
   // 순간이동 정보보
   const [telePort, setTelePort] = useState<telePortType[]>([]);
+  //방 이름
+  const [placeName, setPlaceName] = useState<string>('');
+  //투어 방 정보
+  const [tourPlace, setTourPlace] = useAtom(tourAtom);
+
+  const [isTourInput, setTourInput] = useState<boolean>(false);
   // 투어 실행 여부
   const [isTour, setTour] = useState<boolean>(false);
   //threejs useThree
@@ -99,25 +70,40 @@ function HotSpotPanel() {
   if (!threeExports) return null;
 
   const { camera, scene } = threeExports;
+  // 투어 추가 함수수
+  const addTour = () => {
+    if (placeName.length > 0) {
+      setTourPlace(pre => [
+        ...pre,
+        { name: placeName, matrix: camera.matrix.toArray() },
+      ]);
+      setPlaceName('');
+      setTourInput(false);
+    } else {
+      window.alert('이름을 입력해주세요.');
+    }
+  };
 
   // 투어 애니메이션 실행 함수
   const executeTour = (roomIndex: number) => {
-    const { matrix } = tour[roomIndex];
-    camera.moveTo({
-      pathFinding: {
-        speed: cameraAction.tour.animationSpeed,
-        model: scene,
-        isTour: true,
-        matrix,
-      },
-    });
-    setCameraAction(pre => ({
-      ...pre,
-      tour: {
-        ...pre.tour,
-        isAnimation: true,
-      },
-    }));
+    if (tourPlace.length > 0) {
+      const { matrix } = tourPlace[roomIndex];
+      camera.moveTo({
+        pathFinding: {
+          speed: cameraAction.tour.animationSpeed,
+          model: scene,
+          isTour: true,
+          matrix,
+        },
+      });
+      setCameraAction(pre => ({
+        ...pre,
+        tour: {
+          ...pre.tour,
+          isAnimation: true,
+        },
+      }));
+    }
   };
 
   // 이전전 방으로 이동
@@ -128,7 +114,7 @@ function HotSpotPanel() {
         ...pre.tour,
         roomIndex:
           pre.tour.roomIndex - 1 === 0
-            ? tour.length - 1
+            ? tourPlace.length - 1
             : pre.tour.roomIndex - 1,
         isAnimation: true,
       },
@@ -142,7 +128,9 @@ function HotSpotPanel() {
       tour: {
         ...pre.tour,
         roomIndex:
-          pre.tour.roomIndex + 1 === tour.length ? 0 : pre.tour.roomIndex + 1,
+          pre.tour.roomIndex + 1 === tourPlace.length
+            ? 0
+            : pre.tour.roomIndex + 1,
         isAnimation: true,
       },
     }));
@@ -261,7 +249,7 @@ function HotSpotPanel() {
           className="px-4 py-2 mt-2 text-white bg-blue-600 rounded-lg shadow-md hover:bg-blue-700 active:scale-95 transition-transform duration-150 ease-in-out"
           onClick={addHotSpot}
         >
-          위치 추가
+          핫스팟 테스트 위치 추가
         </button>
 
         <div className="mt-2 flex items-center gap-2 flex-wrap">
@@ -293,6 +281,35 @@ function HotSpotPanel() {
             })}
         </div>
       </div>
+      <div className="px-4 box-border w-full py-2">
+        <button
+          className="px-4 py-2 mt-2 text-white bg-blue-600 rounded-lg shadow-md hover:bg-blue-700 active:scale-95 transition-transform duration-150 ease-in-out"
+          onClick={() => {
+            setTourInput(true);
+          }}
+        >
+          현재 위치 투어에 추가
+        </button>
+      </div>
+      {isTourInput && (
+        <div className="px-4 box-border w-full pb-2">
+          <input
+            className="py-2 px-2"
+            placeholder="방 이름"
+            value={placeName}
+            onChange={e => {
+              setPlaceName(e.target.value);
+            }}
+          />
+          <button
+            className="px-4 py-2 mt-2 text-white bg-blue-600 rounded-lg shadow-md hover:bg-blue-700 active:scale-95 transition-transform duration-150 ease-in-out"
+            onClick={addTour}
+          >
+            추가
+          </button>
+        </div>
+      )}
+
       <div className="px-2">
         <div className=" flex items-center justify-between w-full p-2 rounded-full bg-gray-800 shadow-lg text-white">
           {/* 이전 버튼 */}
@@ -320,7 +337,7 @@ function HotSpotPanel() {
 
             {/* 페이지 수 */}
             <div className="px-3 py-1 bg-blue-600 rounded-lg">
-              {cameraAction?.tour?.roomIndex + 1} / {tour.length}
+              {cameraAction?.tour?.roomIndex + 1} / {tourPlace.length}
             </div>
 
             {/* 배속 */}
@@ -348,7 +365,7 @@ function HotSpotPanel() {
                 changeTourRoom(e);
               }}
             >
-              {tour.map((room, index) => (
+              {tourPlace.map((room, index) => (
                 <option key={`tour_${index}`} value={index}>
                   {room.name}
                 </option>
@@ -406,6 +423,40 @@ function HotSpotPanel() {
               );
             })}
         </div>
+      </div>
+      <div className="px-4 box-border w-full flex items-center gap-2">
+        <button
+          className="px-4 py-2 mt-2 text-white bg-blue-600 rounded-lg shadow-md hover:bg-blue-700 active:scale-95 transition-transform duration-150 ease-in-out"
+          onClick={() => setTourPlace([])}
+        >
+          투어 정보 전부 삭제
+        </button>
+        <button
+          className="px-4 py-2 mt-2 text-white bg-blue-600 rounded-lg shadow-md hover:bg-blue-700 active:scale-95 transition-transform duration-150 ease-in-out"
+          onClick={() => uploadTourSpot()}
+        >
+          업로드
+        </button>
+        <button
+          className="px-4 py-2 mt-2 text-white bg-blue-600 rounded-lg shadow-md hover:bg-blue-700 active:scale-95 transition-transform duration-150 ease-in-out"
+          onClick={() => {
+            loadTourSpot()
+              .then(tourSpot => {
+                if (tourSpot) {
+                  setAtomValue(tourAtom, tourSpot);
+                  alert('투어정보 로드완료');
+                } else {
+                  throw tourSpot;
+                }
+              })
+              .catch(err => {
+                console.error(err);
+                alert('투어정보 로드실패');
+              });
+          }}
+        >
+          불러오기
+        </button>
       </div>
     </>
   );
