@@ -108,7 +108,7 @@ const CameraPanel = () => {
           center.y + size.y * 6,
           center.z + size.z,
         );
-        camera.moveTo('linear', {
+        camera.moveTo({
           linear: {
             target: centerPosition,
             direction: center,
@@ -120,7 +120,7 @@ const CameraPanel = () => {
         console.log('no scene');
       }
     } else {
-      camera.moveTo('linear', {
+      camera.moveTo({
         linear: {
           target: lastCameraInfo.position,
           direction: lastCameraInfo.target,

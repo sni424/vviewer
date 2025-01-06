@@ -9,7 +9,7 @@ import { TransformControls } from 'three-stdlib';
 import { OrbitControls, RGBELoader } from 'three/examples/jsm/Addons.js';
 import { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { ENV, Layer } from '../Constants';
-import { FileInfo, MoveActionOptions, MoveActionType, View } from '../types.ts';
+import { FileInfo, MoveActionOptions, View } from '../types.ts';
 import {
   BenchMark,
   cameraActionAtom,
@@ -540,7 +540,7 @@ function setupPathData(
 }
 
 //경로 이동
-const handlePathfindingMove = (
+const handlePathFindingMove = (
   camera: THREE.Object3D,
   target: THREE.Vector3,
   initialPath: THREE.Vector3[],
@@ -747,90 +747,70 @@ const handleTeleportMove = (
 //카메라 moveTo함수
 export const moveTo = (
   camera: THREE.PerspectiveCamera,
-  action: MoveActionType,
-  options: MoveActionOptions,
+  action: MoveActionOptions,
 ) => {
-  switch (action) {
-    case 'pathfinding':
-      if (action !== 'pathfinding' || !options.pathfinding) return;
 
-      const { target, speed, model, direction, stopAnimtaion } =
-        options.pathfinding;
+  if (action.pathFinding) {
+    const { target, speed, model, direction, stopAnimation } = action.pathFinding;
 
-      if (stopAnimtaion && currentAnimation) {
-        currentAnimation.kill();
-        return;
-      }
+    if (stopAnimation && currentAnimation) {
+      currentAnimation.kill();
+      return;
+    }
 
-      const ZONE = 'level';
-      const pathFinding = new Pathfinding();
+    const ZONE = 'level';
+    const pathFinding = new Pathfinding();
 
-      if (model && target && speed) {
-        const navMesh = model.getObjectByName('84B3_DP') as THREE.Mesh;
-        if (!navMesh) return;
+    if (model && target && speed) {
+      const navMesh = model.getObjectByName('84B3_DP') as THREE.Mesh;
+      if (!navMesh) return;
 
-        const zone = Pathfinding.createZone(navMesh.geometry);
-        pathFinding.setZoneData(ZONE, zone);
+      const zone = Pathfinding.createZone(navMesh.geometry);
+      pathFinding.setZoneData(ZONE, zone);
 
-        const groupID = pathFinding.getGroup(ZONE, camera.position);
-        const targetGroupID = pathFinding.getGroup(ZONE, target);
+      const groupID = pathFinding.getGroup(ZONE, camera.position);
+      const targetGroupID = pathFinding.getGroup(ZONE, target);
 
-        const closestStartNode = pathFinding.getClosestNode(
-          camera.position,
-          ZONE,
-          groupID,
-        );
-        const closestTargetNode = pathFinding.getClosestNode(
-          target,
-          ZONE,
-          targetGroupID,
-        );
-        const path = pathFinding.findPath(
-          closestStartNode.centroid,
-          closestTargetNode.centroid,
-          ZONE,
-          groupID,
-        );
+      const closestStartNode = pathFinding.getClosestNode(camera.position, ZONE, groupID);
+      const closestTargetNode = pathFinding.getClosestNode(target, ZONE, targetGroupID);
+      const path = pathFinding.findPath(
+        closestStartNode.centroid,
+        closestTargetNode.centroid,
+        ZONE,
+        groupID,
+      );
 
-        if (path) {
-          if (direction) {
-            //마지막에 내가 정한 좌표가 아닌 closestTargetNode 근처 좌표로 이동하기에
-            //배열의 마지막 좌표를 target좌표로 변경경
-            const newPath = [...path];
-            newPath.pop();
-            newPath.push(target);
-            console.log('newPath', newPath);
-            handlePathfindingMove(camera, target, newPath, speed, direction);
-          } else {
-            handlePathfindingMove(camera, target, path, speed);
-          }
+      if (path) {
+        if (direction) {
+          const newPath = [...path];
+          newPath.pop();
+          newPath.push(target);
+          handlePathFindingMove(camera, target, newPath, speed, direction);
+        } else {
+          handlePathFindingMove(camera, target, path, speed);
         }
       }
-      break;
-    case 'linear':
-      if (options.linear) {
-        handleLinearMove(
-          camera,
-          options.linear.target,
-          options.linear.direction,
-          options.linear.duration,
-          options.linear.fov,
-          options.onComplete
-        );
-      }
-      break;
+    }
+  }
 
-    case 'teleport':
-      if (options.teleport) {
-        const { target, direction } = options.teleport;
-        handleTeleportMove(camera, target, direction);
-      }
-      break;
+  if (action.linear) {
+    const { target, direction, duration, fov } = action.linear;
+    handleLinearMove(
+      camera,
+      target,
+      direction,
+      duration,
+      fov,
+      action.onComplete,
+    );
+  }
 
-    default:
-      console.error('Invalid action type');
+  if (action.teleport) {
+    const { target, direction } = action.teleport;
+    handleTeleportMove(camera, target, direction);
   }
 };
+
 export const setAsModel = (object: THREE.Object3D) => {
   object.layers.enable(Layer.Model);
   object.children.forEach(setAsModel);

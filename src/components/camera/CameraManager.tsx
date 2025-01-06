@@ -299,8 +299,8 @@ const CameraManager: React.FC<UnifiedCameraControlsProps> = ({
             // 교차된 첫 번째 객체의 좌표를 기준으로 카메라 이동
             const navMesh = scene.getObjectByName('84B3_DP') as THREE.Mesh;
 
-            camera.moveTo('pathfinding', {
-              pathfinding: {
+            camera.moveTo({
+              pathFinding: {
                 target: new THREE.Vector3(
                   intersects[0].point.x,
                   cameraSetting.cameraY,

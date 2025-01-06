@@ -76,8 +76,8 @@ function HotSpotPanel() {
   // 투어 애니메이션 실행 함수
   const executeTour = (roomIndex: number) => {
     const { position, direction } = tour[roomIndex];
-    camera.moveTo('pathfinding', {
-      pathfinding: {
+    camera.moveTo({
+      pathFinding: {
         target: new THREE.Vector3(position.x, position.y, position.z),
         speed: cameraAction.tour.animationSpeed,
         model: scene,
@@ -156,7 +156,7 @@ function HotSpotPanel() {
 
   //핫스팟 이동
   const moveHotSpot = (place: placeInfoType) => {
-    camera.moveTo('linear', {
+    camera.moveTo({
       linear: {
         target: place.position,
         direction: place.direction,
@@ -174,9 +174,9 @@ function HotSpotPanel() {
     if (isTour) {
       executeTour(cameraAction.tour.roomIndex);
     } else {
-      camera.moveTo('pathfinding', {
-        pathfinding: {
-          stopAnimtaion: true,
+      camera.moveTo({
+        pathFinding: {
+          stopAnimation: true,
         },
       });
       setCameraAction(pre => ({
@@ -203,7 +203,7 @@ function HotSpotPanel() {
 
   //텔레포트트 이동
   const moveTelePort = (place: placeInfoType) => {
-    camera.moveTo('teleport', {
+    camera.moveTo({
       teleport: {
         target: place.position,
         direction: place.direction,

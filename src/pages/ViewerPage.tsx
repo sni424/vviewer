@@ -194,9 +194,9 @@ const Options = () => {
                 new THREE.Quaternion(),
                 new THREE.Vector3(),
               );
-
+              console.log('linear');
               const { camera } = three;
-              camera.moveTo('linear', {
+              camera.moveTo({
                 linear: {
                   target: pos,
                   direction: new Vector3(...option.target).sub(pos),
