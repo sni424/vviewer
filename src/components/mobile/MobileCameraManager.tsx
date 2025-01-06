@@ -82,6 +82,8 @@ const MobileCameraManager = ({
   };
 
   const handleTouchMove = (e: TouchEvent) => {
+    // 기본 동작(스크롤) 방지
+    e.preventDefault();
     const touches = Array.from(e.touches);
 
     // 조이스틱 터치 찾기
@@ -316,7 +318,7 @@ const MobileCameraManager = ({
   return (
     <div
       id="joystickArea"
-      className="absolute bottom-[95px] left-5  w-28 h-28 
+      className="absolute top-1/2  transform -translate-y-1/2 left-5  w-28 h-28 
         rounded-full border-2 border-gray-500 flex items-center justify-center"
     >
       <div

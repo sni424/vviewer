@@ -273,6 +273,28 @@ const CameraPanel = () => {
               >
                 Iso카메라
               </button>
+              <button
+                onClick={() => {
+                  camera.position.set(1, cameraSetting.cameraY, 1);
+                  // 목표 방향 계산
+                  const target = new THREE.Vector3(1, cameraSetting.cameraY, 1);
+                  const direction = target
+                    .clone()
+                    .sub(camera.position)
+                    .normalize();
+
+                  // 카메라의 "앞 방향"(`-Z`)을 목표 방향으로 회전
+                  const quaternion = new THREE.Quaternion().setFromUnitVectors(
+                    new THREE.Vector3(0, 0, -1), // 기본 카메라의 앞 방향
+                    direction,
+                  );
+
+                  // 카메라의 회전값 적용
+                  camera.quaternion.copy(quaternion);
+                }}
+              >
+                카메라 위치 초기화
+              </button>
               <div
                 style={{
                   boxSizing: 'border-box',
