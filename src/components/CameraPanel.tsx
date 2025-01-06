@@ -83,7 +83,7 @@ const CameraPanel = () => {
     camera.updateProjectionMatrix();
     setLastCameraInfo(pre => ({
       ...pre,
-      position: camera.position.clone(),
+      matrix: camera.matrix.toArray(),
     }));
   }, [cameraSetting.cameraY, threeExports]); // cameraY 값만 감지
 
@@ -108,10 +108,23 @@ const CameraPanel = () => {
           center.y + size.y * 6,
           center.z + size.z,
         );
-        camera.moveTo('linear', {
+
+        // 모델 중심을 향하는 방향 계산
+        const direction = center.clone().sub(centerPosition).normalize();
+
+        // 회전 계산: 카메라의 기본 방향을 기준으로 모델 중심 방향으로 설정
+        const quaternion = new THREE.Quaternion().setFromUnitVectors(
+          new THREE.Vector3(0, 0, -1), // 카메라의 기본 "앞 방향"
+          direction, // 모델 중심 방향
+        );
+
+        // Matrix4에 회전(quaternion)과 위치(centerPosition) 설정
+        const matrix = new THREE.Matrix4()
+          .makeRotationFromQuaternion(quaternion)
+          .setPosition(centerPosition);
+        camera.moveTo({
           linear: {
-            target: centerPosition,
-            direction: center,
+            matrix: matrix.toArray(),
             duration: cameraSetting.moveSpeed,
             fov: 45,
           },
@@ -120,10 +133,9 @@ const CameraPanel = () => {
         console.log('no scene');
       }
     } else {
-      camera.moveTo('linear', {
+      camera.moveTo({
         linear: {
-          target: lastCameraInfo.position,
-          direction: lastCameraInfo.target,
+          matrix: lastCameraInfo.matrix,
           duration: cameraSetting.moveSpeed,
           fov: 75,
         },
@@ -260,6 +272,28 @@ const CameraPanel = () => {
                 }}
               >
                 Iso카메라
+              </button>
+              <button
+                onClick={() => {
+                  camera.position.set(1, cameraSetting.cameraY, 1);
+                  // 목표 방향 계산
+                  const target = new THREE.Vector3(1, cameraSetting.cameraY, 1);
+                  const direction = target
+                    .clone()
+                    .sub(camera.position)
+                    .normalize();
+
+                  // 카메라의 "앞 방향"(`-Z`)을 목표 방향으로 회전
+                  const quaternion = new THREE.Quaternion().setFromUnitVectors(
+                    new THREE.Vector3(0, 0, -1), // 기본 카메라의 앞 방향
+                    direction,
+                  );
+
+                  // 카메라의 회전값 적용
+                  camera.quaternion.copy(quaternion);
+                }}
+              >
+                카메라 위치 초기화
               </button>
               <div
                 style={{

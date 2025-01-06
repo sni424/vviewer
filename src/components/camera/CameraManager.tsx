@@ -9,7 +9,6 @@ import {
   setAtomValue,
 } from '../../scripts/atoms';
 import { cameraInRoom } from '../../scripts/atomUtils';
-import { calculateTargetPosition } from '../../scripts/utils';
 import { THREE } from '../../scripts/VTHREE';
 
 interface UnifiedCameraControlsProps {
@@ -56,29 +55,11 @@ const CameraManager: React.FC<UnifiedCameraControlsProps> = ({
 
   // 카메라 이동 및 회전시 카메라 데이터 저장장
   const updateCameraInfo = () => {
-    if (oribitControl) {
-      const originalTarget = oribitControl.target;
-      const cameraPosition = camera.position.clone();
-
-      const distance = cameraPosition.distanceTo(originalTarget);
-
-      // 카메라의 방향 벡터
-      const direction = camera.getWorldDirection(new THREE.Vector3());
-
-      // 목표 좌표 계산 (카메라 위치 + 방향 벡터)
-      const target = calculateTargetPosition(
-        cameraPosition,
-        direction,
-        distance,
-      );
-      // 마지막 카메라 정보 업데이트
-      if (!cameraSetting.isoView) {
-        setLastCameraInfo(pre => ({
-          ...pre,
-          position: cameraPosition,
-          target,
-        }));
-      }
+    if (oribitControl && !cameraSetting.isoView) {
+      setLastCameraInfo(pre => ({
+        ...pre,
+        matrix: camera.matrix.toArray(),
+      }));
     }
 
     // 방 업데이트
@@ -276,6 +257,7 @@ const CameraManager: React.FC<UnifiedCameraControlsProps> = ({
 
     //모바일 터치땠을때 이벤트
     const handleTouchEnd = (): void => {
+      console.log('여기');
       if (!oribitControl?.enabled) {
         //회전 멈춤
         isRotateRef.current = false;
@@ -295,19 +277,24 @@ const CameraManager: React.FC<UnifiedCameraControlsProps> = ({
           // 광선과 씬의 객체들과의 교차점을 확인
           const intersects = raycaster.intersectObjects(scene.children, true);
           //교차점이 있고 orbit이 비활성화 됬을때
+
           if (intersects.length > 0 && !oribitControl?.enabled) {
             // 교차된 첫 번째 객체의 좌표를 기준으로 카메라 이동
             const navMesh = scene.getObjectByName('84B3_DP') as THREE.Mesh;
+            const targetPoint = intersects[0].point;
+            //좌표를 이용해 Matrix4로 변경
+            const targetMatrix = new THREE.Matrix4().makeTranslation(
+              targetPoint.x,
+              cameraSetting.cameraY, // 높이 고정
+              targetPoint.z,
+            );
 
-            camera.moveTo('pathfinding', {
-              pathfinding: {
-                target: new THREE.Vector3(
-                  intersects[0].point.x,
-                  cameraSetting.cameraY,
-                  intersects[0].point.z,
-                ),
+            camera.moveTo({
+              pathFinding: {
                 speed: cameraSetting.moveSpeed,
                 model: navMesh,
+                matrix: targetMatrix.toArray(),
+                isTour: false,
               },
             });
           }

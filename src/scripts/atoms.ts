@@ -14,7 +14,7 @@ import React from 'react';
 import { OrbitControls } from 'three/examples/jsm/Addons.js';
 import { FileInfo, GLProps, Matrix4Array, View, ViewportOption } from '../types';
 import ReflectionProbe from './ReflectionProbe.ts';
-import { THREE, Vector3 } from './VTHREE';
+import { THREE } from './VTHREE';
 
 type AtomArgType<T> = T | ((prev: T) => T);
 export type Store = ReturnType<typeof createStore>;
@@ -230,13 +230,14 @@ export const treeSearchAtom = atom<string | undefined>();
 
 //카메라 정보값
 export const lastCameraInfoAtom = atom<{
-  position: THREE.Vector3;
-  direction: THREE.Vector3;
-  target: THREE.Vector3;
+  matrix: number[]
 }>({
-  position: new Vector3(0, 1, 0),
-  direction: new Vector3(0, 1, -1),
-  target: new Vector3(0, 1, -1),
+  matrix: [
+    1, 0, 0, 0,
+    0, 1, 0, 0,
+    0, 0, 1, 0,
+    0, 0, 0, 1
+  ]
 });
 
 export const cameraSettingAtom = atom<{

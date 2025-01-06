@@ -5,8 +5,7 @@ import { Layer } from '../Constants';
 import {
   Matrix4Array,
   MoveActionOptions,
-  MoveActionType,
-  View,
+  View
 } from '../types';
 import type ReflectionProbe from './ReflectionProbe';
 import type { ReflectionProbeJSON } from './ReflectionProbe';
@@ -113,7 +112,7 @@ declare module 'three' {
   }
 
   interface Camera {
-    moveTo(action: MoveActionType, options: MoveActionOptions): void;
+    moveTo(action: MoveActionOptions): void;
   }
 
   interface Material {
@@ -330,16 +329,14 @@ THREE.Vector3.prototype.revert = function () {
 };
 
 THREE.Camera.prototype.moveTo = function (
-  action: MoveActionType,
-  options: MoveActionOptions,
+  action: MoveActionOptions
 ) {
   if (this.type !== 'PerspectiveCamera') {
     console.error(this);
-    throw new Error('not PerspectiveCamera');
+    throw new Error('Not a PerspectiveCamera');
   }
-  moveTo(this as THREE.PerspectiveCamera, action, options);
+  moveTo(this as THREE.PerspectiveCamera, action);
 };
-
 THREE.Object3D.prototype.getUserData = function () {
   return this.userData as ThreeUserData;
 };
