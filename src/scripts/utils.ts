@@ -722,7 +722,6 @@ export const moveTo = (
 
   if (action.pathFinding) {
     const { speed, model, stopAnimation, isTour, matrix } = action.pathFinding;
-    console.log("position", matrix)
 
     if (stopAnimation && currentAnimation) {
       currentAnimation.kill();

@@ -105,6 +105,12 @@ export const loadRooms = async () => {
   }).then(res => res.json());
 }
 
+export const loadTourSpot = async () => {
+  return fetch(ENV.base + "tourSpot.json", {
+    cache: 'no-store',
+  }).then(res => res.json());
+}
+
 export const threes = () => {
   return getAtomValue(threeExportsAtom);
 };

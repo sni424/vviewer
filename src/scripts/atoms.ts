@@ -409,6 +409,13 @@ export type HotspotCreateOption = Hotspot & {
 };
 export const hotspotAtom = atom<HotspotCreateOption[]>([]);
 
+export type tourInfoType = {
+  name: string;
+  matrix: number[];
+};
+
+export const tourAtom = atom<tourInfoType[]>([])
+
 export type Settings = {
   hotspotSize: number;
   shotHotspots: boolean;
