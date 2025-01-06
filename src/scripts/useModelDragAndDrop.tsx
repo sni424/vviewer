@@ -184,7 +184,7 @@ const useModelDragAndDrop = () => {
     setIsDragging(false);
 
     if (event.dataTransfer.items && event.dataTransfer.items.length > 0) {
-      const extensions = ['.gltf', '.glb', '.png', '.jpg', '.exr'];
+      const extensions = ['.gltf', '.glb', '.png', '.jpg', '.exr', '.ktx'];
       parseDroppedFiles(event, extensions)
         .then(filteredFiles => {
           if (filteredFiles.length === 0) {
@@ -203,6 +203,7 @@ const useModelDragAndDrop = () => {
             file =>
               file.name.toLowerCase().endsWith('.png') ||
               file.name.toLowerCase().endsWith('.exr') ||
+              file.name.toLowerCase().endsWith('.ktx') || //라이트맵
               file.name.toLowerCase().endsWith('.jpg'), // 게인맵
           );
 

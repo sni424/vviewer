@@ -1,5 +1,5 @@
 import { set } from "idb-keyval";
-import { EXRLoader } from "three/examples/jsm/Addons.js";
+import { EXRLoader, KTX2Loader } from "three/examples/jsm/Addons.js";
 import GainmapLoader from "./GainmapLoader";
 import { THREE } from "./VTHREE";
 
@@ -61,9 +61,17 @@ export default class VTextureLoader {
         })
       } else if (inputOption.as === 'texture') {
         let loader: THREE.Loader;
-        const isExr = (isFile && fileOrUrl.name.toLowerCase().endsWith(".exr")) || (fileOrUrl as string).toLowerCase().endsWith(".exr");
+        const isExr = (isFile && fileOrUrl.name.toLowerCase().endsWith(".exr")) || (!isFile && (fileOrUrl as string).toLowerCase().endsWith(".exr"));
+        const isKtx = (isFile && fileOrUrl.name.toLowerCase().endsWith(".ktx")) || (!isFile && (fileOrUrl as string).toLowerCase().endsWith(".ktx"));
         if (isExr) {
           loader = new EXRLoader();
+        } else if (isKtx) {
+          loader = new KTX2Loader();
+          if (!inputOption.gl) {
+            throw new Error('KTX2Loader의 경우 gl이 필요합니다.');
+          } else {
+            (loader as KTX2Loader).detectSupport(inputOption.gl);
+          }
         } else {
           loader = new THREE.TextureLoader();
         }
@@ -79,6 +87,10 @@ export default class VTextureLoader {
             }
             // texture.flipY = !texture.flipY;
           }
+          if (isKtx) {
+            texture.vUserData.mimeType = 'image/ktx2';
+          }
+
           texture.needsUpdate = true;
           return texture;
         });

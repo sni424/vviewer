@@ -89,7 +89,7 @@ const useLoadModel = ({
 }) => {
   const sources = useAtomValue(sourceAtom);
   const setLoadHistoryAtom = useSetAtom(loadHistoryAtom);
-  const loaderRef = useRef(new VGLTFLoader());
+  const loaderRef = useRef(new VGLTFLoader(gl));
 
   useEffect(() => {
     sources.forEach(source => {
@@ -115,6 +115,8 @@ const useLoadModel = ({
             const gainmap = mapDst === 'gainmap';
             const pngLightmap =
               mapDst === 'lightmap' && map.name.endsWith('.png');
+            const ktxLightmap =
+              mapDst === 'lightmap' && map.name.endsWith('.ktx');
 
             if (exrLightmap) {
               return true;
@@ -127,6 +129,11 @@ const useLoadModel = ({
             if (pngLightmap) {
               return false;
             }
+
+            if (ktxLightmap) {
+              return false;
+            }
+
             console.error(map, file);
             throw new Error('flipY감지 실패 : ' + file.name);
           };

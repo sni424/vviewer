@@ -22,7 +22,7 @@ const MobileLoaderPanel = () => {
   const { benchmark, addBenchmark } = useBenchmark();
   const threeExports = useAtomValue(threeExportsAtom);
   const setSceneAnalysis = useSetAtom(sceneAnalysisAtom);
-  const loaderRef = useRef(new VGLTFLoader());
+  const loaderRef = useRef(new VGLTFLoader(threeExports?.gl));
 
   if (!openLoader) {
     return null;

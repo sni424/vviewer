@@ -42,7 +42,6 @@ export const FullscreenCanvas = ({ texture }: { texture: THREE.Texture }) => {
   };
 
   useEffect(() => {
-    console.log('FullscreenCanvas : ', texture);
     if (!innerCanvasRef.current) {
       return;
     }
@@ -88,9 +87,10 @@ const MapPreview: React.FC<MapPreviewProps> = ({
   const { openModal, closeModal } = useModal();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const isGainmap = Boolean(texture?.vUserData?.gainMap);
+  const isKtx = texture?.vUserData?.mimeType === 'image/ktx2';
   const hasImage = texture && texture.image && !isGainmap;
   const cannotDraw =
-    mapKey === 'envMap' || isGainmap || texture?.vUserData?.isExr;
+    mapKey === 'envMap' || isGainmap || texture?.vUserData?.isExr || isKtx;
 
   useEffect(() => {
     if (cannotDraw) {
@@ -113,16 +113,20 @@ const MapPreview: React.FC<MapPreviewProps> = ({
     canvasRef.current.width = w;
     canvasRef.current.height = h;
     // const source = texture.image || texture.source.data;
-    // console.log(texture);
+    console.log(texture);
     // console.log(texture.image);
-    canvasRef.current.getContext('2d')?.drawImage(texture.image, 0, 0, w, h);
+    try {
+      canvasRef.current.getContext('2d')?.drawImage(texture.image, 0, 0, w, h);
+    } catch (e) {
+      console.error(e);
+    }
   }, [texture]);
 
   if (cannotDraw) {
     if (texture) {
       return (
         <div style={{ fontSize: 11, color: '#555' }}>
-          표시불가(HDR)
+          표시불가 {isKtx ? '(KTX)' : '(HDR)'}
           {isGainmap && texture.vUserData.gainMap ? (
             <>
               <br></br>

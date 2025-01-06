@@ -21,12 +21,17 @@ export default class VGLTFLoader extends GLTFLoader {
     }
     GainmapLoader.dispose();
   }
+  static gl: THREE.WebGLRenderer;
   static dracoLoader: DRACOLoader;
   static ktx2Loader: KTX2Loader;
   static meshOptDecoder = MeshoptDecoder;
-  static instance = new VGLTFLoader();
+  static instance: VGLTFLoader;
 
-  constructor(manager?: THREE.LoadingManager) {
+  constructor(gl?: THREE.WebGLRenderer, manager?: THREE.LoadingManager) {
+    if (gl) {
+      VGLTFLoader.gl = gl;
+    }
+
     super(manager);
 
     //DRACO
@@ -45,11 +50,21 @@ export default class VGLTFLoader extends GLTFLoader {
       VGLTFLoader.ktx2Loader.setTranscoderPath(
         'https://unpkg.com/three@0.168.0/examples/jsm/libs/basis/',
       );
+
+      if (VGLTFLoader.gl) {
+        VGLTFLoader.ktx2Loader.detectSupport(VGLTFLoader.gl);
+      } else {
+        throw new Error('VGLTFLoader.gl is not set');
+      }
     }
     this.setKTX2Loader(VGLTFLoader.ktx2Loader);
 
     // MeshOptimizer
     this.setMeshoptDecoder(VGLTFLoader.meshOptDecoder);
+
+    if (!VGLTFLoader.instance) {
+      VGLTFLoader.instance = this;
+    }
     return this;
   }
 

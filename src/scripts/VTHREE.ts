@@ -18,6 +18,7 @@ export interface ThreeUserData {
   ignoreRaycast?: boolean;
   gainMap?: string; // filename
   gainMapIntensity?: number;
+  lightMap?: string; // filename
   lightMapIntensity?: number;
   probe?: ReflectionProbe;
   isTransformControls?: boolean;
@@ -29,6 +30,7 @@ export interface ThreeUserData {
   probes?: ReflectionProbeJSON[];
   hotspotIndex?: number;
   isExr?: boolean;
+  mimeType?: "image/ktx2"; // ktx2압축시 달려있음
 }
 
 declare module 'three' {
