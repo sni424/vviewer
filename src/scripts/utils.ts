@@ -118,8 +118,6 @@ export const getIntersects = (
     return {
       intersects: [],
       mesh: [],
-      otherUserCameras: [],
-      review: [],
     };
   }
   const { scene, camera } = threeExports;
@@ -964,6 +962,73 @@ export const uploadGainmap = async (object: THREE.Object3D) => {
               afterMats.push(...mats);
             }
           });
+        }
+      });
+    }),
+  );
+
+  if (files.length > 0) {
+    const formData = new FormData();
+    for (const file of files) {
+      formData.append('files', file);
+    }
+
+    return fetch(uploadUrl, {
+      method: 'POST',
+      body: formData,
+    }).then(res => {
+      console.log(res);
+      afterMats.forEach(mat => {
+        mat.lightMap = null;
+      });
+      return res;
+    });
+  } else {
+    console.log('No GainMap Found, Passing Upload GainMap');
+  }
+};
+
+export const uploadExrLightmap = async (object: THREE.Object3D) => {
+  const uploadUrl = import.meta.env.VITE_UPLOAD_URL;
+
+  // 같은 라이트맵을 공유하는 material 검출
+  // { hash : [mat1, mat2] }
+  const lightmapHashes: { [key in string]: THREE.MeshStandardMaterial[] } = {};
+
+  object.traverseAll(async obj => {
+    if ((obj as THREE.Mesh).isMesh) {
+      const mesh = obj as THREE.Mesh;
+      const mat = mesh.material as THREE.MeshStandardMaterial;
+      if (mat && mat.lightMap && mat.lightMap.vUserData.isExr) {
+        mat.vUserData.lightMap = mat.lightMap.vUserData.lightMap;
+        mat.vUserData.lightMapIntensity = mat.lightMapIntensity;
+        const lightMapHash = mat.vUserData.lightMap;
+
+        if (lightMapHash) {
+          if (!lightmapHashes[lightMapHash]) {
+            lightmapHashes[lightMapHash] = [];
+          }
+          lightmapHashes[lightMapHash].push(mat);
+        }
+      }
+    }
+  });
+
+  const hashes = Object.keys(lightmapHashes);
+
+  const files: File[] = [];
+  const afterMats: THREE.MeshStandardMaterial[] = [];
+
+  await Promise.all(
+    hashes.map(hash => {
+      return get(hash).then(file => {
+        if (file) {
+          files.push(file);
+          const mats = Object.values(lightmapHashes[hash]);
+          afterMats.push(...mats);
+        } else {
+          // 파일 임포트 시 idbkeyval에 exr파일이 저장되어있어야함
+          throw new Error();
         }
       });
     }),

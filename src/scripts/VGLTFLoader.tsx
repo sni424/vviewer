@@ -65,6 +65,7 @@ export default class VGLTFLoader extends GLTFLoader {
         object.layers.enable(Layer.Model);
         updateLightMapFromEmissive(object);
         getGainmap(object, gl);
+        getLightmap(object);
       });
 
       onLoad(gltf);
@@ -105,6 +106,24 @@ function updateLightMapFromEmissive(object: THREE.Object3D) {
       // vUserData 초기화
       delete material.vUserData.isEmissiveLightMap;
       delete material.vUserData.lightMapIntensity;
+    }
+  }
+}
+
+async function getLightmap(object: THREE.Object3D) {
+  if ((object as THREE.Mesh).isMesh) {
+    const mesh = object as THREE.Mesh;
+    const mat = mesh.material as THREE.MeshStandardMaterial;
+    if (mat && mat.vUserData.lightMap) {
+      const url = ENV.base + mat.vUserData.lightMap;
+      console.log(url);
+      return VTextureLoader.load(url, { flipY: true, as: 'texture' }).then(
+        texture => {
+          mat.lightMap = texture;
+          mat.lightMapIntensity = mat.vUserData.lightMapIntensity ?? 1;
+          mat.needsUpdate = true;
+        },
+      );
     }
   }
 }

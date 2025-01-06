@@ -12,6 +12,7 @@ import {
   resetGL,
   saveScene,
   toNthDigit,
+  uploadExrLightmap,
   uploadGainmap,
 } from '../scripts/utils';
 
@@ -377,7 +378,10 @@ const GeneralButtons = () => {
           }
 
           onBeforeSceneExport();
-          uploadGainmap(threeExports.scene).then(() => {
+          Promise.all([
+            uploadExrLightmap(threeExports.scene),
+            uploadGainmap(threeExports.scene),
+          ]).then(() => {
             new VGLTFExporter()
               .parseAsync(threeExports.scene, { binary: true })
               .then(glbArr => {
