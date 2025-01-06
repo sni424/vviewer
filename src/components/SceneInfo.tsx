@@ -1241,7 +1241,7 @@ const GeneralMaterialControl = () => {
           }}
           min={0}
           max={LIGHTMAP_INTENSITY_MAX}
-          step={0.01}
+          step={0.1}
         ></input>
         <input
           type="number"
@@ -1260,8 +1260,8 @@ const GeneralMaterialControl = () => {
             setlmIntensityValue(parseFloat(e.target.value));
           }}
           min={0}
-          max={1}
-          step={0.01}
+          max={LIGHTMAP_INTENSITY_MAX}
+          step={0.1}
         ></input>
       </div>
     </section>

@@ -9,6 +9,7 @@ import {
   globalGlAtom,
   hotspotAtom,
   loadHistoryAtom,
+  MapDst,
   materialSelectedAtom,
   modalAtom,
   orbitSettingAtom,
@@ -57,7 +58,7 @@ const MainGrid = () => {
 const applyTexture = (
   object: THREE.Object3D,
   texture: THREE.Texture,
-  mapDst?: 'lightmap' | 'emissivemap' | 'gainmap',
+  mapDst?: MapDst,
 ) => {
   object.traverseAll(obj => {
     // console.log('obj : ', obj);
@@ -67,14 +68,9 @@ const applyTexture = (
       if (!material) {
         (obj as THREE.Mesh).material = new THREE.MeshPhysicalMaterial();
       }
-      if (mapDst === 'lightmap' || !mapDst) {
+      if (mapDst === 'gainmap' || mapDst === 'lightmap' || !mapDst) {
         material.lightMap = texture;
         // material.map = texture;
-      } else if (mapDst === 'emissivemap') {
-        //three.js 특성상 emissiveMap을 적용하려면 emissive를 설정해야함
-        material.emissive = new THREE.Color(0xffffff);
-        material.emissiveMap = texture;
-        material.emissiveIntensity = 0.5;
       } else {
         throw new Error('Invalid mapDst @Renderer');
       }
@@ -97,11 +93,11 @@ const useLoadModel = ({
 
   useEffect(() => {
     sources.forEach(source => {
-      const { name, url, file, map, mapDst } = source;
+      const { name, file, map, mapDst } = source;
       setLoadHistoryAtom(history => {
         const newHistory = new Map(history);
         //@ts-ignore
-        newHistory.set(url, {
+        newHistory.set(file.name, {
           name,
           start: Date.now(),
           end: 0,
@@ -111,9 +107,36 @@ const useLoadModel = ({
         return newHistory;
       });
 
-      loaderRef.current.loadAsync(url).then(async gltf => {
+      loaderRef.current.loadAsync(file).then(async gltf => {
         if (map) {
-          const texture = await VTextureLoader.loadAsync(map, { gl });
+          const detectFlipY = () => {
+            const exrLightmap =
+              mapDst === 'lightmap' && map.name.endsWith('.exr');
+            const gainmap = mapDst === 'gainmap';
+            const pngLightmap =
+              mapDst === 'lightmap' && map.name.endsWith('.png');
+
+            if (exrLightmap) {
+              return true;
+            }
+
+            if (gainmap) {
+              return true;
+            }
+
+            if (pngLightmap) {
+              return false;
+            }
+            console.error(map, file);
+            throw new Error('flipY감지 실패 : ' + file.name);
+          };
+
+          const flipY = detectFlipY();
+          const texture = await VTextureLoader.loadAsync(map, {
+            gl,
+            as: mapDst === 'gainmap' ? 'gainmap' : 'texture',
+            flipY,
+          });
 
           applyTexture(gltf.scene, texture, mapDst);
         }
@@ -122,8 +145,8 @@ const useLoadModel = ({
 
         setLoadHistoryAtom(history => {
           const newHistory = new Map(history);
-          newHistory.get(url)!.end = Date.now();
-          newHistory.get(url)!.uuid = gltf.scene.uuid;
+          newHistory.get(file.name)!.end = Date.now();
+          newHistory.get(file.name)!.uuid = gltf.scene.uuid;
           return newHistory;
         });
       });

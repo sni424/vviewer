@@ -9,12 +9,16 @@ import {
 import { KTX2Loader } from 'three/examples/jsm/loaders/KTX2Loader.js';
 import { ENV, Layer } from '../Constants.ts';
 import * as THREE from '../scripts/VTHREE.ts';
-import { getAtomValue, threeExportsAtom } from './atoms.ts';
+import { threes } from './atomUtils.ts';
 import GainmapLoader from './GainmapLoader.ts';
 import VTextureLoader from './VTextureLoader.ts';
 
 export default class VGLTFLoader extends GLTFLoader {
+  dispoableUrls: string[] = [];
   dispose() {
+    for (const url of this.dispoableUrls) {
+      URL.revokeObjectURL(url);
+    }
     GainmapLoader.dispose();
   }
   static dracoLoader: DRACOLoader;
@@ -55,7 +59,7 @@ export default class VGLTFLoader extends GLTFLoader {
     onLoad: (gltf: GLTF) => void,
     onError?: (event: ErrorEvent) => void,
   ): void {
-    const gl = getAtomValue(threeExportsAtom)?.gl;
+    const gl = threes()?.gl;
     function customOnLoad(gltf: GLTF) {
       gltf.scene.traverseAll((object: THREE.Object3D) => {
         object.layers.enable(Layer.Model);
@@ -68,7 +72,14 @@ export default class VGLTFLoader extends GLTFLoader {
     super.parse(data, path, customOnLoad, onError);
   }
 
-  async loadAsync(url: string) {
+  async loadAsync(fileOrUrl: File | string) {
+    let url: string;
+    if (typeof fileOrUrl === 'string') {
+      url = fileOrUrl;
+    } else {
+      url = URL.createObjectURL(fileOrUrl);
+      this.dispoableUrls.push(url);
+    }
     return super.loadAsync(url).finally(() => {
       // this.dispose();
     });
@@ -122,14 +133,16 @@ async function getGainmap(object: THREE.Object3D, gl?: THREE.WebGLRenderer) {
               ? cacheKey
               : encodeURI(ENV.base + cacheKey);
 
-        return VTextureLoader.load(imageUrl, { gl }).then(texture => {
-          mat.lightMap = texture;
+        return VTextureLoader.load(imageUrl, { gl, flipY: true }).then(
+          texture => {
+            mat.lightMap = texture;
 
-          if (mat.vUserData.gainMapIntensity !== undefined) {
-            mat.lightMapIntensity = mat.vUserData.gainMapIntensity;
-          }
-          mat.needsUpdate = true;
-        });
+            if (mat.vUserData.gainMapIntensity !== undefined) {
+              mat.lightMapIntensity = mat.vUserData.gainMapIntensity;
+            }
+            mat.needsUpdate = true;
+          },
+        );
       }
     }
   }

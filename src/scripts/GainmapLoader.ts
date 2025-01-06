@@ -3,7 +3,8 @@ import { compress, encode, findTextureMinMax } from '@monogrid/gainmap-js/encode
 import { encodeJPEGMetadata } from '@monogrid/gainmap-js/libultrahdr';
 import { set } from 'idb-keyval';
 import { EXRLoader } from 'three/examples/jsm/loaders/EXRLoader.js';
-import { THREE } from './VTHREE';
+import { UltraHDRLoader } from 'three/examples/jsm/loaders/UltraHDRLoader.js';
+import { DataTexture, Loader, THREE } from './VTHREE';
 
 export type EXREncodeOption = {
   quality: number;
@@ -16,7 +17,8 @@ const defaultEncodeOption: EXREncodeOption = {
 };
 
 export default class GainmapLoader {
-  static loader?: HDRJPGLoader;
+  // static loader?: HDRJPGLoader;
+  static loader?: HDRJPGLoader | Loader<DataTexture>;
   static disposables: { dispose?: Function }[] = [];
   static dispose() {
     for (const disposable of GainmapLoader.disposables) {
@@ -27,7 +29,8 @@ export default class GainmapLoader {
 
   static getLoader(gl: THREE.WebGLRenderer) {
     if (!GainmapLoader.loader) {
-      GainmapLoader.loader = new HDRJPGLoader(gl);
+      // GainmapLoader.loader = new HDRJPGLoader(gl);
+      GainmapLoader.loader = new UltraHDRLoader();
     }
     return GainmapLoader.loader;
   }
@@ -41,7 +44,9 @@ export default class GainmapLoader {
     return GainmapLoader.getLoader(gl).loadAsync(url).then(result => {
       GainmapLoader.disposables.push(result);
       URL.revokeObjectURL(url);
-      const texture = result.renderTarget.texture;
+
+      const isHdrjpgLoader = Boolean((result as any).renderTarget?.texture);
+      const texture = isHdrjpgLoader ? (result as any).renderTarget.texture : result;
 
       texture.vUserData.gainMap = isFile ? fileOrUrl.name : url;
 

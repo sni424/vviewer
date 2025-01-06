@@ -89,7 +89,8 @@ const MapPreview: React.FC<MapPreviewProps> = ({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const isGainmap = Boolean(texture?.vUserData?.gainMap);
   const hasImage = texture && texture.image && !isGainmap;
-  const cannotDraw = mapKey === 'envMap' || isGainmap;
+  const cannotDraw =
+    mapKey === 'envMap' || isGainmap || texture?.vUserData?.isExr;
 
   useEffect(() => {
     if (cannotDraw) {
