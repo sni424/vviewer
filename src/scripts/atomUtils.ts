@@ -73,6 +73,31 @@ export const cameraInRoom = (camera?: THREE.Matrix4): RoomCreateOption[] => {
 };
 
 
+export const uploadExrToKtx = (exrs: File | File[]): Promise<{
+  success: boolean;
+  responseType: "success",
+  data: {
+    fileSize: number;
+    fileType: null;
+    fileUrl: string;
+    filename: string;
+  }[]
+}> => {
+  const uploadUrl = import.meta.env.VITE_KTX_URL as string;
+  if (!uploadUrl) {
+    throw new Error('VITE_KTX_URL is not defined');
+  }
+
+  const fd = new FormData();
+  const files = Array.isArray(exrs) ? exrs : [exrs];
+  for (const file of files) {
+    fd.append('files', file);
+  }
+  return fetch(uploadUrl, {
+    method: 'POST',
+    body: fd,
+  }).then(res => res.json());
+}
 
 export const uploadJson = (name: string, value: Record<string, any>) => {
   let jsonName: string = name;

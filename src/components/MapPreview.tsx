@@ -113,7 +113,6 @@ const MapPreview: React.FC<MapPreviewProps> = ({
     canvasRef.current.width = w;
     canvasRef.current.height = h;
     // const source = texture.image || texture.source.data;
-    console.log(texture);
     // console.log(texture.image);
     try {
       canvasRef.current.getContext('2d')?.drawImage(texture.image, 0, 0, w, h);

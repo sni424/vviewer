@@ -130,15 +130,28 @@ async function getLightmap(object: THREE.Object3D) {
     const mesh = object as THREE.Mesh;
     const mat = mesh.material as THREE.MeshStandardMaterial;
     if (mat && mat.vUserData.lightMap) {
-      const url = ENV.base + mat.vUserData.lightMap;
-      console.log(url);
-      return VTextureLoader.load(url, { flipY: true, as: 'texture' }).then(
-        texture => {
-          mat.lightMap = texture;
-          mat.lightMapIntensity = mat.vUserData.lightMapIntensity ?? 1;
-          mat.needsUpdate = true;
-        },
-      );
+      const url = mat.vUserData.lightMap.startsWith('http')
+        ? mat.vUserData.lightMap
+        : ENV.base + mat.vUserData.lightMap;
+
+      const name = mat.vUserData.lightMap!;
+      const flipY = (() => {
+        if (name.endsWith('.exr')) return true;
+        if (name.endsWith('.png')) return false;
+        if (name.endsWith('.ktx')) return false;
+
+        throw new Error();
+      })();
+
+      return VTextureLoader.load(url, {
+        flipY,
+        as: 'texture',
+        gl: threes()?.gl,
+      }).then(texture => {
+        mat.lightMap = texture;
+        mat.lightMapIntensity = mat.vUserData.lightMapIntensity ?? 1;
+        mat.needsUpdate = true;
+      });
     }
   }
 }

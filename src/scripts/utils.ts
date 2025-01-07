@@ -17,6 +17,7 @@ import {
   selectedAtom,
   setAtomValue,
 } from './atoms';
+import { uploadExrToKtx } from './atomUtils.ts';
 import VGLTFExporter from './VGLTFExporter.ts';
 import VGLTFLoader from './VGLTFLoader.tsx';
 import * as THREE from './VTHREE';
@@ -1004,23 +1005,25 @@ export const uploadExrLightmap = async (object: THREE.Object3D) => {
   );
 
   if (files.length > 0) {
-    const formData = new FormData();
-    for (const file of files) {
-      formData.append('files', file);
-    }
-
-    return fetch(uploadUrl, {
-      method: 'POST',
-      body: formData,
-    }).then(res => {
+    return uploadExrToKtx(files).then(res => {
       console.log(res);
-      afterMats.forEach(mat => {
-        mat.lightMap = null;
-      });
-      return res;
-    });
+      if (res.success) {
+        afterMats.forEach(mat => {
+          mat.lightMap = null;
+          const ktxName = (mat.vUserData.lightMap!).replace(".exr", ".ktx");
+          if (res.data.some(datum => datum.filename === ktxName)) {
+            // ktx업로드 시 파일이름 바꾸어주기
+            mat.vUserData.lightMap = ktxName;
+          }
+        });
+        return res;
+      } else {
+        console.error("라이트맵 ktx업로드 실패", res);
+        return res;
+      }
+    })
   } else {
-    console.log('No GainMap Found, Passing Upload GainMap');
+    console.log('라이트맵없음, 업로드x');
   }
 };
 
