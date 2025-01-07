@@ -195,8 +195,12 @@ const DPCFileImporter = () => {
       <button
         className="text-sm px-3 mb-2"
         onClick={() => {
-          if (confirm('모델 구성 모드 선택 화면으로 돌아가시겠어요?')) {
+          if (baseFiles.length === 0 && dpFiles.length === 0) {
             setDPCMode('select');
+          } else {
+            if (confirm('모델 구성 모드 선택 화면으로 돌아가시겠어요?')) {
+              setDPCMode('select');
+            }
           }
         }}
       >
@@ -220,6 +224,8 @@ const DPCFileImporter = () => {
           className="text-sm px-3"
           onClick={() => {
             if (confirm('업로드 하시겠습니까?')) {
+              // TODO Upload Logics
+
               if (onModalClose) {
                 onModalClose();
                 setOnModalClose(() => {});
