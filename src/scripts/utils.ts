@@ -959,8 +959,6 @@ export const uploadGainmap = async (object: THREE.Object3D) => {
 };
 
 export const uploadExrLightmap = async (object: THREE.Object3D) => {
-  const uploadUrl = import.meta.env.VITE_UPLOAD_URL;
-
   // 같은 라이트맵을 공유하는 material 검출
   // { hash : [mat1, mat2] }
   const lightmapHashes: { [key in string]: THREE.MeshStandardMaterial[] } = {};
@@ -969,7 +967,11 @@ export const uploadExrLightmap = async (object: THREE.Object3D) => {
     if ((obj as THREE.Mesh).isMesh) {
       const mesh = obj as THREE.Mesh;
       const mat = mesh.material as THREE.MeshStandardMaterial;
-      if (mat && mat.lightMap && mat.lightMap.vUserData.isExr) {
+      if (
+        mat &&
+        mat.lightMap &&
+        (mat.lightMap.vUserData.isExr || mat.lightMap.vUserData.mimeType === "image/ktx2")
+      ) {
         mat.vUserData.lightMap = mat.lightMap.vUserData.lightMap;
         mat.vUserData.lightMapIntensity = mat.lightMapIntensity;
         const lightMapHash = mat.vUserData.lightMap;
@@ -1023,7 +1025,7 @@ export const uploadExrLightmap = async (object: THREE.Object3D) => {
       }
     })
   } else {
-    console.log('라이트맵없음, 업로드x');
+    console.log('@uploadExrLightmap 라이트맵없음, 업로드x');
   }
 };
 

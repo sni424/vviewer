@@ -1,6 +1,6 @@
 import { clear } from 'idb-keyval';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
-import { useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   openLoaderAtom,
   sceneAnalysisAtom,
@@ -22,13 +22,20 @@ const MobileLoaderPanel = () => {
   const { benchmark, addBenchmark } = useBenchmark();
   const threeExports = useAtomValue(threeExportsAtom);
   const setSceneAnalysis = useSetAtom(sceneAnalysisAtom);
-  const loaderRef = useRef(new VGLTFLoader(threeExports?.gl));
+
+  // const loaderRef = useRef(new VGLTFLoader(threeExports?.gl));
+  const loader = useMemo(() => {
+    if (!threeExports?.gl) {
+      return null;
+    }
+    return new VGLTFLoader(threeExports!.gl);
+  }, [threeExports]);
 
   if (!openLoader) {
     return null;
   }
 
-  if (loading || filelistLoading || !threeExports) {
+  if (loading || filelistLoading || !threeExports || !loader) {
     return (
       <div
         style={{
@@ -110,7 +117,6 @@ const MobileLoaderPanel = () => {
                   const url = URL.createObjectURL(blob);
                   const { scene } = threeExports;
 
-                  const loader = loaderRef.current;
                   const gltf = await loader.loadAsync(url);
                   addBenchmark('parseEnd');
                   addBenchmark('sceneAddStart');

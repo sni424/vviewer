@@ -143,6 +143,7 @@ export const threes = () => {
 export const rerender = () => {
   const t = threes();
   if (!t) {
+    console.error("Three.js is not initialized");
     return;
   }
 
