@@ -1,4 +1,5 @@
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
+import { useEffect } from 'react';
 import CameraPanel from '../components/CameraPanel';
 import FloatingFrontView from '../components/canvas/FloatingFrontView';
 import FloatingTopView from '../components/canvas/FloatingTopView';
@@ -9,14 +10,15 @@ import MeshInfoPanel from '../components/MeshInfoPanel';
 import Modal from '../components/Modal';
 import ThePanel from '../components/ThePanel';
 import {
+  DPAtom,
+  modalAtom,
+  threeExportsAtom,
+  viewGridAtom,
   getAtomValue,
   hotspotAtom,
   insideRoomAtom,
-  modalAtom,
   settingsAtom,
-  threeExportsAtom,
   useModal,
-  viewGridAtom,
 } from '../scripts/atoms';
 import useFiles from '../scripts/useFiles';
 import useModelDragAndDrop from '../scripts/useModelDragAndDrop';
@@ -134,6 +136,29 @@ const ControlPanel = () => {
   );
 };
 
+const DPToggle = () => {
+  const [dp, setDP] = useAtom(DPAtom);
+  useEffect(() => {
+    const objects = dp.objects;
+    console.log(objects);
+    objects.map(o => {
+      o.visible = dp.on;
+    });
+  }, [dp.on]);
+
+  return (
+    <button
+      onClick={() => {
+        setDP(prev => {
+          return { ...prev, on: !prev.on };
+        });
+      }}
+    >
+      {dp.on ? 'DP ON' : 'DP OFF'}
+    </button>
+  );
+};
+
 const ViewGrid = () => {
   const [view, setView] = useAtom(viewGridAtom);
   return (
@@ -217,6 +242,7 @@ const Options = () => {
 const Views = () => {
   return (
     <div className="absolute bottom-2 right-2 flex flex-row gap-2 items-end ">
+      <DPToggle></DPToggle>
       <ViewGrid></ViewGrid>
       <FloatingTopView></FloatingTopView>
       <FloatingFrontView></FloatingFrontView>

@@ -1,9 +1,10 @@
-import { useAtomValue } from 'jotai';
+import { useAtom, useAtomValue } from 'jotai';
 import React, { useEffect } from 'react';
-import { modalAtom, useModal } from '../scripts/atoms';
+import { modalAtom, onModalCloseAtom, useModal } from '../scripts/atoms';
 
 function Modal() {
   const Content = useAtomValue(modalAtom);
+  const [onModalClose, setOnModalClose] = useAtom(onModalCloseAtom);
   const { closeModal } = useModal();
 
   useEffect(() => {
@@ -12,6 +13,10 @@ function Modal() {
     }
     const destroy = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
+        if (onModalClose) {
+          onModalClose();
+          setOnModalClose(() => {});
+        }
         closeModal();
       }
     };
@@ -40,6 +45,10 @@ function Modal() {
       }}
       onClick={e => {
         e.stopPropagation();
+        if (onModalClose) {
+          onModalClose();
+          setOnModalClose(() => {});
+        }
         closeModal();
       }}
     >

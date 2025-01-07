@@ -2,6 +2,7 @@ import { useAtom, useAtomValue } from 'jotai';
 import useFiles from '../scripts/useFiles';
 import {
   compressObjectToFile,
+  decompressFileToObject,
   formatNumber,
   getModelArrangedScene,
   groupInfo,
@@ -18,17 +19,19 @@ import {
 
 import { get, set } from 'idb-keyval';
 import objectHash from 'object-hash';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   __UNDEFINED__,
   AOMAP_INTENSITY_MAX,
+  ENV,
   Layer,
   LIGHTMAP_INTENSITY_MAX,
 } from '../Constants';
 import { defaultSettings, loadSettings } from '../pages/useSettings.ts';
 import {
   cameraMatrixAtom,
+  DPCModeAtom,
   ProbeAtom,
   selectedAtom,
   threeExportsAtom,
@@ -39,6 +42,7 @@ import ReflectionProbe from '../scripts/ReflectionProbe.ts';
 import useFilelist from '../scripts/useFilelist';
 import useStats, { StatPerSecond, VStats } from '../scripts/useStats.ts';
 import VGLTFExporter from '../scripts/VGLTFExporter.ts';
+import VGLTFLoader from '../scripts/VGLTFLoader.tsx';
 import {
   LightmapImageContrast,
   Quaternion,
@@ -51,6 +55,7 @@ import { ColorLUTOption } from './canvas/ColorLUT.tsx';
 import { ColorTemperatureOption } from './canvas/ColorTemperature.tsx';
 import { HueSaturationOption } from './canvas/HueSaturation.tsx';
 import { ToneMappingOption } from './canvas/ToneMapping.tsx';
+import DPConfigurator from './DPConfigurator.tsx';
 import UploadPage from './UploadModal';
 
 const useEnvUrl = () => {
@@ -164,6 +169,35 @@ const GeneralButtons = () => {
   const navigate = useNavigate();
   const [statsOn, setStatsOn] = useState(false);
   const [probes, setProbes] = useAtom<ReflectionProbe[]>(ProbeAtom);
+  const [dpcMode, setDPCMode] = useAtom(DPCModeAtom);
+  const dpcModalRef = useRef(null);
+
+  // DPC Modal 모드에 따라 사이즈 변경
+  useEffect(() => {
+    const styles = {
+      tree: {
+        width: '20%',
+        marginLeft: 'auto',
+        marginBottom: 'auto',
+      },
+      file: {
+        width: '80%',
+        marginLeft: 0,
+        marginBottom: 0,
+      },
+      select: {
+        width: '35%',
+        marginLeft: 0,
+        marginBottom: 0,
+      },
+    };
+    if (dpcModalRef.current) {
+      const styleMode = styles[dpcMode];
+      Object.entries(styleMode).map(([key, value]) => {
+        dpcModalRef.current.style[key] = value;
+      });
+    }
+  }, [dpcModalRef.current, dpcMode]);
 
   const handleResetSettings = async () => {
     await defaultSettings();
@@ -446,10 +480,98 @@ const GeneralButtons = () => {
       </button>
       <button
         onClick={() => {
-          console.log(scene);
+          openModal(
+            () => (
+              <div
+                ref={dpcModalRef}
+                style={{
+                  width: '35%',
+                  maxHeight: '80%',
+                  backgroundColor: '#ffffffcc',
+                  padding: 16,
+                  borderRadius: 8,
+                  boxSizing: 'border-box',
+                  position: 'relative',
+                }}
+              >
+                <DPConfigurator />
+              </div>
+            ),
+            () => {
+              setDPCMode('select');
+            },
+          );
         }}
       >
-        테스트
+        BASE / DP 업로드
+      </button>
+      <button
+        onClick={async () => {
+          const baseURL = ENV.model_base;
+          const latestHashUrl = ENV.baseHash;
+          const localLatestHash = await get('base-hash');
+          const remoteLatestHash = (
+            await decompressFileToObject<{ hash: string }>(latestHashUrl)
+          ).hash;
+          const loadModel = async () => {
+            let url;
+            if (!localLatestHash || localLatestHash !== remoteLatestHash) {
+              // CACHE UPDATE
+              const blob = await fetch(baseURL, {
+                cache: 'no-store',
+              }).then(res => res.blob());
+              await set('base-hash', remoteLatestHash);
+              await set('baseModel', blob);
+
+              url = URL.createObjectURL(blob);
+            } else {
+              const blob = await get('baseModel');
+              url = URL.createObjectURL(blob);
+            }
+            return await new VGLTFLoader().loadAsync(url);
+          };
+
+          loadModel().then(res => {
+            const parsedScene = res.scene;
+            scene.add(parsedScene);
+          });
+        }}
+      >
+        BASE 불러오기
+      </button>
+      <button
+        onClick={async () => {
+          const baseURL = ENV.model_dp;
+          const latestHashUrl = ENV.dpHash;
+          const localLatestHash = await get('dp-hash');
+          const remoteLatestHash = (
+            await decompressFileToObject<{ hash: string }>(latestHashUrl)
+          ).hash;
+          const loadModel = async () => {
+            let url;
+            if (!localLatestHash || localLatestHash !== remoteLatestHash) {
+              // CACHE UPDATE
+              const blob = await fetch(baseURL, {
+                cache: 'no-store',
+              }).then(res => res.blob());
+              await set('dp-hash', remoteLatestHash);
+              await set('dpModel', blob);
+
+              url = URL.createObjectURL(blob);
+            } else {
+              const blob = await get('dpModel');
+              url = URL.createObjectURL(blob);
+            }
+            return await new VGLTFLoader().loadAsync(url);
+          };
+
+          loadModel().then(res => {
+            const parsedScene = res.scene;
+            scene.add(parsedScene);
+          });
+        }}
+      >
+        DP 불러오기
       </button>
       <button
         onClick={() => {
