@@ -91,6 +91,14 @@ export default class VTextureLoader {
             texture.vUserData.mimeType = 'image/ktx2';
           }
 
+          if (isExr || isKtx) {
+            texture.minFilter = THREE.LinearMipmapLinearFilter;
+            texture.magFilter = THREE.LinearFilter;
+            if (inputOption.gl) {
+              texture.anisotropy = inputOption.gl.capabilities.getMaxAnisotropy();
+            }
+          }
+
           texture.needsUpdate = true;
           return texture;
         });
