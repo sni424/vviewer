@@ -269,6 +269,7 @@ const useMouseHandler = () => {
         threeExports.camera.moveTo({
           pathFinding: {
             matrix: mat.toArray(),
+            isTour: true,
           },
         });
 
@@ -487,13 +488,8 @@ function MoveTo() {
   }
 
   const g = pf?.geometry;
-  if (g) {
-    console.log('Has geo');
-  }
-
   const point = moveToPoint.point;
-  // spehere
-  // line to xz plane
+
   return (
     <>
       <mesh position={[point.x, 1.5, point.z]}>

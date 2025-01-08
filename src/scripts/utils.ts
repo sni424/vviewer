@@ -779,13 +779,11 @@ export const moveTo = (
         ZONE,
         groupID,
       );
-      // debugger;
-      console.log(path)
       if (path) {
         addPoints(...path.map(vector => ({
           point: new Vector3(
             vector.x,
-            0.5,
+            0.05,
             vector.z
           ), color: "yellow"
         })))
@@ -854,7 +852,6 @@ export const readDirectory = async (
   directoryEntry: FileSystemDirectoryEntry,
   acceptedExtensions: string[],
 ) => {
-  console.log('Reading directory:', directoryEntry.name);
 
   const reader = directoryEntry.createReader();
   const entries: File[] = [];

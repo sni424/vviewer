@@ -135,7 +135,6 @@ const DPToggle = () => {
   const [dp, setDP] = useAtom(DPAtom);
   useEffect(() => {
     const objects = dp.objects;
-    console.log(objects);
     objects.map(o => {
       o.visible = dp.on;
     });
@@ -167,14 +166,9 @@ const ViewGrid = () => {
   );
 };
 
-const LoadFloor = () => {
-  return <button onClick={loadNavMesh}>바닥 로드</button>;
-};
-
 const Views = () => {
   return (
     <div className="absolute bottom-2 right-2 flex flex-row gap-2 items-end ">
-      <LoadFloor></LoadFloor>
       <DPToggle></DPToggle>
       <ViewGrid></ViewGrid>
       <FloatingTopView></FloatingTopView>
@@ -184,9 +178,20 @@ const Views = () => {
   );
 };
 
+const useLoadFloor = () => {
+  const threeExports = useAtomValue(threeExportsAtom);
+  useEffect(() => {
+    if (threeExports) {
+      loadNavMesh();
+    }
+  }, [threeExports]);
+};
+
 const ViewerPage = () => {
   const { isDragging, handleDragOver, handleDragLeave, handleDrop } =
     useModelDragAndDrop();
+
+  useLoadFloor();
 
   return (
     <div
