@@ -2,11 +2,7 @@ import { RootState } from '@react-three/fiber';
 import * as THREE from 'three';
 import { TransformControlsPlane } from 'three/examples/jsm/Addons.js';
 import { Layer } from '../Constants';
-import {
-  Matrix4Array,
-  MoveActionOptions,
-  View
-} from '../types';
+import { Matrix4Array, MoveActionOptions, View } from '../types';
 import type ReflectionProbe from './ReflectionProbe';
 import type { ReflectionProbeJSON } from './ReflectionProbe';
 import { moveTo, resetGL } from './utils';
@@ -29,7 +25,7 @@ export interface ThreeUserData {
   probes?: ReflectionProbeJSON[];
   hotspotIndex?: number;
   isExr?: boolean;
-  mimeType?: "image/ktx2"; // ktx2압축시 달려있음
+  mimeType?: 'image/ktx2'; // ktx2압축시 달려있음
 }
 
 declare module 'three' {
@@ -330,9 +326,7 @@ THREE.Vector3.prototype.revert = function () {
   return this;
 };
 
-THREE.Camera.prototype.moveTo = function (
-  action: MoveActionOptions
-) {
+THREE.Camera.prototype.moveTo = function (action: MoveActionOptions) {
   if (this.type !== 'PerspectiveCamera') {
     console.error(this);
     throw new Error('Not a PerspectiveCamera');
@@ -450,7 +444,7 @@ THREE.Object3D.prototype.traverseAll = function (
 THREE.Object3D.prototype.traverse = function (
   callback: (node: THREE.Object3D) => any,
 ) {
-  if (!this.layers.isEnabled(Layer.Model)) {
+  if (this.type !== 'Scene' && !this.layers.isEnabled(Layer.Model)) {
     // console.warn('traverse(): this Not in Model Layer : ', this);
     return;
   }
@@ -492,4 +486,3 @@ window.getThree = (view: View = View.Shared) => {
 // THREE.Material.prototype.onBeforeCompile 오버라이딩
 import '../scripts/postprocess/MaterialShader';
 import { PlaneControlDirections } from './CubePlaneControls.ts';
-

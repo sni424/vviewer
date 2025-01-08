@@ -1,6 +1,12 @@
 import { Pathfinding } from "three-pathfinding";
 import { ENV } from "../Constants";
-import { cameraMatrixAtom, getAtomValue, pathfindingAtom, roomAtom, RoomCreateOption, setAtomValue, threeExportsAtom } from "./atoms";
+import {
+  cameraMatrixAtom, getAtomValue,
+  pathfindingAtom,
+  postprocessAtoms,
+  roomAtom,
+  RoomCreateOption, setAtomValue, threeExportsAtom
+} from "./atoms";
 import VGLTFLoader from "./VGLTFLoader";
 import { THREE } from "./VTHREE";
 
@@ -74,16 +80,17 @@ export const cameraInRoom = (camera?: THREE.Matrix4): RoomCreateOption[] => {
   return retvals;
 };
 
-
-export const uploadExrToKtx = (exrs: File | File[]): Promise<{
+export const uploadExrToKtx = (
+  exrs: File | File[],
+): Promise<{
   success: boolean;
-  responseType: "success",
+  responseType: 'success';
   data: {
     fileSize: number;
     fileType: null;
     fileUrl: string;
     filename: string;
-  }[]
+  }[];
 }> => {
   const uploadUrl = import.meta.env.VITE_KTX_URL as string;
   if (!uploadUrl) {
@@ -99,43 +106,80 @@ export const uploadExrToKtx = (exrs: File | File[]): Promise<{
     method: 'POST',
     body: fd,
   }).then(res => res.json());
-}
+};
 
 export const uploadJson = (name: string, value: Record<string, any>) => {
   let jsonName: string = name;
   if (!jsonName.endsWith('.json')) {
     jsonName += '.json';
   }
-  const json = typeof value === "string" ? value : JSON.stringify(value);
+  const json = typeof value === 'string' ? value : JSON.stringify(value);
 
   const fd = new FormData();
-  fd.append(
-    'files',
-    new Blob([json], { type: 'application/json' }),
-    jsonName,
-  );
+  fd.append('files', new Blob([json], { type: 'application/json' }), jsonName);
   return fetch(import.meta.env.VITE_UPLOAD_URL as string, {
     method: 'POST',
     body: fd,
   });
-}
+};
 
 export const loadHotspot = async () => {
-  return fetch(ENV.base + "hotspots.json", {
+  return fetch(ENV.base + 'hotspots.json', {
     cache: 'no-store',
   }).then(res => res.json());
-}
+};
 
 export const loadRooms = async () => {
-  return fetch(ENV.base + "rooms.json", {
+  return fetch(ENV.base + 'rooms.json', {
+    cache: 'no-store',
+  }).then(res => res.json());
+};
+
+export const loadTourSpot = async () => {
+  return fetch(ENV.base + 'tourSpot.json', {
+    cache: 'no-store',
+  }).then(res => res.json());
+};
+
+export const loadProbes = async () => {
+  return fetch(ENV.base + 'probe.json', {
+    cache: 'no-store',
+  }).then(res => res.json());
+};
+
+export const loadPostProcess = async () => {
+  return fetch(ENV.base + "postprocess.json", {
     cache: 'no-store',
   }).then(res => res.json());
 }
 
-export const loadTourSpot = async () => {
-  return fetch(ENV.base + "tourSpot.json", {
-    cache: 'no-store',
-  }).then(res => res.json());
+export const loadPostProcessAndSet = async () => {
+  return loadPostProcess().then(res => {
+    if (res) {
+      // 아톰 안에 아톰이라 2번 setAtomValue를 불러줘야함
+      setAtomValue(postprocessAtoms, prev => {
+        const copied = { ...prev };
+        const loadedKeys = Object.keys(res);
+        const postprocessKeys = Object.keys(copied);
+        postprocessKeys.forEach(key => {
+          if (loadedKeys.includes(key)) {
+            setAtomValue(copied[key], (eachPrev: any) => {
+              console.log(key, res[key]);
+              return {
+                ...eachPrev,
+                ...(res as any)[key],
+              };
+            });
+            // copied[key] = { ...(value as any)[key] };
+          }
+        });
+
+        return copied;
+      });
+    } else {
+      alert('후처리 불러오기 실패');
+    }
+  });
 }
 
 export const threes = () => {
@@ -145,7 +189,7 @@ export const threes = () => {
 export const rerender = () => {
   const t = threes();
   if (!t) {
-    console.error("Three.js is not initialized");
+    console.error('Three.js is not initialized');
     return;
   }
 

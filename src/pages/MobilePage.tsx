@@ -13,7 +13,12 @@ import {
   threeExportsAtom,
   tourAtom,
 } from '../scripts/atoms';
-import { loadHotspot, loadRooms, loadTourSpot } from '../scripts/atomUtils';
+import {
+  loadHotspot,
+  loadPostProcessAndSet,
+  loadRooms,
+  loadTourSpot,
+} from '../scripts/atomUtils';
 import { loadLatest } from '../scripts/utils';
 import { THREE } from '../scripts/VTHREE';
 
@@ -43,6 +48,7 @@ const useLoad = () => {
     if (!threeExports) {
       return;
     }
+
     const loadSettings = async () => {
       loadHotspot().then(res => {
         if (res) {
@@ -65,12 +71,20 @@ const useLoad = () => {
           console.error('Failed to load tour spots', res);
         }
       });
+      // loadNavMesh().then(res=>{
+
+      // })
+      loadPostProcessAndSet();
     };
     loadLatest({ threeExports }).finally(() => {
       setIsLoading(false);
     });
     loadSettings();
   }, [threeExports]);
+
+  useEffect(() => {
+    return;
+  }, [isLoading]);
 
   return isLoading;
 };

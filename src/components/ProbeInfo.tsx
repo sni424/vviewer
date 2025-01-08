@@ -2,14 +2,69 @@ import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import { useEffect, useRef, useState } from 'react';
 import { v4 } from 'uuid';
 import {
+  getAtomValue,
   ProbeAtom,
   selectedAtom,
+  setAtomValue,
   threeExportsAtom,
   useModal,
 } from '../scripts/atoms.ts';
-import ReflectionProbe from '../scripts/ReflectionProbe.ts';
+import { loadProbes, threes, uploadJson } from '../scripts/atomUtils.ts';
+import ReflectionProbe, {
+  ReflectionProbeJSON,
+} from '../scripts/ReflectionProbe.ts';
 import { THREE } from '../scripts/VTHREE.ts';
 import './probe.css';
+
+const uploadProbes = async () => {
+  const probes = getAtomValue(ProbeAtom);
+  const toJSON = probes.map(probe => probe.toJSON());
+
+  uploadJson('probe.json', toJSON)
+    .then(res => res.json())
+    .then(res => {
+      if (res?.success === true) {
+        alert('업로드 완료');
+      } else {
+        throw res;
+      }
+    })
+    .catch(err => {
+      console.log(err);
+      alert('업로드 실패');
+    });
+};
+
+const importProbes = async () => {
+  const threeExports = threes();
+
+  if (!threeExports) {
+    return;
+  }
+
+  const { scene, gl, camera } = threeExports;
+
+  loadProbes().then(res => {
+    if (!ReflectionProbe.isProbeJson(res)) {
+      alert('Probe 불러오기 실패');
+      console.warn(
+        'probe.json FromJSON 을 할 수 없음 => ReflectionProbe.isProbeJson === false',
+      );
+      return;
+    }
+    const probeJsons = res as ReflectionProbeJSON[];
+    const probes = probeJsons.map(probeJson => {
+      return new ReflectionProbe(gl, scene, camera).fromJSON(probeJson);
+    });
+
+    probes.forEach(probe => {
+      probe.addToScene();
+      probe.updateCameraPosition(probe.getCenter(), true);
+    });
+
+    setAtomValue(ProbeAtom, probes);
+  });
+};
 
 const ProbeInfo = () => {
   const threeExports = useAtomValue(threeExportsAtom);
@@ -27,6 +82,7 @@ const ProbeInfo = () => {
     setProbes(prev => [...prev, probe]);
   }
 
+  // From File
   function importProbe() {
     const input = document.createElement('input');
     input.onchange = (e: Event) => {
@@ -47,7 +103,7 @@ const ProbeInfo = () => {
             return;
           }
           const newProbe = new ReflectionProbe(gl, scene, camera).fromJSON(
-            jsonObject,
+            jsonObject as ReflectionProbeJSON,
           );
           for (const probe of probes) {
             // 프로브가 완전히 겹쳤을 때 => 컨트롤이 오버랩 돼서 분리가 안됨
@@ -116,17 +172,25 @@ const ProbeInfo = () => {
         </button>
         <button
           style={{ fontSize: 12, padding: '4px 8px', cursor: 'pointer' }}
-          onClick={importProbe}
+          onClick={importProbes}
         >
-          JSON 으로부터 받아오기
+          불러오기
         </button>
         {probes.length > 0 && (
-          <button
-            style={{ fontSize: 12, padding: '4px 8px', cursor: 'pointer' }}
-            onClick={updateAllProbes}
-          >
-            프로브 전체 업데이트
-          </button>
+          <>
+            <button
+              style={{ fontSize: 12, padding: '4px 8px', cursor: 'pointer' }}
+              onClick={uploadProbes}
+            >
+              업로드
+            </button>
+            <button
+              style={{ fontSize: 12, padding: '4px 8px', cursor: 'pointer' }}
+              onClick={updateAllProbes}
+            >
+              프로브 전체 업데이트
+            </button>
+          </>
         )}
       </section>
       <section style={{ width: '100%' }}>
