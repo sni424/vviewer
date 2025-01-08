@@ -7,8 +7,10 @@ import {
   getAtomValue,
   insideRoomAtom,
   lastCameraInfoAtom,
+  moveToPointAtom,
   orbitSettingAtom,
   panelTabAtom,
+  setAtomValue,
   threeExportsAtom,
 } from '../scripts/atoms';
 import { Quaternion, THREE, Vector3 } from '../scripts/VTHREE';
@@ -277,6 +279,16 @@ const CameraPanel = () => {
                 }}
               >
                 Iso카메라
+              </button>
+              <button
+                onClick={() => {
+                  setAtomValue(moveToPointAtom, {
+                    point: undefined,
+                    setting: true,
+                  });
+                }}
+              >
+                지점으로이동
               </button>
               <button
                 onClick={() => {

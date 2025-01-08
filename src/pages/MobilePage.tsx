@@ -15,6 +15,25 @@ import {
 } from '../scripts/atoms';
 import { loadHotspot, loadRooms, loadTourSpot } from '../scripts/atomUtils';
 import { loadLatest } from '../scripts/utils';
+import { THREE } from '../scripts/VTHREE';
+
+const createGeometry = (points: [number, number][]) => {
+  if (points.length < 3) {
+    throw new Error('At least 3 points are required to create a geometry');
+  }
+
+  const shape = new THREE.Shape();
+  shape.moveTo(points[0][0], points[0][1]);
+  points.slice(1).forEach(point => {
+    shape.lineTo(point[0], point[1]);
+  });
+  shape.closePath();
+
+  const geometry = new THREE.ShapeGeometry(shape);
+  geometry.rotateX(Math.PI / 2);
+
+  return geometry;
+};
 
 const useLoad = () => {
   const threeExports = useAtomValue(threeExportsAtom);

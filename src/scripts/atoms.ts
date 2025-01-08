@@ -11,6 +11,7 @@ import {
   WritableAtom
 } from 'jotai';
 import React from 'react';
+import { Pathfinding } from 'three-pathfinding';
 import { OrbitControls } from 'three/examples/jsm/Addons.js';
 import { DPConfiguratorMode } from '../components/DPConfigurator.tsx';
 import { FileInfo, GLProps, Matrix4Array, View, ViewportOption } from '../types';
@@ -43,10 +44,10 @@ export const createAtomCombo = <T = any>(
   initalValue?: T,
   store?: Store,
 ): [
-  WritableAtom<T, unknown[], unknown>,
-  () => T | undefined,
-  (arg: AtomArgType<T>) => void,
-] => {
+    WritableAtom<T, unknown[], unknown>,
+    () => T | undefined,
+    (arg: AtomArgType<T>) => void,
+  ] => {
   const dstStore = store ?? defaultStore;
   // @ts-ignore
   const theAtom = atom<T>(initalValue);
@@ -445,3 +446,25 @@ export const settingsAtom = atom<Settings>({
   shotHotspots: true,
   detectHotspotRoom: true,
 });
+
+export const pathfindingAtom = atom<{
+  pathfinding: Pathfinding;
+  points: [number, number][]; // [x,z]
+  geometry: THREE.BufferGeometry | THREE.ShapeGeometry;
+}>();
+
+export const moveToPointAtom = atom<{
+  point?: THREE.Vector3;
+  setting?: boolean;
+}>();
+
+export type DrawablePoint = ({ point: THREE.Matrix4 | THREE.Vector3 | { x: number, z: number } }) & { color?: string | number; id?: string; };
+export const pointsAtom = atom<DrawablePoint[]>([]);
+
+export const addPoints = (...points: DrawablePoint[]) => {
+  setAtomValue(pointsAtom, prev => {
+    // unique to id;
+    const uniquePrev = prev.filter(p => !points.some(p2 => p2.id === p.id));
+    return [...uniquePrev, ...points];
+  });
+}

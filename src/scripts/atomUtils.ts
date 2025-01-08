@@ -1,5 +1,7 @@
+import { Pathfinding } from "three-pathfinding";
 import { ENV } from "../Constants";
-import { cameraMatrixAtom, getAtomValue, roomAtom, RoomCreateOption, threeExportsAtom } from "./atoms";
+import { cameraMatrixAtom, getAtomValue, pathfindingAtom, roomAtom, RoomCreateOption, setAtomValue, threeExportsAtom } from "./atoms";
+import VGLTFLoader from "./VGLTFLoader";
 import { THREE } from "./VTHREE";
 
 interface PointXZ {
@@ -149,4 +151,109 @@ export const rerender = () => {
 
   const { gl, scene, camera } = t;
   gl.render(scene, camera);
+}
+
+const createGeometry = (points: [number, number][]) => {
+  if (points.length < 3) {
+    throw new Error('At least 3 points are required to create a geometry');
+  }
+
+  const shape = new THREE.Shape();
+  const copied = [...points];
+  copied.reverse();
+  shape.moveTo(copied[0][0], copied[0][1]);
+  copied.slice(1).forEach(point => {
+    shape.lineTo(point[0], point[1]);
+  });
+  shape.closePath();
+
+  const geometry = new THREE.ShapeGeometry(shape);
+  geometry.rotateX(-Math.PI / 2);
+
+
+  return geometry;
+};
+
+export const initPathfinding = (points?: [number, number][]) => {
+  points = points ?? getAtomValue(roomAtom).find(room => room.name === '바닥')?.border;
+  if (!points) {
+    throw new Error('Points are not defined @initPathfinding');
+  }
+
+  getAtomValue(pathfindingAtom)?.geometry.dispose();
+
+  const geometry = createGeometry(points);
+  const pathfinding = new Pathfinding();
+  const zone = Pathfinding.createZone(geometry);
+  pathfinding.setZoneData('level', zone);
+
+  setAtomValue(pathfindingAtom, {
+    pathfinding,
+    geometry,
+    points,
+  });
+}
+
+export const pathfinding = () => {
+  const retval = getAtomValue(pathfindingAtom);
+  if (!retval) {
+    throw new Error('Pathfinding is not initialized');
+  }
+  return retval.pathfinding;
+}
+
+export const loadNavMesh = async () => {
+  // const key = "navMesh";
+
+  // const getBlob = async () => {
+  //   return get(key).then(res => {
+  //     if (res) {
+  //       return res;
+  //     } else {
+  //       return fetch(ENV.navMesh).then(res => res.blob()).then(blob => {
+  //         return set(key, blob).then(() => {
+  //           return blob;
+  //         })
+  //       })
+  //     }
+  //   })
+  // }
+  // const navBlob = await getBlob();
+  // const url = URL.createObjectURL(navBlob);
+  // new VGLTFLoader().loadAsync(url).
+  new VGLTFLoader().loadAsync(ENV.navMesh).then(gltf => {
+    let floor: THREE.Mesh | null = null;
+    gltf.scene.traverseAll(obj => {
+      if ((obj as THREE.Mesh).isMesh) {
+        floor = obj as THREE.Mesh;
+        return;
+      }
+    })
+    if (!floor) {
+      throw new Error('Floor is not found');
+    }
+
+
+
+    const pathfinding = new Pathfinding();
+    const geometry = (floor as THREE.Mesh).geometry;
+    const zone = Pathfinding.createZone(geometry);
+    pathfinding.setZoneData('level', zone);
+
+    const points: [number, number][] = [];
+
+    const { attributes } = geometry;
+    const { position } = attributes;
+    const { array } = position;
+    for (let i = 0; i < array.length; i += 3) {
+      points.push([array[i], array[i + 2]]);
+    }
+
+
+    setAtomValue(pathfindingAtom, {
+      pathfinding,
+      geometry,
+      points,
+    });
+  })
 }

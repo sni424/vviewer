@@ -246,6 +246,7 @@ export type ModelFile = {
 };
 
 import { Properties } from '@react-three/fiber';
+import { Pathfinding } from 'three-pathfinding';
 import { THREE } from './scripts/VTHREE';
 export declare type GLProps = Partial<Properties<THREE.WebGLRenderer> | THREE.WebGLRendererParameters> & {
   toneMapping?: THREE.ToneMapping;
@@ -325,6 +326,7 @@ export interface MoveActionOptions {
     stopAnimation?: boolean //애니메이션 중지
     isTour: boolean //투어인지 모바일에서 클릭한 경로찾기인지지 
     matrix?: number[];
+    pathfinder?: Pathfinding;
   };
   isoView?: {
     speed: number; // 애니메이션 속도

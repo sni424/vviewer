@@ -2,6 +2,7 @@ import { useAtomValue, useSetAtom } from 'jotai';
 import { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import {
+  cameraMatrixAtom,
   cameraSettingAtom,
   insideRoomAtom,
   lastCameraInfoAtom,
@@ -204,7 +205,10 @@ const MobileCameraManager = ({
 
       //updateProjectionMatrix 넣은 이유 카메라 회전했을때 방향 맞추기 위해
       camera.updateProjectionMatrix();
+
       setAtomValue(insideRoomAtom, cameraInRoom(camera.matrix));
+      setAtomValue(cameraMatrixAtom, camera.matrix);
+
       animationFrameId.current = requestAnimationFrame(animateCamera);
     }
   };

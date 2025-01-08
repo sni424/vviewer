@@ -1,19 +1,21 @@
 import { RootState } from '@react-three/fiber';
 import gsap from 'gsap';
 import { get, set } from 'idb-keyval';
-import { Pathfinding } from 'three-pathfinding';
 
 import objectHash from 'object-hash';
 import pako from 'pako';
+import { Vector3 } from 'three';
 import { TransformControls } from 'three-stdlib';
 import { OrbitControls, RGBELoader } from 'three/examples/jsm/Addons.js';
 import { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { ENV, Layer } from '../Constants';
 import { FileInfo, MoveActionOptions, View } from '../types.ts';
 import {
+  addPoints,
   BenchMark,
   cameraActionAtom,
   getAtomValue,
+  pathfindingAtom,
   selectedAtom,
   setAtomValue,
 } from './atoms';
@@ -729,7 +731,7 @@ export const moveTo = (
 ) => {
 
   if (action.pathFinding) {
-    const { speed, model, stopAnimation, isTour, matrix } = action.pathFinding;
+    const { speed = 1.0, model, stopAnimation, isTour, matrix } = action.pathFinding;
 
     if (stopAnimation && currentAnimation) {
       currentAnimation.kill();
@@ -737,9 +739,8 @@ export const moveTo = (
     }
 
     const ZONE = 'level';
-    const pathFinding = new Pathfinding();
 
-    if (model && matrix && speed) {
+    if (matrix) {
       //배열을 matrix4로 변형
       const threeMatrix = new THREE.Matrix4().fromArray(matrix);
       // 위치, 회전, 스케일을 저장할 객체 생성
@@ -748,14 +749,27 @@ export const moveTo = (
       const scale = new THREE.Vector3();
       // 행렬에서 position, rotation, scale 추출
       threeMatrix.decompose(position, quaternion, scale);
-      const navMesh = model.getObjectByName('84B3_DP') as THREE.Mesh;
-      if (!navMesh) return;
 
-      const zone = Pathfinding.createZone(navMesh.geometry);
-      pathFinding.setZoneData(ZONE, zone);
+      const pathFinding = action.pathFinding.pathfinder ?? getAtomValue(pathfindingAtom)?.pathfinding;
+      if (!pathFinding) {
+        throw new Error('pathFinding is not defined @moveTo');
+      }
 
       const groupID = pathFinding.getGroup(ZONE, camera.position);
       const targetGroupID = pathFinding.getGroup(ZONE, position);
+
+      addPoints(
+        {
+          point: camera.position,
+          color: "blue",
+          id: "start"
+        },
+        {
+          point: position,
+          color: "green",
+          id: "target"
+        }
+      )
 
       const closestStartNode = pathFinding.getClosestNode(camera.position, ZONE, groupID);
       const closestTargetNode = pathFinding.getClosestNode(position, ZONE, targetGroupID);
@@ -765,8 +779,16 @@ export const moveTo = (
         ZONE,
         groupID,
       );
-
+      // debugger;
+      console.log(path)
       if (path) {
+        addPoints(...path.map(vector => ({
+          point: new Vector3(
+            vector.x,
+            0.5,
+            vector.z
+          ), color: "yellow"
+        })))
         //direction 추가 이유 pc에서 투어에는 필요하고 모바일에서 클릭 이동에는 필요x
         if (isTour) {
           const newPath = [...path];
@@ -1058,3 +1080,142 @@ export const calculateTargetPosition = (
   // 카메라 위치에 offset을 더해 타겟 위치 계산
   return cameraPosition.clone().add(offset);
 };
+
+export type PointXZ = { x: number; z: number };
+
+export function createClosedConcaveSurface(
+  points: PointXZ[],
+  // y: number,
+  color?: number,
+): THREE.Mesh {
+  if (points.length < 3) {
+    throw new Error(
+      'At least three points are required to create a closed surface.',
+    );
+  }
+
+  // xz 평면에서 생성했지만 shape은 xy기준으로 생성되므로
+  // 생성 수 마지막에 geometry.rotateX(Math.PI / 2)를 호출하여 xz평면으로 변환
+
+  const shape = new THREE.Shape();
+  shape.moveTo(points[0].x, points[0].z);
+  points.slice(1).forEach(point => {
+    shape.lineTo(point.x, point.z);
+  });
+  shape.closePath();
+
+  const geometry = new THREE.ShapeGeometry(shape);
+  geometry.rotateX(Math.PI / 2);
+
+  // 이 때 바깥쪽을 보고 있으므로 Material에서 더블사이드로 설정
+  const material = new THREE.MeshStandardMaterial({
+    emissive: color ?? 0x3333cc,
+    emissiveIntensity: 1.0,
+    side: THREE.DoubleSide,
+  });
+  const mesh = new THREE.Mesh(geometry, material);
+  mesh.layers.disableAll();
+  mesh.layers.enable(Layer.Room);
+
+  return mesh;
+}
+
+export function createMeshesFromPoints(
+  points: PointXZ[],
+  minY: number,
+  maxY: number,
+): {
+  verticalSurfaces: THREE.Mesh;
+  topFace: THREE.Mesh;
+  bottomFace: THREE.Mesh;
+  closureFace: THREE.Mesh;
+} {
+  if (points.length < 2) {
+    throw new Error('At least two points are required to create a mesh.');
+  }
+
+  const createBufferGeometry = (vertices: number[], indices: number[]) => {
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute(
+      'position',
+      new THREE.Float32BufferAttribute(vertices, 3),
+    );
+    geometry.setIndex(indices);
+    geometry.computeVertexNormals();
+    return geometry;
+  };
+
+  const createMesh = (geometry: THREE.BufferGeometry) => {
+    // const material = new THREE.MeshStandardMaterial({ color: 0x44aa88, side: THREE.DoubleSide });
+    // return new THREE.Mesh(geometry, material);
+    return new THREE.Mesh(geometry);
+  };
+
+  // Vertical surfaces
+  const verticalVertices: number[] = [];
+  const verticalIndices: number[] = [];
+
+  points.forEach((point, i) => {
+    verticalVertices.push(point.x, minY, point.z); // Lower vertex
+    verticalVertices.push(point.x, maxY, point.z); // Upper vertex
+  });
+
+  for (let i = 0; i < points.length - 1; i++) {
+    const lowerLeft = i * 2;
+    const upperLeft = i * 2 + 1;
+    const lowerRight = (i + 1) * 2;
+    const upperRight = (i + 1) * 2 + 1;
+    verticalIndices.push(lowerLeft, upperLeft, lowerRight);
+    verticalIndices.push(upperLeft, upperRight, lowerRight);
+  }
+
+  const verticalSurfaces = createMesh(
+    createBufferGeometry(verticalVertices, verticalIndices),
+  );
+
+  // Bottom face
+  // const bottomVertices: number[] = [];
+  // const bottomIndices: number[] = [];
+  // points.forEach((point) => {
+  //     bottomVertices.push(point.x, minY, point.z);
+  // });
+  // // bottomVertices.push(0, minY, 0);
+  // points.forEach((_, i) => {
+  //     bottomIndices.push(0, i, (i + 1) % points.length);
+  // });
+  // const bottomFace = createMesh(createBufferGeometry(bottomVertices, bottomIndices));
+  const bottomFace = createClosedConcaveSurface(points);
+
+  // Top face
+  // const topVertices: number[] = [];
+  // const topIndices: number[] = [];
+  // points.forEach((point) => {
+  //     topVertices.push(point.x, maxY, point.z);
+  // });
+  // points.forEach((_, i) => {
+  //     topIndices.push(0, (i + 1) % points.length, i);
+  // });
+  // const topFace = createMesh(createBufferGeometry(topVertices, topIndices));
+  const topFace = createClosedConcaveSurface(points);
+
+  // Closure face (connect last point back to first point)
+  const closureVertices: number[] = [];
+  const closureIndices: number[] = [];
+  const lastIndex = points.length - 1;
+  closureVertices.push(points[lastIndex].x, minY, points[lastIndex].z);
+  closureVertices.push(points[lastIndex].x, maxY, points[lastIndex].z);
+  closureVertices.push(points[0].x, minY, points[0].z);
+  closureVertices.push(points[0].x, maxY, points[0].z);
+  closureIndices.push(0, 1, 2);
+  closureIndices.push(1, 3, 2);
+  const closureFace = createMesh(
+    createBufferGeometry(closureVertices, closureIndices),
+  );
+
+  return {
+    verticalSurfaces,
+    topFace,
+    bottomFace,
+    closureFace,
+  };
+}

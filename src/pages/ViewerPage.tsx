@@ -15,6 +15,7 @@ import {
   threeExportsAtom,
   viewGridAtom,
 } from '../scripts/atoms';
+import { loadNavMesh } from '../scripts/atomUtils';
 import useFiles from '../scripts/useFiles';
 import useModelDragAndDrop from '../scripts/useModelDragAndDrop';
 import { getSettings, loadSettings } from './useSettings';
@@ -166,9 +167,14 @@ const ViewGrid = () => {
   );
 };
 
+const LoadFloor = () => {
+  return <button onClick={loadNavMesh}>바닥 로드</button>;
+};
+
 const Views = () => {
   return (
     <div className="absolute bottom-2 right-2 flex flex-row gap-2 items-end ">
+      <LoadFloor></LoadFloor>
       <DPToggle></DPToggle>
       <ViewGrid></ViewGrid>
       <FloatingTopView></FloatingTopView>

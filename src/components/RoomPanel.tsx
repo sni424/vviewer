@@ -122,7 +122,6 @@ function RoomSetting() {
                   const isCreating = Boolean(room.creating);
                   if (isCreating) {
                     setRooms(prev => {
-                      console.log('prev', prev);
                       const newRooms = [...prev];
                       newRooms[i].creating = undefined;
                       return newRooms;

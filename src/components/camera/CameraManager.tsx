@@ -2,6 +2,7 @@ import { useThree } from '@react-three/fiber';
 import { useAtomValue, useSetAtom } from 'jotai';
 import React, { useEffect, useRef, useState } from 'react';
 import {
+  cameraMatrixAtom,
   cameraSettingAtom,
   insideRoomAtom,
   lastCameraInfoAtom,
@@ -64,6 +65,7 @@ const CameraManager: React.FC<UnifiedCameraControlsProps> = ({
 
     // 방 업데이트
     setAtomValue(insideRoomAtom, cameraInRoom(camera.matrix));
+    setAtomValue(cameraMatrixAtom, camera.matrix);
   };
 
   // 마우스 드래그로 카메라 회전
