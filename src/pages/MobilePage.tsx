@@ -8,12 +8,21 @@ import Modal from '../components/Modal';
 import OptionPanel from '../components/OptionPanel';
 import {
   hotspotAtom,
+  ProbeAtom,
   roomAtom,
   setAtomValue,
   threeExportsAtom,
   tourAtom,
 } from '../scripts/atoms';
-import { loadHotspot, loadRooms, loadTourSpot } from '../scripts/atomUtils';
+import {
+  loadHotspot,
+  loadProbes,
+  loadRooms,
+  loadTourSpot,
+} from '../scripts/atomUtils';
+import ReflectionProbe, {
+  ReflectionProbeJSON,
+} from '../scripts/ReflectionProbe.ts';
 import { loadLatest } from '../scripts/utils';
 
 const useLoad = () => {
@@ -24,6 +33,7 @@ const useLoad = () => {
     if (!threeExports) {
       return;
     }
+
     const loadSettings = async () => {
       loadHotspot().then(res => {
         if (res) {
@@ -52,6 +62,32 @@ const useLoad = () => {
     });
     loadSettings();
   }, [threeExports]);
+
+  useEffect(() => {
+    if (threeExports && !isLoading) {
+      const { scene, gl, camera } = threeExports;
+      loadProbes().then(res => {
+        if (!ReflectionProbe.isProbeJson(res)) {
+          alert('Probe 불러오기 실패');
+          console.warn(
+            'probe.json FromJSON 을 할 수 없음 => ReflectionProbe.isProbeJson === false',
+          );
+          return;
+        }
+        const probeJsons = res as ReflectionProbeJSON[];
+        const probes = probeJsons.map(probeJson => {
+          return new ReflectionProbe(gl, scene, camera).fromJSON(probeJson);
+        });
+
+        probes.forEach(probe => {
+          probe.addToScene();
+          probe.updateCameraPosition(probe.getCenter(), true);
+        });
+
+        setAtomValue(ProbeAtom, probes);
+      });
+    }
+  }, [isLoading]);
 
   return isLoading;
 };

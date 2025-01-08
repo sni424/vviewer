@@ -221,13 +221,13 @@ const GeneralButtons = () => {
   // Scene Export 전처리
   function onBeforeSceneExport(): void {
     // 프로브 정보 Scene 에 담기
-    scene.vUserData.probes = probes.map(probe => probe.toJSON());
+    // scene.vUserData.probes = probes.map(probe => probe.toJSON());
   }
 
   // Scene Export 후처리
   function onAfterSceneExport(): void {
     // userData 에 들어간 probes 정보 삭제
-    delete scene.vUserData.probes;
+    // delete scene.vUserData.probes;
   }
 
   // Scene Load 전처리

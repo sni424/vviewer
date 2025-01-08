@@ -358,10 +358,11 @@ export default class ReflectionProbe {
       this.cubeCamera.position,
       this.boxMesh.scale,
     );
+
     const meshInBox: THREE.Mesh[] = [];
     const tempBox = new THREE.Box3();
     this.scene.traverse(child => {
-      if ('isMesh' in child) {
+      if ('isMesh' in child && !child.vUserData.isProbeMesh) {
         const meshBox = tempBox.setFromObject(child);
         if (box.intersectsBox(meshBox)) {
           child.vUserData.probe = this;
@@ -607,22 +608,32 @@ export default class ReflectionProbe {
     return this.center;
   }
 
-  static isProbeJson(obj: any): obj is ReflectionProbeJSON {
+  static isProbeJson(
+    obj: any,
+  ): obj is ReflectionProbeJSON | ReflectionProbeJSON[] {
     const validResolutions: ReflectionProbeResolutions[] = [
       256, 512, 1024, 2048,
     ];
 
-    return (
-      typeof obj === 'object' &&
-      obj !== null &&
-      typeof obj.id === 'string' &&
-      Array.isArray(obj.center) &&
-      obj.center.every((val: any) => typeof val === 'number') &&
-      Array.isArray(obj.size) &&
-      obj.size.every((val: any) => typeof val === 'number') &&
-      validResolutions.includes(obj.resolution) &&
-      obj.createFrom === 'probe.toJSON()'
-    );
+    const isValidProbe = (item: any): item is ReflectionProbeJSON => {
+      return (
+        typeof item === 'object' &&
+        item !== null &&
+        typeof item.id === 'string' &&
+        Array.isArray(item.center) &&
+        item.center.every((val: any) => typeof val === 'number') &&
+        Array.isArray(item.size) &&
+        item.size.every((val: any) => typeof val === 'number') &&
+        validResolutions.includes(item.resolution) &&
+        item.createFrom === 'probe.toJSON()'
+      );
+    };
+
+    if (Array.isArray(obj)) {
+      return obj.every(isValidProbe);
+    }
+
+    return isValidProbe(obj);
   }
 
   createNewId(id: string = v4()) {
