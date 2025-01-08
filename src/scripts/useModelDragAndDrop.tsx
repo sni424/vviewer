@@ -212,14 +212,17 @@ const useModelDragAndDrop = () => {
 
           // 2. 모델 + 이미지
           if (hasMaps) {
-            if (
-              inputMaps.some(map => map.name.toLowerCase().endsWith('.exr'))
-            ) {
-              openModal(<MapSelectorModal models={gltfs} maps={inputMaps} />);
-            } else {
-              const sources = parse(gltfs, inputMaps, 'lightmap');
-              setSourceUrls(sources);
-            }
+            // 게인맵 선택?
+            // if (
+            //   inputMaps.some(map => map.name.toLowerCase().endsWith('.exr'))
+            // ) {
+            //   openModal(<MapSelectorModal models={gltfs} maps={inputMaps} />);
+            // } else {
+            //   const sources = parse(gltfs, inputMaps, 'lightmap');
+            //   setSourceUrls(sources);
+            // }
+            const sources = parse(gltfs, inputMaps, 'lightmap');
+            setSourceUrls(sources);
           } else {
             // 3. 모델만
             const fileUrls = gltfs.map(file => ({

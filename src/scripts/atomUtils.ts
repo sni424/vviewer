@@ -1,6 +1,6 @@
 import { Pathfinding } from "three-pathfinding";
 import { ENV } from "../Constants";
-import { cameraMatrixAtom, getAtomValue, pathfindingAtom, postprocessAtoms, roomAtom, RoomCreateOption, setAtomValue, threeExportsAtom } from "./atoms";
+import { cameraMatrixAtom, getAtomValue, postprocessAtoms, roomAtom, RoomCreateOption, setAtomValue, threeExportsAtom } from "./atoms";
 import VGLTFLoader from "./VGLTFLoader";
 import { THREE } from "./VTHREE";
 
@@ -150,6 +150,7 @@ export const loadPostProcess = async () => {
 export const loadPostProcessAndSet = async () => {
   return loadPostProcess().then(res => {
     if (res) {
+      // 아톰 안에 아톰이라 2번 setAtomValue를 불러줘야함
       setAtomValue(postprocessAtoms, prev => {
         const copied = { ...prev };
         const loadedKeys = Object.keys(res);
