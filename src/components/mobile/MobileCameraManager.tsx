@@ -3,10 +3,13 @@ import { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import {
   cameraSettingAtom,
+  insideRoomAtom,
   lastCameraInfoAtom,
   oribitControlAtom,
+  setAtomValue,
   threeExportsAtom,
 } from '../../scripts/atoms';
+import { cameraInRoom } from '../../scripts/atomUtils';
 
 const MobileCameraManager = ({
   rotationSpeed = 0.002,
@@ -36,7 +39,7 @@ const MobileCameraManager = ({
   //애니메이션 작동 여부
   const [cameraAction, setCameraAction] = useState(false); // 카메라 액션 상태
   // 애니메이션 프레임 ID 저장
-  const animationFrameId = useRef(null);
+  const animationFrameId = useRef<number | null>(null);
   //카메라 회전 boolean
   const isRotateRef = useRef(false);
   //이전 마우스 위치값 useState쓰면 이동할때마다 리렌더링 되어 ref로 변경
@@ -201,6 +204,7 @@ const MobileCameraManager = ({
 
       //updateProjectionMatrix 넣은 이유 카메라 회전했을때 방향 맞추기 위해
       camera.updateProjectionMatrix();
+      setAtomValue(insideRoomAtom, cameraInRoom(camera.matrix));
       animationFrameId.current = requestAnimationFrame(animateCamera);
     }
   };

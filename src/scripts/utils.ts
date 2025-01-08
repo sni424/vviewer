@@ -312,7 +312,14 @@ export const loadLatest = async ({
       console.log('getLatest: ', blob);
       url = URL.createObjectURL(blob);
     }
-    return VGLTFLoader.instance.loadAsync(url);
+    const loader = (() => {
+      if (VGLTFLoader.instance) {
+        return VGLTFLoader.instance;
+      } else {
+        return new VGLTFLoader(threeExports.gl);
+      }
+    })()
+    return loader.loadAsync(url);
   };
 
   return loadModel()

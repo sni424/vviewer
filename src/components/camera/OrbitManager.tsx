@@ -66,7 +66,8 @@ const OrbitManager: React.FC = () => {
 
   useEffect(() => {
     document.addEventListener('control-dragged', event => {
-      const { moving } = event.detail;
+      const { moving } = (event as unknown as { detail: { moving: boolean } })
+        .detail;
       if (moving) {
         setOutControlled(moving);
       }

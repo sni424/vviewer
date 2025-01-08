@@ -342,7 +342,8 @@ const CameraManager: React.FC<UnifiedCameraControlsProps> = ({
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('keyup', handleKeyUp);
     document.addEventListener('control-dragged', event => {
-      const { moving } = event.detail;
+      const { moving } = (event as unknown as { detail: { moving: boolean } })
+        .detail;
       console.log('moving', moving);
       isTransformControlMovingRef.current = moving;
     });
