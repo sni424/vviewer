@@ -6,8 +6,8 @@ import {
   cameraMatrixAtom,
   cameraSettingAtom,
   insideRoomAtom,
+  orbitControlAtom,
   orbitSettingAtom,
-  oribitControlAtom,
   setAtomValue,
 } from '../../scripts/atoms';
 import { cameraInRoom } from '../../scripts/atomUtils';
@@ -24,7 +24,7 @@ const OrbitManager: React.FC = () => {
   //카메라 정보값 갱신
   const setCameraAtom = useSetAtom(cameraMatrixAtom);
   //orbitControl atom에 저장
-  const setOribitControl = useSetAtom(oribitControlAtom);
+  const setOrbitControl = useSetAtom(orbitControlAtom);
 
   // 외부 이벤트에 의해 핸들링 되고있는지에 대한 상태
   const [outControlled, setOutControlled] = useState(false);
@@ -82,7 +82,7 @@ const OrbitManager: React.FC = () => {
 
   useEffect(() => {
     if (orbitRef.current) {
-      setOribitControl(orbitRef.current);
+      setOrbitControl(orbitRef.current);
     }
   }, [orbitRef.current]);
 

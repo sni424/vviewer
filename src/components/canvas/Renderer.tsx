@@ -261,7 +261,6 @@ const useMouseHandler = () => {
         point.y = cameraY;
         mat.setPosition(point);
 
-        // console.log(mat, getAtomValue(pathfindingAtom));
         setAtomValue(moveToPointAtom, {
           setting: false,
           point,
@@ -269,7 +268,6 @@ const useMouseHandler = () => {
         threeExports.camera.moveTo({
           pathFinding: {
             matrix: mat.toArray(),
-            isTour: true,
           },
         });
 

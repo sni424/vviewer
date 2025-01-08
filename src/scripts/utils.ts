@@ -13,11 +13,10 @@ import { FileInfo, MoveActionOptions, View } from '../types.ts';
 import {
   addPoints,
   BenchMark,
-  cameraActionAtom,
+  cameraSettingAtom,
   getAtomValue,
   pathfindingAtom,
-  selectedAtom,
-  setAtomValue,
+  selectedAtom
 } from './atoms';
 import { uploadExrToKtx } from './atomUtils.ts';
 import VGLTFExporter from './VGLTFExporter.ts';
@@ -547,6 +546,7 @@ const handlePathFindingMove = (
   initialPath: THREE.Vector3[],
   speed: number,
   quaternion?: THREE.Quaternion,
+  onComplete: gsap.Callback = () => { },
 ) => {
   // path없으면 동작x
   if (initialPath.length === 0) return;
@@ -623,21 +623,7 @@ const handlePathFindingMove = (
             camera.quaternion.copy(newQuat);
           }
         },
-        onComplete() {
-          // 세그먼트가 100% 끝났을 때 할 작업이 있으면 여기서
-          if (currentAnimation) {
-            currentAnimation.kill();
-          }
-          setTimeout(() => {
-            setAtomValue(cameraActionAtom, pre => ({
-              ...pre,
-              tour: {
-                ...pre.tour,
-                isAnimation: false,
-              },
-            }));
-          }, 500);
-        },
+        onComplete,
       },
     );
   }
@@ -731,8 +717,8 @@ export const moveTo = (
 ) => {
 
   if (action.pathFinding) {
-    const { speed = 1.0, model, stopAnimation, isTour, matrix } = action.pathFinding;
-
+    const { stopAnimation, matrix } = action.pathFinding;
+    const cameraSetting = getAtomValue(cameraSettingAtom)
     if (stopAnimation && currentAnimation) {
       currentAnimation.kill();
       return;
@@ -749,6 +735,8 @@ export const moveTo = (
       const scale = new THREE.Vector3();
       // 행렬에서 position, rotation, scale 추출
       threeMatrix.decompose(position, quaternion, scale);
+
+
 
       const pathFinding = action.pathFinding.pathfinder ?? getAtomValue(pathfindingAtom)?.pathfinding;
       if (!pathFinding) {
@@ -780,22 +768,28 @@ export const moveTo = (
         groupID,
       );
       if (path) {
-        addPoints(...path.map(vector => ({
+        //해당 죄표의 인덱스를 찾아서 현재 인덱스랑 같은지 비교
+        const filteredPath = path.filter(
+          (point, index, self) => {
+            console.log(self, point, index, self.findIndex(p => p.equals(point)))
+            return index === self.findIndex(p => p.equals(point))
+          }
+        );
+        const newPath = [...filteredPath];
+        newPath.pop();
+        newPath.push(position);
+        addPoints(...newPath.map(vector => ({
           point: new Vector3(
             vector.x,
             0.05,
             vector.z
           ), color: "yellow"
         })))
-        //direction 추가 이유 pc에서 투어에는 필요하고 모바일에서 클릭 이동에는 필요x
-        if (isTour) {
-          const newPath = [...path];
-          newPath.pop();
-          newPath.push(position);
-          handlePathFindingMove(camera, position, newPath, speed, quaternion);
-        } else {
-          handlePathFindingMove(camera, position, path, speed);
-        }
+
+        handlePathFindingMove(camera, position, newPath, cameraSetting.moveSpeed, quaternion, action.onComplete);
+
+      } else {
+        throw new Error('no path');
       }
     }
   }

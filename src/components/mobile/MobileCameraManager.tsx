@@ -6,7 +6,7 @@ import {
   cameraSettingAtom,
   insideRoomAtom,
   lastCameraInfoAtom,
-  oribitControlAtom,
+  orbitControlAtom,
   setAtomValue,
   threeExportsAtom,
 } from '../../scripts/atoms';
@@ -19,7 +19,7 @@ const MobileCameraManager = ({
 }) => {
   const threeExports = useAtomValue(threeExportsAtom);
   //orbitControl atom
-  const oribitControl = useAtomValue(oribitControlAtom);
+  const orbitControl = useAtomValue(orbitControlAtom);
   //카메라 세팅
   const cameraSetting = useAtomValue(cameraSettingAtom);
   // 기본값으로 camera가 없을 경우 처리
@@ -76,7 +76,7 @@ const MobileCameraManager = ({
     }
 
     // 캔버스 터치 처리
-    if (canvasTouch && !oribitControl?.enabled) {
+    if (canvasTouch && !orbitControl?.enabled) {
       isRotateRef.current = true;
       previousMousePosition.current = {
         x: canvasTouch.clientX,
@@ -124,7 +124,7 @@ const MobileCameraManager = ({
     }
 
     // 캔버스 처리
-    if (canvasTouch && isRotateRef.current && !oribitControl?.enabled) {
+    if (canvasTouch && isRotateRef.current && !orbitControl?.enabled) {
       const deltaX = canvasTouch.clientX - previousMousePosition.current.x;
       const deltaY = canvasTouch.clientY - previousMousePosition.current.y;
       if (canvasTouch.clientX !== previousMousePosition.current.x) {
@@ -282,7 +282,7 @@ const MobileCameraManager = ({
 
   // 카메라 이동 및 회전시 카메라 데이터 저장
   const updateCameraInfo = () => {
-    if (oribitControl && camera && !cameraSetting.isoView) {
+    if (orbitControl && camera && !cameraSetting.isoView) {
       setLastCameraInfo(pre => ({
         ...pre,
         matrix: camera.matrix.toArray(),

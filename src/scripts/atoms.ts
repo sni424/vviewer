@@ -82,7 +82,7 @@ export const loadHistoryAtom = atom<
   >
 >(new Map());
 export const threeExportsAtom = atom<RootState>();
-export const oribitControlAtom = atom<OrbitControls>();
+export const orbitControlAtom = atom<OrbitControls>();
 
 export type Env = {
   select: 'none' | 'preset' | 'custom' | 'url';

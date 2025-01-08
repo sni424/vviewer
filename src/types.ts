@@ -321,10 +321,7 @@ export type ViewportOption = {
 
 export interface MoveActionOptions {
   pathFinding?: {
-    speed?: number; // 애니메이션 속도
-    model?: THREE.Object3D; //바닥 모델
     stopAnimation?: boolean //애니메이션 중지
-    isTour: boolean //투어인지 모바일에서 클릭한 경로찾기인지지 
     matrix?: number[];
     pathfinder?: Pathfinding;
   };
