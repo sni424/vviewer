@@ -1,4 +1,4 @@
-import { useAtom, useAtomValue } from 'jotai';
+import { useAtom, useAtomValue, WritableAtom } from 'jotai';
 import useFiles from '../scripts/useFiles';
 import {
   compressObjectToFile,
@@ -32,12 +32,15 @@ import { defaultSettings, loadSettings } from '../pages/useSettings.ts';
 import {
   cameraMatrixAtom,
   DPCModeAtom,
+  getAtomValue,
+  postprocessAtoms,
   ProbeAtom,
   selectedAtom,
   threeExportsAtom,
   useEnvParams,
   useModal,
 } from '../scripts/atoms';
+import { loadPostProcessAndSet, uploadJson } from '../scripts/atomUtils.ts';
 import ReflectionProbe from '../scripts/ReflectionProbe.ts';
 import useFilelist from '../scripts/useFilelist';
 import useStats, { StatPerSecond, VStats } from '../scripts/useStats.ts';
@@ -709,8 +712,12 @@ const GeneralSceneInfo = () => {
   );
 };
 
-const GeneralPostProcessingControl = () => {
+const LightmapImageContrastControl = () => {
   const threeExports = useAtomValue(threeExportsAtom);
+
+  if (!threeExports) {
+    return null;
+  }
 
   const [lmContrastOn, setLmContrastOn] = useState(LightmapImageContrast.on);
   const [lmContrastValue, setLmContrastValue] = useState({
@@ -752,10 +759,249 @@ const GeneralPostProcessingControl = () => {
     (_, index) => index / lmGraphWidth,
   );
 
-  if (!threeExports) {
-    return null;
-  }
+  return (
+    <div>
+      <strong>라이트맵 이미지 대비</strong>
+      <input
+        type="checkbox"
+        checked={lmContrastOn}
+        onChange={e => {
+          if (!threeExports) {
+            return;
+          }
+          setLmContrastOn(e.target.checked);
+          LightmapImageContrast.on = e.target.checked;
+          resetGL(threeExports);
+        }}
+      />
+      {lmContrastOn && (
+        <>
+          <div>
+            <label>Gamma</label>
+            <button
+              onClick={() => {
+                if (!threeExports) {
+                  return;
+                }
+                const value = 2.2;
+                setLmContrastValue(prev => ({
+                  ...prev,
+                  gammaFactor: value,
+                }));
+                LightmapImageContrast.gammaFactor = value;
+                resetGL(threeExports);
+              }}
+            >
+              초기화
+            </button>
+            <input
+              className="w-[100px]"
+              type="range"
+              min={0.11}
+              max={3}
+              step={(3 - 0.1) / 200}
+              onChange={e => {
+                if (!threeExports) {
+                  return;
+                }
+                setLmContrastValue(prev => ({
+                  ...prev,
+                  gammaFactor: parseFloat(e.target.value),
+                }));
+                LightmapImageContrast.gammaFactor = parseFloat(e.target.value);
+                resetGL(threeExports);
+              }}
+              value={lmContrastValue.gammaFactor}
+            />
+            <span>{toNthDigit(lmContrastValue.gammaFactor, 2)}</span>
+          </div>
+          <div>
+            <label>대비기준</label>
+            <button
+              onClick={() => {
+                if (!threeExports) {
+                  return;
+                }
+                const value = 0.45;
+                setLmContrastValue(prev => ({
+                  ...prev,
+                  standard: value,
+                }));
+                LightmapImageContrast.standard = value;
+                resetGL(threeExports);
+              }}
+            >
+              초기화
+            </button>
+            <input
+              className="w-[100px]"
+              type="range"
+              min={0.1}
+              max={0.99}
+              step={(0.99 - 0.1) / 200}
+              onChange={e => {
+                if (!threeExports) {
+                  return;
+                }
+                setLmContrastValue(prev => ({
+                  ...prev,
+                  standard: parseFloat(e.target.value),
+                }));
+                LightmapImageContrast.standard = parseFloat(e.target.value);
+                resetGL(threeExports);
+              }}
+              value={lmContrastValue.standard}
+            />
+            <span>{toNthDigit(lmContrastValue.standard, 2)}</span>
+          </div>
+          <div>
+            <label>명도세기</label>
+            <button
+              onClick={() => {
+                if (!threeExports) {
+                  return;
+                }
+                const value = 1.7;
+                setLmContrastValue(prev => ({
+                  ...prev,
+                  k: value,
+                }));
+                LightmapImageContrast.k = value;
+                resetGL(threeExports);
+              }}
+            >
+              초기화
+            </button>
+            <input
+              className="w-[100px]"
+              type="range"
+              min={1.0}
+              max={3}
+              step={(3 - 1) / 200}
+              onChange={e => {
+                if (!threeExports) {
+                  return;
+                }
+                setLmContrastValue(prev => ({
+                  ...prev,
+                  k: parseFloat(e.target.value),
+                }));
+                LightmapImageContrast.k = parseFloat(e.target.value);
+                resetGL(threeExports);
+              }}
+              value={lmContrastValue.k}
+            />
+            <span>{toNthDigit(lmContrastValue.k, 2)}</span>
+          </div>
 
+          <div className="w-full grid grid-cols-2">
+            <div className="w-full">
+              <span>그래프 매핑</span>
+              <div
+                style={{
+                  width: lmGraphWidth,
+                  height: lmGraphWidth,
+                  borderBottom: '1px solid black',
+                  borderLeft: '1px solid black',
+                  boxSizing: 'border-box',
+                  position: 'relative',
+                }}
+              >
+                {linearData.map((val, i) => (
+                  <div
+                    key={`linear-${i}`}
+                    style={{
+                      position: 'absolute',
+                      left: i,
+                      // bottom: lmContrastGraphWidth * 0.5,
+                      bottom: i,
+                      width: 1,
+                      height: 1,
+                      backgroundColor: 'black',
+                      boxSizing: 'border-box',
+                    }}
+                  ></div>
+                ))}
+                {linearData.map((val, i) => (
+                  <div
+                    key={`adj-${i}`}
+                    style={{
+                      position: 'absolute',
+                      left: i,
+                      bottom: adjustContrast([val, val, val])[0] * lmGraphWidth,
+                      width: 1,
+                      height: 1,
+                      backgroundColor: 'red',
+                      boxSizing: 'border-box',
+                    }}
+                  ></div>
+                ))}
+
+                {linearData.map((val, i) => (
+                  <div
+                    key={`adj-${i}`}
+                    style={{
+                      position: 'absolute',
+                      left: i,
+                      bottom:
+                        S_k_t(
+                          val,
+                          lmContrastValue.k,
+                          Math.log(2.0) / Math.log(lmContrastValue.standard),
+                          0, // lmContrastValue.r,
+                        ) * lmGraphWidth,
+                      width: 1,
+                      height: 1,
+                      backgroundColor: 'gray',
+                      boxSizing: 'border-box',
+                    }}
+                  ></div>
+                ))}
+              </div>
+            </div>
+            <div className={`w-full h-[${lmGraphWidth}px]`}>
+              <span>대비 적용 전/후</span>
+              <div className={`grid grid-cols-2 h-full`}>
+                <ul className="w-full flex flex-col">
+                  {Array.from({ length: lmGraphWidth }).map((_, i) => {
+                    const bgColor = (255 * (i + 0.5)) / lmGraphWidth;
+                    return (
+                      <li
+                        className={`w-full flex-1`}
+                        style={{
+                          backgroundColor: `rgba(${bgColor}, ${bgColor}, ${bgColor}, 1)`,
+                        }}
+                        key={`org-color-${i}`}
+                      ></li>
+                    );
+                  })}
+                </ul>
+                <ul className="w-full flex flex-col h-full">
+                  {Array.from({ length: lmGraphWidth }).map((_, i) => {
+                    const bgColor = (i + 0.5) / lmGraphWidth;
+                    const adjusted =
+                      255 * adjustContrast([bgColor, bgColor, bgColor])[0];
+                    return (
+                      <li
+                        className={`w-full flex-1`}
+                        style={{
+                          backgroundColor: `rgba(${adjusted}, ${adjusted}, ${adjusted}, 1)`,
+                        }}
+                        key={`org-color-${i}`}
+                      ></li>
+                    );
+                  })}
+                </ul>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+};
+
+const GeneralPostProcessingControl = () => {
   return (
     <section
       style={{
@@ -766,250 +1012,37 @@ const GeneralPostProcessingControl = () => {
         gap: 6,
       }}
     >
+      <div>
+        <button
+          onClick={() => {
+            // postProcessAtoms가 atom의 맵이라서 value별로 돌면서 getAtomValue를 다 불러줘야함
+            const postProcessOptions: Record<string, any> = {};
+            const postProcessAtoms = Object.entries(
+              getAtomValue(postprocessAtoms),
+            );
+            postProcessAtoms.forEach(
+              ([label, value]: [string, WritableAtom<any, any, any>]) => {
+                postProcessOptions[label] = getAtomValue(value);
+              },
+            );
+
+            uploadJson('postprocess.json', postProcessOptions);
+          }}
+        >
+          업로드
+        </button>
+        <button
+          onClick={() => {
+            loadPostProcessAndSet();
+          }}
+        >
+          불러오기
+        </button>
+      </div>
       <HueSaturationOption></HueSaturationOption>
       <ColorTemperatureOption></ColorTemperatureOption>
       <BrightnessContrastOption></BrightnessContrastOption>
-      <div>
-        <strong>라이트맵 이미지 대비</strong>
-        <input
-          type="checkbox"
-          checked={lmContrastOn}
-          onChange={e => {
-            if (!threeExports) {
-              return;
-            }
-            setLmContrastOn(e.target.checked);
-            LightmapImageContrast.on = e.target.checked;
-            resetGL(threeExports);
-          }}
-        />
-        {lmContrastOn && (
-          <>
-            <div>
-              <label>Gamma</label>
-              <button
-                onClick={() => {
-                  if (!threeExports) {
-                    return;
-                  }
-                  const value = 2.2;
-                  setLmContrastValue(prev => ({
-                    ...prev,
-                    gammaFactor: value,
-                  }));
-                  LightmapImageContrast.gammaFactor = value;
-                  resetGL(threeExports);
-                }}
-              >
-                초기화
-              </button>
-              <input
-                className="w-[100px]"
-                type="range"
-                min={0.11}
-                max={3}
-                step={(3 - 0.1) / 200}
-                onChange={e => {
-                  if (!threeExports) {
-                    return;
-                  }
-                  setLmContrastValue(prev => ({
-                    ...prev,
-                    gammaFactor: parseFloat(e.target.value),
-                  }));
-                  LightmapImageContrast.gammaFactor = parseFloat(
-                    e.target.value,
-                  );
-                  resetGL(threeExports);
-                }}
-                value={lmContrastValue.gammaFactor}
-              />
-              <span>{toNthDigit(lmContrastValue.gammaFactor, 2)}</span>
-            </div>
-            <div>
-              <label>대비기준</label>
-              <button
-                onClick={() => {
-                  if (!threeExports) {
-                    return;
-                  }
-                  const value = 0.45;
-                  setLmContrastValue(prev => ({
-                    ...prev,
-                    standard: value,
-                  }));
-                  LightmapImageContrast.standard = value;
-                  resetGL(threeExports);
-                }}
-              >
-                초기화
-              </button>
-              <input
-                className="w-[100px]"
-                type="range"
-                min={0.1}
-                max={0.99}
-                step={(0.99 - 0.1) / 200}
-                onChange={e => {
-                  if (!threeExports) {
-                    return;
-                  }
-                  setLmContrastValue(prev => ({
-                    ...prev,
-                    standard: parseFloat(e.target.value),
-                  }));
-                  LightmapImageContrast.standard = parseFloat(e.target.value);
-                  resetGL(threeExports);
-                }}
-                value={lmContrastValue.standard}
-              />
-              <span>{toNthDigit(lmContrastValue.standard, 2)}</span>
-            </div>
-            <div>
-              <label>명도세기</label>
-              <button
-                onClick={() => {
-                  if (!threeExports) {
-                    return;
-                  }
-                  const value = 1.7;
-                  setLmContrastValue(prev => ({
-                    ...prev,
-                    k: value,
-                  }));
-                  LightmapImageContrast.k = value;
-                  resetGL(threeExports);
-                }}
-              >
-                초기화
-              </button>
-              <input
-                className="w-[100px]"
-                type="range"
-                min={1.0}
-                max={3}
-                step={(3 - 1) / 200}
-                onChange={e => {
-                  if (!threeExports) {
-                    return;
-                  }
-                  setLmContrastValue(prev => ({
-                    ...prev,
-                    k: parseFloat(e.target.value),
-                  }));
-                  LightmapImageContrast.k = parseFloat(e.target.value);
-                  resetGL(threeExports);
-                }}
-                value={lmContrastValue.k}
-              />
-              <span>{toNthDigit(lmContrastValue.k, 2)}</span>
-            </div>
-
-            <div className="w-full grid grid-cols-2">
-              <div className="w-full">
-                <span>그래프 매핑</span>
-                <div
-                  style={{
-                    width: lmGraphWidth,
-                    height: lmGraphWidth,
-                    borderBottom: '1px solid black',
-                    borderLeft: '1px solid black',
-                    boxSizing: 'border-box',
-                    position: 'relative',
-                  }}
-                >
-                  {linearData.map((val, i) => (
-                    <div
-                      key={`linear-${i}`}
-                      style={{
-                        position: 'absolute',
-                        left: i,
-                        // bottom: lmContrastGraphWidth * 0.5,
-                        bottom: i,
-                        width: 1,
-                        height: 1,
-                        backgroundColor: 'black',
-                        boxSizing: 'border-box',
-                      }}
-                    ></div>
-                  ))}
-                  {linearData.map((val, i) => (
-                    <div
-                      key={`adj-${i}`}
-                      style={{
-                        position: 'absolute',
-                        left: i,
-                        bottom:
-                          adjustContrast([val, val, val])[0] * lmGraphWidth,
-                        width: 1,
-                        height: 1,
-                        backgroundColor: 'red',
-                        boxSizing: 'border-box',
-                      }}
-                    ></div>
-                  ))}
-
-                  {linearData.map((val, i) => (
-                    <div
-                      key={`adj-${i}`}
-                      style={{
-                        position: 'absolute',
-                        left: i,
-                        bottom:
-                          S_k_t(
-                            val,
-                            lmContrastValue.k,
-                            Math.log(2.0) / Math.log(lmContrastValue.standard),
-                            0, // lmContrastValue.r,
-                          ) * lmGraphWidth,
-                        width: 1,
-                        height: 1,
-                        backgroundColor: 'gray',
-                        boxSizing: 'border-box',
-                      }}
-                    ></div>
-                  ))}
-                </div>
-              </div>
-              <div className={`w-full h-[${lmGraphWidth}px]`}>
-                <span>대비 적용 전/후</span>
-                <div className={`grid grid-cols-2 h-full`}>
-                  <ul className="w-full flex flex-col">
-                    {Array.from({ length: lmGraphWidth }).map((_, i) => {
-                      const bgColor = (255 * (i + 0.5)) / lmGraphWidth;
-                      return (
-                        <li
-                          className={`w-full flex-1`}
-                          style={{
-                            backgroundColor: `rgba(${bgColor}, ${bgColor}, ${bgColor}, 1)`,
-                          }}
-                          key={`org-color-${i}`}
-                        ></li>
-                      );
-                    })}
-                  </ul>
-                  <ul className="w-full flex flex-col h-full">
-                    {Array.from({ length: lmGraphWidth }).map((_, i) => {
-                      const bgColor = (i + 0.5) / lmGraphWidth;
-                      const adjusted =
-                        255 * adjustContrast([bgColor, bgColor, bgColor])[0];
-                      return (
-                        <li
-                          className={`w-full flex-1`}
-                          style={{
-                            backgroundColor: `rgba(${adjusted}, ${adjusted}, ${adjusted}, 1)`,
-                          }}
-                          key={`org-color-${i}`}
-                        ></li>
-                      );
-                    })}
-                  </ul>
-                </div>
-              </div>
-            </div>
-          </>
-        )}
-      </div>
+      <LightmapImageContrastControl></LightmapImageContrastControl>
       <BloomOption></BloomOption>
       <ColorLUTOption></ColorLUTOption>
       <ToneMappingOption></ToneMappingOption>
