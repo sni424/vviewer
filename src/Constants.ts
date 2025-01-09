@@ -72,7 +72,7 @@ export const ENV = {
   model_base: base + 'model_base.glb',
   model_dp: base + 'model_dp.glb',
   lut: base.replace('models/', '') + 'static/lut',
-  navMesh: base + 'nav.glb',
+  navMesh: base + "nav.glb",
 };
 
 export const HotspotIcon = {

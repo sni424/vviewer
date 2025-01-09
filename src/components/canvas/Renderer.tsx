@@ -12,8 +12,11 @@ import {
   MapDst,
   materialSelectedAtom,
   modalAtom,
+  moveToPointAtom,
   orbitSettingAtom,
   panelTabAtom,
+  pathfindingAtom,
+  pointsAtom,
   roomAtom,
   selectedAtom,
   setAtomValue,
@@ -197,6 +200,7 @@ const useMouseHandler = () => {
   const [selected, setSelected] = useAtom(selectedAtom);
   const setMaterialSelected = useSetAtom(materialSelectedAtom);
   const setScrollTo = useSetAtom(treeScrollToAtom);
+  const moveToPoint = useAtomValue(moveToPointAtom);
   const lastClickRef = useRef<number>(0);
   const mouseDownPosition = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   const isRoomCreating = useAtomValue(roomAtom).some(room =>
@@ -244,6 +248,31 @@ const useMouseHandler = () => {
       Date.now() - lastClickRef.current > 200
     ) {
       return;
+    }
+
+    // 지점 찍어서 이동하는지 확인
+    if (moveToPoint?.setting) {
+      const { intersects } = getIntersects(e, threeExports);
+      if (intersects.length > 0) {
+        const i = intersects[0];
+        const mat = getAtomValue(cameraMatrixAtom)!.clone();
+        const cameraY = mat.elements[13];
+        const point = i.point;
+        point.y = cameraY;
+        mat.setPosition(point);
+
+        setAtomValue(moveToPointAtom, {
+          setting: false,
+          point,
+        });
+        threeExports.camera.moveTo({
+          pathFinding: {
+            matrix: mat.toArray(),
+          },
+        });
+
+        return;
+      }
     }
 
     // debugger;
@@ -448,6 +477,69 @@ const useKeyHandler = () => {
   }, [threeExports, selected]);
 };
 
+function MoveTo() {
+  const moveToPoint = useAtomValue(moveToPointAtom);
+  const pf = useAtomValue(pathfindingAtom);
+
+  if (!moveToPoint?.point) {
+    return null;
+  }
+
+  const g = pf?.geometry;
+  const point = moveToPoint.point;
+
+  return (
+    <>
+      <mesh position={[point.x, 1.5, point.z]}>
+        <sphereGeometry args={[0.1, 32, 32]} />
+        <meshBasicMaterial color="red" />
+      </mesh>
+      {g && (
+        <mesh>
+          <primitive object={g}></primitive>
+          <meshBasicMaterial color="red" />
+        </mesh>
+      )}
+    </>
+  );
+}
+
+function Points() {
+  const points = useAtomValue(pointsAtom);
+
+  return (
+    <>
+      {points.map((drawablePoint, i) => {
+        const { point, color } = drawablePoint;
+        if ((point as THREE.Matrix4).isMatrix4) {
+          const position = new THREE.Vector3();
+          position.setFromMatrixPosition(point as THREE.Matrix4);
+          return (
+            <mesh position={position}>
+              <sphereGeometry args={[0.05, 32, 32]} />
+              <meshBasicMaterial color={color ?? 'red'} />
+            </mesh>
+          );
+        } else if ((point as THREE.Vector3).isVector3) {
+          return (
+            <mesh position={point as THREE.Vector3}>
+              <sphereGeometry args={[0.05, 32, 32]} />
+              <meshBasicMaterial color={color ?? 'red'} />
+            </mesh>
+          );
+        } else if (point.x && point.z) {
+          return (
+            <mesh position={[point.x, 1.0, point.z]}>
+              <sphereGeometry args={[0.05, 32, 32]} />
+              <meshBasicMaterial color={color ?? 'red'} />
+            </mesh>
+          );
+        }
+      })}
+    </>
+  );
+}
+
 function RendererContainer() {
   // const threeExports = useAtomValue(threeExportsAtom);
   useKeyHandler();
@@ -482,6 +574,8 @@ function RendererContainer() {
         }}
       >
         <Renderer></Renderer>
+        <MoveTo></MoveTo>
+        <Points></Points>
       </Canvas>
     </div>
   );

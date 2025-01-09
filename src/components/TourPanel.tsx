@@ -90,9 +90,6 @@ function HotSpotPanel() {
       const { matrix } = tourPlace[roomIndex];
       camera.moveTo({
         pathFinding: {
-          speed: cameraAction.tour.animationSpeed,
-          model: scene,
-          isTour: true,
           matrix,
         },
       });
@@ -190,7 +187,6 @@ function HotSpotPanel() {
       camera.moveTo({
         pathFinding: {
           stopAnimation: true,
-          isTour: true,
         },
       });
       setCameraAction(pre => ({

@@ -15,6 +15,7 @@ import {
   threeExportsAtom,
   viewGridAtom,
 } from '../scripts/atoms';
+import { loadNavMesh } from '../scripts/atomUtils';
 import useFiles from '../scripts/useFiles';
 import useModelDragAndDrop from '../scripts/useModelDragAndDrop';
 import { getSettings, loadSettings } from './useSettings';
@@ -134,7 +135,6 @@ const DPToggle = () => {
   const [dp, setDP] = useAtom(DPAtom);
   useEffect(() => {
     const objects = dp.objects;
-    console.log(objects);
     objects.map(o => {
       o.visible = dp.on;
     });
@@ -178,9 +178,20 @@ const Views = () => {
   );
 };
 
+const useLoadFloor = () => {
+  const threeExports = useAtomValue(threeExportsAtom);
+  useEffect(() => {
+    if (threeExports) {
+      loadNavMesh();
+    }
+  }, [threeExports]);
+};
+
 const ViewerPage = () => {
   const { isDragging, handleDragOver, handleDragLeave, handleDrop } =
     useModelDragAndDrop();
+
+  useLoadFloor();
 
   return (
     <div

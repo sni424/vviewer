@@ -2,10 +2,11 @@ import { useThree } from '@react-three/fiber';
 import { useAtomValue, useSetAtom } from 'jotai';
 import React, { useEffect, useRef, useState } from 'react';
 import {
+  cameraMatrixAtom,
   cameraSettingAtom,
   insideRoomAtom,
   lastCameraInfoAtom,
-  oribitControlAtom,
+  orbitControlAtom,
   setAtomValue,
 } from '../../scripts/atoms';
 import { cameraInRoom } from '../../scripts/atomUtils';
@@ -49,13 +50,13 @@ const CameraManager: React.FC<UnifiedCameraControlsProps> = ({
   //카메라 세팅
   const cameraSetting = useAtomValue(cameraSettingAtom);
   //orbitControl atom에 저장
-  const oribitControl = useAtomValue(oribitControlAtom);
+  const orbitControl = useAtomValue(orbitControlAtom);
 
   const setLastCameraInfo = useSetAtom(lastCameraInfoAtom);
 
   // 카메라 이동 및 회전시 카메라 데이터 저장장
   const updateCameraInfo = () => {
-    if (oribitControl && !cameraSetting.isoView) {
+    if (orbitControl && !cameraSetting.isoView) {
       setLastCameraInfo(pre => ({
         ...pre,
         matrix: camera.matrix.toArray(),
@@ -64,6 +65,7 @@ const CameraManager: React.FC<UnifiedCameraControlsProps> = ({
 
     // 방 업데이트
     setAtomValue(insideRoomAtom, cameraInRoom(camera.matrix));
+    setAtomValue(cameraMatrixAtom, camera.matrix);
   };
 
   // 마우스 드래그로 카메라 회전
@@ -178,7 +180,7 @@ const CameraManager: React.FC<UnifiedCameraControlsProps> = ({
   };
 
   const downEventFun = (event: MouseEvent | TouchEvent) => {
-    if (!isTransformControlMovingRef.current && !oribitControl?.enabled) {
+    if (!isTransformControlMovingRef.current && !orbitControl?.enabled) {
       // 회전 true
       isRotateRef.current = true;
 
@@ -210,7 +212,7 @@ const CameraManager: React.FC<UnifiedCameraControlsProps> = ({
       }
     }
 
-    if (isRotateRef.current && !oribitControl?.enabled) {
+    if (isRotateRef.current && !orbitControl?.enabled) {
       // 현재 위치와 이전 위치 차이 계산
       const deltaX = clientX - previousMousePosition.current.x;
       const deltaY = clientY - previousMousePosition.current.y;
@@ -238,7 +240,7 @@ const CameraManager: React.FC<UnifiedCameraControlsProps> = ({
     };
     //마우스 클릭 땠을때 이벤트
     const handleMouseUp = (event: MouseEvent): void => {
-      if (!oribitControl?.enabled) {
+      if (!orbitControl?.enabled) {
         //회전 멈춤
         isRotateRef.current = false;
         //감속 하면서 멈추는 함수
@@ -257,15 +259,11 @@ const CameraManager: React.FC<UnifiedCameraControlsProps> = ({
 
     //모바일 터치땠을때 이벤트
     const handleTouchEnd = (): void => {
-      console.log('여기');
-      if (!oribitControl?.enabled) {
+      if (!orbitControl?.enabled) {
         //회전 멈춤
         isRotateRef.current = false;
         //감속 하면서 멈추는 함수
         applyInertia();
-      }
-      // window.alert('안녕');
-      if (!oribitControl?.enabled) {
         //현재 시간
         const currentTime = Date.now();
         // 이전 터치 이벤트와 현재 터치 이벤트 사이의 시간 간격
@@ -278,9 +276,8 @@ const CameraManager: React.FC<UnifiedCameraControlsProps> = ({
           const intersects = raycaster.intersectObjects(scene.children, true);
           //교차점이 있고 orbit이 비활성화 됬을때
 
-          if (intersects.length > 0 && !oribitControl?.enabled) {
+          if (intersects.length > 0 && !orbitControl?.enabled) {
             // 교차된 첫 번째 객체의 좌표를 기준으로 카메라 이동
-            const navMesh = scene.getObjectByName('84B3_DP') as THREE.Mesh;
             const targetPoint = intersects[0].point;
             //좌표를 이용해 Matrix4로 변경
             const targetMatrix = new THREE.Matrix4().makeTranslation(
@@ -291,12 +288,16 @@ const CameraManager: React.FC<UnifiedCameraControlsProps> = ({
 
             camera.moveTo({
               pathFinding: {
-                speed: cameraSetting.moveSpeed,
-                model: navMesh,
                 matrix: targetMatrix.toArray(),
-                isTour: false,
               },
             });
+          } else {
+            console.log(
+              'intersects.length : ',
+              intersects.length > 0,
+              'oribitControl.enabled :',
+              orbitControl?.enabled,
+            );
           }
         }
         // 마지막 터치 이벤트 시간 갱신
@@ -328,7 +329,7 @@ const CameraManager: React.FC<UnifiedCameraControlsProps> = ({
         window.removeEventListener('contextmenu', handleContextMenu);
       }
     };
-  }, [oribitControl, cameraSetting.isoView]);
+  }, [orbitControl, cameraSetting.isoView]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent): void => {
@@ -358,7 +359,7 @@ const CameraManager: React.FC<UnifiedCameraControlsProps> = ({
   useEffect(() => {
     if (cameraAction) {
       // 카메라 이동 애니메이션이 활성화되었을 때
-      if (!animationFrameId.current && !oribitControl?.enabled) {
+      if (!animationFrameId.current && !orbitControl?.enabled) {
         // 이전 프레임 시간을 초기화
         prevFrameTime.current = null;
         // `animateCameraMovement`를 애니메이션 루프로 실행

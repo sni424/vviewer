@@ -1,6 +1,12 @@
 import { Pathfinding } from "three-pathfinding";
 import { ENV } from "../Constants";
-import { cameraMatrixAtom, getAtomValue, postprocessAtoms, roomAtom, RoomCreateOption, setAtomValue, threeExportsAtom } from "./atoms";
+import {
+  cameraMatrixAtom, getAtomValue,
+  pathfindingAtom,
+  postprocessAtoms,
+  roomAtom,
+  RoomCreateOption, setAtomValue, threeExportsAtom
+} from "./atoms";
 import VGLTFLoader from "./VGLTFLoader";
 import { THREE } from "./VTHREE";
 
