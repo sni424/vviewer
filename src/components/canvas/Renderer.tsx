@@ -5,6 +5,7 @@ import { Layer } from '../../Constants';
 import { getSettings } from '../../pages/useSettings';
 import {
   cameraMatrixAtom,
+  catalogueAtom,
   getAtomValue,
   globalGlAtom,
   hotspotAtom,
@@ -91,8 +92,55 @@ const useLoadModel = ({
   scene: THREE.Scene;
 }) => {
   const sources = useAtomValue(sourceAtom);
+  const catalogue = useAtomValue(catalogueAtom);
   const setLoadHistoryAtom = useSetAtom(loadHistoryAtom);
   const loaderRef = useRef(new VGLTFLoader(gl));
+
+  useEffect(() => {
+    console.log('catalogue changed');
+    // 무조건 exr
+    const flipY = true;
+    const as = 'texture';
+    const mapDst = 'lightmap';
+
+    Object.entries(catalogue).forEach(([key, target]) => {
+      const { glb, type, dpOnTexture, dpOffTexture } = target;
+
+      loaderRef.current.loadAsync(glb.file).then(async gltf => {
+        let onT = null;
+        let offT = null;
+        if (dpOnTexture) {
+          onT = await VTextureLoader.loadAsync(dpOnTexture.file, {
+            gl,
+            as,
+            flipY,
+          });
+        }
+        if (dpOffTexture) {
+          offT = await VTextureLoader.loadAsync(dpOffTexture.file, {
+            gl,
+            as,
+            flipY,
+          });
+        }
+
+        if (type === 'BASE' && offT !== null) {
+          applyTexture(gltf.scene, offT, mapDst);
+        } else if (type === 'DP' && onT !== null) {
+          applyTexture(gltf.scene, onT, mapDst);
+        }
+
+        // DP 업로드를 통해 불러온 모델로 인식
+        gltf.scene.traverseAll(object => {
+          object.vUserData.modelType = type;
+          object.vUserData.dpOnLightMap = onT;
+          object.vUserData.dpOffLightMap = offT;
+        });
+
+        scene.add(...gltf.scene.children);
+      });
+    });
+  }, [catalogue]);
 
   useEffect(() => {
     sources.forEach(source => {

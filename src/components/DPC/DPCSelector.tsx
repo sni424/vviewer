@@ -1,5 +1,5 @@
 import { useAtom } from 'jotai/index';
-import { DPCModeAtom } from '../scripts/atoms.ts';
+import { DPCModeAtom } from '../../scripts/atoms.ts';
 import { DPConfiguratorMode } from './DPConfigurator.tsx';
 
 const DPCSelector = () => {

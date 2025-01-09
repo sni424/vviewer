@@ -15,7 +15,7 @@ import {
   threeExportsAtom,
   viewGridAtom,
 } from '../scripts/atoms';
-import { loadNavMesh } from '../scripts/atomUtils';
+import { loadNavMesh, threes } from '../scripts/atomUtils';
 import useFiles from '../scripts/useFiles';
 import useModelDragAndDrop from '../scripts/useModelDragAndDrop';
 import { getSettings, loadSettings } from './useSettings';
@@ -133,10 +133,16 @@ const ControlPanel = () => {
 
 const DPToggle = () => {
   const [dp, setDP] = useAtom(DPAtom);
+  const threeExports = threes();
+  if (!threeExports) {
+    return null;
+  }
+  const { scene } = threeExports;
   useEffect(() => {
-    const objects = dp.objects;
-    objects.map(o => {
-      o.visible = dp.on;
+    scene.traverseAll(o => {
+      if (o.vUserData.modelType === 'DP') {
+        o.visible = dp.on;
+      }
     });
   }, [dp.on]);
 
