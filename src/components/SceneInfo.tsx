@@ -56,7 +56,9 @@ import { BloomOption } from './canvas/Bloom.tsx';
 import { BrightnessContrastOption } from './canvas/BrightnessContrast.tsx';
 import { ColorLUTOption } from './canvas/ColorLUT.tsx';
 import { ColorTemperatureOption } from './canvas/ColorTemperature.tsx';
+import { FXAAOption } from './canvas/FXAA.tsx';
 import { HueSaturationOption } from './canvas/HueSaturation.tsx';
+import { SMAAOption } from './canvas/SMAA.tsx';
 import { ToneMappingOption } from './canvas/ToneMapping.tsx';
 import DPConfigurator from './DPConfigurator.tsx';
 import UploadPage from './UploadModal';
@@ -1046,6 +1048,8 @@ const GeneralPostProcessingControl = () => {
       <BloomOption></BloomOption>
       <ColorLUTOption></ColorLUTOption>
       <ToneMappingOption></ToneMappingOption>
+      <FXAAOption></FXAAOption>
+      <SMAAOption></SMAAOption>
     </section>
   );
 };
