@@ -1,6 +1,7 @@
 import { useAtom, useAtomValue } from 'jotai';
 import React, { useEffect, useState } from 'react';
 import { roomColorString } from '../Constants';
+import { DPToggle } from '../pages/ViewerPage.tsx';
 import {
   cameraMatrixAtom,
   cameraSettingAtom,
@@ -417,6 +418,7 @@ const CameraPanel = () => {
             <button style={{ fontSize: 12 }} onClick={updateProbes}>
               프로브 업데이트
             </button>
+            <DPToggle></DPToggle>
           </section>
         </div>
       ) : (
