@@ -115,7 +115,12 @@ const MeshView = ({
             <div style={{ fontSize: 10 }}>
               {Object.entries(object.vUserData as Record<string, any>).map(
                 ([key, value]) => {
-                  if (key === 'probe') {
+                  const ignoreKeys = ['probe', 'dpOnLightMap', 'dpOffLightMap'];
+                  if (ignoreKeys.includes(key)) {
+                    return null;
+                  }
+
+                  if (!value) {
                     return null;
                   }
                   return (

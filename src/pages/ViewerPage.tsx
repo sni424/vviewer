@@ -18,7 +18,7 @@ import {
 import { loadNavMesh } from '../scripts/atomUtils';
 import useFiles from '../scripts/useFiles';
 import useModelDragAndDrop from '../scripts/useModelDragAndDrop';
-import { THREE } from '../scripts/VTHREE.ts';
+import { toggleDP } from '../scripts/utils.ts';
 import { getSettings, loadSettings } from './useSettings';
 
 function Loading() {
@@ -142,22 +142,7 @@ const DPToggle = () => {
     }
     const { scene } = threeExports;
     if (scene) {
-      scene.traverseAll(o => {
-        if (o.vUserData.modelType === 'DP') {
-          o.visible = dp.on;
-        }
-
-        if (o.type === 'Mesh') {
-          const m = o as THREE.Mesh;
-          if (m.vUserData.modelType === 'BASE') {
-            const material = m.material as THREE.MeshStandardMaterial;
-            material.lightMap = dp.on
-              ? m.vUserData.dpOnLightMap!!
-              : m.vUserData.dpOffLightMap!!;
-            material.needsUpdate = true;
-          }
-        }
-      });
+      toggleDP(scene, dp.on);
     }
   }, [dp.on, threeExports]);
 
