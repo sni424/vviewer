@@ -1,4 +1,4 @@
-import { useAtomValue } from 'jotai';
+import { useAtom, useAtomValue } from 'jotai';
 import { useEffect, useState } from 'react';
 import CameraPanel from '../components/CameraPanel';
 import MobileBenchmarkPanel from '../components/mobile/MobileBenchmarkPanel';
@@ -7,6 +7,7 @@ import MobileRenderer from '../components/mobile/MobileRenderer';
 import Modal from '../components/Modal';
 import OptionPanel from '../components/OptionPanel';
 import {
+  DPAtom,
   hotspotAtom,
   roomAtom,
   setAtomValue,
@@ -43,6 +44,7 @@ const createGeometry = (points: [number, number][]) => {
 const useLoad = () => {
   const threeExports = useAtomValue(threeExportsAtom);
   const [isLoading, setIsLoading] = useState(true);
+  const [dp, setDp] = useAtom(DPAtom);
 
   useEffect(() => {
     if (!threeExports) {
@@ -76,7 +78,7 @@ const useLoad = () => {
       // })
       loadPostProcessAndSet();
     };
-    loadLatest({ threeExports }).finally(() => {
+    loadLatest({ threeExports, dpOn: dp.on }).finally(() => {
       setIsLoading(false);
     });
     loadSettings();

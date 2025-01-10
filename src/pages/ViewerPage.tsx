@@ -132,7 +132,7 @@ const ControlPanel = () => {
   );
 };
 
-const DPToggle = () => {
+export const DPToggle = () => {
   const threeExports = useAtomValue(threeExportsAtom);
   const [dp, setDP] = useAtom(DPAtom);
 
