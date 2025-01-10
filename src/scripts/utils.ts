@@ -16,7 +16,7 @@ import {
   cameraSettingAtom,
   getAtomValue,
   pathfindingAtom,
-  selectedAtom
+  selectedAtom,
 } from './atoms';
 import { uploadExrToKtx } from './atomUtils.ts';
 import VGLTFExporter from './VGLTFExporter.ts';
@@ -92,7 +92,7 @@ export const getIntersectLayer = (
     console.error(
       'Three가 셋업되지 않은 상태에서 Intersect가 불림 @useEditorInputEvents',
     );
-    return []
+    return [];
   }
   const { scene, camera } = threeExports;
   const mouse = new THREE.Vector2();
@@ -265,12 +265,14 @@ export async function loadFile(file: FileInfo): Promise<Blob> {
 export const loadLatest = async ({
   threeExports,
   addBenchmark: _addBenchmark,
+  dpOn = false,
   // setSceneAnalysis,
 }: {
   threeExports: RootState;
   addBenchmark?: (key: keyof BenchMark, value?: number) => void;
+  dpOn: boolean;
 }) => {
-  const addBenchmark = _addBenchmark ?? (() => { });
+  const addBenchmark = _addBenchmark ?? (() => {});
 
   const latestHashUrl = ENV.latestHash;
   const latestUrl = ENV.latest;
@@ -319,7 +321,7 @@ export const loadLatest = async ({
       } else {
         return new VGLTFLoader(threeExports.gl);
       }
-    })()
+    })();
     return loader.loadAsync(url);
   };
 
@@ -338,6 +340,8 @@ export const loadLatest = async ({
       const loadAsync = new Promise((res, rej) => {
         setAsModel(parsedScene);
         scene.add(parsedScene);
+
+        toggleDP(scene, dpOn);
 
         const interval = setInterval(() => {
           //@ts-ignore
@@ -475,7 +479,7 @@ let currentAnimation: gsap.core.Tween | null = null;
 let didShift = false;
 
 /**
-사전 세팅
+ 사전 세팅
  */
 function setupPathData(
   camera: THREE.Object3D,
@@ -546,7 +550,7 @@ const handlePathFindingMove = (
   initialPath: THREE.Vector3[],
   speed: number,
   quaternion?: THREE.Quaternion,
-  onComplete: gsap.Callback = () => { },
+  onComplete: gsap.Callback = () => {},
 ) => {
   // path없으면 동작x
   if (initialPath.length === 0) return;
@@ -615,11 +619,7 @@ const handlePathFindingMove = (
           camera.position.copy(pos);
           //카메라 회전
           if (quaternion) {
-            const newQuat = rotateCameraSmoothly(
-              startQuat,
-              endQuat,
-              progress,
-            );
+            const newQuat = rotateCameraSmoothly(startQuat, endQuat, progress);
             camera.quaternion.copy(newQuat);
           }
         },
@@ -640,9 +640,8 @@ const handleLinearMove = (
   quaternion: THREE.Quaternion,
   speed: number,
   cameraFov?: number,
-  onComplete: gsap.Callback = () => { },
+  onComplete: gsap.Callback = () => {},
 ) => {
-
   const startPosition = camera.position.clone();
   const timeline = gsap.timeline();
 
@@ -657,15 +656,15 @@ const handleLinearMove = (
       onUpdate: function () {
         const progress = this.targets()[0].t;
         //카메라 이동
-        const pos = new THREE.Vector3().lerpVectors(startPosition, target, progress);
+        const pos = new THREE.Vector3().lerpVectors(
+          startPosition,
+          target,
+          progress,
+        );
         camera.position.copy(pos);
 
         // 카메라 회전
-        const newQuat = rotateCameraSmoothly(
-          startQuat,
-          quaternion,
-          progress,
-        );
+        const newQuat = rotateCameraSmoothly(startQuat, quaternion, progress);
         camera.quaternion.copy(newQuat);
       },
       onComplete,
@@ -691,7 +690,7 @@ const handleLinearMove = (
 
 const handleTeleportMove = (
   camera: THREE.PerspectiveCamera,
-  matrix: number[]
+  matrix: number[],
 ) => {
   //배열을 matrix4로 변형
   const threeMatrix = new THREE.Matrix4().fromArray(matrix);
@@ -715,10 +714,9 @@ export const moveTo = (
   camera: THREE.PerspectiveCamera,
   action: MoveActionOptions,
 ) => {
-
   if (action.pathFinding) {
     const { stopAnimation, matrix } = action.pathFinding;
-    const cameraSetting = getAtomValue(cameraSettingAtom)
+    const cameraSetting = getAtomValue(cameraSettingAtom);
     if (stopAnimation && currentAnimation) {
       currentAnimation.kill();
       return;
@@ -736,9 +734,9 @@ export const moveTo = (
       // 행렬에서 position, rotation, scale 추출
       threeMatrix.decompose(position, quaternion, scale);
 
-
-
-      const pathFinding = action.pathFinding.pathfinder ?? getAtomValue(pathfindingAtom)?.pathfinding;
+      const pathFinding =
+        action.pathFinding.pathfinder ??
+        getAtomValue(pathfindingAtom)?.pathfinding;
       if (!pathFinding) {
         throw new Error('pathFinding is not defined @moveTo');
       }
@@ -749,18 +747,26 @@ export const moveTo = (
       addPoints(
         {
           point: camera.position,
-          color: "blue",
-          id: "start"
+          color: 'blue',
+          id: 'start',
         },
         {
           point: position,
-          color: "green",
-          id: "target"
-        }
-      )
+          color: 'green',
+          id: 'target',
+        },
+      );
 
-      const closestStartNode = pathFinding.getClosestNode(camera.position, ZONE, groupID);
-      const closestTargetNode = pathFinding.getClosestNode(position, ZONE, targetGroupID);
+      const closestStartNode = pathFinding.getClosestNode(
+        camera.position,
+        ZONE,
+        groupID,
+      );
+      const closestTargetNode = pathFinding.getClosestNode(
+        position,
+        ZONE,
+        targetGroupID,
+      );
       const path = pathFinding.findPath(
         closestStartNode.centroid,
         closestTargetNode.centroid,
@@ -769,25 +775,33 @@ export const moveTo = (
       );
       if (path) {
         //해당 죄표의 인덱스를 찾아서 현재 인덱스랑 같은지 비교
-        const filteredPath = path.filter(
-          (point, index, self) => {
-            console.log(self, point, index, self.findIndex(p => p.equals(point)))
-            return index === self.findIndex(p => p.equals(point))
-          }
-        );
+        const filteredPath = path.filter((point, index, self) => {
+          console.log(
+            self,
+            point,
+            index,
+            self.findIndex(p => p.equals(point)),
+          );
+          return index === self.findIndex(p => p.equals(point));
+        });
         const newPath = [...filteredPath];
         newPath.pop();
         newPath.push(position);
-        addPoints(...newPath.map(vector => ({
-          point: new Vector3(
-            vector.x,
-            0.05,
-            vector.z
-          ), color: "yellow"
-        })))
+        addPoints(
+          ...newPath.map(vector => ({
+            point: new Vector3(vector.x, 0.05, vector.z),
+            color: 'yellow',
+          })),
+        );
 
-        handlePathFindingMove(camera, position, newPath, cameraSetting.moveSpeed, quaternion, action.onComplete);
-
+        handlePathFindingMove(
+          camera,
+          position,
+          newPath,
+          cameraSetting.moveSpeed,
+          quaternion,
+          action.onComplete,
+        );
       } else {
         throw new Error('no path');
       }
@@ -846,7 +860,6 @@ export const readDirectory = async (
   directoryEntry: FileSystemDirectoryEntry,
   acceptedExtensions: string[],
 ) => {
-
   const reader = directoryEntry.createReader();
   const entries: File[] = [];
 
@@ -987,21 +1000,51 @@ export const uploadExrLightmap = async (object: THREE.Object3D) => {
     if ((obj as THREE.Mesh).isMesh) {
       const mesh = obj as THREE.Mesh;
       const mat = mesh.material as THREE.MeshStandardMaterial;
-      if (
-        mat &&
-        mat.lightMap &&
-        (mat.lightMap.vUserData.isExr || mat.lightMap.vUserData.mimeType === "image/ktx2")
-      ) {
-        mat.vUserData.lightMap = mat.lightMap.vUserData.lightMap;
-        mat.vUserData.lightMapIntensity = mat.lightMapIntensity;
-        const lightMapHash = mat.vUserData.lightMap;
+      const isEXR = (tex: THREE.Texture) =>
+        tex.vUserData.isExr !== undefined && tex.vUserData.isExr;
+      const isKTX = (tex: THREE.Texture) =>
+        tex.vUserData.mimeType === 'image/ktx2';
 
-        if (lightMapHash) {
-          if (!lightmapHashes[lightMapHash]) {
-            lightmapHashes[lightMapHash] = [];
-          }
-          lightmapHashes[lightMapHash].push(mat);
+      // Lightmap to HashMap
+      const addLightMapToHash = (
+        hashKey: string,
+        material: THREE.MeshStandardMaterial,
+      ) => {
+        if (!lightmapHashes[hashKey]) {
+          lightmapHashes[hashKey] = [];
         }
+        lightmapHashes[hashKey].push(material);
+      };
+
+      // 250110 추가
+      if (mat && mat.lightMap) {
+        const lightMap = mat.lightMap;
+        const isDpRelatedModel = mesh.vUserData.modelType !== undefined;
+
+        if (isDpRelatedModel) {
+          const modelType = mesh.vUserData.modelType!;
+
+          if (modelType === 'DP') {
+            const dpOnHash = mat.vUserData.dpOnTextureFile;
+            if (dpOnHash) {
+              addLightMapToHash(dpOnHash, mat);
+            }
+          } else {
+            const dpOffHash = mat.vUserData.dpOffTextureFile;
+            const dpOnHash = mat.vUserData.dpOnTextureFile;
+
+            if (dpOffHash) addLightMapToHash(dpOffHash, mat);
+            if (dpOnHash) addLightMapToHash(dpOnHash, mat);
+          }
+        } else if (isEXR(lightMap) || isKTX(lightMap)) {
+          mat.vUserData.lightMap = lightMap.vUserData.lightMap;
+
+          const lightMapHash = mat.vUserData.lightMap;
+          if (lightMapHash) {
+            addLightMapToHash(lightMapHash, mat);
+          }
+        }
+        mat.vUserData.lightMapIntensity = mat.lightMapIntensity;
       }
     }
   });
@@ -1030,20 +1073,32 @@ export const uploadExrLightmap = async (object: THREE.Object3D) => {
     return uploadExrToKtx(files).then(res => {
       console.log(res);
       if (res.success) {
+        const data = res.data;
+        const updateKtxName = (key: keyof THREE.ThreeUserData, mat: any) => {
+          const exrName = mat.vUserData[key];
+          if (exrName) {
+            const ktxName = exrName.replace('.exr', '.ktx');
+            if (data.some(datum => datum.filename === ktxName)) {
+              mat.vUserData[key] = ktxName;
+            }
+          }
+        };
+
         afterMats.forEach(mat => {
           mat.lightMap = null;
-          const ktxName = (mat.vUserData.lightMap!).replace(".exr", ".ktx");
-          if (res.data.some(datum => datum.filename === ktxName)) {
-            // ktx업로드 시 파일이름 바꾸어주기
-            mat.vUserData.lightMap = ktxName;
-          }
+
+          // lightMap 업데이트
+          updateKtxName('lightMap', mat);
+          // dpOnTextureFile && dpOffTextureFile 업데이트
+          updateKtxName('dpOnTextureFile', mat);
+          updateKtxName('dpOffTextureFile', mat);
         });
         return res;
       } else {
-        console.error("라이트맵 ktx업로드 실패", res);
+        console.error('라이트맵 ktx업로드 실패', res);
         return res;
       }
-    })
+    });
   } else {
     console.log('@uploadExrLightmap 라이트맵없음, 업로드x');
   }
@@ -1209,4 +1264,23 @@ export function createMeshesFromPoints(
     bottomFace,
     closureFace,
   };
+}
+
+export function toggleDP(scene: THREE.Scene, toggle: boolean) {
+  scene.traverseAll(o => {
+    if (o.vUserData.modelType === 'DP') {
+      o.visible = toggle;
+    }
+
+    if (o.type === 'Mesh') {
+      const m = o as THREE.Mesh;
+      if (m.vUserData.modelType === 'BASE') {
+        const material = m.material as THREE.MeshStandardMaterial;
+        material.lightMap = toggle
+          ? material.vUserData.dpOnLightMap!!
+          : material.vUserData.dpOffLightMap!!;
+        material.needsUpdate = true;
+      }
+    }
+  });
 }
