@@ -1,5 +1,5 @@
 import { useAtom } from 'jotai';
-import { DPCModeAtom } from '../scripts/atoms.ts';
+import { DPCModeAtom } from '../../scripts/atoms.ts';
 import DPCFileImporter from './DPCFileImporter.tsx';
 import DPCModelSelector from './DPCModelSelector.tsx';
 import DPCSelector from './DPCSelector.tsx';

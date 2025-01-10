@@ -60,7 +60,7 @@ import { FXAAOption } from './canvas/FXAA.tsx';
 import { HueSaturationOption } from './canvas/HueSaturation.tsx';
 import { SMAAOption } from './canvas/SMAA.tsx';
 import { ToneMappingOption } from './canvas/ToneMapping.tsx';
-import DPConfigurator from './DPConfigurator.tsx';
+import DPConfigurator from './DPC/DPConfigurator.tsx';
 import UploadPage from './UploadModal';
 
 const useEnvUrl = () => {
@@ -197,7 +197,7 @@ const GeneralButtons = () => {
       },
     };
     if (dpcModalRef.current) {
-      const styleMode = styles[dpcMode];
+      const styleMode = styles['file'];
       Object.entries(styleMode).map(([key, value]) => {
         dpcModalRef.current.style[key] = value;
       });
@@ -490,7 +490,9 @@ const GeneralButtons = () => {
               <div
                 ref={dpcModalRef}
                 style={{
-                  width: '35%',
+                  width: '80%',
+                  marginLeft: 0,
+                  marginBottom: 0,
                   maxHeight: '80%',
                   backgroundColor: '#ffffffcc',
                   padding: 16,
@@ -503,7 +505,7 @@ const GeneralButtons = () => {
               </div>
             ),
             () => {
-              setDPCMode('select');
+              setDPCMode('file');
             },
           );
         }}
@@ -543,40 +545,6 @@ const GeneralButtons = () => {
         }}
       >
         BASE 불러오기
-      </button>
-      <button
-        onClick={async () => {
-          const baseURL = ENV.model_dp;
-          const latestHashUrl = ENV.dpHash;
-          const localLatestHash = await get('dp-hash');
-          const remoteLatestHash = (
-            await decompressFileToObject<{ hash: string }>(latestHashUrl)
-          ).hash;
-          const loadModel = async () => {
-            let url;
-            if (!localLatestHash || localLatestHash !== remoteLatestHash) {
-              // CACHE UPDATE
-              const blob = await fetch(baseURL, {
-                cache: 'no-store',
-              }).then(res => res.blob());
-              await set('dp-hash', remoteLatestHash);
-              await set('dpModel', blob);
-
-              url = URL.createObjectURL(blob);
-            } else {
-              const blob = await get('dpModel');
-              url = URL.createObjectURL(blob);
-            }
-            return await new VGLTFLoader().loadAsync(url);
-          };
-
-          loadModel().then(res => {
-            const parsedScene = res.scene;
-            scene.add(parsedScene);
-          });
-        }}
-      >
-        DP 불러오기
       </button>
       <button
         onClick={() => {
