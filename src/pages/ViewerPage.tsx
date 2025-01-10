@@ -15,9 +15,10 @@ import {
   threeExportsAtom,
   viewGridAtom,
 } from '../scripts/atoms';
-import { loadNavMesh, threes } from '../scripts/atomUtils';
+import { loadNavMesh } from '../scripts/atomUtils';
 import useFiles from '../scripts/useFiles';
 import useModelDragAndDrop from '../scripts/useModelDragAndDrop';
+import { THREE } from '../scripts/VTHREE.ts';
 import { getSettings, loadSettings } from './useSettings';
 
 function Loading() {
@@ -132,19 +133,37 @@ const ControlPanel = () => {
 };
 
 const DPToggle = () => {
+  const threeExports = useAtomValue(threeExportsAtom);
   const [dp, setDP] = useAtom(DPAtom);
-  const threeExports = threes();
+
+  useEffect(() => {
+    if (!threeExports) {
+      return;
+    }
+    const { scene } = threeExports;
+    if (scene) {
+      scene.traverseAll(o => {
+        if (o.vUserData.modelType === 'DP') {
+          o.visible = dp.on;
+        }
+
+        if (o.type === 'Mesh') {
+          const m = o as THREE.Mesh;
+          if (m.vUserData.modelType === 'BASE') {
+            const material = m.material as THREE.MeshStandardMaterial;
+            material.lightMap = dp.on
+              ? m.vUserData.dpOnLightMap!!
+              : m.vUserData.dpOffLightMap!!;
+            material.needsUpdate = true;
+          }
+        }
+      });
+    }
+  }, [dp.on, threeExports]);
+
   if (!threeExports) {
     return null;
   }
-  const { scene } = threeExports;
-  useEffect(() => {
-    scene.traverseAll(o => {
-      if (o.vUserData.modelType === 'DP') {
-        o.visible = dp.on;
-      }
-    });
-  }, [dp.on]);
 
   return (
     <button

@@ -1,9 +1,7 @@
-import { useSetAtom } from 'jotai';
 import { useAtom } from 'jotai/index';
 import React, { Dispatch, useEffect, useState } from 'react';
 import {
   catalogueAtom,
-  DPCModeAtom,
   onModalCloseAtom,
   setAtomValue,
   useModal,
@@ -202,7 +200,7 @@ const FileDragDiv = ({
 const DPCFileImporter = () => {
   const [dpOffFiles, setDpOffFiles] = useState<ImportType[]>([]);
   const [dpOnFiles, setDpOnFiles] = useState<ImportType[]>([]);
-  const setDPCMode = useSetAtom(DPCModeAtom);
+  // const setDPCMode = useSetAtom(DPCModeAtom);
   const { closeModal } = useModal();
   const [onModalClose, setOnModalClose] = useAtom(onModalCloseAtom);
   const [showConfirm, setShowConfirm] = useState<boolean>(false);
@@ -215,7 +213,9 @@ const DPCFileImporter = () => {
   }>({ dp: 0, base: 0, texture: 0 });
 
   useEffect(() => {
-    classifyFiles();
+    if (dpOnFiles.length > 0 && dpOffFiles.length > 0) {
+      classifyFiles();
+    }
   }, [dpOffFiles, dpOnFiles]);
 
   useEffect(() => {
@@ -395,20 +395,21 @@ const DPCFileImporter = () => {
       }}
     >
       <div className="flex items-center justify-between">
-        <button
-          className="text-sm px-3 mb-2"
-          onClick={() => {
-            if (dpOffFiles.length === 0 && dpOnFiles.length === 0) {
-              setDPCMode('select');
-            } else {
-              if (confirm('모델 구성 모드 선택 화면으로 돌아가시겠어요?')) {
-                setDPCMode('select');
-              }
-            }
-          }}
-        >
-          돌아가기
-        </button>
+        <span>업로드</span>
+        {/*<button*/}
+        {/*  className="text-sm px-3 mb-2"*/}
+        {/*  onClick={() => {*/}
+        {/*    if (dpOffFiles.length === 0 && dpOnFiles.length === 0) {*/}
+        {/*      setDPCMode('file');*/}
+        {/*    } else {*/}
+        {/*      if (confirm('모델 구성 모드 선택 화면으로 돌아가시겠어요?')) {*/}
+        {/*        setDPCMode('file');*/}
+        {/*      }*/}
+        {/*    }*/}
+        {/*  }}*/}
+        {/*>*/}
+        {/*  돌아가기*/}
+        {/*</button>*/}
         <div className="flex items-center">
           <input
             type="checkbox"

@@ -42,6 +42,7 @@ function Modal() {
         display: 'flex',
         justifyContent: 'center',
         alignItems: 'center',
+        zIndex: 9999,
       }}
       onClick={e => {
         e.stopPropagation();

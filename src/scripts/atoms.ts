@@ -404,7 +404,7 @@ export const DPAtom = atom<{ objects: THREE.Object3D[]; on: boolean }>({
   on: false,
 });
 
-export const DPCModeAtom = atom<DPConfiguratorMode>('select');
+export const DPCModeAtom = atom<DPConfiguratorMode>('file');
 
 export type Room = {
   index: number;

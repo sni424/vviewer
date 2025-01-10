@@ -197,7 +197,7 @@ const GeneralButtons = () => {
       },
     };
     if (dpcModalRef.current) {
-      const styleMode = styles[dpcMode];
+      const styleMode = styles['file'];
       Object.entries(styleMode).map(([key, value]) => {
         dpcModalRef.current.style[key] = value;
       });
@@ -490,7 +490,9 @@ const GeneralButtons = () => {
               <div
                 ref={dpcModalRef}
                 style={{
-                  width: '35%',
+                  width: '80%',
+                  marginLeft: 0,
+                  marginBottom: 0,
                   maxHeight: '80%',
                   backgroundColor: '#ffffffcc',
                   padding: 16,
@@ -503,7 +505,7 @@ const GeneralButtons = () => {
               </div>
             ),
             () => {
-              setDPCMode('select');
+              setDPCMode('file');
             },
           );
         }}
