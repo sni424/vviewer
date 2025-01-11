@@ -1,9 +1,9 @@
 import { useAtom, useAtomValue } from 'jotai';
 import { useEffect, useState } from 'react';
-import CameraPanel from '../components/CameraPanel';
 import MobileBenchmarkPanel from '../components/mobile/MobileBenchmarkPanel';
 import MobileCameraManager from '../components/mobile/MobileCameraManager';
 import MobileRenderer from '../components/mobile/MobileRenderer';
+import MobileSimplePanel from '../components/MobileSimplePanel.tsx';
 import Modal from '../components/Modal';
 import OptionPanel from '../components/OptionPanel';
 import {
@@ -106,8 +106,9 @@ function MobilePage() {
     <div className="relative w-dvw h-dvh text-xs">
       <MobileRenderer></MobileRenderer>
       <MobileBenchmarkPanel></MobileBenchmarkPanel>
-      <CameraPanel></CameraPanel>
-      {/* <MobileControlPanel></MobileControlPanel> */}
+      {/*<CameraPanel></CameraPanel>*/}
+      <MobileSimplePanel></MobileSimplePanel>
+      {/*<MobileControlPanel></MobileControlPanel>*/}
       {/* <MobileLoaderPanel></MobileLoaderPanel> */}
       <MobileCameraManager></MobileCameraManager>
       <OptionPanel></OptionPanel>
