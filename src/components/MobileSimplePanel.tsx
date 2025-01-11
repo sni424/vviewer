@@ -10,6 +10,8 @@ import {
 } from '../scripts/atoms.ts';
 import { toggleDP } from '../scripts/utils.ts';
 import { THREE } from '../scripts/VTHREE.ts';
+import { BloomOption } from './canvas/Bloom.tsx';
+import { ToneMappingOption } from './canvas/ToneMapping.tsx';
 
 const DPController = () => {
   const threeExports = useAtomValue(threeExportsAtom);
@@ -236,6 +238,8 @@ const MobileSimplePanel = () => {
               </div>
             </div>
             <CameraController />
+            <BloomOption></BloomOption>
+            <ToneMappingOption></ToneMappingOption>
           </div>
         </section>
       ) : (
@@ -244,10 +248,12 @@ const MobileSimplePanel = () => {
             display: 'flex',
             justifyContent: 'end',
             cursor: 'pointer',
-            border: '1px solid gray',
+            border: '1px solid',
+            borderColor: '#646464',
             padding: '4px 8px',
             marginRight: '8px',
             marginTop: '8px',
+            backgroundColor: 'gray',
           }}
           onClick={() => {
             setOpen(true);
