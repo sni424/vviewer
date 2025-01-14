@@ -333,6 +333,17 @@ const CameraManager: React.FC<UnifiedCameraControlsProps> = ({
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent): void => {
+      const activeElement = document.activeElement;
+
+      if (activeElement) {
+        const isInputFocused =
+          activeElement.tagName === 'INPUT' ||
+          activeElement.tagName === 'TEXTAREA';
+        if (isInputFocused) {
+          animationFrameId.current = null;
+          return; // 이벤트 핸들링 종료
+        }
+      }
       activeKeys.current.add(event.key.toLowerCase());
       setCameraAction(true);
     };
