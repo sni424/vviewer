@@ -32,6 +32,16 @@ const CameraPanel = () => {
   useEffect(() => {
     // space 입력 시 카메라 상승
     const handleKeydown = (e: KeyboardEvent) => {
+      const activeElement = document.activeElement;
+      if (activeElement) {
+        const isInputFocused =
+          activeElement.tagName === 'INPUT' ||
+          activeElement.tagName === 'TEXTAREA';
+
+        if (isInputFocused) {
+          return; // 이벤트 핸들링 종료
+        }
+      }
       if (getAtomValue(panelTabAtom) === 'hotspot') {
         return;
       }
