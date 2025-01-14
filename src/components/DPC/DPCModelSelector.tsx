@@ -1,21 +1,21 @@
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import objectHash from 'object-hash';
 import { useEffect, useState } from 'react';
-import { Layer } from '../Constants.ts';
+import { Layer } from '../../Constants.ts';
 import {
   DPAtom,
   DPCModeAtom,
   ModelSelectorAtom,
   selectedAtom,
   threeExportsAtom,
-} from '../scripts/atoms.ts';
+} from '../../scripts/atoms.ts';
 import {
   compressObjectToFile,
   isProbeMesh,
   isTransformControlOrChild,
-} from '../scripts/utils.ts';
-import VGLTFExporter from '../scripts/VGLTFExporter.ts';
-import * as THREE from '../scripts/VTHREE.ts';
+} from '../../scripts/utils.ts';
+import VGLTFExporter from '../../scripts/VGLTFExporter.ts';
+import * as THREE from '../../scripts/VTHREE.ts';
 
 const SelectableNodes = ({
   data,

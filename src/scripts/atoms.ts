@@ -8,13 +8,20 @@ import {
   useAtom,
   useAtomValue,
   useSetAtom,
-  WritableAtom
+  WritableAtom,
 } from 'jotai';
 import React from 'react';
 import { Pathfinding } from 'three-pathfinding';
 import { OrbitControls } from 'three/examples/jsm/Addons.js';
-import { DPConfiguratorMode } from '../components/DPConfigurator.tsx';
-import { FileInfo, GLProps, Matrix4Array, View, ViewportOption } from '../types';
+import { Catalogue } from '../components/DPC/DPCFileImporter.tsx';
+import { DPConfiguratorMode } from '../components/DPC/DPConfigurator.tsx';
+import {
+  FileInfo,
+  GLProps,
+  Matrix4Array,
+  View,
+  ViewportOption,
+} from '../types';
 import ReflectionProbe from './ReflectionProbe.ts';
 import { THREE } from './VTHREE';
 
@@ -44,10 +51,10 @@ export const createAtomCombo = <T = any>(
   initalValue?: T,
   store?: Store,
 ): [
-    WritableAtom<T, unknown[], unknown>,
-    () => T | undefined,
-    (arg: AtomArgType<T>) => void,
-  ] => {
+  WritableAtom<T, unknown[], unknown>,
+  () => T | undefined,
+  (arg: AtomArgType<T>) => void,
+] => {
   const dstStore = store ?? defaultStore;
   // @ts-ignore
   const theAtom = atom<T>(initalValue);
@@ -61,7 +68,7 @@ export const createAtomCombo = <T = any>(
 };
 
 // export type MapDst = 'lightmap' | 'emissivemap' | 'envmap'; // hdr적용은 추후 필요하면 추가
-export type MapDst = 'lightmap' | 'gainmap' | "exr2sdr"; // exr2sdr = exr * 0.2한 이미지를 만든 후 렌더 시 * 5를 해서 렌더링
+export type MapDst = 'lightmap' | 'gainmap' | 'exr2sdr'; // exr2sdr = exr * 0.2한 이미지를 만든 후 렌더 시 * 5를 해서 렌더링
 export type ModelSource = {
   name: string;
   file: File;
@@ -69,6 +76,7 @@ export type ModelSource = {
   mapDst?: MapDst;
 };
 export const sourceAtom = atom<ModelSource[]>([]);
+export const catalogueAtom = atom<Catalogue>({});
 export const loadHistoryAtom = atom<
   Map<
     string,
@@ -87,16 +95,16 @@ export const orbitControlAtom = atom<OrbitControls>();
 export type Env = {
   select: 'none' | 'preset' | 'custom' | 'url';
   preset?:
-  | 'apartment'
-  | 'city'
-  | 'dawn'
-  | 'forest'
-  | 'lobby'
-  | 'night'
-  | 'park'
-  | 'studio'
-  | 'sunset'
-  | 'warehouse';
+    | 'apartment'
+    | 'city'
+    | 'dawn'
+    | 'forest'
+    | 'lobby'
+    | 'night'
+    | 'park'
+    | 'studio'
+    | 'sunset'
+    | 'warehouse';
   url?: string;
   intensity?: number;
   rotation?: {
@@ -226,14 +234,21 @@ export const globalGlAtom = atom<GLProps>({
   depth: true,
   failIfMajorPerformanceCaveat: false,
   toneMappingExposure: 1,
-  localClippingEnabled: false
+  localClippingEnabled: false,
 });
 
 // REFLECTION PROBES
 export const ProbeAtom = atom<ReflectionProbe[]>([]);
 export const treeScrollToAtom = atom<string | null>(null);
 
-export const Tabs = ['scene', 'tree', 'probe', 'room', "tour", 'hotspot',] as const;
+export const Tabs = [
+  'scene',
+  'tree',
+  'probe',
+  'room',
+  'tour',
+  'hotspot',
+] as const;
 export type Tab = (typeof Tabs)[number];
 export const panelTabAtom = atom<Tab>('scene');
 
@@ -241,14 +256,9 @@ export const treeSearchAtom = atom<string | undefined>();
 
 //카메라 정보값
 export const lastCameraInfoAtom = atom<{
-  matrix: number[]
+  matrix: number[];
 }>({
-  matrix: [
-    1, 0, 0, 0,
-    0, 1, 0, 0,
-    0, 0, 1, 0,
-    0, 0, 0, 1
-  ]
+  matrix: [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1],
 });
 
 export const cameraSettingAtom = atom<{
@@ -279,6 +289,7 @@ export const cameraActionAtom = atom<{
 export const orbitSettingAtom = atom<{
   autoRotate: boolean;
   enabled: boolean;
+  tempEnabled?: boolean;
 }>({
   autoRotate: false,
   enabled: true,
@@ -379,7 +390,9 @@ export const toggleGrid = (value?: boolean) => {
 // OptionBuilder를 이용해 추가한 atom들이 여기에 자동으로 등록
 // * PostProcess.tsx에서 이들을 이용해 이펙트 리렌더링
 // * useSettings에서 활용하여 세팅 저장/로드
-export const postprocessAtoms = atom<{ [key in string]: PrimitiveAtom<any> }>({});
+export const postprocessAtoms = atom<{ [key in string]: PrimitiveAtom<any> }>(
+  {},
+);
 
 export const forceRerenderPostProcessAtom = atom<number>(0);
 export const forceRerenderPostProcess = () => {
@@ -392,7 +405,7 @@ export const DPAtom = atom<{ objects: THREE.Object3D[]; on: boolean }>({
   on: false,
 });
 
-export const DPCModeAtom = atom<DPConfiguratorMode>('select');
+export const DPCModeAtom = atom<DPConfiguratorMode>('file');
 
 export type Room = {
   index: number;
@@ -434,13 +447,12 @@ export type tourInfoType = {
   matrix: number[];
 };
 
-export const tourAtom = atom<tourInfoType[]>([])
+export const tourAtom = atom<tourInfoType[]>([]);
 
 export type Settings = {
   hotspotSize: number;
   shotHotspots: boolean;
   detectHotspotRoom: boolean;
-
 };
 export const settingsAtom = atom<Settings>({
   hotspotSize: 0.12,
@@ -459,7 +471,9 @@ export const moveToPointAtom = atom<{
   setting?: boolean;
 }>();
 
-export type DrawablePoint = ({ point: THREE.Matrix4 | THREE.Vector3 | { x: number, z: number } }) & { color?: string | number; id?: string; };
+export type DrawablePoint = {
+  point: THREE.Matrix4 | THREE.Vector3 | { x: number; z: number };
+} & { color?: string | number; id?: string };
 export const pointsAtom = atom<DrawablePoint[]>([]);
 
 export const addPoints = (...points: DrawablePoint[]) => {
@@ -468,4 +482,4 @@ export const addPoints = (...points: DrawablePoint[]) => {
     const uniquePrev = prev.filter(p => !points.some(p2 => p2.id === p.id));
     return [...uniquePrev, ...points];
   });
-}
+};

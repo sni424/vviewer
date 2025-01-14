@@ -18,6 +18,7 @@ import {
 import { loadNavMesh } from '../scripts/atomUtils';
 import useFiles from '../scripts/useFiles';
 import useModelDragAndDrop from '../scripts/useModelDragAndDrop';
+import { toggleDP } from '../scripts/utils.ts';
 import { getSettings, loadSettings } from './useSettings';
 
 function Loading() {
@@ -131,14 +132,23 @@ const ControlPanel = () => {
   );
 };
 
-const DPToggle = () => {
+export const DPToggle = () => {
+  const threeExports = useAtomValue(threeExportsAtom);
   const [dp, setDP] = useAtom(DPAtom);
+
   useEffect(() => {
-    const objects = dp.objects;
-    objects.map(o => {
-      o.visible = dp.on;
-    });
-  }, [dp.on]);
+    if (!threeExports) {
+      return;
+    }
+    const { scene } = threeExports;
+    if (scene) {
+      toggleDP(scene, dp.on);
+    }
+  }, [dp.on, threeExports]);
+
+  if (!threeExports) {
+    return null;
+  }
 
   return (
     <button

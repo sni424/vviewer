@@ -1,12 +1,13 @@
-import { useAtomValue } from 'jotai';
+import { useAtom, useAtomValue } from 'jotai';
 import { useEffect, useState } from 'react';
-import CameraPanel from '../components/CameraPanel';
 import MobileBenchmarkPanel from '../components/mobile/MobileBenchmarkPanel';
 import MobileCameraManager from '../components/mobile/MobileCameraManager';
 import MobileRenderer from '../components/mobile/MobileRenderer';
+import MobileSimplePanel from '../components/MobileSimplePanel.tsx';
 import Modal from '../components/Modal';
 import OptionPanel from '../components/OptionPanel';
 import {
+  DPAtom,
   hotspotAtom,
   roomAtom,
   setAtomValue,
@@ -43,6 +44,7 @@ const createGeometry = (points: [number, number][]) => {
 const useLoad = () => {
   const threeExports = useAtomValue(threeExportsAtom);
   const [isLoading, setIsLoading] = useState(true);
+  const [dp, setDp] = useAtom(DPAtom);
 
   useEffect(() => {
     if (!threeExports) {
@@ -76,7 +78,7 @@ const useLoad = () => {
       // })
       loadPostProcessAndSet();
     };
-    loadLatest({ threeExports }).finally(() => {
+    loadLatest({ threeExports, dpOn: dp.on }).finally(() => {
       setIsLoading(false);
     });
     loadSettings();
@@ -104,8 +106,9 @@ function MobilePage() {
     <div className="relative w-dvw h-dvh text-xs">
       <MobileRenderer></MobileRenderer>
       <MobileBenchmarkPanel></MobileBenchmarkPanel>
-      <CameraPanel></CameraPanel>
-      {/* <MobileControlPanel></MobileControlPanel> */}
+      {/*<CameraPanel></CameraPanel>*/}
+      <MobileSimplePanel></MobileSimplePanel>
+      {/*<MobileControlPanel></MobileControlPanel>*/}
       {/* <MobileLoaderPanel></MobileLoaderPanel> */}
       <MobileCameraManager></MobileCameraManager>
       <OptionPanel></OptionPanel>

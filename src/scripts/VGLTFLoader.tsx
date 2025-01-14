@@ -11,16 +11,19 @@ import { ENV, Layer } from '../Constants.ts';
 import * as THREE from '../scripts/VTHREE.ts';
 import { threes } from './atomUtils.ts';
 import GainmapLoader from './GainmapLoader.ts';
+import { splitExtension } from './utils.ts';
 import VTextureLoader from './VTextureLoader.ts';
 
 export default class VGLTFLoader extends GLTFLoader {
   dispoableUrls: string[] = [];
+
   dispose() {
     for (const url of this.dispoableUrls) {
       URL.revokeObjectURL(url);
     }
     GainmapLoader.dispose();
   }
+
   static gl: THREE.WebGLRenderer;
   static dracoLoader: DRACOLoader;
   static ktx2Loader: KTX2Loader;
@@ -75,16 +78,18 @@ export default class VGLTFLoader extends GLTFLoader {
     onError?: (event: ErrorEvent) => void,
   ): void {
     const gl = threes()?.gl;
+
     function customOnLoad(gltf: GLTF) {
-      gltf.scene.traverseAll((object: THREE.Object3D) => {
+      gltf.scene.traverseAll(async (object: THREE.Object3D) => {
         object.layers.enable(Layer.Model);
         updateLightMapFromEmissive(object);
-        getGainmap(object, gl);
-        getLightmap(object);
+        await getGainmap(object, gl);
+        await getLightmap(object);
       });
 
       onLoad(gltf);
     }
+
     super.parse(data, path, customOnLoad, onError);
   }
 
@@ -129,29 +134,119 @@ async function getLightmap(object: THREE.Object3D) {
   if ((object as THREE.Mesh).isMesh) {
     const mesh = object as THREE.Mesh;
     const mat = mesh.material as THREE.MeshStandardMaterial;
-    if (mat && mat.vUserData.lightMap) {
-      const url = mat.vUserData.lightMap.startsWith('http')
-        ? mat.vUserData.lightMap
-        : ENV.base + mat.vUserData.lightMap;
+    if (mat) {
+      // DP 는 항상 dpOnTextureFile, Base 는 dpOnTextureFile / dpOffTextureFile 둘 다 있거나 없음.
+      // 텍스쳐 적용 기준 =>
+      // BASE: dpOff 기준 / DP : dpOn 기준
+      const textures: string[] = [];
+      const modelType = mesh.vUserData.modelType;
+      let applyKey: string | null = null;
+      if (modelType) {
+        // DP / Base 로 업로드 했다면?
+        if (modelType === 'DP') {
+          // DP 라면
+          const target = mat.vUserData.dpOnTextureFile;
+          if (target) {
+            textures.push(getVUserDataLightMapURL(target));
+            applyKey = getVUserDataLightMapURL(target);
+          } else {
+            console.warn(
+              'getLightMap() => type DP : dpOnTextureFile 없음 ! ',
+              mat,
+            );
+          }
+        } else {
+          // Base 라면
+          const offT = mat.vUserData.dpOffTextureFile;
+          const onT = mat.vUserData.dpOnTextureFile;
 
-      const name = mat.vUserData.lightMap!;
-      const flipY = (() => {
-        if (name.endsWith('.exr')) return true;
-        if (name.endsWith('.png')) return false;
-        if (name.endsWith('.ktx')) return false;
+          if (offT && onT) {
+            applyKey = getVUserDataLightMapURL(offT);
+            textures.push(
+              getVUserDataLightMapURL(offT),
+              getVUserDataLightMapURL(onT),
+            );
+          } else {
+            console.log('No LightMap with Base Model : ', mesh);
+          }
+        }
+      } else if (mat.vUserData.lightMap) {
+        // EXR 을 그냥 넣어서 업로드 한 경우
+        applyKey = getVUserDataLightMapURL(mat.vUserData.lightMap);
+        textures.push(getVUserDataLightMapURL(mat.vUserData.lightMap));
+      }
 
-        throw new Error();
-      })();
+      /**
+       * Texture Call 분류
+       * 1. dpOnTexture / dpOffTexture
+       * 2. dpOnTexture 및 raw LightMap
+       * -> 추후
+       * 3. Option 용 라이트맵 ?
+       * **/
 
-      return VTextureLoader.load(url, {
-        flipY,
-        as: 'texture',
-        gl: threes()?.gl,
-      }).then(texture => {
-        mat.lightMap = texture;
-        mat.lightMapIntensity = mat.vUserData.lightMapIntensity ?? 1;
-        mat.needsUpdate = true;
-      });
+      if (applyKey) {
+        const textureCache = new Map<string, THREE.Texture>();
+
+        const loadTexture = async (url: string): Promise<THREE.Texture> => {
+          const flipYMap: { [key: string]: boolean } = {
+            exr: true,
+            png: false,
+            ktx: false,
+          };
+
+          const extension = splitExtension(url).ext;
+          const flipY = flipYMap[extension];
+          if (flipY === undefined) {
+            throw new Error('FlipY Set Failed: ' + extension);
+          }
+
+          if (textureCache.has(url)) {
+            return textureCache.get(url)!;
+          }
+
+          console.log('before load : ', url);
+
+          const texture = (await VTextureLoader.load(url, {
+            flipY,
+            as: 'texture',
+            gl: threes()?.gl,
+          })) as THREE.Texture;
+
+          textureCache.set(url, texture);
+          return texture;
+        };
+
+        try {
+          const texturesToLoad = [...new Set(textures)];
+          await Promise.all(texturesToLoad.map(loadTexture));
+          const texture = textureCache.get(applyKey);
+
+          if (texture) {
+            mat.lightMap = texture;
+            mat.lightMapIntensity = mat.vUserData.lightMapIntensity ?? 1;
+            mat.needsUpdate = true;
+            if (modelType) {
+              if (modelType === 'DP') {
+                mat.vUserData.dpOnLightMap = texture;
+              } else {
+                mat.vUserData.dpOffLightMap = texture;
+                textureCache.forEach((value, key) => {
+                  if (key !== applyKey) {
+                    mat.vUserData.dpOnLightMap = value;
+                  }
+                });
+              }
+            }
+          } else {
+            console.warn(`Texture 로드 실패 : `, applyKey, {
+              textureCache,
+              texture,
+            });
+          }
+        } catch (error) {
+          console.error('Error Loading Textures: ', error);
+        }
+      }
     }
   }
 }
@@ -193,4 +288,8 @@ async function getGainmap(object: THREE.Object3D, gl?: THREE.WebGLRenderer) {
       }
     }
   }
+}
+
+function getVUserDataLightMapURL(lightMap: string) {
+  return lightMap.startsWith('http') ? lightMap : ENV.base + lightMap;
 }

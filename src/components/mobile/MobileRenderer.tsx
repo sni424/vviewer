@@ -2,7 +2,8 @@ import { useEffect } from 'react';
 
 import { Canvas, useThree } from '@react-three/fiber';
 import { useSetAtom } from 'jotai';
-import { threeExportsAtom } from '../../scripts/atoms';
+import { useAtomValue } from 'jotai/index';
+import { globalGlAtom, threeExportsAtom } from '../../scripts/atoms';
 import OrbitManager from '../camera/OrbitManager';
 import MyEnvironment from '../canvas/EnvironmentMap';
 import PostProcess from '../canvas/PostProcess';
@@ -26,6 +27,7 @@ const Renderer = () => {
 };
 
 const MobileRenderer = () => {
+  const gl = useAtomValue(globalGlAtom);
   return (
     <div
       id="mobileCanvasDiv"
@@ -34,7 +36,7 @@ const MobileRenderer = () => {
         height: '100%',
       }}
     >
-      <Canvas>
+      <Canvas gl={gl}>
         <Renderer />
         <MyEnvironment></MyEnvironment>
         {/* <EnvironmentMap></EnvironmentMap> */}

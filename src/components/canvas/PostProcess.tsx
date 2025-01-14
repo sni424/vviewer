@@ -8,7 +8,9 @@ import { Bloom } from './Bloom.tsx';
 import { BrightnessContrast } from './BrightnessContrast.tsx';
 import { ColorLUT } from './ColorLUT.tsx';
 import { ColorTemperature } from './ColorTemperature.tsx';
+import { FXAA } from './FXAA.tsx';
 import { HueSaturation } from './HueSaturation.tsx';
+import { SMAA } from './SMAA.tsx';
 import { ToneMapping } from './ToneMapping.tsx';
 
 // postprocessAtom : { key1:atom, key2:atom2 } 형태
@@ -34,6 +36,8 @@ function PostProcess() {
       <Bloom></Bloom>
       <ColorLUT></ColorLUT>
       <ToneMapping></ToneMapping>
+      <FXAA></FXAA>
+      <SMAA></SMAA>
     </EffectComposer>
   );
 }

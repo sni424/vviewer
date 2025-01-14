@@ -8,6 +8,7 @@ const defaultBCOption: { [key in string]: OptionTransformer } = {
     value: 0.0,
     min: -1,
     max: 1,
+    step: 0.01,
   },
   contrast: {
     label: '대비',

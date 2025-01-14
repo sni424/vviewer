@@ -204,15 +204,28 @@ const ProbeInfo = () => {
 
 export const ProbeComponent = ({ probe }: { probe: ReflectionProbe }) => {
   const threeExports = useAtomValue(threeExportsAtom);
+  const [showNamePopup, setShowNamePopup] = useState<boolean>(false);
+  const [isTextTruncated, setIsTextTruncated] = useState<boolean>(false);
+  const nameRef = useRef<HTMLSpanElement>(null);
   const [probes, setProbes] = useAtom<ReflectionProbe[]>(ProbeAtom);
   const [showProbe, setShowProbe] = useState<boolean>(probe.getShowProbe());
   const [showControls, setShowControls] = useState<boolean>(
     probe.getShowControls(),
   );
+  const [name, setName] = useState<string>(probe.getName());
   const [autoUpdate, setAutoUpdate] = useState<boolean>(false);
   const setSelecteds = useSetAtom(selectedAtom);
   const [mesh, setMesh] = useState<THREE.Mesh>();
   const [imageData, setImageData] = useState<ImageData | null>(null);
+  const { openModal, closeModal } = useModal();
+
+  useEffect(() => {
+    const nRC = nameRef.current;
+    if (nRC) {
+      const isTruncated = nRC.scrollWidth > nRC.clientWidth;
+      setIsTextTruncated(isTruncated);
+    }
+  }, [name]);
 
   useEffect(() => {
     setMesh(probe.getBoxMesh());
@@ -235,8 +248,13 @@ export const ProbeComponent = ({ probe }: { probe: ReflectionProbe }) => {
       }
     });
 
+    document.addEventListener('probeName-changed', event => {
+      setName(probe.getName());
+    });
+
     return () => {
       document.removeEventListener('probeMesh-changed', () => {});
+      document.removeEventListener('probeName-changed', () => {});
     };
   }, []);
 
@@ -303,15 +321,36 @@ export const ProbeComponent = ({ probe }: { probe: ReflectionProbe }) => {
   return (
     <div className="probe-document">
       <div className="probe">
-        <span className={`probeId`}>
-          프로브 #{probes.findIndex(p => p.getId() === probe.getId()) + 1}
-        </span>
-        <span className="probeId" style={{ fontSize: 10, marginLeft: '4px' }}>
-          {probe.getId()}
-        </span>
-        <button className="deleteButton" onClick={() => deleteProbe(probe)}>
-          x
-        </button>
+        <div className="flex w-full justify-between items-center gap-x-3 relative">
+          <div
+            className="absolute bottom-2 left-0 mb-4 bg-gray-700 text-white rounded-md px-2 py-1"
+            style={{
+              display: showNamePopup && isTextTruncated ? 'block' : 'none',
+            }}
+          >
+            {name}
+          </div>
+          <span
+            className="probeId"
+            onMouseOver={() => setShowNamePopup(true)}
+            onMouseOut={() => setShowNamePopup(false)}
+            ref={nameRef}
+          >
+            {name}
+          </span>
+          <div className="flex gap-x-3">
+            <button
+              onClick={() => {
+                openModal(() => <ProbeNameEditor probe={probe} />);
+              }}
+            >
+              이름 수정
+            </button>
+            <button className="deleteButton" onClick={() => deleteProbe(probe)}>
+              x
+            </button>
+          </div>
+        </div>
       </div>
       <div className="probe">
         <div style={{ fontSize: 11, display: 'flex', alignItems: 'center' }}>
@@ -401,16 +440,6 @@ export const ProbeComponent = ({ probe }: { probe: ReflectionProbe }) => {
           onClick={exportProbe}
         >
           JSON 으로 추출
-        </button>
-        <button
-          style={{
-            fontSize: 12,
-            padding: '4px 8px',
-            cursor: 'pointer',
-          }}
-          onClick={exportEnv}
-        >
-          EXR 추출
         </button>
       </div>
       <div className="probe-detail">
@@ -690,6 +719,76 @@ const ModalCanvasContainer = ({ probe }: { probe: ReflectionProbe }) => {
   return (
     <div className="h-full">
       <canvas className="w-full h-full cursor-pointer" ref={canvasRef}></canvas>
+    </div>
+  );
+};
+
+const ProbeNameEditor = ({ probe }: { probe: ReflectionProbe }) => {
+  const [name, setName] = useState<string>(probe.getName());
+  const probes = useAtomValue(ProbeAtom);
+  const { closeModal } = useModal();
+
+  function checkProbeAtomName() {
+    return !probes.some(
+      p => p.getName() === name && p.getId() !== probe.getId(),
+    );
+  }
+
+  return (
+    <div
+      className="w-[30%] bg-white px-4 py-3"
+      onClick={e => {
+        e.preventDefault();
+        e.stopPropagation();
+      }}
+    >
+      {/* Header */}
+      <div className="py-1 w-full mb-2">
+        <strong style={{ fontSize: 16 }}>이름 수정</strong>
+      </div>
+      {/* Body */}
+      <div className="w-full mb-2 flex flex-col gap-y-2">
+        <div className="flex w-full gap-x-2 text-sm items-center">
+          <span>기존 이름 : </span>
+          <span>{probe.getName()}</span>
+        </div>
+        <div className="flex w-full gap-x-2 text-sm items-center">
+          <span>변경할 이름 : </span>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <input
+              className="border border-black w-full py-1 px-2 rounded"
+              type="text"
+              value={name}
+              onInput={e => {
+                e.preventDefault();
+                e.stopPropagation();
+              }}
+              onChange={e => {
+                setName(e.target.value);
+              }}
+            />
+          </div>
+        </div>
+      </div>
+      {/* Footer  */}
+      <div className="flex w-full justify-end gap-x-2">
+        <button className="py-1.5 px-3 text-md" onClick={closeModal}>
+          취소
+        </button>
+        <button
+          className="py-1.5 px-3 text-md"
+          onClick={() => {
+            if (!checkProbeAtomName()) {
+              alert('이미 존재하는 이름입니다.');
+              return;
+            }
+            probe.setName(name);
+            closeModal();
+          }}
+        >
+          변경
+        </button>
+      </div>
     </div>
   );
 };

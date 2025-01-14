@@ -31,6 +31,7 @@ import {
 import { defaultSettings, loadSettings } from '../pages/useSettings.ts';
 import {
   cameraMatrixAtom,
+  DPAtom,
   DPCModeAtom,
   getAtomValue,
   postprocessAtoms,
@@ -56,9 +57,11 @@ import { BloomOption } from './canvas/Bloom.tsx';
 import { BrightnessContrastOption } from './canvas/BrightnessContrast.tsx';
 import { ColorLUTOption } from './canvas/ColorLUT.tsx';
 import { ColorTemperatureOption } from './canvas/ColorTemperature.tsx';
+import { FXAAOption } from './canvas/FXAA.tsx';
 import { HueSaturationOption } from './canvas/HueSaturation.tsx';
+import { SMAAOption } from './canvas/SMAA.tsx';
 import { ToneMappingOption } from './canvas/ToneMapping.tsx';
-import DPConfigurator from './DPConfigurator.tsx';
+import DPConfigurator from './DPC/DPConfigurator.tsx';
 import UploadPage from './UploadModal';
 
 const useEnvUrl = () => {
@@ -174,6 +177,7 @@ const GeneralButtons = () => {
   const [probes, setProbes] = useAtom<ReflectionProbe[]>(ProbeAtom);
   const [dpcMode, setDPCMode] = useAtom(DPCModeAtom);
   const dpcModalRef = useRef(null);
+  const [dp, setDP] = useAtom(DPAtom);
 
   // DPC Modal 모드에 따라 사이즈 변경
   useEffect(() => {
@@ -195,7 +199,7 @@ const GeneralButtons = () => {
       },
     };
     if (dpcModalRef.current) {
-      const styleMode = styles[dpcMode];
+      const styleMode = styles['file'];
       Object.entries(styleMode).map(([key, value]) => {
         dpcModalRef.current.style[key] = value;
       });
@@ -222,15 +226,26 @@ const GeneralButtons = () => {
   const { scene, gl, camera } = threeExports;
 
   // Scene Export 전처리
-  function onBeforeSceneExport(): void {
+  function onBeforeSceneExport(): { beforeDpStatus: boolean } {
     // 프로브 정보 Scene 에 담기
     // scene.vUserData.probes = probes.map(probe => probe.toJSON());
+    const beforeDpStatus = dp.on;
+
+    setDP(prev => ({ ...prev, on: true }));
+    return {
+      beforeDpStatus,
+    };
   }
 
   // Scene Export 후처리
-  function onAfterSceneExport(): void {
+  function onAfterSceneExport({
+    beforeDpStatus,
+  }: {
+    beforeDpStatus: boolean;
+  }): void {
     // userData 에 들어간 probes 정보 삭제
     // delete scene.vUserData.probes;
+    setDP(prev => ({ ...prev, on: beforeDpStatus }));
   }
 
   // Scene Load 전처리
@@ -299,7 +314,7 @@ const GeneralButtons = () => {
         style={{ fontSize: 10 }}
         disabled={scene.children.length === 0}
         onClick={() => {
-          onBeforeSceneExport();
+          const before = onBeforeSceneExport();
           new VGLTFExporter()
             .parseAsync(threeExports.scene, { binary: true })
             .then(result => {
@@ -313,7 +328,7 @@ const GeneralButtons = () => {
                 const output = JSON.stringify(result, null, 2);
                 saveString(output, `scene-${new Date().toISOString()}.gltf`);
               }
-              onAfterSceneExport();
+              onAfterSceneExport(before);
             })
             .catch(err => {
               console.log('GLTFExporter ERROR : ', err);
@@ -350,14 +365,14 @@ const GeneralButtons = () => {
       <button
         style={{ fontSize: 10 }}
         onClick={() => {
-          onBeforeSceneExport();
+          const before = onBeforeSceneExport();
           saveScene(scene)
             .then(() => {
               get('savedScene').then(val => {
                 if (val) {
                   setHasSaved(true);
                   // 저장 후 삭제
-                  onAfterSceneExport();
+                  onAfterSceneExport(before);
                   alert('저장되었습니다.');
                 } else {
                   setHasSaved(false);
@@ -414,7 +429,7 @@ const GeneralButtons = () => {
             return;
           }
 
-          onBeforeSceneExport();
+          const before = onBeforeSceneExport();
           Promise.all([
             uploadExrLightmap(threeExports.scene),
             uploadGainmap(threeExports.scene),
@@ -457,7 +472,7 @@ const GeneralButtons = () => {
                     }),
                   ]).then(() => {
                     alert('업로드 완료');
-                    onAfterSceneExport();
+                    onAfterSceneExport(before);
                   });
                 } else {
                   console.error(
@@ -473,7 +488,7 @@ const GeneralButtons = () => {
       </button>
       <button
         onClick={() => {
-          loadLatest({ threeExports }).catch(e => {
+          loadLatest({ threeExports, dpOn: dp.on }).catch(e => {
             console.error(e);
             alert('최신 업로드 불러오기 실패');
           });
@@ -488,7 +503,9 @@ const GeneralButtons = () => {
               <div
                 ref={dpcModalRef}
                 style={{
-                  width: '35%',
+                  width: '80%',
+                  marginLeft: 0,
+                  marginBottom: 0,
                   maxHeight: '80%',
                   backgroundColor: '#ffffffcc',
                   padding: 16,
@@ -501,7 +518,7 @@ const GeneralButtons = () => {
               </div>
             ),
             () => {
-              setDPCMode('select');
+              setDPCMode('file');
             },
           );
         }}
@@ -541,40 +558,6 @@ const GeneralButtons = () => {
         }}
       >
         BASE 불러오기
-      </button>
-      <button
-        onClick={async () => {
-          const baseURL = ENV.model_dp;
-          const latestHashUrl = ENV.dpHash;
-          const localLatestHash = await get('dp-hash');
-          const remoteLatestHash = (
-            await decompressFileToObject<{ hash: string }>(latestHashUrl)
-          ).hash;
-          const loadModel = async () => {
-            let url;
-            if (!localLatestHash || localLatestHash !== remoteLatestHash) {
-              // CACHE UPDATE
-              const blob = await fetch(baseURL, {
-                cache: 'no-store',
-              }).then(res => res.blob());
-              await set('dp-hash', remoteLatestHash);
-              await set('dpModel', blob);
-
-              url = URL.createObjectURL(blob);
-            } else {
-              const blob = await get('dpModel');
-              url = URL.createObjectURL(blob);
-            }
-            return await new VGLTFLoader().loadAsync(url);
-          };
-
-          loadModel().then(res => {
-            const parsedScene = res.scene;
-            scene.add(parsedScene);
-          });
-        }}
-      >
-        DP 불러오기
       </button>
       <button
         onClick={() => {
@@ -1046,6 +1029,8 @@ const GeneralPostProcessingControl = () => {
       <BloomOption></BloomOption>
       <ColorLUTOption></ColorLUTOption>
       <ToneMappingOption></ToneMappingOption>
+      <FXAAOption></FXAAOption>
+      <SMAAOption></SMAAOption>
     </section>
   );
 };

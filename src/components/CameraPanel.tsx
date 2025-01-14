@@ -10,7 +10,6 @@ import {
   moveToPointAtom,
   orbitSettingAtom,
   panelTabAtom,
-  ProbeAtom,
   setAtomValue,
   threeExportsAtom,
 } from '../scripts/atoms';
@@ -101,14 +100,6 @@ const CameraPanel = () => {
   const rotation = new Quaternion();
   const scale = new Vector3();
   cameraMatrix?.decompose(position, rotation, scale);
-  const probes = getAtomValue(ProbeAtom);
-
-  function updateProbes() {
-    console.log(probes.length);
-    probes.forEach(probe => {
-      probe.updateCameraPosition(probe.getBoxMesh().position, true);
-    });
-  }
 
   const cameraView = (value: boolean) => {
     if (value) {
@@ -414,19 +405,22 @@ const CameraPanel = () => {
               </div>
             </div>
             <Clipping />
-            <button style={{ fontSize: 12 }} onClick={updateProbes}>
-              프로브 업데이트
-            </button>
           </section>
         </div>
       ) : (
         <div
-          style={{ display: 'flex', justifyContent: 'end', cursor: 'pointer' }}
+          style={{
+            display: 'flex',
+            justifyContent: 'end',
+            cursor: 'pointer',
+            border: '1px solid gray',
+            padding: '4px 8px',
+          }}
           onClick={() => {
             setCameraPanel(true);
           }}
         >
-          확대
+          카메라
         </div>
       )}
     </div>

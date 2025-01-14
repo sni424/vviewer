@@ -128,9 +128,9 @@ export default function OptionBuilder<
                     <input
                       className="w-12"
                       type="number"
-                      min={transformed.min}
-                      max={transformed.max}
-                      step={transformed.step}
+                      min={min}
+                      max={max}
+                      step={step}
                       value={transformed.value}
                       onChange={e => {
                         setValue(prev => ({

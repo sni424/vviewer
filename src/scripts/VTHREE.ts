@@ -26,6 +26,14 @@ export interface ThreeUserData {
   hotspotIndex?: number;
   isExr?: boolean;
   mimeType?: 'image/ktx2'; // ktx2압축시 달려있음
+  modelType?: 'DP' | 'BASE';
+  dpOnLightMap?: THREE.Texture;
+  dpOffLightMap?: THREE.Texture;
+  dpOnTextureFile?: string;
+  dpOffTextureFile?: string;
+  // optional
+  dpOnLightMapIntensity?: number;
+  dpOffLightMapIntensity?: number;
 }
 
 declare module 'three' {

@@ -1,7 +1,7 @@
-import { set } from "idb-keyval";
-import { EXRLoader, KTX2Loader } from "three/examples/jsm/Addons.js";
-import GainmapLoader from "./GainmapLoader";
-import { THREE } from "./VTHREE";
+import { set } from 'idb-keyval';
+import { EXRLoader, KTX2Loader } from 'three/examples/jsm/Addons.js';
+import GainmapLoader from './GainmapLoader';
+import { THREE } from './VTHREE';
 
 const dispoableUrls: string[] = [];
 const disposables: { dispose?: Function }[] = [];
@@ -11,7 +11,8 @@ export type VTextureLoaderOption = {
   channel: number;
   forceExrToJpg?: boolean; // exr로 입력되어도 jpg로 변환해서 처리
   gl?: THREE.WebGLRenderer;
-  as?: "gainmap" | "texture";
+  as?: 'gainmap' | 'texture';
+  saveAs?: string;
 };
 
 const defaultOption: VTextureLoaderOption = {
@@ -32,9 +33,12 @@ export default class VTextureLoader {
   }
 
   static load = VTextureLoader.loadAsync;
-  static loadAsync(fileOrUrl: File | string, option?: Partial<VTextureLoaderOption>) {
+  static loadAsync(
+    fileOrUrl: File | string,
+    option?: Partial<VTextureLoaderOption>,
+  ) {
     const inputOption = { ...defaultOption, ...option } as VTextureLoaderOption;
-    const isFile = typeof fileOrUrl !== "string";
+    const isFile = typeof fileOrUrl !== 'string';
     const url = isFile ? URL.createObjectURL(fileOrUrl) : fileOrUrl;
     let gainMap = isFile ? fileOrUrl.name : fileOrUrl;
     if (option?.forceExrToJpg) {
@@ -52,17 +56,23 @@ export default class VTextureLoader {
           console.error('게인맵의 경우 옵션에 gl 필요');
           throw new Error('게인맵의 경우 옵션에 gl 필요');
         }
-        return GainmapLoader.load(fileOrUrl, { gl: inputOption.gl }).then(texture => {
-          texture.vUserData.gainMap = gainMap;
-          texture.flipY = inputOption.flipY;
-          texture.channel = inputOption.channel;
-          texture.needsUpdate = true;
-          return texture;
-        })
+        return GainmapLoader.load(fileOrUrl, { gl: inputOption.gl }).then(
+          texture => {
+            texture.vUserData.gainMap = gainMap;
+            texture.flipY = inputOption.flipY;
+            texture.channel = inputOption.channel;
+            texture.needsUpdate = true;
+            return texture;
+          },
+        );
       } else if (inputOption.as === 'texture') {
         let loader: THREE.Loader;
-        const isExr = (isFile && fileOrUrl.name.toLowerCase().endsWith(".exr")) || (!isFile && (fileOrUrl as string).toLowerCase().endsWith(".exr"));
-        const isKtx = (isFile && fileOrUrl.name.toLowerCase().endsWith(".ktx")) || (!isFile && (fileOrUrl as string).toLowerCase().endsWith(".ktx"));
+        const isExr =
+          (isFile && fileOrUrl.name.toLowerCase().endsWith('.exr')) ||
+          (!isFile && (fileOrUrl as string).toLowerCase().endsWith('.exr'));
+        const isKtx =
+          (isFile && fileOrUrl.name.toLowerCase().endsWith('.ktx')) ||
+          (!isFile && (fileOrUrl as string).toLowerCase().endsWith('.ktx'));
         if (isExr) {
           loader = new EXRLoader();
         } else if (isKtx) {
@@ -75,7 +85,7 @@ export default class VTextureLoader {
         } else {
           loader = new THREE.TextureLoader();
         }
-        return loader.loadAsync(url).then((_texture) => {
+        return loader.loadAsync(url).then(_texture => {
           const texture = _texture as THREE.Texture;
           texture.channel = inputOption.channel;
           texture.flipY = inputOption.flipY;
@@ -83,7 +93,18 @@ export default class VTextureLoader {
             texture.vUserData.isExr = true;
             if (isFile) {
               texture.vUserData.lightMap = fileOrUrl.name;
-              set(fileOrUrl.name, fileOrUrl as File);
+              let fileName = fileOrUrl.name;
+              if (option && option.saveAs) {
+                fileName = option.saveAs;
+              }
+              // saveAs 등과 키를 맞춰야함.
+              let fileToSave: File = fileOrUrl as File;
+              if (fileToSave.name !== fileName) {
+                fileToSave = new File([fileToSave], fileName, {
+                  type: fileToSave.type,
+                });
+              }
+              set(fileName, fileToSave);
             }
             // texture.flipY = !texture.flipY;
           }
@@ -95,7 +116,8 @@ export default class VTextureLoader {
             texture.minFilter = THREE.LinearMipmapLinearFilter;
             texture.magFilter = THREE.LinearFilter;
             if (inputOption.gl) {
-              texture.anisotropy = inputOption.gl.capabilities.getMaxAnisotropy();
+              texture.anisotropy =
+                inputOption.gl.capabilities.getMaxAnisotropy();
             }
           }
 
@@ -109,17 +131,21 @@ export default class VTextureLoader {
     }
 
     // 2. file / url에 따라서 자동으로 결정
-    const fork = isFile ? fileOrUrl.name.toLowerCase() : fileOrUrl.toLowerCase();
+    const fork = isFile
+      ? fileOrUrl.name.toLowerCase()
+      : fileOrUrl.toLowerCase();
 
     const isHdr = fork.endsWith('.hdr') || fork.endsWith('.exr');
-    const isJpg = isFile ? (fileOrUrl.type === "image/jpeg") : (fork.endsWith('.jpg') || fork.endsWith('.jpeg'));
+    const isJpg = isFile
+      ? fileOrUrl.type === 'image/jpeg'
+      : fork.endsWith('.jpg') || fork.endsWith('.jpeg');
     const isGainmap = isHdr || isJpg;
     const isPng = fork.endsWith('.png');
 
     const detectFlipY = option?.flipY === undefined;
     let flipY = inputOption.flipY;
     if (detectFlipY) {
-      flipY = isHdr ? true : (isJpg ? false : (isPng ? false : true));
+      flipY = isHdr ? true : isJpg ? false : isPng ? false : true;
     }
 
     // console.log(flipY);
@@ -150,6 +176,5 @@ export default class VTextureLoader {
       console.error('Invalid File Format : ', fileOrUrl);
       throw new Error('Invalid File Format : ' + fileOrUrl);
     }
-
   }
 }

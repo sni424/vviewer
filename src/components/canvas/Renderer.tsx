@@ -5,6 +5,8 @@ import { Layer } from '../../Constants';
 import { getSettings } from '../../pages/useSettings';
 import {
   cameraMatrixAtom,
+  catalogueAtom,
+  DPAtom,
   getAtomValue,
   globalGlAtom,
   hotspotAtom,
@@ -91,8 +93,110 @@ const useLoadModel = ({
   scene: THREE.Scene;
 }) => {
   const sources = useAtomValue(sourceAtom);
+  const catalogue = useAtomValue(catalogueAtom);
   const setLoadHistoryAtom = useSetAtom(loadHistoryAtom);
   const loaderRef = useRef(new VGLTFLoader(gl));
+  const [dp, setDp] = useAtom(DPAtom);
+
+  useEffect(() => {
+    console.log('catalogue changed');
+    // 무조건 exr
+    const flipY = true;
+    const as = 'texture';
+    const mapDst = 'lightmap';
+
+    Object.values(catalogue).forEach(target => {
+      const { glb, type, dpOnTexture, dpOffTexture } = target;
+
+      const file = glb.file;
+
+      // add new History
+      setLoadHistoryAtom(history => {
+        const newHistory = new Map(history);
+        //@ts-ignore
+        newHistory.set(file.name, {
+          name: file.name,
+          start: Date.now(),
+          end: 0,
+          file: file,
+          uuid: null,
+        });
+        return newHistory;
+      });
+
+      // load GLB File
+      loaderRef.current.loadAsync(file).then(async gltf => {
+        let onT: THREE.Texture | null = null;
+        let offT: THREE.Texture | null = null;
+        if (dpOnTexture || dpOffTexture) {
+          [onT, offT] = await Promise.all([
+            dpOnTexture
+              ? VTextureLoader.loadAsync(dpOnTexture.file, {
+                  gl,
+                  as,
+                  flipY,
+                  saveAs: dpOnTexture.name,
+                })
+              : null,
+            dpOffTexture
+              ? VTextureLoader.loadAsync(dpOffTexture.file, {
+                  gl,
+                  as,
+                  flipY,
+                  saveAs: dpOffTexture.name,
+                })
+              : null,
+          ]);
+        }
+
+        if (type === 'BASE' && onT && offT) {
+          applyTexture(gltf.scene, dp.on ? onT : offT, mapDst);
+        }
+
+        if (type === 'DP' && onT !== null) {
+          applyTexture(gltf.scene, onT, mapDst);
+        }
+
+        // DP 업로드를 통해 불러온 모델로 인식
+        gltf.scene.traverseAll(object => {
+          object.vUserData.modelType = type;
+          if (type === 'DP' && !dp.on) {
+            object.visible = false;
+          }
+
+          if ((object as THREE.Mesh).isMesh) {
+            const mesh = object as THREE.Mesh;
+            const mat = mesh.material as THREE.MeshStandardMaterial;
+            if (onT) {
+              mat.vUserData.dpOnLightMap = onT;
+            }
+            if (dpOnTexture) {
+              mat.vUserData.dpOnTextureFile = dpOnTexture.name;
+            }
+
+            if (offT) {
+              mat.vUserData.dpOffLightMap = offT;
+            }
+            if (dpOffTexture) {
+              mat.vUserData.dpOffTextureFile = dpOffTexture.name;
+            }
+          }
+        });
+
+        scene.add(...gltf.scene.children);
+
+        setLoadHistoryAtom(history => {
+          const newHistory = new Map(history);
+          const fileHistory = newHistory.get(file.name);
+          if (fileHistory) {
+            fileHistory.end = Date.now();
+            fileHistory.uuid = gltf.scene.uuid;
+          }
+          return newHistory;
+        });
+      });
+    });
+  }, [catalogue]);
 
   useEffect(() => {
     sources.forEach(source => {
@@ -195,6 +299,7 @@ function Renderer() {
     </>
   );
 }
+
 const useMouseHandler = () => {
   const threeExports = useAtomValue(threeExportsAtom);
   const [selected, setSelected] = useAtom(selectedAtom);
