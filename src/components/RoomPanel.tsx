@@ -1,7 +1,8 @@
 import { useAtom } from 'jotai';
 import { roomColorString } from '../Constants';
-import { getAtomValue, roomAtom } from '../scripts/atoms';
+import { getAtomValue, roomAtom, threeExportsAtom } from '../scripts/atoms';
 import { loadRooms, uploadJson } from '../scripts/atomUtils';
+import { THREE } from '../scripts/VTHREE';
 
 const uploadRooms = async () => {
   const hotspots = getAtomValue(roomAtom);
@@ -31,11 +32,14 @@ function RoomSetting() {
           name: '방',
           border: [],
           show: true,
+          tourMatrix: [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1],
           index: prev.length + 1,
         },
       ];
     });
   };
+
+  console.log(rooms);
 
   const creatingRoom = rooms.find(room => Boolean(room.creating));
 
@@ -164,6 +168,73 @@ function RoomSetting() {
               >
                 삭제
               </button>
+            </div>
+            <div>
+              <button
+                onClick={() => {
+                  const three = getAtomValue(threeExportsAtom);
+                  if (!three) {
+                    return console.log('no Three');
+                  }
+                  const { camera } = three;
+                  setRooms(prev => {
+                    const copied = [...prev];
+                    copied[i].tourMatrix = camera.matrix.toArray();
+                    return copied;
+                  });
+                }}
+              >
+                투어 카메라위치 설정하기
+              </button>
+              {room.tourMatrix && (
+                <div className="flex items-center gap-4">
+                  <div>
+                    <span>위치</span>
+                    <div>X : {room.tourMatrix[12].toFixed(2)}</div>
+                    <div>Y : {room.tourMatrix[13].toFixed(2)}</div>
+                    <div>Z : {room.tourMatrix[14].toFixed(2)}</div>
+                  </div>
+                  <div>
+                    <span>회전</span>
+                    <div>
+                      X :{' '}
+                      {(() => {
+                        const threeMatrix = new THREE.Matrix4().fromArray(
+                          room.tourMatrix,
+                        ); // 배열에서 행렬 생성
+                        const euler = new THREE.Euler().setFromRotationMatrix(
+                          threeMatrix,
+                        ); // 회전값 추출
+                        return THREE.MathUtils.radToDeg(euler.x).toFixed(2);
+                      })()}
+                    </div>
+                    <div>
+                      Y :{' '}
+                      {(() => {
+                        const threeMatrix = new THREE.Matrix4().fromArray(
+                          room.tourMatrix,
+                        ); // 배열에서 행렬 생성
+                        const euler = new THREE.Euler().setFromRotationMatrix(
+                          threeMatrix,
+                        ); // 회전값 추출
+                        return THREE.MathUtils.radToDeg(euler.y).toFixed(2);
+                      })()}
+                    </div>
+                    <div>
+                      Z :{' '}
+                      {(() => {
+                        const threeMatrix = new THREE.Matrix4().fromArray(
+                          room.tourMatrix,
+                        ); // 배열에서 행렬 생성
+                        const euler = new THREE.Euler().setFromRotationMatrix(
+                          threeMatrix,
+                        ); // 회전값 추출
+                        return THREE.MathUtils.radToDeg(euler.z).toFixed(2);
+                      })()}
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         );
