@@ -19,6 +19,7 @@ const OrbitManager: React.FC = () => {
   //threejs 객체 가져오기
   const { camera } = useThree();
   const [orbitSetting, setOrbitSetting] = useAtom(orbitSettingAtom);
+  const orbitSettingRef = useRef(orbitSetting);
   //카메라 세팅
   const cameraSetting = useAtomValue(cameraSettingAtom);
   //카메라 정보값 갱신
@@ -36,6 +37,11 @@ const OrbitManager: React.FC = () => {
       orbitRef.current.update();
     }
   };
+
+  useEffect(() => {
+    console.log('orbitSetting changed : ', orbitSetting);
+    orbitSettingRef.current = orbitSetting;
+  }, [orbitSetting]);
 
   // isoView가 아닌 상태에서 OrbitControls이 활성화 되면 이전 바라보던 방향으로 설정
   useEffect(() => {
@@ -68,12 +74,17 @@ const OrbitManager: React.FC = () => {
     document.addEventListener('control-dragged', event => {
       const { moving } = (event as unknown as { detail: { moving: boolean } })
         .detail;
+      const copied = { ...orbitSettingRef.current };
+
+      setOutControlled(true);
       if (moving) {
-        setOutControlled(moving);
+        copied.tempEnabled = copied.enabled;
+        copied.enabled = false;
+      } else {
+        copied.enabled = copied.tempEnabled ?? true;
+        delete copied.tempEnabled;
       }
-      setOrbitSetting(pre => {
-        return { ...pre, enabled: !moving };
-      });
+      setOrbitSetting(copied);
     });
     return () => {
       document.removeEventListener('control-dragged', () => {});
