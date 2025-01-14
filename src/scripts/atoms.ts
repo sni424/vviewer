@@ -397,6 +397,7 @@ export const DPCModeAtom = atom<DPConfiguratorMode>('select');
 export type Room = {
   index: number;
   name: string;
+  tourMatrix: number[]
   border: [number, number][]; // [x, z]
 };
 export type RoomCreateOption = Room & {
