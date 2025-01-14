@@ -45,6 +45,10 @@
 
 .probe .probeId {
   font-size: 12px;
+  max-width: 70%;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
 }
 
 .probe .probeId.selected {

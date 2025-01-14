@@ -1,7 +1,9 @@
 import { get } from 'idb-keyval';
-import React, { useEffect, useRef } from 'react';
+import { useAtomValue } from 'jotai';
+import React, { ChangeEvent, useEffect, useRef, useState } from 'react';
+import { ProbeAtom, useModal } from '../scripts/atoms';
+import ReflectionProbe from '../scripts/ReflectionProbe.ts';
 import { THREE } from '../scripts/VTHREE';
-import { useModal } from '../scripts/atoms';
 
 export interface MapPreviewProps {
   material: THREE.MeshStandardMaterial;
@@ -85,6 +87,7 @@ const MapPreview: React.FC<MapPreviewProps> = ({
     mapKey as keyof THREE.MeshStandardMaterial
   ] as THREE.Texture;
   const { openModal, closeModal } = useModal();
+  const probes = useAtomValue(ProbeAtom);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const isGainmap = Boolean(texture?.vUserData?.gainMap);
   const isKtx = texture?.vUserData?.mimeType === 'image/ktx2';
@@ -121,8 +124,36 @@ const MapPreview: React.FC<MapPreviewProps> = ({
     }
   }, [texture]);
 
+  function onEnvMapSelectChange(event: ChangeEvent<HTMLSelectElement>) {
+    const value = event.target.value;
+    console.log(value);
+    if (value === 'none') {
+      // Unreachable
+      return;
+    }
+    if (value === 'delete') {
+      material.envMap = null;
+      material.needsUpdate = true;
+    } else {
+      const probe = probes.find(probe => probe.getId() === value);
+      if (probe) {
+        material.envMap = probe.getTexture();
+      }
+    }
+  }
+
   if (cannotDraw) {
-    if (texture) {
+    if (mapKey === 'envMap') {
+      return (
+        <div className="my-1">
+          {probes.length > 0 ? (
+            <ProbeSelector material={material} />
+          ) : (
+            <span>생성된 프로브가 없습니다.</span>
+          )}
+        </div>
+      );
+    } else if (texture) {
       return (
         <div style={{ fontSize: 11, color: '#555' }}>
           표시불가 {isKtx ? '(KTX)' : '(HDR)'}
@@ -201,6 +232,57 @@ const MapPreview: React.FC<MapPreviewProps> = ({
         }}
       ></canvas>
     </div>
+  );
+};
+
+const ProbeSelector = ({
+  material,
+}: {
+  material: THREE.MeshStandardMaterial;
+}) => {
+  const probes = useAtomValue(ProbeAtom);
+  const [value, setValue] = useState(material.vUserData.probeId ?? 'none');
+
+  function applyProbeOnMaterial(
+    material: THREE.MeshStandardMaterial,
+    probe: ReflectionProbe,
+  ) {
+    material.envMap = probe.getTexture();
+    material.onBeforeCompile = probe.materialOnBeforeCompileFunc();
+    material.vUserData.probeId = value;
+  }
+
+  useEffect(() => {
+    if (value === 'none') {
+      // Unreachable
+      return;
+    }
+    if (value === 'delete') {
+      material.envMap = null;
+      delete material.vUserData.probeId;
+      material.needsUpdate = true;
+    } else {
+      const probe = probes.find(probe => probe.getId() === value);
+      if (probe) {
+        applyProbeOnMaterial(material, probe);
+      }
+    }
+  }, [value]);
+
+  return (
+    <select
+      style={{ maxWidth: 120 }}
+      onChange={e => setValue(e.target.value)}
+      value={value}
+    >
+      <option selected value="none" style={{ display: 'none' }}>
+        프로브를 선택하세요.
+      </option>
+      {material.envMap && <option value="delete">ENV 삭제</option>}
+      {probes.map(probe => (
+        <option value={probe.getId()}>{probe.getName()}</option>
+      ))}
+    </select>
   );
 };
 

@@ -3,6 +3,7 @@ import { TransformControls } from 'three-stdlib';
 import { v4 } from 'uuid';
 import { Layer } from '../Constants.ts';
 import * as THREE from './VTHREE.ts';
+import VTextureLoader from './VTextureLoader.ts';
 
 const DEFAULT_RESOLUTION: ReflectionProbeResolutions = 2048;
 const DEFAULT_POSITION: THREE.Vector3 = new THREE.Vector3(0, 0, 0);
@@ -69,6 +70,8 @@ export default class ReflectionProbe {
   private textureImage: string | null = null;
   private canvas: HTMLCanvasElement;
   private imageData: ImageData;
+  private name: string;
+  private customTexture: THREE.Texture | null = null;
 
   constructor(
     renderer: THREE.WebGLRenderer,
@@ -76,6 +79,7 @@ export default class ReflectionProbe {
     camera: THREE.Camera,
     resolution?: ReflectionProbeResolutions,
   ) {
+    this.name = '프로브_' + this.serializedId;
     this.renderer = renderer;
     this.pmremGenerator = new THREE.PMREMGenerator(renderer);
     this.scene = scene;
@@ -253,6 +257,18 @@ export default class ReflectionProbe {
     };
   }
 
+  getName() {
+    return this.name;
+  }
+
+  setName(name: string) {
+    this.name = name;
+    document.dispatchEvent(
+      new CustomEvent('probeName-changed', { detail: name }),
+    );
+    return this;
+  }
+
   setControlsVisible(visible: boolean) {
     this.translateControls.showX = visible;
     this.translateControls.showZ = visible;
@@ -334,7 +350,7 @@ export default class ReflectionProbe {
   }
 
   getBoxMesh() {
-    this.updateObjectChildrenEnv();
+    // this.updateObjectChildrenEnv();
     return this.boxMesh;
   }
 
@@ -390,12 +406,19 @@ export default class ReflectionProbe {
     return this;
   }
 
+  materialOnBeforeCompileFunc() {
+    return materialOnBeforeCompileFunction(
+      this.cubeCamera.position,
+      this.boxMesh.scale,
+    );
+  }
+
   onBeforeCubeCameraUpdate() {
     const scene = this.scene;
 
     const filterCondition = (object: THREE.Object3D) => {
       return (
-        (object.isTransformControls || object.vUserData.isTransformControls) &&
+        (object.isTransformControl() || object.vUserData.isTransformControls) &&
         object.visible
       );
     };
@@ -479,7 +502,7 @@ export default class ReflectionProbe {
     // Apply envMap to ReflectionProbe Sphere
     this.reflectionProbeSphere.material.envMap = this.getTexture();
     // Apply Box In Box projected Meshes
-    this.updateObjectChildrenEnv();
+    // this.updateObjectChildrenEnv();
     // After Render => set No Render Objects Visible
     this.onAfterCubeCameraUpdate(filteredObjects);
     // Canvas Update
@@ -498,6 +521,9 @@ export default class ReflectionProbe {
   }
 
   getTexture() {
+    if (this.customTexture) {
+      return this.customTexture;
+    }
     const cubeTexture = this.renderTarget.texture;
     return this.pmremGenerator.fromCubemap(cubeTexture).texture;
   }
@@ -592,10 +618,6 @@ export default class ReflectionProbe {
     this.autoUpdate = autoUpdate;
   }
 
-  getTextureImage() {
-    return this.textureImage;
-  }
-
   getCanvas() {
     return this.canvas;
   }
@@ -606,6 +628,14 @@ export default class ReflectionProbe {
 
   getCenter() {
     return this.center;
+  }
+
+  async setTexture(url: string | File) {
+    const result = (await VTextureLoader.load(url, {
+      gl: this.renderer,
+    })) as THREE.Texture;
+    // TODO something
+    this.customTexture = result;
   }
 
   static isProbeJson(

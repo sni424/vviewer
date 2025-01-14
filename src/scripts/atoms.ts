@@ -289,6 +289,7 @@ export const cameraActionAtom = atom<{
 export const orbitSettingAtom = atom<{
   autoRotate: boolean;
   enabled: boolean;
+  tempEnabled?: boolean;
 }>({
   autoRotate: false,
   enabled: true,
