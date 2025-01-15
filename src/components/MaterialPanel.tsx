@@ -55,7 +55,13 @@ const setMap = (
   } else if (dstKey === 'alphaMap') {
     material.alphaMap = texture;
   } else if (dstKey === 'envMap') {
-    material.envMap = texture;
+    if (texture) {
+      material.envMap = texture;
+    } else {
+      material.envMap = null;
+      delete material.vUserData.probeId;
+      material.needsUpdate = true;
+    }
   } else if (dstKey === 'aoMap') {
     material.aoMap = texture;
   } else {
@@ -333,6 +339,10 @@ const MapSection = ({ mat }: { mat: THREE.MeshStandardMaterial }) => {
     if (!mat.transparent) {
       mat.transparent = true;
     }
+    // mat.transparent = false;
+    // mat.depthWrite = false;
+    // mat.depthTest = true;
+    // mat.needsUpdate = true;
   }, [mat]);
 
   return (

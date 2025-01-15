@@ -60,6 +60,17 @@ const importProbes = async () => {
     probes.forEach(probe => {
       probe.addToScene();
       probe.updateCameraPosition(probe.getCenter(), true);
+      scene.traverse(node => {
+        if (node instanceof THREE.Mesh) {
+          const n = node as THREE.Mesh;
+          const material = n.material as THREE.MeshStandardMaterial;
+          if (material.vUserData.probeId === probe.getId()) {
+            material.envMap = probe.getTexture();
+            material.onBeforeCompile = probe.materialOnBeforeCompileFunc();
+            material.needsUpdate = true;
+          }
+        }
+      });
     });
 
     setAtomValue(ProbeAtom, probes);
@@ -69,12 +80,35 @@ const importProbes = async () => {
 const ProbeInfo = () => {
   const threeExports = useAtomValue(threeExportsAtom);
   const [probes, setProbes] = useAtom<ReflectionProbe[]>(ProbeAtom);
+  const [probeEditMode, setProbeEditMode] = useState<boolean>(false);
+  const [lastCamera, setLastCamera] = useState<{
+    matrix: THREE.Matrix4;
+    fov: number;
+  } | null>(null);
 
+  const globalPlane = new THREE.Plane(new THREE.Vector3(0, -1, 0), 5);
   if (!threeExports) {
     return null;
   }
 
   const { scene, gl, camera } = threeExports;
+
+  useEffect(() => {
+    if (probeEditMode) {
+      globalPlane.constant = 2.9;
+      gl.localClippingEnabled = true;
+      gl.clippingPlanes = [globalPlane];
+
+      // Force Move Camera
+      setLastCamera({ matrix: camera.matrix, fov: 75 });
+      // camera.moveTo({
+      //
+      // });
+    } else {
+      gl.clippingPlanes = [];
+      gl.localClippingEnabled = false;
+    }
+  }, [probeEditMode]);
 
   function addProbe() {
     const probe = new ReflectionProbe(gl, scene, camera);
@@ -168,7 +202,7 @@ const ProbeInfo = () => {
           style={{ fontSize: 12, padding: '4px 8px', cursor: 'pointer' }}
           onClick={addProbe}
         >
-          + 새 프로브 생성
+          + 추가
         </button>
         <button
           style={{ fontSize: 12, padding: '4px 8px', cursor: 'pointer' }}
@@ -188,7 +222,13 @@ const ProbeInfo = () => {
               style={{ fontSize: 12, padding: '4px 8px', cursor: 'pointer' }}
               onClick={updateAllProbes}
             >
-              프로브 전체 업데이트
+              전체 업데이트
+            </button>
+            <button
+              onClick={() => setProbeEditMode(prev => !prev)}
+              style={{ fontSize: 12, padding: '4px 8px', cursor: 'pointer' }}
+            >
+              프로브 수정 모드
             </button>
           </>
         )}

@@ -25,6 +25,7 @@ export const getSettings = () => {
   const hotspots = getAtomValue(hotspotAtom);
   const env = getAtomValue(envAtom);
   const settings = getAtomValue(settingsAtom);
+  const materialSetting = getAtomValue(materialSettingAtom);
 
   // 라이트맵 이미지 대비는 임시제외
   // const lmContrast = Object.getOwnPropertyNames(LightmapImageContrast).reduce((acc, key) => {
@@ -35,13 +36,13 @@ export const getSettings = () => {
   //   return acc;
   // }, {});
 
-
   const postProcessOptions: Record<string, any> = {};
   const postProcessAtoms = Object.entries(getAtomValue(postprocessAtoms));
   postProcessAtoms.forEach(
     ([label, value]: [string, WritableAtom<any, any, any>]) => {
       postProcessOptions[label] = getAtomValue(value);
-    });
+    },
+  );
 
   return {
     cameraSetting,
@@ -90,7 +91,7 @@ export const loadSettings = () => {
             setAtomValue(copied[key], (eachPrev: any) => {
               return {
                 ...eachPrev,
-                ...(value as any)[key]
+                ...(value as any)[key],
               };
             });
             // copied[key] = { ...(value as any)[key] };
@@ -98,7 +99,7 @@ export const loadSettings = () => {
         });
 
         return copied;
-      })
+      });
 
       // console.log("Loadd", value);
     }

@@ -34,6 +34,7 @@ import {
   DPAtom,
   DPCModeAtom,
   getAtomValue,
+  materialSettingAtom,
   postprocessAtoms,
   ProbeAtom,
   selectedAtom,
@@ -280,6 +281,16 @@ const GeneralButtons = () => {
         }
         newProbe.addToScene();
         newProbe.updateCameraPosition(newProbe.getCenter(), true);
+        loadedScene.traverse(child => {
+          if (
+            child.type === 'Mesh' &&
+            child.vUserData.probeId === newProbe.getId()
+          ) {
+            const m = child as THREE.Mesh;
+            const material = m.material as THREE.MeshStandardMaterial;
+            material.envMap = newProbe.getTexture();
+          }
+        });
         setProbes(pre => {
           return [...pre, newProbe];
         });
@@ -581,6 +592,13 @@ const GeneralSceneInfo = () => {
 
   const { scene } = threeExports;
   const totals = groupInfo(scene);
+
+  useEffect(() => {
+    const objects = selecteds.map(uuid =>
+      scene.getObjectByProperty('uuid', uuid),
+    );
+    console.log(objects);
+  }, [selecteds]);
 
   return (
     <>
@@ -1315,7 +1333,9 @@ const GeneralMaterialControl = () => {
   const { scene } = threeExports;
 
   const [aoValue, setAoValue] = useState(0);
-  const [lmIntensityValue, setlmIntensityValue] = useState(1);
+  const [lmIntensityValue, setlmIntensityValue] = useState(6);
+  const [wireframe, setWireframe] = useState(false);
+  const [materialSetting, setMaterialSetting] = useAtom(materialSettingAtom);
 
   return (
     <section className="w-full">
@@ -1407,6 +1427,27 @@ const GeneralMaterialControl = () => {
           max={LIGHTMAP_INTENSITY_MAX}
           step={0.1}
         ></input>
+      </div>
+      <div className="flex">
+        <div className="mr-3">Wireframe</div>
+        <input
+          type="checkbox"
+          checked={wireframe}
+          onChange={event => {
+            const checked = event.target.checked;
+            const allMeshes: THREE.Mesh[] = [];
+            scene.traverse(child => {
+              if (child instanceof THREE.Mesh) {
+                allMeshes.push(child);
+              }
+            });
+            allMeshes.forEach(mesh => {
+              //@ts-ignore
+              mesh.material.wireframe = checked;
+            });
+            setWireframe(pre => !pre);
+          }}
+        />
       </div>
     </section>
   );

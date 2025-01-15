@@ -1,4 +1,5 @@
 import { GLTFExporter } from 'three/examples/jsm/Addons.js';
+import * as TextureUtils from 'three/examples/jsm/utils/WebGLTextureUtils';
 import { Layer } from '../Constants.ts';
 import * as THREE from '../scripts/VTHREE.ts';
 
@@ -52,6 +53,7 @@ interface GLTFExporterOptions {
 export default class VGLTFExporter extends GLTFExporter {
   constructor() {
     super();
+    this.setTextureUtils(TextureUtils);
   }
 
   parse(
@@ -127,13 +129,22 @@ export default class VGLTFExporter extends GLTFExporter {
         const mat = mesh.material as THREE.MeshStandardMaterial;
         const clonedMat = mat.clone();
         const lm = clonedMat.lightMap;
-        if (lm && lm.vUserData.gainMap) {
-          console.log('has GainMap');
-          // 기존 Material 날라가는 것 방지로 clonedMat 이용
-          clonedMat.vUserData.gainMap = lm.vUserData.gainMap;
-          clonedMat.vUserData.gainMapIntensity = mat.lightMapIntensity;
-          clonedMat.lightMap = null;
-          mesh.material = clonedMat;
+        if (lm) {
+          if (lm.vUserData.gainMap) {
+            console.log('has GainMap');
+            // 기존 Material 날라가는 것 방지로 clonedMat 이용
+            clonedMat.vUserData.gainMap = lm.vUserData.gainMap;
+            clonedMat.vUserData.gainMapIntensity = mat.lightMapIntensity;
+            clonedMat.lightMap = null;
+            mesh.material = clonedMat;
+          } else if (lm.vUserData.mimeType === 'image/ktx2') {
+            // Remove Light map from ktx2
+            console.log('has KTX2 LightMap');
+            clonedMat.lightMap = null;
+            console.log(clonedMat.lightMapIntensity);
+            clonedMat.vUserData.lightMapIntensity = clonedMat.lightMapIntensity;
+            mesh.material = clonedMat;
+          }
         }
       }
     }

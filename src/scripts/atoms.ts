@@ -410,7 +410,7 @@ export const DPCModeAtom = atom<DPConfiguratorMode>('file');
 export type Room = {
   index: number;
   name: string;
-  tourMatrix: number[]
+  tourMatrix: number[];
   border: [number, number][]; // [x, z]
 };
 export type RoomCreateOption = Room & {
@@ -458,6 +458,14 @@ export const settingsAtom = atom<Settings>({
   hotspotSize: 0.12,
   shotHotspots: true,
   detectHotspotRoom: true,
+});
+
+export const materialSettingAtom = atom<{
+  lightMapIntensity: number;
+  aoMapIntensity: number;
+}>({
+  lightMapIntensity: 6,
+  aoMapIntensity: 0,
 });
 
 export const pathfindingAtom = atom<{
