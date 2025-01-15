@@ -56,7 +56,11 @@ const CameraManager: React.FC<UnifiedCameraControlsProps> = ({
 
   // 카메라 이동 및 회전시 카메라 데이터 저장장
   const updateCameraInfo = () => {
-    if (orbitControl && !cameraSetting.isoView) {
+    if (
+      !orbitControl?.enabled &&
+      !cameraSetting.isoView &&
+      !cameraSetting.topView
+    ) {
       setLastCameraInfo(pre => ({
         ...pre,
         matrix: camera.matrix.toArray(),

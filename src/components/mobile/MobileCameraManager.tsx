@@ -51,6 +51,24 @@ const MobileCameraManager = ({
   // 마지막 회전 속도 저장
   const velocity = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
 
+  // 카메라 이동 및 회전시 카메라 데이터 저장
+  const updateCameraInfo = () => {
+    if (
+      !orbitControl?.enabled &&
+      camera &&
+      !cameraSetting.isoView &&
+      !cameraSetting.topView
+    ) {
+      setLastCameraInfo(pre => ({
+        ...pre,
+        matrix: camera.matrix.toArray(),
+      }));
+    }
+
+    // // 방 업데이트
+    // setAtomValue(insideRoomAtom, cameraInRoom(camera.matrix));
+  };
+
   const handleTouchStart = (e: TouchEvent) => {
     // 모든 터치 이벤트를 배열로 변환
     const touches = Array.from(e.touches);
@@ -278,19 +296,6 @@ const MobileCameraManager = ({
       // 다음 프레임에서 applyInertia를 호출하여 관성을 지속적으로 적용
       requestAnimationFrame(applyInertia);
     }
-  };
-
-  // 카메라 이동 및 회전시 카메라 데이터 저장
-  const updateCameraInfo = () => {
-    if (orbitControl && camera && !cameraSetting.isoView) {
-      setLastCameraInfo(pre => ({
-        ...pre,
-        matrix: camera.matrix.toArray(),
-      }));
-    }
-
-    // // 방 업데이트
-    // setAtomValue(insideRoomAtom, cameraInRoom(camera.matrix));
   };
 
   useEffect(() => {
