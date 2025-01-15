@@ -335,15 +335,7 @@ const UserDataSection = ({ mat }: { mat: THREE.MeshStandardMaterial }) => {
 
 const MapSection = ({ mat }: { mat: THREE.MeshStandardMaterial }) => {
   const [opacity, setOpacity] = useState(mat.opacity);
-  useEffect(() => {
-    if (!mat.transparent) {
-      mat.transparent = true;
-    }
-    // mat.transparent = false;
-    // mat.depthWrite = false;
-    // mat.depthTest = true;
-    // mat.needsUpdate = true;
-  }, [mat]);
+  const [transparent, setTransparent] = useState(mat.transparent);
 
   return (
     <section
@@ -447,24 +439,53 @@ const MapSection = ({ mat }: { mat: THREE.MeshStandardMaterial }) => {
               },
             }}
           ></MapInfo>
-          <div>
-            <strong>Opacity</strong>
-            <div style={{ display: 'flex', width: '100%', gap: 8 }}>
-              <div
-                style={{
-                  flex: 1,
-                  minWidth: 0,
-                }}
-              >
-                <input
+          <div className="w-full flex items-center gap-x-2 py-2.5">
+            <strong>투명도 설정</strong>
+            <input
+              type="checkbox"
+              checked={transparent}
+              onChange={e => {
+                const value = e.target.checked;
+                setTransparent(value);
+                mat.transparent = value;
+                mat.needsUpdate = true;
+              }}
+            />
+          </div>
+          {transparent && (
+            <div>
+              <strong>Opacity</strong>
+              <div style={{ display: 'flex', width: '100%', gap: 8 }}>
+                <div
                   style={{
-                    width: '100%',
+                    flex: 1,
+                    minWidth: 0,
                   }}
-                  type="range"
+                >
+                  <input
+                    style={{
+                      width: '100%',
+                    }}
+                    type="range"
+                    min={0}
+                    max={1}
+                    step={0.01}
+                    value={mat.opacity}
+                    onChange={e => {
+                      const value = parseFloat(e.target.value);
+                      mat.opacity = value;
+                      setOpacity(value);
+                      mat.needsUpdate = true;
+                    }}
+                  />
+                </div>
+                <input
+                  style={{ width: 35, borderRadius: 4 }}
+                  type="number"
                   min={0}
                   max={1}
                   step={0.01}
-                  value={mat.opacity}
+                  value={opacity}
                   onChange={e => {
                     const value = parseFloat(e.target.value);
                     mat.opacity = value;
@@ -473,22 +494,8 @@ const MapSection = ({ mat }: { mat: THREE.MeshStandardMaterial }) => {
                   }}
                 />
               </div>
-              <input
-                style={{ width: 35, borderRadius: 4 }}
-                type="number"
-                min={0}
-                max={1}
-                step={0.01}
-                value={opacity}
-                onChange={e => {
-                  const value = parseFloat(e.target.value);
-                  mat.opacity = value;
-                  setOpacity(value);
-                  mat.needsUpdate = true;
-                }}
-              />
             </div>
-          </div>
+          )}
         </div>
       </div>
     </section>
