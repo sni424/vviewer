@@ -13,6 +13,7 @@ import { loadProbes, threes, uploadJson } from '../scripts/atomUtils.ts';
 import ReflectionProbe, {
   ReflectionProbeJSON,
 } from '../scripts/ReflectionProbe.ts';
+import { topView } from '../scripts/utils.ts';
 import { THREE } from '../scripts/VTHREE.ts';
 import './probe.css';
 
@@ -81,34 +82,12 @@ const ProbeInfo = () => {
   const threeExports = useAtomValue(threeExportsAtom);
   const [probes, setProbes] = useAtom<ReflectionProbe[]>(ProbeAtom);
   const [probeEditMode, setProbeEditMode] = useState<boolean>(false);
-  const [lastCamera, setLastCamera] = useState<{
-    matrix: THREE.Matrix4;
-    fov: number;
-  } | null>(null);
 
-  const globalPlane = new THREE.Plane(new THREE.Vector3(0, -1, 0), 5);
   if (!threeExports) {
     return null;
   }
 
   const { scene, gl, camera } = threeExports;
-
-  useEffect(() => {
-    if (probeEditMode) {
-      globalPlane.constant = 2.9;
-      gl.localClippingEnabled = true;
-      gl.clippingPlanes = [globalPlane];
-
-      // Force Move Camera
-      setLastCamera({ matrix: camera.matrix, fov: 75 });
-      // camera.moveTo({
-      //
-      // });
-    } else {
-      gl.clippingPlanes = [];
-      gl.localClippingEnabled = false;
-    }
-  }, [probeEditMode]);
 
   function addProbe() {
     const probe = new ReflectionProbe(gl, scene, camera);
@@ -225,10 +204,13 @@ const ProbeInfo = () => {
               전체 업데이트
             </button>
             <button
-              onClick={() => setProbeEditMode(prev => !prev)}
+              onClick={e => {
+                setProbeEditMode(prev => !prev);
+                topView(!probeEditMode);
+              }}
               style={{ fontSize: 12, padding: '4px 8px', cursor: 'pointer' }}
             >
-              프로브 수정 모드
+              {probeEditMode ? '프로브 수정 모드 취소' : '프로브 수정 모드'}
             </button>
           </>
         )}
