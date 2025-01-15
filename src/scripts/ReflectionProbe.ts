@@ -19,6 +19,7 @@ const CUBE_CAMERA_LAYER = 10;
 export type ReflectionProbeResolutions = 256 | 512 | 1024 | 2048;
 
 export type ReflectionProbeJSON = {
+  name: string;
   id: string;
   center: number[];
   size: number[];
@@ -149,7 +150,7 @@ export default class ReflectionProbe {
     translateControls.vUserData.probeMeshType = 'controls';
     translateControls.setMode('translate');
     translateControls.setSize(0.7);
-    translateControls.showY = false;
+    // translateControls.showY = false;
     const scaleControls = new TransformControls(
       camera,
       this.renderer.domElement,
@@ -159,7 +160,7 @@ export default class ReflectionProbe {
     scaleControls.vUserData.probeMeshType = 'controls';
     scaleControls.setMode('scale');
     scaleControls.setSize(0.5);
-    scaleControls.showY = false;
+    // scaleControls.showY = false;
     // FOR DEBUG PLANE
     // scaleControls.plane.material.visible = true;
     // scaleControls.plane.material.wireframe = false;
@@ -271,8 +272,10 @@ export default class ReflectionProbe {
 
   setControlsVisible(visible: boolean) {
     this.translateControls.showX = visible;
+    this.translateControls.showY = visible;
     this.translateControls.showZ = visible;
     this.scaleControls.showX = visible;
+    this.scaleControls.showY = visible;
     this.scaleControls.showZ = visible;
 
     return this;
@@ -415,6 +418,12 @@ export default class ReflectionProbe {
 
   onBeforeCubeCameraUpdate() {
     const scene = this.scene;
+    const gl = this.renderer;
+    const isLocalClippingEnabled = gl.localClippingEnabled;
+    const originalClippedPlanes = gl.clippingPlanes;
+    if (isLocalClippingEnabled) {
+      gl.localClippingEnabled = false;
+    }
 
     const filterCondition = (object: THREE.Object3D) => {
       return (
@@ -429,13 +438,31 @@ export default class ReflectionProbe {
       child.visible = false;
     });
 
-    return filteredObjects;
+    return {
+      filteredObjects,
+      localClippingEnabled: isLocalClippingEnabled,
+      originalClippedPlanes,
+    };
   }
 
-  onAfterCubeCameraUpdate(filteredObjects: THREE.Object3D[]) {
+  onAfterCubeCameraUpdate({
+    filteredObjects,
+    localClippingEnabled,
+    originalClippedPlanes,
+  }: {
+    filteredObjects: THREE.Object3D[];
+    localClippingEnabled: boolean;
+    originalClippedPlanes?: THREE.Plane[];
+  }) {
     filteredObjects.forEach(child => {
       child.visible = true;
     });
+
+    const gl = this.renderer;
+    gl.localClippingEnabled = localClippingEnabled;
+    if (originalClippedPlanes) {
+      gl.clippingPlanes = originalClippedPlanes;
+    }
   }
 
   applyTextureOnQuad() {
@@ -490,7 +517,7 @@ export default class ReflectionProbe {
 
   renderCamera() {
     // Before render => Set No Render Objects Invisible
-    const filteredObjects = this.onBeforeCubeCameraUpdate();
+    const beforeUpdateObject = this.onBeforeCubeCameraUpdate();
     // Set Original WebGLRenderer.autoClear value
     const rendererOriginalAutoClearValue = this.renderer.autoClear;
     // force Update WebGLRenderer.autoClear value to true
@@ -504,7 +531,7 @@ export default class ReflectionProbe {
     // Apply Box In Box projected Meshes
     // this.updateObjectChildrenEnv();
     // After Render => set No Render Objects Visible
-    this.onAfterCubeCameraUpdate(filteredObjects);
+    this.onAfterCubeCameraUpdate(beforeUpdateObject);
     // Canvas Update
     this.applyTextureOnQuad();
   }
@@ -538,6 +565,7 @@ export default class ReflectionProbe {
 
   toJSON(): ReflectionProbeJSON {
     return {
+      name: this.name,
       id: this.serializedId,
       center: this.center.toArray(),
       size: this.size.toArray(),
@@ -550,6 +578,7 @@ export default class ReflectionProbe {
 
   fromJSON(json: ReflectionProbeJSON) {
     console.log('fromJSON', json);
+    this.name = json.name;
     this.serializedId = json.id;
     this.center = new THREE.Vector3().fromArray(json.center);
     this.size = new THREE.Vector3().fromArray(json.size);

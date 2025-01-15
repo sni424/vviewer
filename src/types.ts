@@ -248,51 +248,52 @@ export type ModelFile = {
 import { Properties } from '@react-three/fiber';
 import { Pathfinding } from 'three-pathfinding';
 import { THREE } from './scripts/VTHREE';
-export declare type GLProps = Partial<Properties<THREE.WebGLRenderer> | THREE.WebGLRendererParameters> & {
-  toneMapping?: THREE.ToneMapping;
-  toneMappingExposure?: number;
+export declare type GLProps = Partial<Properties<THREE.WebGLRenderer>> &
+  Partial<THREE.WebGLRendererParameters> & {
+    toneMapping?: THREE.ToneMapping;
+    toneMappingExposure?: number;
 
-  // WebGLRenderer.d.ts
-  /**
-   * default is false.
-   */
-  alpha?: boolean | undefined;
+    // WebGLRenderer.d.ts
+    /**
+     * default is false.
+     */
+    alpha?: boolean | undefined;
 
-  /**
-   * default is true.
-   */
-  premultipliedAlpha?: boolean | undefined;
+    /**
+     * default is true.
+     */
+    premultipliedAlpha?: boolean | undefined;
 
-  /**
-   * default is false.
-   */
-  antialias?: boolean | undefined;
+    /**
+     * default is false.
+     */
+    antialias?: boolean | undefined;
 
-  /**
-   * default is false.
-   */
-  stencil?: boolean | undefined;
+    /**
+     * default is false.
+     */
+    stencil?: boolean | undefined;
 
-  /**
-   * default is false.
-   */
-  preserveDrawingBuffer?: boolean | undefined;
+    /**
+     * default is false.
+     */
+    preserveDrawingBuffer?: boolean | undefined;
 
-  /**
-   * Can be "high-performance", "low-power" or "default"
-   */
-  powerPreference?: WebGLPowerPreference | undefined;
+    /**
+     * Can be "high-performance", "low-power" or "default"
+     */
+    powerPreference?: WebGLPowerPreference | undefined;
 
-  /**
-   * default is true.
-   */
-  depth?: boolean | undefined;
+    /**
+     * default is true.
+     */
+    depth?: boolean | undefined;
 
-  /**
-   * default is false.
-   */
-  failIfMajorPerformanceCaveat?: boolean | undefined;
-};
+    /**
+     * default is false.
+     */
+    failIfMajorPerformanceCaveat?: boolean | undefined;
+  };
 
 // Layer로 켜고끄기
 export enum View {
@@ -318,10 +319,9 @@ export type ViewportOption = {
   grid?: boolean;
 };
 
-
 export interface MoveActionOptions {
   pathFinding?: {
-    stopAnimation?: boolean //애니메이션 중지
+    stopAnimation?: boolean; //애니메이션 중지
     matrix?: number[];
     pathfinder?: Pathfinding;
   };
@@ -333,16 +333,16 @@ export interface MoveActionOptions {
     target: THREE.Vector3; // 이동할 경로 (Pathfinding)
     direction: THREE.Vector3; //도착했을때 카메라가 바라볼 방향
     speed: number; // 애니메이션 속도
-  }
+  };
   linear?: {
     matrix: number[];
     duration: number; // 애니메이션 시간
-    fov?: number //카메라 fov값
+    fov?: number; //카메라 fov값
   };
   teleport?: {
     matrix: number[];
   };
-  onComplete?: () => any
+  onComplete?: () => any;
 } // 타입 정의
 
 // export type MoveToActions = {

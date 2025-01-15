@@ -39,17 +39,29 @@ const Clipping = () => {
         />
       </div>
       {glSetting.localClippingEnabled && (
-        <input
-          className="flex-1 min-w-0"
-          type="range"
-          value={clippingY}
-          onChange={e => {
-            setClippingY(Number(e.target.value));
-          }}
-          min={-1}
-          max={10}
-          step={0.1}
-        />
+        <div>
+          <input
+            className="flex-1 min-w-0"
+            type="range"
+            value={clippingY}
+            onChange={e => {
+              setClippingY(Number(e.target.value));
+            }}
+            min={-1}
+            max={10}
+            step={0.1}
+          />
+          <input
+            type="number"
+            value={clippingY}
+            onChange={e => {
+              setClippingY(Number(e.target.value));
+            }}
+            min={-1}
+            max={10}
+            step={0.1}
+          />
+        </div>
       )}
     </div>
   );

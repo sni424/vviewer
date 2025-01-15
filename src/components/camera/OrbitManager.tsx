@@ -39,7 +39,6 @@ const OrbitManager: React.FC = () => {
   };
 
   useEffect(() => {
-    console.log('orbitSetting changed : ', orbitSetting);
     orbitSettingRef.current = orbitSetting;
   }, [orbitSetting]);
 

@@ -46,7 +46,7 @@ export enum Layer {
 }
 
 export const AOMAP_INTENSITY_MAX = 2 as const;
-export const LIGHTMAP_INTENSITY_MAX = 100 as const;
+export const LIGHTMAP_INTENSITY_MAX = 20 as const;
 
 export const ROOM_COLORS = [
   0xcc0033, 0x33cc00, 0x3333cc, 0x773300, 0x00ccf3, 0x8844aa, 0xaa8844,
@@ -72,17 +72,15 @@ export const ENV = {
   model_base: base + 'model_base.glb',
   model_dp: base + 'model_dp.glb',
   lut: base.replace('models/', '') + 'static/lut',
-  navMesh: base + "nav.glb",
+  navMesh: base + 'nav.glb',
 };
 
 export const HotspotIcon = {
   gearBlue: base + 'Frame+26893.png',
-  gearBlack: base + "Frame+26997.png",
-  plusBlue: base + "Frame+26998.png",
-  circleGray: base + "Frame+162727.png",
+  gearBlack: base + 'Frame+26997.png',
+  plusBlue: base + 'Frame+26998.png',
+  circleGray: base + 'Frame+162727.png',
 };
-
-
 
 export const hotspotImage = (image?: string) => {
   if (image === undefined || image?.length === 0) {
@@ -91,14 +89,13 @@ export const hotspotImage = (image?: string) => {
 
   // 사용 전에 이미지를 S3에 업로드할 것
   return `${base}${image}.png`;
-}
+};
 export const hotspotImages = {
-  ac: hotspotImage("ac")!,
-  cooktop: hotspotImage("cooktop")!,
-  dishwasher: hotspotImage("dishwasher")!,
-  fridge: hotspotImage("fridge")!,
-  laundary: hotspotImage("laundary")!,
-  oven: hotspotImage("oven")!,
-  ventilator: hotspotImage("ventilator")!,
-
+  ac: hotspotImage('ac')!,
+  cooktop: hotspotImage('cooktop')!,
+  dishwasher: hotspotImage('dishwasher')!,
+  fridge: hotspotImage('fridge')!,
+  laundary: hotspotImage('laundary')!,
+  oven: hotspotImage('oven')!,
+  ventilator: hotspotImage('ventilator')!,
 };
