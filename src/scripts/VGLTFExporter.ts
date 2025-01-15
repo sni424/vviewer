@@ -141,7 +141,6 @@ export default class VGLTFExporter extends GLTFExporter {
             // Remove Light map from ktx2
             console.log('has KTX2 LightMap');
             clonedMat.lightMap = null;
-            console.log(clonedMat.lightMapIntensity);
             clonedMat.vUserData.lightMapIntensity = clonedMat.lightMapIntensity;
             mesh.material = clonedMat;
           }

@@ -1018,6 +1018,7 @@ export const uploadExrLightmap = async (object: THREE.Object3D) => {
 
       // 250110 추가
       if (mat && mat.lightMap) {
+        console.log('lightmap in : ', mat.vUserData);
         const lightMap = mat.lightMap;
         const isDpRelatedModel = mesh.vUserData.modelType !== undefined;
 
@@ -1026,25 +1027,31 @@ export const uploadExrLightmap = async (object: THREE.Object3D) => {
 
           if (modelType === 'DP') {
             const dpOnHash = mat.vUserData.dpOnTextureFile;
-            if (dpOnHash) {
+            if (dpOnHash && dpOnHash.endsWith('.exr')) {
               addLightMapToHash(dpOnHash, mat);
             }
           } else {
             const dpOffHash = mat.vUserData.dpOffTextureFile;
             const dpOnHash = mat.vUserData.dpOnTextureFile;
 
-            if (dpOffHash) addLightMapToHash(dpOffHash, mat);
-            if (dpOnHash) addLightMapToHash(dpOnHash, mat);
+            if (dpOffHash && dpOffHash.endsWith('.exr'))
+              addLightMapToHash(dpOffHash, mat);
+            if (dpOnHash && dpOnHash.endsWith('.exr'))
+              addLightMapToHash(dpOnHash, mat);
           }
         } else if (isEXR(lightMap) || isKTX(lightMap)) {
-          mat.vUserData.lightMap = lightMap.vUserData.lightMap;
+          if (!mat.vUserData.lightMap && lightMap.vUserData.lightMap) {
+            mat.vUserData.lightMap = lightMap.vUserData.lightMap;
+          }
 
           const lightMapHash = mat.vUserData.lightMap;
-          if (lightMapHash) {
+          if (lightMapHash && lightMapHash.endsWith('.exr')) {
             addLightMapToHash(lightMapHash, mat);
           }
         }
         mat.vUserData.lightMapIntensity = mat.lightMapIntensity;
+
+        console.log('lightmap out : ', mat.vUserData);
       }
     }
   });
@@ -1056,6 +1063,7 @@ export const uploadExrLightmap = async (object: THREE.Object3D) => {
 
   await Promise.all(
     hashes.map(hash => {
+      console.log(hash);
       return get(hash).then(file => {
         if (file) {
           files.push(file);
