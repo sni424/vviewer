@@ -15,8 +15,10 @@ import {
   BenchMark,
   cameraSettingAtom,
   getAtomValue,
+  lastCameraInfoAtom,
   pathfindingAtom,
   selectedAtom,
+  threeExportsAtom
 } from './atoms';
 import { uploadExrToKtx } from './atomUtils.ts';
 import VGLTFExporter from './VGLTFExporter.ts';
@@ -272,7 +274,7 @@ export const loadLatest = async ({
   addBenchmark?: (key: keyof BenchMark, value?: number) => void;
   dpOn: boolean;
 }) => {
-  const addBenchmark = _addBenchmark ?? (() => {});
+  const addBenchmark = _addBenchmark ?? (() => { });
 
   const latestHashUrl = ENV.latestHash;
   const latestUrl = ENV.latest;
@@ -550,7 +552,7 @@ const handlePathFindingMove = (
   initialPath: THREE.Vector3[],
   speed: number,
   quaternion?: THREE.Quaternion,
-  onComplete: gsap.Callback = () => {},
+  onComplete: gsap.Callback = () => { },
 ) => {
   // path없으면 동작x
   if (initialPath.length === 0) return;
@@ -640,7 +642,7 @@ const handleLinearMove = (
   quaternion: THREE.Quaternion,
   speed: number,
   cameraFov?: number,
-  onComplete: gsap.Callback = () => {},
+  onComplete: gsap.Callback = () => { },
 ) => {
   const startPosition = camera.position.clone();
   const timeline = gsap.timeline();
@@ -1292,3 +1294,95 @@ export function toggleDP(scene: THREE.Scene, toggle: boolean) {
     }
   });
 }
+
+
+export const topView = (value: boolean) => {
+  const lastCameraInfo = getAtomValue(lastCameraInfoAtom)
+  const threeExports = getAtomValue(threeExportsAtom)
+  if (!threeExports) return;
+  const { scene, camera } = threeExports
+
+  const element = document.getElementById('canvasDiv');
+  if (!element) return;
+
+  const createCamera = (isTopView: boolean): THREE.Camera => {
+    console.log("scene", scene, camera)
+    const newScene = scene.clone(true);
+    newScene.children = newScene.children.filter(child => {
+      return !(child instanceof TransformControls);
+    });
+
+    const boundingBox = new THREE.Box3().setFromObject(newScene);
+    const size = boundingBox.getSize(new THREE.Vector3()); // 모델 크기
+    const center = boundingBox.getCenter(new THREE.Vector3()); // 모델 중심
+
+    const lastMatrixArray = lastCameraInfo.matrix;
+
+    const threeMatrix = new THREE.Matrix4().fromArray(lastMatrixArray);
+    const position = new THREE.Vector3();
+    const quaternion = new THREE.Quaternion();
+    const scale = new THREE.Vector3();
+    threeMatrix.decompose(position, quaternion, scale);
+    if (isTopView) {
+      // setAtomValue(globalGlAtom, pre => ({
+      //   ...pre,
+      //   localClippingEnabled: true,
+      // }));
+      const orthoCam = new THREE.OrthographicCamera(
+        element.offsetWidth / -2,
+        element.offsetWidth / 2,
+        element.offsetHeight / 2,
+        element.offsetHeight / -2,
+        10,
+        1000,
+      );
+      orthoCam.position.set(0, 100, 0);
+
+      // 위에서 아래를 바라보는 회전값 설정
+      const lookDirection = new THREE.Vector3(0, -1, 0); // -Y 방향
+      const upVector = new THREE.Vector3(0, 0, -1); // 카메라의 기본 위 방향
+      const topQuaternion = new THREE.Quaternion().setFromUnitVectors(
+        upVector,
+        lookDirection,
+      );
+
+      setTimeout(() => {
+        orthoCam.quaternion.copy(topQuaternion);
+      }, 10);
+
+      orthoCam.zoom = Math.round(size.y * 15);
+      orthoCam.updateProjectionMatrix();
+      orthoCam.updateMatrix();
+      orthoCam.updateMatrixWorld(true);
+
+      return orthoCam;
+    } else {
+      const perCam = new THREE.PerspectiveCamera(
+        75,
+        element.offsetWidth / element.offsetHeight,
+        0.1,
+        1000,
+      );
+      perCam.position.copy(position);
+      setTimeout(() => {
+        perCam.quaternion.copy(quaternion);
+      }, 10);
+
+      perCam.updateProjectionMatrix();
+      perCam.updateMatrix();
+      perCam.updateMatrixWorld(true);
+      return perCam;
+    }
+  };
+  const newCamera = createCamera(value);
+
+  threeExports.set((state: RootState) => {
+    const updatedState: RootState = {
+      ...state,
+      camera: newCamera as THREE.PerspectiveCamera & { manual?: boolean },
+    };
+    return updatedState;
+  });
+
+  // threeExports.camera = newCamera;
+};
