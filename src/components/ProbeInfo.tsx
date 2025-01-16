@@ -82,12 +82,32 @@ const ProbeInfo = () => {
   const threeExports = useAtomValue(threeExportsAtom);
   const [probes, setProbes] = useAtom<ReflectionProbe[]>(ProbeAtom);
   const [probeEditMode, setProbeEditMode] = useState<boolean>(false);
-
+  const [lastCamera, setLastCamera] = useState<{
+    matrix: THREE.Matrix4;
+    fov: number;
+  } | null>(null);
   if (!threeExports) {
     return null;
   }
-
+  const globalPlane = new THREE.Plane(new THREE.Vector3(0, -1, 0), 5);
   const { scene, gl, camera } = threeExports;
+
+  useEffect(() => {
+    if (probeEditMode) {
+      globalPlane.constant = 2.9;
+      gl.localClippingEnabled = true;
+      gl.clippingPlanes = [globalPlane];
+
+      // Force Move Camera
+      setLastCamera({ matrix: camera.matrix, fov: 75 });
+      // camera.moveTo({
+      //
+      // });
+    } else {
+      gl.clippingPlanes = [];
+      gl.localClippingEnabled = false;
+    }
+  }, [probeEditMode]);
 
   function addProbe() {
     const probe = new ReflectionProbe(gl, scene, camera);

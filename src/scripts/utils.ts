@@ -15,12 +15,10 @@ import {
   BenchMark,
   cameraSettingAtom,
   getAtomValue,
-  globalGlAtom,
   lastCameraInfoAtom,
   pathfindingAtom,
   selectedAtom,
-  setAtomValue,
-  threeExportsAtom,
+  threeExportsAtom
 } from './atoms';
 import { uploadExrToKtx } from './atomUtils.ts';
 import VGLTFExporter from './VGLTFExporter.ts';
@@ -1302,9 +1300,7 @@ export const topView = (value: boolean) => {
   const lastCameraInfo = getAtomValue(lastCameraInfoAtom)
   const threeExports = getAtomValue(threeExportsAtom)
   if (!threeExports) return;
-  const { scene, gl, camera } = threeExports
-  const globalPlane = new THREE.Plane(new THREE.Vector3(0, -1, 0), 5);
-  setAtomValue(cameraSettingAtom, pre => ({ ...pre, topView: value }));
+  const { scene, camera } = threeExports
 
   const element = document.getElementById('canvasDiv');
   if (!element) return;
@@ -1328,10 +1324,10 @@ export const topView = (value: boolean) => {
     const scale = new THREE.Vector3();
     threeMatrix.decompose(position, quaternion, scale);
     if (isTopView) {
-      setAtomValue(globalGlAtom, pre => ({
-        ...pre,
-        localClippingEnabled: true,
-      }));
+      // setAtomValue(globalGlAtom, pre => ({
+      //   ...pre,
+      //   localClippingEnabled: true,
+      // }));
       const orthoCam = new THREE.OrthographicCamera(
         element.offsetWidth / -2,
         element.offsetWidth / 2,
