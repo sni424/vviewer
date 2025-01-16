@@ -25,7 +25,7 @@ export interface ThreeUserData {
   probes?: ReflectionProbeJSON[];
   hotspotIndex?: number;
   isExr?: boolean;
-  mimeType?: 'image/ktx2'; // ktx2압축시 달려있음
+  mimeType?: 'image/ktx2' | 'probe-captured-image'; // ktx2압축시 달려있음
   modelType?: 'DP' | 'BASE';
   dpOnLightMap?: THREE.Texture;
   dpOffLightMap?: THREE.Texture;
