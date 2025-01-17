@@ -657,21 +657,16 @@ export default class ReflectionProbe {
       format: THREE.RGBFormat,
       generateMipmaps: false,
     });
-    alert(`fromJSON ${json.name} : renderTargetCreate passed`);
     const cubeCamera = new THREE.CubeCamera(
       this.cubeCameraNear,
       this.cubeCameraFar,
       this.renderTarget,
     );
-    alert(`fromJSON ${json.name} : renderTargetCreate passed`);
     cubeCamera.layers.enableAll();
     CUBE_CAMERA_FILTER_LAYERS.forEach(layer => {
       cubeCamera.layers.disable(layer);
     });
     cubeCamera.update(this.renderer, this.scene);
-    alert(
-      `fromJSON ${json.name} : cubeCamera.update(this.renderer, this.scene) passed`,
-    );
     this.cubeCamera = cubeCamera;
 
     this.boxMesh.vUserData.probeId = json.id;
