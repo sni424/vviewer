@@ -6,12 +6,16 @@ import {
   DPAtom,
   lastCameraInfoAtom,
   orbitSettingAtom,
+  ProbeAtom,
+  setAtomValue,
   threeExportsAtom,
 } from '../scripts/atoms.ts';
+import { loadProbes } from '../scripts/atomUtils.ts';
+import ReflectionProbe, {
+  ReflectionProbeJSON,
+} from '../scripts/ReflectionProbe.ts';
 import { toggleDP } from '../scripts/utils.ts';
 import { THREE } from '../scripts/VTHREE.ts';
-import { BloomOption } from './canvas/Bloom.tsx';
-import { ToneMappingOption } from './canvas/ToneMapping.tsx';
 
 const DPController = () => {
   const threeExports = useAtomValue(threeExportsAtom);
@@ -80,6 +84,61 @@ const LMIntensityController = () => {
       ></input>
       <span className="ml-1">{lmIntensityValue}</span>
     </div>
+  );
+};
+
+const ProbeController = () => {
+  const threeExports = useAtomValue(threeExportsAtom);
+  function callProbe() {
+    if (!threeExports) {
+      alert('아직 준비되지 않았습니다.');
+      return;
+    }
+
+    const { scene, camera, gl } = threeExports;
+    loadProbes().then(res => {
+      alert('probe Loaded');
+      if (!ReflectionProbe.isProbeJson(res)) {
+        alert('Probe 불러오기 실패');
+        console.warn(
+          'probe.json FromJSON 을 할 수 없음 => ReflectionProbe.isProbeJson === false',
+        );
+        return;
+      }
+      const probeJsons = res as ReflectionProbeJSON[];
+      const probes = probeJsons.map(probeJson => {
+        probeJson.resolution = 64; // 모바일은 128로 강제
+        return new ReflectionProbe(gl, scene, camera).fromJSON(probeJson);
+      });
+
+      alert('probe Made');
+
+      probes.forEach(probe => {
+        probe.addToScene();
+        alert(`${probe.getName()} probe added to scene`);
+        probe.updateCameraPosition(probe.getCenter(), true);
+        alert(`${probe.getName()} updated`);
+        scene.traverse(node => {
+          if (node instanceof THREE.Mesh) {
+            const n = node as THREE.Mesh;
+            const material = n.material as THREE.MeshStandardMaterial;
+            if (material.vUserData.probeId === probe.getId()) {
+              material.envMap = probe.getTexture();
+              material.onBeforeCompile = probe.materialOnBeforeCompileFunc();
+              material.needsUpdate = true;
+            }
+          }
+        });
+      });
+
+      setAtomValue(ProbeAtom, probes);
+    });
+  }
+
+  return (
+    <button onClick={callProbe} disabled={!threeExports}>
+      프로브 불러오기
+    </button>
   );
 };
 
@@ -238,8 +297,9 @@ const MobileSimplePanel = () => {
               </div>
             </div>
             <CameraController />
-            <BloomOption></BloomOption>
-            <ToneMappingOption></ToneMappingOption>
+            {/*<BloomOption></BloomOption>*/}
+            {/*<ToneMappingOption></ToneMappingOption>*/}
+            <ProbeController />
           </div>
         </section>
       ) : (

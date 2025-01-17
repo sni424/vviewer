@@ -5,7 +5,7 @@ import { Layer } from '../Constants.ts';
 import * as THREE from './VTHREE.ts';
 import VTextureLoader from './VTextureLoader.ts';
 
-const DEFAULT_RESOLUTION: ReflectionProbeResolutions = 2048;
+const DEFAULT_RESOLUTION: ReflectionProbeResolutions = 1024;
 const DEFAULT_POSITION: THREE.Vector3 = new THREE.Vector3(0, 0, 0);
 const DEFAULT_SIZE: THREE.Vector3 = new THREE.Vector3(4, 4, 4);
 const CUBE_CAMERA_FILTER_LAYERS = [
@@ -16,7 +16,8 @@ const CUBE_CAMERA_FILTER_LAYERS = [
 const REFLECTION_BOX_LAYER = Layer.ReflectionBox;
 const CUBE_CAMERA_LAYER = 10;
 
-export type ReflectionProbeResolutions = 256 | 512 | 1024 | 2048;
+const AvailableResolutions = [16, 32, 64, 128, 256, 512, 1024, 2048] as const;
+export type ReflectionProbeResolutions = (typeof AvailableResolutions)[number];
 
 export type ReflectionProbeJSON = {
   name: string;
@@ -34,6 +35,8 @@ export interface ProbeMeshEventMap extends Object3DEventMap {
 }
 
 type Modes = 'box' | 'sphere';
+const DEFAULT_TSIZE = 0.7;
+const DEFAULT_SSIZE = 0.5;
 
 export default class ReflectionProbe {
   // SCENE PROPERTIES
@@ -73,6 +76,8 @@ export default class ReflectionProbe {
   private imageData: ImageData;
   private name: string;
   private customTexture: THREE.Texture | null = null;
+  private sSize: number = DEFAULT_SSIZE;
+  private tSize: number = DEFAULT_TSIZE;
 
   constructor(
     renderer: THREE.WebGLRenderer,
@@ -82,7 +87,10 @@ export default class ReflectionProbe {
   ) {
     this.name = '프로브_' + this.serializedId;
     this.renderer = renderer;
-    this.pmremGenerator = new THREE.PMREMGenerator(renderer);
+    const pmremGenerator = new THREE.PMREMGenerator(renderer);
+    pmremGenerator.compileEquirectangularShader();
+    pmremGenerator.compileCubemapShader();
+    this.pmremGenerator = pmremGenerator;
     this.scene = scene;
 
     this.quad = new THREE.Mesh(
@@ -149,8 +157,7 @@ export default class ReflectionProbe {
     translateControls.vUserData.isProbeMesh = true;
     translateControls.vUserData.probeMeshType = 'controls';
     translateControls.setMode('translate');
-    translateControls.setSize(0.7);
-    // translateControls.showY = false;
+    translateControls.setSize(this.tSize);
     const scaleControls = new TransformControls(
       camera,
       this.renderer.domElement,
@@ -159,13 +166,7 @@ export default class ReflectionProbe {
     scaleControls.vUserData.isProbeMesh = true;
     scaleControls.vUserData.probeMeshType = 'controls';
     scaleControls.setMode('scale');
-    scaleControls.setSize(0.5);
-    // scaleControls.showY = false;
-    // FOR DEBUG PLANE
-    // scaleControls.plane.material.visible = true;
-    // scaleControls.plane.material.wireframe = false;
-    // scaleControls.plane.material.opacity = 0.5;
-    // scaleControls.plane.material.color = new THREE.Color('#FF0000');
+    scaleControls.setSize(this.sSize);
 
     translateControls.addEventListener('dragging-changed', event => {
       document.dispatchEvent(
@@ -238,6 +239,10 @@ export default class ReflectionProbe {
     this.canvas = canvas;
   }
 
+  static getAvailableResolutions() {
+    return AvailableResolutions;
+  }
+
   addToScene() {
     console.log('adding : ', this.boxMesh);
     this.scene.add(this.boxMesh, this.translateControls, this.scaleControls);
@@ -270,6 +275,29 @@ export default class ReflectionProbe {
     return this;
   }
 
+  getControlSize() {
+    return { tSize: this.tSize, sSize: this.sSize };
+  }
+
+  setControlSize(target: 'translate' | 'scale', size: number) {
+    if (target === 'translate') {
+      this.tSize = size;
+      this.translateControls.setSize(size);
+    } else if (target === 'scale') {
+      this.sSize = size;
+      this.scaleControls.setSize(size);
+    }
+    return this;
+  }
+
+  resetControlSize() {
+    this.tSize = DEFAULT_TSIZE;
+    this.sSize = DEFAULT_SSIZE;
+    this.translateControls.setSize(this.tSize);
+    this.scaleControls.setSize(this.sSize);
+    return this;
+  }
+
   setControlsVisible(visible: boolean) {
     this.translateControls.showX = visible;
     this.translateControls.showY = visible;
@@ -285,9 +313,47 @@ export default class ReflectionProbe {
     return this.effectedMeshes;
   }
 
+  getResolution() {
+    return this.resolution;
+  }
+
   setResolution(resolution: ReflectionProbeResolutions) {
-    // TODO REDNER UPDATE
     this.resolution = resolution;
+    this.renderTarget = new THREE.WebGLCubeRenderTarget(this.resolution, {
+      format: THREE.RGBFormat,
+      generateMipmaps: false,
+    });
+
+    const cubeCamera = new THREE.CubeCamera(
+      this.cubeCameraNear,
+      this.cubeCameraFar,
+      this.renderTarget,
+    );
+    cubeCamera.layers.enableAll();
+    CUBE_CAMERA_FILTER_LAYERS.forEach(layer => {
+      cubeCamera.layers.disable(layer);
+    });
+    cubeCamera.update(this.renderer, this.scene);
+    this.cubeCamera = cubeCamera;
+
+    this.updateCameraPosition(this.center, true);
+
+    document.dispatchEvent(
+      new CustomEvent('probeResolution-changed', { detail: resolution }),
+    );
+
+    this.scene.traverse(child => {
+      if ('isMesh' in child) {
+        const mesh = child as THREE.Mesh;
+        const material = mesh.material as THREE.MeshStandardMaterial;
+        if (material.vUserData.probeId === this.serializedId) {
+          material.envMap = this.getTexture();
+          material.needsUpdate = true;
+        }
+      }
+    });
+
+    return this;
   }
 
   getId() {
@@ -552,7 +618,9 @@ export default class ReflectionProbe {
       return this.customTexture;
     }
     const cubeTexture = this.renderTarget.texture;
-    return this.pmremGenerator.fromCubemap(cubeTexture).texture;
+    const texture = this.pmremGenerator.fromCubemap(cubeTexture).texture;
+    texture.vUserData.mimeType = 'probe-captured-image';
+    return texture;
   }
 
   getRenderTargetTexture() {
@@ -589,16 +657,21 @@ export default class ReflectionProbe {
       format: THREE.RGBFormat,
       generateMipmaps: false,
     });
+    alert(`fromJSON ${json.name} : renderTargetCreate passed`);
     const cubeCamera = new THREE.CubeCamera(
       this.cubeCameraNear,
       this.cubeCameraFar,
       this.renderTarget,
     );
+    alert(`fromJSON ${json.name} : renderTargetCreate passed`);
     cubeCamera.layers.enableAll();
     CUBE_CAMERA_FILTER_LAYERS.forEach(layer => {
       cubeCamera.layers.disable(layer);
     });
     cubeCamera.update(this.renderer, this.scene);
+    alert(
+      `fromJSON ${json.name} : cubeCamera.update(this.renderer, this.scene) passed`,
+    );
     this.cubeCamera = cubeCamera;
 
     this.boxMesh.vUserData.probeId = json.id;

@@ -51,6 +51,8 @@ const useLoad = () => {
       return;
     }
 
+    const { scene, camera, gl } = threeExports;
+
     const loadSettings = async () => {
       loadHotspot().then(res => {
         if (res) {

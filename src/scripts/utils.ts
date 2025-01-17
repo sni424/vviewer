@@ -18,7 +18,7 @@ import {
   lastCameraInfoAtom,
   pathfindingAtom,
   selectedAtom,
-  threeExportsAtom
+  threeExportsAtom,
 } from './atoms';
 import { uploadExrToKtx } from './atomUtils.ts';
 import VGLTFExporter from './VGLTFExporter.ts';
@@ -274,7 +274,7 @@ export const loadLatest = async ({
   addBenchmark?: (key: keyof BenchMark, value?: number) => void;
   dpOn: boolean;
 }) => {
-  const addBenchmark = _addBenchmark ?? (() => { });
+  const addBenchmark = _addBenchmark ?? (() => {});
 
   const latestHashUrl = ENV.latestHash;
   const latestUrl = ENV.latest;
@@ -552,7 +552,7 @@ const handlePathFindingMove = (
   initialPath: THREE.Vector3[],
   speed: number,
   quaternion?: THREE.Quaternion,
-  onComplete: gsap.Callback = () => { },
+  onComplete: gsap.Callback = () => {},
 ) => {
   // path없으면 동작x
   if (initialPath.length === 0) return;
@@ -642,7 +642,7 @@ const handleLinearMove = (
   quaternion: THREE.Quaternion,
   speed: number,
   cameraFov?: number,
-  onComplete: gsap.Callback = () => { },
+  onComplete: gsap.Callback = () => {},
 ) => {
   const startPosition = camera.position.clone();
   const timeline = gsap.timeline();
@@ -1295,18 +1295,17 @@ export function toggleDP(scene: THREE.Scene, toggle: boolean) {
   });
 }
 
-
 export const topView = (value: boolean) => {
-  const lastCameraInfo = getAtomValue(lastCameraInfoAtom)
-  const threeExports = getAtomValue(threeExportsAtom)
+  const lastCameraInfo = getAtomValue(lastCameraInfoAtom);
+  const threeExports = getAtomValue(threeExportsAtom);
   if (!threeExports) return;
-  const { scene, camera } = threeExports
+  const { scene, camera } = threeExports;
 
   const element = document.getElementById('canvasDiv');
   if (!element) return;
 
   const createCamera = (isTopView: boolean): THREE.Camera => {
-    console.log("scene", scene, camera)
+    console.log('scene', scene, camera);
     const newScene = scene.clone(true);
     newScene.children = newScene.children.filter(child => {
       return !(child instanceof TransformControls);
@@ -1355,6 +1354,8 @@ export const topView = (value: boolean) => {
       orthoCam.updateMatrix();
       orthoCam.updateMatrixWorld(true);
 
+      orthoCam.layers.enable(Layer.ReflectionBox);
+
       return orthoCam;
     } else {
       const perCam = new THREE.PerspectiveCamera(
@@ -1367,6 +1368,8 @@ export const topView = (value: boolean) => {
       setTimeout(() => {
         perCam.quaternion.copy(quaternion);
       }, 10);
+
+      perCam.layers.enable(Layer.ReflectionBox);
 
       perCam.updateProjectionMatrix();
       perCam.updateMatrix();

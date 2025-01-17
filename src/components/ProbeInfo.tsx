@@ -1,5 +1,6 @@
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import { useEffect, useRef, useState } from 'react';
+import { EXRExporter } from 'three/examples/jsm/exporters/EXRExporter';
 import { v4 } from 'uuid';
 import {
   getAtomValue,
@@ -12,6 +13,7 @@ import {
 import { loadProbes, threes, uploadJson } from '../scripts/atomUtils.ts';
 import ReflectionProbe, {
   ReflectionProbeJSON,
+  ReflectionProbeResolutions,
 } from '../scripts/ReflectionProbe.ts';
 import { topView } from '../scripts/utils.ts';
 import { THREE } from '../scripts/VTHREE.ts';
@@ -100,9 +102,6 @@ const ProbeInfo = () => {
 
       // Force Move Camera
       setLastCamera({ matrix: camera.matrix, fov: 75 });
-      // camera.moveTo({
-      //
-      // });
     } else {
       gl.clippingPlanes = [];
       gl.localClippingEnabled = false;
@@ -255,6 +254,9 @@ export const ProbeComponent = ({ probe }: { probe: ReflectionProbe }) => {
     probe.getShowControls(),
   );
   const [name, setName] = useState<string>(probe.getName());
+  const [resolution, setResolution] = useState<ReflectionProbeResolutions>(
+    probe.getResolution(),
+  );
   const [autoUpdate, setAutoUpdate] = useState<boolean>(false);
   const setSelecteds = useSetAtom(selectedAtom);
   const [mesh, setMesh] = useState<THREE.Mesh>();
@@ -294,6 +296,10 @@ export const ProbeComponent = ({ probe }: { probe: ReflectionProbe }) => {
       setName(probe.getName());
     });
 
+    document.addEventListener('probeResolution-changed', event => {
+      setResolution(probe.getResolution());
+    });
+
     return () => {
       document.removeEventListener('probeMesh-changed', () => {});
       document.removeEventListener('probeName-changed', () => {});
@@ -329,8 +335,10 @@ export const ProbeComponent = ({ probe }: { probe: ReflectionProbe }) => {
   }, [showControls]);
 
   function deleteProbe(probe: ReflectionProbe) {
-    probe.removeFromScene();
-    setProbes(prev => prev.filter(p => p.getId() !== probe.getId()));
+    if (confirm(`프로브 "${probe.getName()}"을 삭제하시겠습니까?`)) {
+      probe.removeFromScene();
+      setProbes(prev => prev.filter(p => p.getId() !== probe.getId()));
+    }
   }
 
   function copyProbe() {
@@ -358,7 +366,17 @@ export const ProbeComponent = ({ probe }: { probe: ReflectionProbe }) => {
     downloadObjectJsonFile(json, `probe_${probe.getId()}.json`);
   }
 
-  async function exportEnv() {}
+  async function exportImage() {
+    const texture = probe.getTexture();
+    console.log(texture);
+    const exporter = new EXRExporter();
+    const result = await exporter.parse(gl, probe.getRenderTarget());
+    console.log(result);
+  }
+
+  function changeResolution() {
+    openModal(() => <ProbeResolutionChanger probe={probe} />);
+  }
 
   return (
     <div className="probe-document">
@@ -393,6 +411,9 @@ export const ProbeComponent = ({ probe }: { probe: ReflectionProbe }) => {
             </button>
           </div>
         </div>
+      </div>
+      <div>
+        <span>해상도 : {resolution}</span>
       </div>
       <div className="probe">
         <div style={{ fontSize: 11, display: 'flex', alignItems: 'center' }}>
@@ -479,9 +500,19 @@ export const ProbeComponent = ({ probe }: { probe: ReflectionProbe }) => {
             padding: '4px 8px',
             cursor: 'pointer',
           }}
-          onClick={exportProbe}
+          onClick={exportImage}
         >
-          JSON 으로 추출
+          추출
+        </button>
+        <button
+          style={{
+            fontSize: 12,
+            padding: '4px 8px',
+            cursor: 'pointer',
+          }}
+          onClick={changeResolution}
+        >
+          해상도 변경
         </button>
       </div>
       <div className="probe-detail">
@@ -827,6 +858,66 @@ const ProbeNameEditor = ({ probe }: { probe: ReflectionProbe }) => {
             probe.setName(name);
             closeModal();
           }}
+        >
+          변경
+        </button>
+      </div>
+    </div>
+  );
+};
+
+const ProbeResolutionChanger = ({ probe }: { probe: ReflectionProbe }) => {
+  const resolutions = ReflectionProbe.getAvailableResolutions();
+  const [resolution, setResolution] = useState<ReflectionProbeResolutions>(
+    probe.getResolution(),
+  );
+  const { closeModal } = useModal();
+
+  return (
+    <div
+      className="w-[30%] bg-white px-4 py-3"
+      onClick={e => {
+        e.preventDefault();
+        e.stopPropagation();
+      }}
+    >
+      {/* Header */}
+      <div className="py-1 w-full mb-2">
+        <strong style={{ fontSize: 16 }}>해상도 수정</strong>
+      </div>
+      <div className="w-full mb-2 flex flex-col gap-y-2">
+        <div className="flex w-full gap-x-2 text-sm items-center">
+          <span>해상도 : </span>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <select
+              value={resolution}
+              onChange={event =>
+                setResolution(
+                  Number(event.target.value) as ReflectionProbeResolutions,
+                )
+              }
+            >
+              {resolutions.map(resolution => (
+                <option key={resolution} value={resolution}>
+                  {resolution}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+      </div>
+      {/* Footer  */}
+      <div className="flex w-full justify-end gap-x-2">
+        <button className="py-1.5 px-3 text-md" onClick={closeModal}>
+          취소
+        </button>
+        <button
+          className="py-1.5 px-3 text-md"
+          onClick={() => {
+            probe.setResolution(resolution);
+            closeModal();
+          }}
+          disabled={probe.getResolution() === resolution}
         >
           변경
         </button>
