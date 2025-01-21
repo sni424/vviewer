@@ -28,6 +28,7 @@ export type ReflectionProbeJSON = {
   createFrom: 'probe.toJSON()';
   showProbe?: boolean;
   showControls?: boolean;
+  url?: string;
 };
 
 export interface ProbeMeshEventMap extends Object3DEventMap {
@@ -78,6 +79,7 @@ export default class ReflectionProbe {
   private customTexture: THREE.Texture | null = null;
   private sSize: number = DEFAULT_SSIZE;
   private tSize: number = DEFAULT_TSIZE;
+  private textureFile: File | null = null;
 
   constructor(
     renderer: THREE.WebGLRenderer,
@@ -106,8 +108,6 @@ export default class ReflectionProbe {
       }),
     );
 
-    this.quad.scale.set(1024, 1024, 1);
-
     if (!camera.layers.isEnabled(CUBE_CAMERA_LAYER)) {
       camera.layers.enableAll();
       camera.layers.enable(CUBE_CAMERA_LAYER);
@@ -116,6 +116,8 @@ export default class ReflectionProbe {
     if (resolution) {
       this.resolution = resolution;
     }
+
+    this.quad.scale.set(this.resolution / 2, this.resolution / 2, 1);
 
     this.renderTarget = new THREE.WebGLCubeRenderTarget(this.resolution, {
       format: THREE.RGBFormat,
@@ -244,7 +246,6 @@ export default class ReflectionProbe {
   }
 
   addToScene() {
-    console.log('adding : ', this.boxMesh);
     this.scene.add(this.boxMesh, this.translateControls, this.scaleControls);
     this.updateCameraPosition(this.boxMesh.position);
   }
@@ -352,6 +353,17 @@ export default class ReflectionProbe {
         }
       }
     });
+
+    const canvas = document.createElement('canvas');
+    canvas.style.width = this.resolution.toString();
+    canvas.style.height = this.resolution.toString();
+    canvas.width = this.resolution;
+    canvas.height = this.resolution;
+    this.canvas = canvas;
+
+    this.quad.scale.set(this.resolution / 2, this.resolution / 2, 1);
+
+    this.applyTextureOnQuad();
 
     return this;
   }
@@ -600,6 +612,7 @@ export default class ReflectionProbe {
     this.onAfterCubeCameraUpdate(beforeUpdateObject);
     // Canvas Update
     this.applyTextureOnQuad();
+    document.dispatchEvent(new CustomEvent('probe-rendered', { detail: {} }));
   }
 
   updateCameraPosition(
@@ -613,7 +626,7 @@ export default class ReflectionProbe {
     return this;
   }
 
-  getTexture() {
+  getTexture(): THREE.Texture {
     if (this.customTexture) {
       return this.customTexture;
     }
@@ -623,15 +636,37 @@ export default class ReflectionProbe {
     return texture;
   }
 
-  getRenderTargetTexture() {
+  getTest() {
+    const cubeTexture = this.renderTarget.texture;
+    return this.pmremGenerator.fromCubemap(cubeTexture);
+  }
+
+  getRenderTargetTexture(): THREE.CubeTexture {
     return this.renderTarget.texture;
   }
 
-  getRenderTarget() {
+  getRenderTarget(): THREE.WebGLCubeRenderTarget {
     return this.renderTarget;
   }
 
-  toJSON(): ReflectionProbeJSON {
+  async toJSON(): Promise<ReflectionProbeJSON> {
+    // const canvas = this.canvas;
+    // const blob = (await new Promise(resolve =>
+    //   canvas.toBlob(resolve),
+    // )) as Blob | null;
+    //
+    // if (blob) {
+    //   const file = new File([blob], this.serializedId + '_env.png', {
+    //     type: 'image/png',
+    //   });
+    //
+    //   const result = await uploadPngToKtx(file);
+    //   const url = result.data[0].fileUrl;
+    //
+    //
+    // } else {
+    //   throw new Error('create blob Failed');
+    // }
     return {
       name: this.name,
       id: this.serializedId,
@@ -641,16 +676,37 @@ export default class ReflectionProbe {
       createFrom: 'probe.toJSON()',
       showProbe: this.showProbe,
       showControls: this.showControls,
+      // url: url,
     };
   }
 
-  fromJSON(json: ReflectionProbeJSON) {
+  async fromJSON(json: ReflectionProbeJSON): Promise<ReflectionProbe> {
     console.log('fromJSON', json);
     this.name = json.name;
     this.serializedId = json.id;
     this.center = new THREE.Vector3().fromArray(json.center);
     this.size = new THREE.Vector3().fromArray(json.size);
     this.resolution = json.resolution;
+
+    // if (json.url) {
+    //   const loader = new KTX2Loader()
+    //     .setTranscoderPath(
+    //       'https://unpkg.com/three@0.168.0/examples/jsm/libs/basis/',
+    //     )
+    //     .detectSupport(this.renderer);
+    //
+    //   await loader.init();
+    //   this.customTexture = await loader.loadAsync(json.url);
+    // }
+
+    this.quad.scale.set(this.resolution / 2, this.resolution / 2, 1);
+
+    const canvas = document.createElement('canvas');
+    canvas.style.width = this.resolution.toString();
+    canvas.style.height = this.resolution.toString();
+    canvas.width = this.resolution;
+    canvas.height = this.resolution;
+    this.canvas = canvas;
 
     // Update RenderTarget & CubeCamera
     this.renderTarget = new THREE.WebGLCubeRenderTarget(this.resolution, {
@@ -738,10 +794,6 @@ export default class ReflectionProbe {
   static isProbeJson(
     obj: any,
   ): obj is ReflectionProbeJSON | ReflectionProbeJSON[] {
-    const validResolutions: ReflectionProbeResolutions[] = [
-      256, 512, 1024, 2048,
-    ];
-
     const isValidProbe = (item: any): item is ReflectionProbeJSON => {
       return (
         typeof item === 'object' &&
@@ -751,7 +803,7 @@ export default class ReflectionProbe {
         item.center.every((val: any) => typeof val === 'number') &&
         Array.isArray(item.size) &&
         item.size.every((val: any) => typeof val === 'number') &&
-        validResolutions.includes(item.resolution) &&
+        AvailableResolutions.includes(item.resolution) &&
         item.createFrom === 'probe.toJSON()'
       );
     };

@@ -5,6 +5,7 @@ import {
   envAtom,
   getAtomValue,
   hotspotAtom,
+  materialSettingAtom,
   orbitSettingAtom,
   postprocessAtoms,
   roomAtom,
