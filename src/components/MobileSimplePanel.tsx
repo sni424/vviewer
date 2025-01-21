@@ -96,7 +96,7 @@ const ProbeController = () => {
     }
 
     const { scene, camera, gl } = threeExports;
-    loadProbes().then(res => {
+    loadProbes().then(async res => {
       alert('probe Loaded');
       if (!ReflectionProbe.isProbeJson(res)) {
         alert('Probe 불러오기 실패');
@@ -106,10 +106,12 @@ const ProbeController = () => {
         return;
       }
       const probeJsons = res as ReflectionProbeJSON[];
-      const probes = probeJsons.map(probeJson => {
-        probeJson.resolution = 64; // 모바일은 128로 강제
-        return new ReflectionProbe(gl, scene, camera).fromJSON(probeJson);
-      });
+      const probes = await Promise.all(
+        probeJsons.map(probeJson => {
+          probeJson.resolution = 64; // 모바일은 128로 강제
+          return new ReflectionProbe(gl, scene, camera).fromJSON(probeJson);
+        }),
+      );
 
       alert('probe Made');
 

@@ -261,8 +261,8 @@ const GeneralButtons = () => {
   function checkProbeJson(loadedScene: THREE.Object3D) {
     const probeJsons = loadedScene.vUserData.probes;
     if (probeJsons) {
-      probeJsons.forEach(probeJson => {
-        const newProbe = new ReflectionProbe(gl, scene, camera).fromJSON(
+      probeJsons.forEach(async probeJson => {
+        const newProbe = await new ReflectionProbe(gl, scene, camera).fromJSON(
           probeJson,
         );
         for (const probe of probes) {

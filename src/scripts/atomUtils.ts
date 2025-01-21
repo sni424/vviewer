@@ -1,19 +1,33 @@
-import { Pathfinding } from "three-pathfinding";
-import { ENV } from "../Constants";
+import { Pathfinding } from 'three-pathfinding';
+import { ENV } from '../Constants';
 import {
-  cameraMatrixAtom, getAtomValue,
+  cameraMatrixAtom,
+  getAtomValue,
   pathfindingAtom,
   postprocessAtoms,
   roomAtom,
-  RoomCreateOption, setAtomValue, threeExportsAtom
-} from "./atoms";
-import VGLTFLoader from "./VGLTFLoader";
-import { THREE } from "./VTHREE";
+  RoomCreateOption,
+  setAtomValue,
+  threeExportsAtom,
+} from './atoms';
+import VGLTFLoader from './VGLTFLoader';
+import { THREE } from './VTHREE';
 
 interface PointXZ {
   x: number;
   z: number;
 }
+
+type KTXApiResponse = {
+  success: boolean;
+  responseType: 'success';
+  data: {
+    fileSize: number;
+    fileType: null;
+    fileUrl: string;
+    filename: string;
+  }[];
+};
 
 function isPointOnLineSegment(p: PointXZ, v1: PointXZ, v2: PointXZ): boolean {
   const crossProduct =
@@ -55,6 +69,7 @@ function isPointInsidePolygon(point: PointXZ, polygon: PointXZ[]): boolean {
 
   return count % 2 === 1; // Odd number of crossings = inside
 }
+
 export const cameraInRoom = (camera?: THREE.Matrix4): RoomCreateOption[] => {
   camera = camera ?? getAtomValue(cameraMatrixAtom);
   if (!camera) {
@@ -80,18 +95,9 @@ export const cameraInRoom = (camera?: THREE.Matrix4): RoomCreateOption[] => {
   return retvals;
 };
 
-export const uploadExrToKtx = (
+export const uploadExrToKtx = async (
   exrs: File | File[],
-): Promise<{
-  success: boolean;
-  responseType: 'success';
-  data: {
-    fileSize: number;
-    fileType: null;
-    fileUrl: string;
-    filename: string;
-  }[];
-}> => {
+): Promise<KTXApiResponse> => {
   const uploadUrl = import.meta.env.VITE_KTX_URL as string;
   if (!uploadUrl) {
     throw new Error('VITE_KTX_URL is not defined');
@@ -102,10 +108,31 @@ export const uploadExrToKtx = (
   for (const file of files) {
     fd.append('files', file);
   }
-  return fetch(uploadUrl, {
+  const res = await fetch(uploadUrl, {
     method: 'POST',
     body: fd,
-  }).then(res => res.json());
+  });
+  return await res.json();
+};
+
+export const uploadPngToKtx = async (
+  pngs: File | File[],
+): Promise<KTXApiResponse> => {
+  const uploadUrl = import.meta.env.VITE_PNG_KTX_URL as string;
+  if (!uploadUrl) {
+    throw new Error('VITE_PNG_KTX_URL is not defined');
+  }
+
+  const fd = new FormData();
+  const files = Array.isArray(pngs) ? pngs : [pngs];
+  for (const file of files) {
+    fd.append('files', file);
+  }
+  const res = await fetch(uploadUrl, {
+    method: 'POST',
+    body: fd,
+  });
+  return await res.json();
 };
 
 export const uploadJson = (name: string, value: Record<string, any>) => {
@@ -148,10 +175,10 @@ export const loadProbes = async () => {
 };
 
 export const loadPostProcess = async () => {
-  return fetch(ENV.base + "postprocess.json", {
+  return fetch(ENV.base + 'postprocess.json', {
     cache: 'no-store',
   }).then(res => res.json());
-}
+};
 
 export const loadPostProcessAndSet = async () => {
   return loadPostProcess().then(res => {
@@ -180,7 +207,7 @@ export const loadPostProcessAndSet = async () => {
       alert('후처리 불러오기 실패');
     }
   });
-}
+};
 
 export const threes = () => {
   return getAtomValue(threeExportsAtom);
@@ -195,7 +222,7 @@ export const rerender = () => {
 
   const { gl, scene, camera } = t;
   gl.render(scene, camera);
-}
+};
 
 const createGeometry = (points: [number, number][]) => {
   if (points.length < 3) {
@@ -214,12 +241,12 @@ const createGeometry = (points: [number, number][]) => {
   const geometry = new THREE.ShapeGeometry(shape);
   geometry.rotateX(-Math.PI / 2);
 
-
   return geometry;
 };
 
 export const initPathfinding = (points?: [number, number][]) => {
-  points = points ?? getAtomValue(roomAtom).find(room => room.name === '바닥')?.border;
+  points =
+    points ?? getAtomValue(roomAtom).find(room => room.name === '바닥')?.border;
   if (!points) {
     throw new Error('Points are not defined @initPathfinding');
   }
@@ -236,7 +263,7 @@ export const initPathfinding = (points?: [number, number][]) => {
     geometry,
     points,
   });
-}
+};
 
 export const pathfinding = () => {
   const retval = getAtomValue(pathfindingAtom);
@@ -244,7 +271,7 @@ export const pathfinding = () => {
     throw new Error('Pathfinding is not initialized');
   }
   return retval.pathfinding;
-}
+};
 
 export const loadNavMesh = async () => {
   // const key = "navMesh";
@@ -272,12 +299,10 @@ export const loadNavMesh = async () => {
         floor = obj as THREE.Mesh;
         return;
       }
-    })
+    });
     if (!floor) {
       throw new Error('Floor is not found');
     }
-
-
 
     const pathfinding = new Pathfinding();
     const geometry = (floor as THREE.Mesh).geometry;
@@ -293,11 +318,10 @@ export const loadNavMesh = async () => {
       points.push([array[i], array[i + 2]]);
     }
 
-
     setAtomValue(pathfindingAtom, {
       pathfinding,
       geometry,
       points,
     });
-  })
-}
+  });
+};

@@ -1,6 +1,5 @@
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import { useEffect, useRef, useState } from 'react';
-import { EXRExporter } from 'three/examples/jsm/exporters/EXRExporter';
 import { v4 } from 'uuid';
 import {
   getAtomValue,
@@ -15,13 +14,12 @@ import ReflectionProbe, {
   ReflectionProbeJSON,
   ReflectionProbeResolutions,
 } from '../scripts/ReflectionProbe.ts';
-import { topView } from '../scripts/utils.ts';
 import { THREE } from '../scripts/VTHREE.ts';
 import './probe.css';
 
 const uploadProbes = async () => {
   const probes = getAtomValue(ProbeAtom);
-  const toJSON = probes.map(probe => probe.toJSON());
+  const toJSON = await Promise.all(probes.map(probe => probe.toJSON()));
 
   uploadJson('probe.json', toJSON)
     .then(res => res.json())
@@ -47,7 +45,7 @@ const importProbes = async () => {
 
   const { scene, gl, camera } = threeExports;
 
-  loadProbes().then(res => {
+  loadProbes().then(async res => {
     if (!ReflectionProbe.isProbeJson(res)) {
       alert('Probe 불러오기 실패');
       console.warn(
@@ -56,9 +54,11 @@ const importProbes = async () => {
       return;
     }
     const probeJsons = res as ReflectionProbeJSON[];
-    const probes = probeJsons.map(probeJson => {
-      return new ReflectionProbe(gl, scene, camera).fromJSON(probeJson);
-    });
+    const probes = await Promise.all(
+      probeJsons.map(probeJson => {
+        return new ReflectionProbe(gl, scene, camera).fromJSON(probeJson);
+      }),
+    );
 
     probes.forEach(probe => {
       probe.addToScene();
@@ -93,6 +93,7 @@ const ProbeInfo = () => {
   }
   const globalPlane = new THREE.Plane(new THREE.Vector3(0, -1, 0), 5);
   const { scene, gl, camera } = threeExports;
+  const { openModal } = useModal();
 
   useEffect(() => {
     if (probeEditMode) {
@@ -126,7 +127,7 @@ const ProbeInfo = () => {
       const reader = new FileReader();
 
       // 3. 파일 읽기 완료 후 처리
-      reader.onload = () => {
+      reader.onload = async () => {
         try {
           const result = reader.result as string;
           const jsonObject = JSON.parse(result); // JSON 문자열을 객체로 변환
@@ -134,9 +135,11 @@ const ProbeInfo = () => {
             alert('올바르지 않은 JSON 파일 형식입니다.');
             return;
           }
-          const newProbe = new ReflectionProbe(gl, scene, camera).fromJSON(
-            jsonObject as ReflectionProbeJSON,
-          );
+          const newProbe = await new ReflectionProbe(
+            gl,
+            scene,
+            camera,
+          ).fromJSON(jsonObject as ReflectionProbeJSON);
           for (const probe of probes) {
             // 프로브가 완전히 겹쳤을 때 => 컨트롤이 오버랩 돼서 분리가 안됨
             const newProbeCenter = newProbe.getCenter();
@@ -192,15 +195,15 @@ const ProbeInfo = () => {
         style={{
           width: '100%',
           display: 'flex',
-          justifyContent: 'center',
           gap: 4,
+          flexWrap: 'wrap',
         }}
       >
         <button
           style={{ fontSize: 12, padding: '4px 8px', cursor: 'pointer' }}
           onClick={addProbe}
         >
-          + 추가
+          추가
         </button>
         <button
           style={{ fontSize: 12, padding: '4px 8px', cursor: 'pointer' }}
@@ -225,11 +228,23 @@ const ProbeInfo = () => {
             <button
               onClick={e => {
                 setProbeEditMode(prev => !prev);
-                topView(!probeEditMode);
+                // topView(!probeEditMode);
               }}
               style={{ fontSize: 12, padding: '4px 8px', cursor: 'pointer' }}
             >
               {probeEditMode ? '프로브 수정 모드 취소' : '프로브 수정 모드'}
+            </button>
+            <button
+              style={{
+                fontSize: 12,
+                padding: '4px 8px',
+                cursor: 'pointer',
+              }}
+              onClick={() => {
+                openModal(() => <ProbeAllResolutionChanger />);
+              }}
+            >
+              해상도 일괄 변경
             </button>
           </>
         )}
@@ -341,13 +356,15 @@ export const ProbeComponent = ({ probe }: { probe: ReflectionProbe }) => {
     }
   }
 
-  function copyProbe() {
-    const json = probe.toJSON();
+  async function copyProbe() {
+    const json = await probe.toJSON();
     // 새로 만들어야 하므로 겹치지 않게 ID, box 위치 변동
     json.id = v4();
-    json.center[0] = json.center[0] + 1;
-    json.center[2] = json.center[2] + 1;
-    const newProbe = new ReflectionProbe(gl, scene, camera).fromJSON(json);
+    json.center[0] = json.center[0] + 1; // x + 1
+    json.center[2] = json.center[2] + 1; // z + 1
+    const newProbe = await new ReflectionProbe(gl, scene, camera).fromJSON(
+      json,
+    );
     newProbe.addToScene();
     setProbes(prev => [...prev, newProbe]);
   }
@@ -361,17 +378,27 @@ export const ProbeComponent = ({ probe }: { probe: ReflectionProbe }) => {
     setSelecteds(emUUIDs);
   }
 
-  function exportProbe() {
-    const json = probe.toJSON();
+  async function exportProbe() {
+    const json = await probe.toJSON();
     downloadObjectJsonFile(json, `probe_${probe.getId()}.json`);
   }
 
   async function exportImage() {
-    const texture = probe.getTexture();
-    console.log(texture);
-    const exporter = new EXRExporter();
-    const result = await exporter.parse(gl, probe.getRenderTarget());
-    console.log(result);
+    const canvas = probe.getCanvas();
+    const blob = (await new Promise(resolve =>
+      canvas.toBlob(resolve),
+    )) as Blob | null;
+    if (blob) {
+      const url = URL.createObjectURL(blob);
+
+      // 다운로드 링크 생성
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `cube_texture.png`;
+      a.click();
+    } else {
+      throw new Error('Blob 생성 실패');
+    }
   }
 
   function changeResolution() {
@@ -490,9 +517,9 @@ export const ProbeComponent = ({ probe }: { probe: ReflectionProbe }) => {
             padding: '4px 8px',
             cursor: 'pointer',
           }}
-          onClick={showEffectedMeshes}
+          onClick={exportProbe}
         >
-          적용된 메시 보기
+          toJSON
         </button>
         <button
           style={{
@@ -751,6 +778,18 @@ const DocumentElementContainer = ({ probe }: { probe: ReflectionProbe }) => {
   const { openModal } = useModal();
 
   useEffect(() => {
+    document.addEventListener('probe-rendered', () => {
+      canvasRef.current
+        .getContext('2d')
+        ?.drawImage(probe.getCanvas(), 0, 0, 60, 60);
+    });
+
+    return () => {
+      document.removeEventListener('probe-rendered', () => {});
+    };
+  }, []);
+
+  useEffect(() => {
     if (canvasRef.current) {
       canvasRef.current.width = 60;
       canvasRef.current.height = 60;
@@ -790,7 +829,7 @@ const ModalCanvasContainer = ({ probe }: { probe: ReflectionProbe }) => {
   }, [probe]);
 
   return (
-    <div className="h-full">
+    <div className="h-full flex justify-center items-center">
       <canvas className="w-full h-full cursor-pointer" ref={canvasRef}></canvas>
     </div>
   );
@@ -918,6 +957,68 @@ const ProbeResolutionChanger = ({ probe }: { probe: ReflectionProbe }) => {
             closeModal();
           }}
           disabled={probe.getResolution() === resolution}
+        >
+          변경
+        </button>
+      </div>
+    </div>
+  );
+};
+
+const ProbeAllResolutionChanger = () => {
+  const resolutions = ReflectionProbe.getAvailableResolutions();
+  const [resolution, setResolution] =
+    useState<ReflectionProbeResolutions>(1024);
+  const probes = useAtomValue(ProbeAtom);
+  const { closeModal } = useModal();
+
+  return (
+    <div
+      className="w-[30%] bg-white px-4 py-3"
+      onClick={e => {
+        e.preventDefault();
+        e.stopPropagation();
+      }}
+    >
+      {/* Header */}
+      <div className="py-1 w-full mb-2">
+        <strong style={{ fontSize: 16 }}>해상도 일괄 수정</strong>
+      </div>
+      <div className="w-full mb-2 flex flex-col gap-y-2">
+        <div className="flex w-full gap-x-2 text-sm items-center">
+          <span>해상도 : </span>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <select
+              value={resolution}
+              onChange={event =>
+                setResolution(
+                  Number(event.target.value) as ReflectionProbeResolutions,
+                )
+              }
+            >
+              {resolutions.map(resolution => (
+                <option key={resolution} value={resolution}>
+                  {resolution}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+      </div>
+      {/* Footer  */}
+      <div className="flex w-full justify-end gap-x-2">
+        <button className="py-1.5 px-3 text-md" onClick={closeModal}>
+          취소
+        </button>
+        <button
+          className="py-1.5 px-3 text-md"
+          onClick={() => {
+            probes.map(probe => {
+              if (probe.getResolution() !== resolution)
+                probe.setResolution(resolution);
+            });
+            closeModal();
+          }}
         >
           변경
         </button>
