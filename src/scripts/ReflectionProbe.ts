@@ -122,6 +122,7 @@ export default class ReflectionProbe {
     this.renderTarget = new THREE.WebGLCubeRenderTarget(this.resolution, {
       format: THREE.RGBFormat,
       generateMipmaps: false,
+      type: THREE.UnsignedByteType,
     });
 
     const { height, center } = getBoxHeight(scene);
@@ -708,10 +709,14 @@ export default class ReflectionProbe {
     canvas.height = this.resolution;
     this.canvas = canvas;
 
+    // dispose Original RenderTarget
+    this.renderTarget.dispose();
+
     // Update RenderTarget & CubeCamera
     this.renderTarget = new THREE.WebGLCubeRenderTarget(this.resolution, {
       format: THREE.RGBFormat,
       generateMipmaps: false,
+      type: THREE.UnsignedByteType,
     });
     const cubeCamera = new THREE.CubeCamera(
       this.cubeCameraNear,
@@ -817,6 +822,10 @@ export default class ReflectionProbe {
 
   createNewId(id: string = v4()) {
     this.serializedId = id;
+  }
+
+  static envProjectionFunction(pos: THREE.Vector3, size: THREE.Vector3) {
+    return materialOnBeforeCompileFunction(pos, size);
   }
 }
 

@@ -4,7 +4,6 @@ import React, { ChangeEvent, useEffect, useRef, useState } from 'react';
 import { ProbeAtom, useModal } from '../scripts/atoms';
 import ReflectionProbe from '../scripts/ReflectionProbe.ts';
 import { THREE } from '../scripts/VTHREE';
-
 export interface MapPreviewProps {
   material: THREE.MeshStandardMaterial;
   matKey:
@@ -47,11 +46,42 @@ export const FullscreenCanvas = ({ texture }: { texture: THREE.Texture }) => {
     if (!innerCanvasRef.current) {
       return;
     }
+    const isKtx = texture.vUserData?.mimeType === 'image/ktx2';
     innerCanvasRef.current.width = dstWidth;
     innerCanvasRef.current.height = dstHeight;
-    innerCanvasRef.current
-      .getContext('2d')
-      ?.drawImage(texture.image, 0, 0, dstWidth, dstHeight);
+
+    if (isKtx) {
+      const t = texture as THREE.CompressedTexture;
+      const mipmaps = t.mipmaps;
+      if (mipmaps && mipmaps.length > 0) {
+        const highestMipmap = mipmaps[0];
+        const width = highestMipmap.width;
+        const height = highestMipmap.height;
+        const data = highestMipmap.data;
+        const context = innerCanvasRef.current.getContext('2d');
+
+        if (context) {
+          const imageData = new ImageData(width, height);
+
+          for (let i = 0; i < data.length; i += 4) {
+            imageData.data[i] = data[i];
+            imageData.data[i + 1] = data[i + 1];
+            imageData.data[i + 2] = data[i + 2];
+            imageData.data[i + 3] = 255;
+          }
+
+          context.putImageData(imageData, 0, 0);
+        } else {
+          console.warn(
+            'Cannot Draw KTX image: Canvas 2D Context Not Supported',
+          );
+        }
+      }
+    } else {
+      innerCanvasRef.current
+        .getContext('2d')
+        ?.drawImage(texture.image, 0, 0, dstWidth, dstHeight);
+    }
   }, []);
   return (
     <div className="h-full flex flex-col" onClick={closer}>
@@ -93,7 +123,10 @@ const MapPreview: React.FC<MapPreviewProps> = ({
   const isKtx = texture?.vUserData?.mimeType === 'image/ktx2';
   const hasImage = texture && texture.image && !isGainmap;
   const cannotDraw =
-    mapKey === 'envMap' || isGainmap || texture?.vUserData?.isExr || isKtx;
+    mapKey === 'envMap' ||
+    isGainmap ||
+    texture?.vUserData?.isExr ||
+    (isKtx && texture?.mipmaps?.length === 0);
 
   useEffect(() => {
     if (cannotDraw) {
@@ -118,7 +151,38 @@ const MapPreview: React.FC<MapPreviewProps> = ({
     // const source = texture.image || texture.source.data;
     // console.log(texture.image);
     try {
-      canvasRef.current.getContext('2d')?.drawImage(texture.image, 0, 0, w, h);
+      if (isKtx) {
+        const t = texture as THREE.CompressedTexture;
+        const mipmaps = t.mipmaps;
+        if (mipmaps && mipmaps.length > 0) {
+          const highestMipmap = mipmaps[0];
+          const width = highestMipmap.width;
+          const height = highestMipmap.height;
+          const data = highestMipmap.data;
+          const context = canvasRef.current.getContext('2d');
+
+          if (context) {
+            const imageData = new ImageData(width, height);
+
+            for (let i = 0; i < data.length; i += 4) {
+              imageData.data[i] = data[i];
+              imageData.data[i + 1] = data[i + 1];
+              imageData.data[i + 2] = data[i + 2];
+              imageData.data[i + 3] = 255;
+            }
+
+            context.putImageData(imageData, 0, 0);
+          } else {
+            console.warn(
+              'Cannot Draw KTX image: Canvas 2D Context Not Supported',
+            );
+          }
+        }
+      } else {
+        canvasRef.current
+          .getContext('2d')
+          ?.drawImage(texture.image, 0, 0, w, h);
+      }
     } catch (e) {
       console.error(e);
     }
@@ -144,15 +208,19 @@ const MapPreview: React.FC<MapPreviewProps> = ({
 
   if (cannotDraw) {
     if (mapKey === 'envMap') {
-      return (
-        <div className="my-1">
-          {probes.length > 0 ? (
-            <ProbeSelector material={material} />
-          ) : (
-            <span>생성된 프로브가 없습니다.</span>
-          )}
-        </div>
-      );
+      if (material.envMap && material.envMap.vUserData.isCustomEnvMap) {
+        return <TextureMappingChanger texture={material.envMap} />;
+      } else {
+        return (
+          <div className="my-1">
+            {probes.length > 0 ? (
+              <ProbeSelector material={material} />
+            ) : (
+              <span>생성된 프로브가 없습니다.</span>
+            )}
+          </div>
+        );
+      }
     } else if (texture) {
       return (
         <div style={{ fontSize: 11, color: '#555' }}>
@@ -283,6 +351,47 @@ const ProbeSelector = ({
         <option value={probe.getId()}>{probe.getName()}</option>
       ))}
     </select>
+  );
+};
+
+const TextureMappingChanger = ({ texture }: { texture: THREE.Texture }) => {
+  const [mapping, setMapping] = useState<THREE.AnyMapping>(texture.mapping);
+  const [flipY, setFlipY] = useState(texture.flipY);
+  const mappings = {
+    UVMapping: THREE.UVMapping,
+    EquirectangularReflectionMapping: THREE.EquirectangularReflectionMapping,
+    EquirectangularRefractionMapping: THREE.EquirectangularRefractionMapping,
+    CubeReflectionMapping: THREE.CubeReflectionMapping,
+    CubeRefractionMapping: THREE.CubeRefractionMapping,
+    CubeUVReflectionMapping: THREE.CubeUVReflectionMapping,
+  };
+
+  useEffect(() => {
+    texture.flipY = flipY;
+    texture.needsUpdate = true;
+  }, [flipY]);
+
+  useEffect(() => {
+    texture.mapping = mapping;
+    texture.needsUpdate = true;
+  }, [mapping]);
+
+  return (
+    <>
+      <select
+        value={mapping}
+        onChange={e => setMapping(Number(e.target.value))}
+      >
+        {Object.keys(mappings).map(m => (
+          <option value={mappings[m]}>{m}</option>
+        ))}
+      </select>
+      <input
+        type="checkbox"
+        checked={flipY}
+        onChange={event => setFlipY(event.target.checked)}
+      />
+    </>
   );
 };
 

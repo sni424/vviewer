@@ -34,6 +34,7 @@ export interface ThreeUserData {
   // optional
   dpOnLightMapIntensity?: number;
   dpOffLightMapIntensity?: number;
+  isCustomEnvMap?: boolean;
 }
 
 declare module 'three' {

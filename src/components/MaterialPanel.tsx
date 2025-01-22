@@ -6,7 +6,8 @@ import {
   selectedAtom,
   threeExportsAtom,
 } from '../scripts/atoms';
-import { loadHDRTexture } from '../scripts/utils';
+import ReflectionProbe from '../scripts/ReflectionProbe.ts';
+import { loadHDRTexture, loadPNGAsENV } from '../scripts/utils';
 import VTextureLoader from '../scripts/VTextureLoader';
 import { THREE } from '../scripts/VTHREE';
 import MapPreview, { MapPreviewProps } from './MapPreview';
@@ -57,6 +58,10 @@ const setMap = (
   } else if (dstKey === 'envMap') {
     if (texture) {
       material.envMap = texture;
+      material.onBeforeCompile = ReflectionProbe.envProjectionFunction(
+        new THREE.Vector3(7.94, 1.125, -0.527),
+        new THREE.Vector3(1.15, 2.44, 3.96),
+      );
     } else {
       material.envMap = null;
       delete material.vUserData.probeId;
@@ -145,15 +150,27 @@ const MapInfo = (props: MapInfoProps) => {
         if (
           !(
             file.name.toLowerCase().endsWith('hdr') ||
-            file.name.toLowerCase().endsWith('exr')
+            file.name.toLowerCase().endsWith('exr') ||
+            file.name.toLowerCase().endsWith('png')
           )
         ) {
-          alert('환경맵은 HDR/EXR 형식만 지원합니다.');
+          alert('환경맵은 HDR/EXR/PNG 형식만 지원합니다.');
           return;
         }
-        loadHDRTexture(URL.createObjectURL(file)).then(texture => {
-          setMap(material, mapKey, texture);
-        });
+        if (file.name.toLowerCase().endsWith('png')) {
+          loadPNGAsENV(URL.createObjectURL(file)).then(texture => {
+            const pmremGenerator = new THREE.PMREMGenerator(threeExports.gl);
+            pmremGenerator.compileEquirectangularShader();
+            const compiled =
+              pmremGenerator.fromEquirectangular(texture).texture;
+            compiled.vUserData.isCustomEnvMap = true;
+            setMap(material, mapKey, compiled);
+          });
+        } else {
+          loadHDRTexture(URL.createObjectURL(file)).then(texture => {
+            setMap(material, mapKey, texture);
+          });
+        }
       } else {
         const acceptedExtensions = ['.png', '.jpg', '.exr', '.hdr'];
         if (
@@ -333,9 +350,14 @@ const UserDataSection = ({ mat }: { mat: THREE.MeshStandardMaterial }) => {
   );
 };
 
-const MapSection = ({ mat }: { mat: THREE.MeshStandardMaterial }) => {
+const MapSection = ({
+  mat,
+}: {
+  mat: THREE.MeshStandardMaterial | THREE.MeshPhysicalMaterial;
+}) => {
   const [opacity, setOpacity] = useState(mat.opacity);
   const [transparent, setTransparent] = useState(mat.transparent);
+  const isPhysical = mat.type === 'MeshPhysicalMaterial';
 
   return (
     <section
@@ -439,6 +461,12 @@ const MapSection = ({ mat }: { mat: THREE.MeshStandardMaterial }) => {
               },
             }}
           ></MapInfo>
+          {isPhysical && (
+            <>
+              <MaterialPhysicalPanels mat={mat as THREE.MeshPhysicalMaterial} />
+            </>
+          )}
+
           <div className="w-full flex items-center gap-x-2 py-2.5">
             <strong>투명도 설정</strong>
             <input
@@ -506,9 +534,35 @@ function MaterialPanelContainer() {
   const selecteds = useAtomValue(selectedAtom);
   const threeExports = useAtomValue(threeExportsAtom);
   const [mat, setMat] = useAtom(materialSelectedAtom);
-
   if (!mat || !threeExports) {
     return null;
+  }
+
+  const isStandard = mat.type === 'MeshStandardMaterial';
+
+  function standardToPhysical() {
+    if (mat && threeExports) {
+      const copiedMat = new THREE.MeshPhysicalMaterial({
+        ...mat,
+        type: 'MeshPhysicalMaterial',
+      });
+      const scene = threeExports.scene;
+
+      scene.traverse(o => {
+        if (o.type === 'Mesh') {
+          const mesh = o as THREE.Mesh;
+          const originalMaterial = mesh.material as THREE.Material;
+          if (originalMaterial.uuid === copiedMat.uuid) {
+            console.log('sameMaterial Found');
+            mesh.material = copiedMat;
+          }
+        }
+      });
+
+      copiedMat.needsUpdate = true;
+
+      setMat(copiedMat);
+    }
   }
 
   return (
@@ -542,10 +596,21 @@ function MaterialPanelContainer() {
         <div style={{ fontSize: 10, color: '#444' }}>{mat.type}</div>
       </div>
       {/* <MaterialPanel style={{width:"100%"}} mat={mat}></MaterialPanel> */}
+
       <MapSection mat={mat as THREE.MeshStandardMaterial} />
+      <>
+        {isStandard && (
+          <div className="my-2">
+            <button className="w-full" onClick={standardToPhysical}>
+              MeshPhysicalMaterial 전환
+            </button>
+          </div>
+        )}
+      </>
       <UserDataSection
         mat={mat as THREE.MeshStandardMaterial}
       ></UserDataSection>
+
       <div
         style={{
           position: 'absolute',
@@ -564,5 +629,57 @@ function MaterialPanelContainer() {
     </div>
   );
 }
+
+const MaterialPhysicalPanels = ({
+  mat,
+}: {
+  mat: THREE.MeshPhysicalMaterial;
+}) => {
+  const [specular, setSpecular] = useState<number>(mat.specularIntensity);
+  return (
+    <div className="w-full py-2.5">
+      <strong>Specular</strong>
+      <div style={{ display: 'flex', width: '100%', gap: 8 }}>
+        <div
+          style={{
+            flex: 1,
+            minWidth: 0,
+          }}
+        >
+          <input
+            style={{
+              width: '100%',
+            }}
+            type="range"
+            min={0}
+            max={1}
+            step={0.01}
+            value={specular}
+            onChange={e => {
+              const value = parseFloat(e.target.value);
+              mat.specularIntensity = value;
+              setSpecular(value);
+              mat.needsUpdate = true;
+            }}
+          />
+        </div>
+        <input
+          style={{ width: 35, borderRadius: 4 }}
+          type="number"
+          min={0}
+          max={1}
+          step={0.01}
+          value={specular}
+          onChange={e => {
+            const value = parseFloat(e.target.value);
+            mat.specularIntensity = value;
+            setSpecular(value);
+            mat.needsUpdate = true;
+          }}
+        />
+      </div>
+    </div>
+  );
+};
 
 export default MaterialPanelContainer;

@@ -6,7 +6,7 @@ import objectHash from 'object-hash';
 import pako from 'pako';
 import { Vector3 } from 'three';
 import { TransformControls } from 'three-stdlib';
-import { OrbitControls, RGBELoader } from 'three/examples/jsm/Addons.js';
+import { EXRLoader, OrbitControls } from 'three/examples/jsm/Addons.js';
 import { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { ENV, Layer } from '../Constants';
 import { FileInfo, MoveActionOptions, View } from '../types.ts';
@@ -398,9 +398,26 @@ export const loadLatest = async ({
     });
 };
 
+export const loadPNGAsENV = (path: string): Promise<THREE.Texture> => {
+  return new Promise((resolve, reject) => {
+    const loader = new THREE.TextureLoader();
+    loader.load(
+      path,
+      texture => {
+        texture.mapping = THREE.EquirectangularReflectionMapping;
+        texture.vUserData.isCustomEnvMap = true;
+        resolve(texture);
+      },
+      undefined,
+      error => reject(error),
+    );
+  });
+};
+
 export const loadHDRTexture = (path: string): Promise<THREE.Texture> => {
   return new Promise((resolve, reject) => {
-    const loader = new RGBELoader();
+    // const loader = new RGBELoader();
+    const loader = new EXRLoader();
     loader.load(
       path,
       texture => {

@@ -10,7 +10,7 @@ const defaultToneMappingOption: { [key in string]: OptionTransformer } = {
     label: '모드',
     type: 'dropdown',
     parse: 'integer',
-    value: ToneMappingMode.NEUTRAL,
+    value: ToneMappingMode.AGX,
     values: [
       {
         label: '리니어',
@@ -59,7 +59,7 @@ const defaultToneMappingOption: { [key in string]: OptionTransformer } = {
     value: 1,
     label: '노출',
     min: 0.1,
-    max: 4.0,
+    max: 6.0,
     step: 0.01,
   },
   opacity: {
