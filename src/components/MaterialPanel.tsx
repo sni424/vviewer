@@ -61,6 +61,7 @@ const setMap = (
       material.onBeforeCompile = ReflectionProbe.envProjectionFunction(
         new THREE.Vector3(7.94, 1.125, -0.527),
         new THREE.Vector3(1.15, 2.44, 3.96),
+        true,
       );
     } else {
       material.envMap = null;

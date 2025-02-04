@@ -290,7 +290,7 @@ export const ProbeComponent = ({ probe }: { probe: ReflectionProbe }) => {
   const [mesh, setMesh] = useState<THREE.Mesh>();
   const [imageData, setImageData] = useState<ImageData | null>(null);
   const { openModal, closeModal } = useModal();
-  const [isCustom, setIsCustom] = useState<boolean>(probe.isCustomTexture());
+  const [isCustom, setIsCustom] = useState<boolean>(probe.isUseCustomTexture());
 
   useEffect(() => {
     const nRC = nameRef.current;
@@ -308,6 +308,11 @@ export const ProbeComponent = ({ probe }: { probe: ReflectionProbe }) => {
   useEffect(() => {
     probe.setAutoUpdate(autoUpdate);
   }, [autoUpdate]);
+
+  useEffect(() => {
+    console.log('custom Changed : ', name, isCustom);
+    probe.setUseCustomTexture(isCustom);
+  }, [isCustom]);
 
   useEffect(() => {
     // Probe Change Effect
@@ -329,9 +334,15 @@ export const ProbeComponent = ({ probe }: { probe: ReflectionProbe }) => {
       setResolution(probe.getResolution());
     });
 
+    document.addEventListener('probe-rendered', event => {
+      setImageData(probe.getImageData());
+    });
+
     return () => {
       document.removeEventListener('probeMesh-changed', () => {});
       document.removeEventListener('probeName-changed', () => {});
+      document.removeEventListener('probeResolution-changed', () => {});
+      document.removeEventListener('probe-rendered', () => {});
     };
   }, []);
 
@@ -383,48 +394,38 @@ export const ProbeComponent = ({ probe }: { probe: ReflectionProbe }) => {
     setProbes(prev => [...prev, newProbe]);
   }
 
-  function showEffectedMeshes() {
-    setSelecteds([]);
-    const effectedMeshes = probe.getEffectedMeshes();
-    const emUUIDs = effectedMeshes.map(mesh => {
-      return mesh.uuid;
-    });
-    setSelecteds(emUUIDs);
-  }
-
   async function exportProbe() {
     const json = await probe.toJSON();
     downloadObjectJsonFile(json, `probe_${probe.getId()}.json`);
   }
 
-  async function exportDimensionImage() {
-    console.log(await probe.envToImage());
-  }
-
   async function exportImage() {
-    const canvas = probe.getCanvas();
-    const blob = (await new Promise(resolve =>
-      canvas.toBlob(resolve),
-    )) as Blob | null;
-    if (blob) {
-      const url = URL.createObjectURL(blob);
-
-      // 다운로드 링크 생성
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `cube_texture.png`;
-      a.click();
+    const images = await probe.getEnvImage();
+    console.log(images);
+    const id = probe.getId();
+    const date = new Date().toISOString();
+    if (Array.isArray(images)) {
+      images.forEach(image => {
+        const a = document.createElement('a');
+        a.href = image;
+        console.log(a);
+        a.click();
+      });
     } else {
-      throw new Error('Blob 생성 실패');
+      Object.entries(images).forEach(([key, value]) => {
+        const url = URL.createObjectURL(value);
+
+        // 다운로드 링크 생성
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${id}_${date}_${key}.png`;
+        a.click();
+      });
     }
   }
 
   function changeResolution() {
     openModal(() => <ProbeResolutionChanger probe={probe} />);
-  }
-
-  function uploadCustomTexture() {
-    openModal(() => <ProbeCustomTextureUploader probe={probe} />);
   }
 
   return (
@@ -502,13 +503,13 @@ export const ProbeComponent = ({ probe }: { probe: ReflectionProbe }) => {
             marginLeft: 4,
           }}
         >
-          <span>자동 업데이트</span>
+          <span>직접 렌더</span>
           <input
             className="on-off"
             type="checkbox"
-            checked={autoUpdate}
+            checked={!isCustom}
             onChange={e => {
-              setAutoUpdate(e.target.checked);
+              setIsCustom(!e.target.checked);
             }}
           />
         </div>
@@ -549,7 +550,7 @@ export const ProbeComponent = ({ probe }: { probe: ReflectionProbe }) => {
             padding: '4px 8px',
             cursor: 'pointer',
           }}
-          onClick={exportDimensionImage}
+          onClick={exportImage}
         >
           추출
         </button>
@@ -563,16 +564,6 @@ export const ProbeComponent = ({ probe }: { probe: ReflectionProbe }) => {
         >
           해상도 변경
         </button>
-        <button
-          style={{
-            fontSize: 12,
-            padding: '4px 8px',
-            cursor: 'pointer',
-          }}
-          onClick={uploadCustomTexture}
-        >
-          커스텀 텍스쳐
-        </button>
       </div>
       <div className="probe-detail">
         <div
@@ -585,10 +576,12 @@ export const ProbeComponent = ({ probe }: { probe: ReflectionProbe }) => {
           }}
         >
           <span>env Image : </span>
-          {imageData ? (
+          {isCustom ? (
+            <span>커스텀 텍스쳐</span>
+          ) : imageData ? (
             <DocumentElementContainer probe={probe} />
           ) : (
-            <span>{isCustom ? '커스텀 텍스쳐' : '아직 렌더되지 않음'}</span>
+            <span>아직 렌더되지 않음</span>
           )}
         </div>
 
@@ -811,9 +804,11 @@ const DocumentElementContainer = ({ probe }: { probe: ReflectionProbe }) => {
 
   useEffect(() => {
     document.addEventListener('probe-rendered', () => {
-      canvasRef.current
-        .getContext('2d')
-        ?.drawImage(probe.getCanvas(), 0, 0, 60, 60);
+      if (canvasRef.current) {
+        canvasRef.current
+          .getContext('2d')
+          ?.drawImage(probe.getCanvas(), 0, 0, 60, 60);
+      }
     });
 
     return () => {

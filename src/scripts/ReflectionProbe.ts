@@ -43,14 +43,16 @@ export type ReflectionProbeJSON = {
   url?: string;
   textureBlobs?: CubeMapFaceBlobs;
   textures?: CubeMapFaceUrls;
-  textureUrls?: string[];
+  textureUrls?: string[] | null;
+  useCustomTexture: boolean;
+  renderedTime?: number | null;
 };
 
 export interface ProbeMeshEventMap extends Object3DEventMap {
   updated: {};
 }
 
-type Modes = 'box' | 'sphere';
+// type Modes = 'box' | 'sphere';
 const DEFAULT_TSIZE = 0.7;
 const DEFAULT_SSIZE = 0.5;
 
@@ -76,25 +78,29 @@ export default class ReflectionProbe {
     ProbeMeshEventMap
   >;
   private reflectionProbeSphere: THREE.Mesh;
-  private effectedMeshes: THREE.Mesh[] = [];
+  private quad: THREE.Mesh | undefined;
+  private canvas: HTMLCanvasElement | undefined;
+  private imageData: ImageData | null = null;
+  // Probe Controllers
   private readonly translateControls: TransformControls<THREE.Camera>;
   private readonly scaleControls: TransformControls<THREE.Camera>;
+  private sSize: number = DEFAULT_SSIZE; // Size of Probe Box Scale Controller
+  private tSize: number = DEFAULT_TSIZE; // Size of Probe Box Translate Controller
   // PRIORITY PROPERTIES
   private serializedId: string = v4();
+  private name: string;
   // Out Interaction Property
   private showProbe: boolean = true;
   private showControls: boolean = true;
-  private modes: Modes = 'box';
   private autoUpdate: boolean = false;
-  private readonly quad: THREE.Mesh;
-  private textureImage: string | null = null;
-  private canvas: HTMLCanvasElement;
-  private imageData: ImageData;
-  private name: string;
+  // Static Textures
   private customTexture: THREE.Texture | null = null;
-  private sSize: number = DEFAULT_SSIZE;
-  private tSize: number = DEFAULT_TSIZE;
   private textureUrls: string[] | null = null;
+  private useCustomTexture: boolean = false;
+  private renderedTime: number | null = null;
+
+  // TODO 추후 개발
+  // private modes: Modes = 'box';
 
   constructor(
     renderer: THREE.WebGLRenderer,
@@ -110,29 +116,16 @@ export default class ReflectionProbe {
     this.pmremGenerator = pmremGenerator;
     this.scene = scene;
 
-    this.quad = new THREE.Mesh(
-      new THREE.PlaneGeometry(1, 1),
-      new THREE.RawShaderMaterial({
-        uniforms: {
-          map: { type: 't', value: null },
-        },
-        vertexShader: rawMaterialVertexShader,
-        fragmentShader: rawMaterialFragmentShader,
-        side: THREE.DoubleSide,
-        transparent: true,
-      }),
-    );
+    if (resolution) {
+      this.resolution = resolution;
+    }
+
+    this.prepareQuad();
 
     if (!camera.layers.isEnabled(CUBE_CAMERA_LAYER)) {
       camera.layers.enableAll();
       camera.layers.enable(CUBE_CAMERA_LAYER);
     }
-
-    if (resolution) {
-      this.resolution = resolution;
-    }
-
-    this.quad.scale.set(this.resolution / 2, this.resolution / 2, 1);
 
     this.renderTarget = new THREE.WebGLCubeRenderTarget(this.resolution, {
       format: THREE.RGBAFormat,
@@ -143,7 +136,6 @@ export default class ReflectionProbe {
 
     this.size.setY(height);
     this.center.setY(center);
-
     this.box = new THREE.Box3().setFromCenterAndSize(this.center, this.size);
 
     // Create Cube Camera
@@ -185,18 +177,21 @@ export default class ReflectionProbe {
     scaleControls.setMode('scale');
     scaleControls.setSize(this.sSize);
 
+    // @ts-ignore
     translateControls.addEventListener('dragging-changed', event => {
       document.dispatchEvent(
         new CustomEvent('control-dragged', { detail: { moving: event.value } }),
       );
     });
 
+    // @ts-ignore
     scaleControls.addEventListener('dragging-changed', event => {
       document.dispatchEvent(
         new CustomEvent('control-dragged', { detail: { moving: event.value } }),
       );
     });
 
+    // @ts-ignore
     translateControls.addEventListener('objectChange', event => {
       if (this.boxMesh) {
         const detail = {
@@ -215,6 +210,7 @@ export default class ReflectionProbe {
       }
     });
 
+    // @ts-ignore
     scaleControls.addEventListener('objectChange', event => {
       if (this.boxMesh) {
         const detail = {
@@ -246,6 +242,28 @@ export default class ReflectionProbe {
     this.boxMesh.addEventListener('updated', event => {
       console.log('boxMesh updated', event);
     });
+  }
+
+  static getAvailableResolutions() {
+    return AvailableResolutions;
+  }
+
+  private prepareQuad() {
+    const quad = new THREE.Mesh(
+      new THREE.PlaneGeometry(1, 1),
+      new THREE.RawShaderMaterial({
+        uniforms: {
+          // @ts-ignore
+          map: { type: 't', value: null },
+        },
+        vertexShader: rawMaterialVertexShader,
+        fragmentShader: rawMaterialFragmentShader,
+        side: THREE.DoubleSide,
+        transparent: true,
+      }),
+    );
+    quad.scale.set(this.resolution / 2, this.resolution / 2, 1);
+    this.quad = quad;
 
     // FOR Texture visualizing
     const canvas = document.createElement('canvas');
@@ -254,10 +272,6 @@ export default class ReflectionProbe {
     canvas.width = this.resolution;
     canvas.height = this.resolution;
     this.canvas = canvas;
-  }
-
-  static getAvailableResolutions() {
-    return AvailableResolutions;
   }
 
   addToScene() {
@@ -269,7 +283,6 @@ export default class ReflectionProbe {
     this.boxMesh.removeFromParent();
     this.translateControls.removeFromParent();
     this.scaleControls.removeFromParent();
-    this.resetEffectedMeshes();
   }
 
   getControls() {
@@ -314,6 +327,7 @@ export default class ReflectionProbe {
     return this;
   }
 
+  // TODO unsafe call for transformControls => 방법 찾기
   setControlsVisible(visible: boolean) {
     this.translateControls.showX = visible;
     this.translateControls.showY = visible;
@@ -323,10 +337,6 @@ export default class ReflectionProbe {
     this.scaleControls.showZ = visible;
 
     return this;
-  }
-
-  getEffectedMeshes() {
-    return this.effectedMeshes;
   }
 
   getResolution() {
@@ -376,7 +386,7 @@ export default class ReflectionProbe {
     canvas.height = this.resolution;
     this.canvas = canvas;
 
-    this.quad.scale.set(this.resolution / 2, this.resolution / 2, 1);
+    this.quad!!.scale.set(this.resolution / 2, this.resolution / 2, 1);
 
     this.applyTextureOnQuad();
 
@@ -450,62 +460,11 @@ export default class ReflectionProbe {
     return this.boxMesh;
   }
 
-  resetEffectedMeshes() {
-    // 기존 Probe에 엮인 메시의 envMap 초기화
-    this.effectedMeshes.forEach(mesh => {
-      const material = mesh.material as THREE.Material;
-      if ('envMap' in material) {
-        material.envMap = null;
-        material.needsUpdate = true;
-      }
-    });
-  }
-
-  updateObjectChildrenEnv() {
-    // 기존 Probe 에 엮인 메시 모두 적용 해제
-    this.resetEffectedMeshes();
-
-    // 적용될 메시 찾기
-    const box = createBoxByCenterAndSize(
-      this.cubeCamera.position,
-      this.boxMesh.scale,
-    );
-
-    const meshInBox: THREE.Mesh[] = [];
-    const tempBox = new THREE.Box3();
-    this.scene.traverse(child => {
-      if ('isMesh' in child && !child.vUserData.isProbeMesh) {
-        const meshBox = tempBox.setFromObject(child);
-        if (box.intersectsBox(meshBox)) {
-          child.vUserData.probe = this;
-          meshInBox.push(child as THREE.Mesh);
-        }
-      }
-    });
-
-    this.effectedMeshes = meshInBox;
-
-    // envMap 적용
-    const envMap = this.getTexture();
-    meshInBox.forEach(mesh => {
-      const mat = mesh.material as THREE.MeshStandardMaterial;
-      if (!('onBeforeCompileTemp' in mat)) {
-        mat['onBeforeCompileTemp'] = mat.onBeforeCompile;
-      }
-      mat.onBeforeCompile = materialOnBeforeCompileFunction(
-        this.cubeCamera.position,
-        this.boxMesh.scale,
-      );
-      mat.envMap = envMap;
-      mat.envMapIntensity = 1;
-    });
-    return this;
-  }
-
   materialOnBeforeCompileFunc() {
     return materialOnBeforeCompileFunction(
       this.cubeCamera.position,
       this.boxMesh.scale,
+      this.useCustomTexture,
     );
   }
 
@@ -559,7 +518,9 @@ export default class ReflectionProbe {
   }
 
   applyTextureOnQuad() {
-    const material = this.quad.material as THREE.RawShaderMaterial;
+    const quad = this.quad!!;
+    const canvas = this.canvas!!;
+    const material = quad.material as THREE.RawShaderMaterial;
     material.uniforms.map.value = this.cubeCamera.renderTarget.texture;
     const size = this.resolution;
     const renderer = this.renderer;
@@ -574,7 +535,7 @@ export default class ReflectionProbe {
     );
 
     const scene = new THREE.Scene();
-    scene.add(this.quad);
+    scene.add(quad);
 
     const newRenderTarget = new THREE.WebGLRenderTarget(size, size, {
       minFilter: THREE.LinearFilter,
@@ -597,7 +558,7 @@ export default class ReflectionProbe {
     const imageData = new ImageData(new Uint8ClampedArray(pixels), size, size);
 
     this.imageData = imageData;
-    const context = this.canvas.getContext('2d');
+    const context = canvas.getContext('2d');
     if (context) {
       context.reset();
       context.putImageData(imageData, 0, 0);
@@ -609,7 +570,7 @@ export default class ReflectionProbe {
   }
 
   renderCamera() {
-    if (this.customTexture) {
+    if (this.customTexture && this.useCustomTexture) {
       return;
     }
     // Before render => Set No Render Objects Invisible
@@ -632,6 +593,8 @@ export default class ReflectionProbe {
     // Canvas Update
     this.applyTextureOnQuad();
     document.dispatchEvent(new CustomEvent('probe-rendered', { detail: {} }));
+    console.log('probe Rendered : ' + this.serializedId);
+    this.renderedTime = new Date().getTime();
   }
 
   updateCameraPosition(
@@ -646,7 +609,7 @@ export default class ReflectionProbe {
   }
 
   getTexture(): THREE.Texture {
-    if (this.customTexture) {
+    if (this.customTexture && this.useCustomTexture) {
       return this.customTexture;
     }
     const cubeTexture = this.renderTarget.texture;
@@ -666,6 +629,14 @@ export default class ReflectionProbe {
 
   getRenderTarget(): THREE.WebGLCubeRenderTarget {
     return this.renderTarget;
+  }
+
+  async getEnvImage() {
+    if (this.useCustomTexture && this.textureUrls) {
+      return this.textureUrls;
+    } else {
+      return this.envToImage();
+    }
   }
 
   async envToImage() {
@@ -705,9 +676,9 @@ export default class ReflectionProbe {
       ctx.putImageData(imageData, 0, 0);
 
       const blob = (await new Promise(resolve =>
+        // @ts-ignore
         canvas.toBlob(resolve),
       )) as Blob;
-      console.log('EnvToImage() : in Promise => ', blob);
       faceTexture[dir] = blob;
     });
 
@@ -716,22 +687,25 @@ export default class ReflectionProbe {
     return faceTexture;
   }
 
+  async uploadEnvImage() {
+    const textureBlobs = await this.envToImage();
+
+    // TODO Upload Texture Blob => to URL
+    const files = Object.entries(textureBlobs).map(
+      ([key, blob]) =>
+        new File([blob], `probe_${this.serializedId}_${key}.png`),
+    );
+
+    await uploadPngToKtx(files);
+
+    this.textureUrls = files.map(file => {
+      return ENV.base + splitExtension(file.name).name + '.ktx';
+    });
+  }
+
   async toJSON(): Promise<ReflectionProbeJSON> {
     if (!this.textureUrls) {
-      const textureBlobs = await this.envToImage();
-
-      // TODO Upload Texture Blob => to URL
-      const files = Object.keys(textureBlobs).map(key => {
-        const blob = textureBlobs[key] as Blob;
-        return new File([blob], `probe_${this.serializedId}_${key}.png`);
-      });
-
-      await uploadPngToKtx(files);
-
-      const results = files.map(file => {
-        return ENV.base + splitExtension(file.name).name + '.ktx';
-      });
-      this.textureUrls = results;
+      await this.uploadEnvImage();
     }
 
     return {
@@ -744,6 +718,8 @@ export default class ReflectionProbe {
       showProbe: this.showProbe,
       showControls: this.showControls,
       textureUrls: this.textureUrls,
+      useCustomTexture: this.useCustomTexture,
+      renderedTime: this.renderedTime,
     };
   }
 
@@ -754,15 +730,10 @@ export default class ReflectionProbe {
     this.center = new THREE.Vector3().fromArray(json.center);
     this.size = new THREE.Vector3().fromArray(json.size);
     this.resolution = json.resolution;
-
-    // if (json.url) {
-
-    //
-    //   await loader.init();
-    //   this.customTexture = await loader.loadAsync(json.url);
-    // }
-
-    this.quad.scale.set(this.resolution / 2, this.resolution / 2, 1);
+    if (json.renderedTime) {
+      this.renderedTime = json.renderedTime;
+    }
+    this.quad!!.scale.set(this.resolution / 2, this.resolution / 2, 1);
 
     const canvas = document.createElement('canvas');
     canvas.style.width = this.resolution.toString();
@@ -816,39 +787,39 @@ export default class ReflectionProbe {
       const order = ['px', 'nx', 'py', 'ny', 'pz', 'nz'];
 
       const sortedTextures = textureUrls.sort((a, b) => {
-        const getKey = str => str.match(/_(px|nx|py|ny|pz|nz)\.ktx$/)[1];
+        const getKey = (str: string) =>
+          str.match(/_(px|nx|py|ny|pz|nz)\.ktx$/)[1];
         return order.indexOf(getKey(a)) - order.indexOf(getKey(b));
       });
-
-      console.log(sortedTextures);
 
       const loads = await Promise.all(
         sortedTextures.map(async url => await loader.loadAsync(url)),
       );
-      console.log(loads);
+
       loads.forEach(load => {
-        load.flipY = true;
+        load.flipY = false;
         load.needsUpdate = true;
       });
 
       const cubeTexture = new THREE.CubeTexture(loads);
+      cubeTexture.mapping = THREE.CubeReflectionMapping;
       cubeTexture.format = loads[0].format;
       cubeTexture.generateMipmaps = false;
       cubeTexture.minFilter = THREE.LinearFilter;
       cubeTexture.needsUpdate = true;
-      console.log(cubeTexture.images[0]);
       const pmremTexture = this.pmremGenerator.fromCubemap(cubeTexture).texture;
+      pmremTexture.rotation = Math.PI;
       this.customTexture = pmremTexture;
       this.textureUrls = textureUrls;
+    }
+
+    if (json.useCustomTexture) {
+      this.useCustomTexture = true;
     } else {
       cubeCamera.update(this.renderer, this.scene);
     }
 
     return this;
-  }
-
-  isCustomTexture() {
-    return this.customTexture !== null;
   }
 
   getShowProbe() {
@@ -932,8 +903,24 @@ export default class ReflectionProbe {
     this.serializedId = id;
   }
 
-  static envProjectionFunction(pos: THREE.Vector3, size: THREE.Vector3) {
-    return materialOnBeforeCompileFunction(pos, size);
+  static envProjectionFunction(
+    pos: THREE.Vector3,
+    size: THREE.Vector3,
+    isCustomTexture: boolean,
+  ) {
+    return materialOnBeforeCompileFunction(pos, size, isCustomTexture);
+  }
+
+  isUseCustomTexture() {
+    return this.useCustomTexture;
+  }
+
+  setUseCustomTexture(useCustomTexture: boolean) {
+    this.useCustomTexture = useCustomTexture;
+    if (useCustomTexture) {
+    } else {
+      this.renderCamera();
+    }
   }
 }
 
@@ -1081,6 +1068,7 @@ const boxProjectDefinitions = /*glsl */ `
 #ifdef BOX_PROJECTED_ENV_MAP
     uniform vec3 envMapSize;
     uniform vec3 envMapPosition;
+    uniform bool isCustomTexture;
     varying vec3 vWorldPosition;
     
     vec3 parallaxCorrectNormal( vec3 v, vec3 cubeSize, vec3 cubePos ) {
@@ -1097,8 +1085,9 @@ const boxProjectDefinitions = /*glsl */ `
 
         float correction = min( min( rbminmax.x, rbminmax.y ), rbminmax.z );
         vec3 boxIntersection = vWorldPosition + nDir * correction;
+        vec3 retval = boxIntersection - cubePos;
         
-        return boxIntersection - cubePos;
+        return isCustomTexture ? retval : vec3(-retval.x, retval.y, retval.z);
     }
 #endif
 `;
@@ -1120,9 +1109,10 @@ const getIBLRadiance_patch = /* glsl */ `
 const materialOnBeforeCompileFunction = (
   pos: THREE.Vector3,
   size: THREE.Vector3,
+  isCustomTexture: boolean,
 ) => {
   return (shader: THREE.WebGLProgramParametersWithUniforms) => {
-    useBoxProjectedEnvMap(shader, pos, size);
+    useBoxProjectedEnvMap(shader, pos, size, isCustomTexture);
   };
 };
 
@@ -1130,6 +1120,7 @@ function useBoxProjectedEnvMap(
   shader: THREE.WebGLProgramParametersWithUniforms,
   envMapPosition: THREE.Vector3,
   envMapSize: THREE.Vector3,
+  isCustomTexture: boolean = false,
 ) {
   // defines
   if (!shader.defines) {
@@ -1144,6 +1135,10 @@ function useBoxProjectedEnvMap(
 
   shader.uniforms.envMapSize = {
     value: envMapSize,
+  };
+
+  shader.uniforms.isCustomTexture = {
+    value: isCustomTexture,
   };
 
   // vertex shader
