@@ -1087,7 +1087,7 @@ const boxProjectDefinitions = /*glsl */ `
         vec3 boxIntersection = vWorldPosition + nDir * correction;
         vec3 retval = boxIntersection - cubePos;
         
-        return isCustomTexture ? retval : vec3(-retval.x, retval.y, retval.z);
+        return isCustomTexture ? vec3(-retval.x, retval.y, retval.z) : retval;
     }
 #endif
 `;
@@ -1122,6 +1122,7 @@ function useBoxProjectedEnvMap(
   envMapSize: THREE.Vector3,
   isCustomTexture: boolean = false,
 ) {
+  console.log('isCustomTexture: ', isCustomTexture);
   // defines
   if (!shader.defines) {
     shader.defines = {};
