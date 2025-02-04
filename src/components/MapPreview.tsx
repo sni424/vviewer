@@ -316,6 +316,8 @@ const ProbeSelector = ({
     probe: ReflectionProbe,
   ) {
     material.envMap = probe.getTexture();
+    material.envMapRotation = new THREE.Euler(Math.PI, Math.PI, Math.PI);
+    console.log('apply probe', probe, probe.getTexture());
     material.onBeforeCompile = probe.materialOnBeforeCompileFunc();
     material.vUserData.probeId = value;
   }

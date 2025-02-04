@@ -1,5 +1,11 @@
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
-import { useEffect, useRef, useState } from 'react';
+import React, {
+  Dispatch,
+  SetStateAction,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import { v4 } from 'uuid';
 import {
   getAtomValue,
@@ -14,6 +20,12 @@ import ReflectionProbe, {
   ReflectionProbeJSON,
   ReflectionProbeResolutions,
 } from '../scripts/ReflectionProbe.ts';
+import {
+  listFilesFromDrop,
+  loadHDRTexture,
+  loadPNGAsENV,
+  splitExtension,
+} from '../scripts/utils.ts';
 import { THREE } from '../scripts/VTHREE.ts';
 import './probe.css';
 
@@ -63,12 +75,13 @@ const importProbes = async () => {
     probes.forEach(probe => {
       probe.addToScene();
       probe.updateCameraPosition(probe.getCenter(), true);
+      const texture = probe.getTexture();
       scene.traverse(node => {
         if (node instanceof THREE.Mesh) {
           const n = node as THREE.Mesh;
           const material = n.material as THREE.MeshStandardMaterial;
           if (material.vUserData.probeId === probe.getId()) {
-            material.envMap = probe.getTexture();
+            material.envMap = texture;
             material.onBeforeCompile = probe.materialOnBeforeCompileFunc();
             material.needsUpdate = true;
           }
@@ -277,6 +290,7 @@ export const ProbeComponent = ({ probe }: { probe: ReflectionProbe }) => {
   const [mesh, setMesh] = useState<THREE.Mesh>();
   const [imageData, setImageData] = useState<ImageData | null>(null);
   const { openModal, closeModal } = useModal();
+  const [isCustom, setIsCustom] = useState<boolean>(probe.isCustomTexture());
 
   useEffect(() => {
     const nRC = nameRef.current;
@@ -383,6 +397,10 @@ export const ProbeComponent = ({ probe }: { probe: ReflectionProbe }) => {
     downloadObjectJsonFile(json, `probe_${probe.getId()}.json`);
   }
 
+  async function exportDimensionImage() {
+    console.log(await probe.envToImage());
+  }
+
   async function exportImage() {
     const canvas = probe.getCanvas();
     const blob = (await new Promise(resolve =>
@@ -403,6 +421,10 @@ export const ProbeComponent = ({ probe }: { probe: ReflectionProbe }) => {
 
   function changeResolution() {
     openModal(() => <ProbeResolutionChanger probe={probe} />);
+  }
+
+  function uploadCustomTexture() {
+    openModal(() => <ProbeCustomTextureUploader probe={probe} />);
   }
 
   return (
@@ -527,7 +549,7 @@ export const ProbeComponent = ({ probe }: { probe: ReflectionProbe }) => {
             padding: '4px 8px',
             cursor: 'pointer',
           }}
-          onClick={exportImage}
+          onClick={exportDimensionImage}
         >
           추출
         </button>
@@ -540,6 +562,16 @@ export const ProbeComponent = ({ probe }: { probe: ReflectionProbe }) => {
           onClick={changeResolution}
         >
           해상도 변경
+        </button>
+        <button
+          style={{
+            fontSize: 12,
+            padding: '4px 8px',
+            cursor: 'pointer',
+          }}
+          onClick={uploadCustomTexture}
+        >
+          커스텀 텍스쳐
         </button>
       </div>
       <div className="probe-detail">
@@ -556,7 +588,7 @@ export const ProbeComponent = ({ probe }: { probe: ReflectionProbe }) => {
           {imageData ? (
             <DocumentElementContainer probe={probe} />
           ) : (
-            <span>아직 렌더되지 않음</span>
+            <span>{isCustom ? '커스텀 텍스쳐' : '아직 렌더되지 않음'}</span>
           )}
         </div>
 
@@ -807,7 +839,10 @@ const DocumentElementContainer = ({ probe }: { probe: ReflectionProbe }) => {
       }}
       className="w-[60px] h-[60px]"
     >
-      <canvas className="w-full h-full cursor-pointer" ref={canvasRef}></canvas>
+      <canvas
+        className="w-full h-full cursor-pointer bg-white"
+        ref={canvasRef}
+      ></canvas>
     </div>
   );
 };
@@ -830,7 +865,10 @@ const ModalCanvasContainer = ({ probe }: { probe: ReflectionProbe }) => {
 
   return (
     <div className="h-full flex justify-center items-center">
-      <canvas className="w-full h-full cursor-pointer" ref={canvasRef}></canvas>
+      <canvas
+        className="w-full h-full cursor-pointer bg-white"
+        ref={canvasRef}
+      ></canvas>
     </div>
   );
 };
@@ -1023,6 +1061,309 @@ const ProbeAllResolutionChanger = () => {
           변경
         </button>
       </div>
+    </div>
+  );
+};
+
+const ProbeCustomTextureUploader = ({ probe }: { probe: ReflectionProbe }) => {
+  const [mode, setMode] = useState<'select' | 'equirectangular' | 'cube'>(
+    'select',
+  );
+  const [texture, setTexture] = useState<THREE.Texture | null>(null);
+  const { closeModal } = useModal();
+
+  useEffect(() => {
+    console.log(texture);
+  }, [texture]);
+
+  function getBody() {
+    let component;
+    switch (mode) {
+      case 'select':
+        component = (
+          <>
+            <p style={{ textAlign: 'center', fontSize: 16 }}>
+              커스텀 텍스쳐 업로드 모드를 선택하세요.
+            </p>
+            <div
+              style={{
+                display: 'flex',
+                marginTop: 24,
+                justifyContent: 'space-around',
+              }}
+            >
+              <button
+                style={{ fontSize: 16, padding: 32 }}
+                onClick={() => {
+                  setMode('equirectangular');
+                }}
+              >
+                Equirectangular
+              </button>
+              <button
+                style={{ fontSize: 16, padding: 32 }}
+                onClick={() => {
+                  setMode('cube');
+                }}
+              >
+                CubeTexture
+              </button>
+            </div>
+          </>
+        );
+        break;
+      case 'equirectangular':
+        component = (
+          <CustomTextureEquirectangularMode
+            setTexture={setTexture}
+            setMode={setMode}
+          />
+        );
+        break;
+      case 'cube':
+        component = (
+          <CustomTextureCubeMode setTexture={setTexture} setMode={setMode} />
+        );
+        break;
+    }
+
+    return component;
+  }
+
+  return (
+    <div
+      className="w-[30%] bg-white px-4 py-3 relative"
+      onClick={e => {
+        e.preventDefault();
+        e.stopPropagation();
+      }}
+    >
+      {/* Header */}
+      <div className="py-1 w-full mb-2">
+        <strong style={{ fontSize: 16 }}>
+          커스텀 텍스쳐 업로드 - {probe.getName()}
+        </strong>
+      </div>
+      <div className="w-full mb-2 flex flex-col gap-y-2">
+        <div className="w-full gap-x-2 text-sm">{getBody()}</div>
+      </div>
+      {/* Footer  */}
+      <div className="flex w-full justify-end gap-x-2">
+        <button className="py-1.5 px-3 text-md" onClick={closeModal}>
+          취소
+        </button>
+        <button
+          disabled={texture == null}
+          className="py-1.5 px-3 text-md"
+          onClick={() => {
+            probe.setTexture(texture!!);
+            closeModal();
+          }}
+        >
+          변경
+        </button>
+      </div>
+    </div>
+  );
+};
+
+const CustomTextureEquirectangularMode = ({
+  setTexture,
+  setMode,
+}: {
+  setTexture: Dispatch<SetStateAction<THREE.Texture | null>>;
+  setMode: Dispatch<SetStateAction<'select' | 'equirectangular' | 'cube'>>;
+}) => {
+  const threeExports = threes();
+  if (!threeExports) {
+    return null;
+  }
+  const [file, setFile] = useState<File | null>(null);
+  const [loading, setLoading] = useState<boolean>(false);
+
+  async function onDrop(dtItems: DataTransferItemList) {
+    const acceptedExtensions = ['.png', '.exr', '.hdr'];
+
+    const files = await listFilesFromDrop(dtItems, acceptedExtensions);
+
+    if (files.length > 1) {
+      const alertMessage =
+        '파일은 하나만 업로드 해주세요. 업로드한 파일 갯수 : ' + files.length;
+      alert(alertMessage);
+      return;
+    }
+
+    // Filter files by .gltf and .glb extensions
+    const filteredFiles = files.filter(file =>
+      acceptedExtensions.some(ext => file.name.toLowerCase().endsWith(ext)),
+    );
+
+    if (filteredFiles.length === 0) {
+      alert('다음 확장자만 가능 : ' + acceptedExtensions);
+      return;
+    }
+
+    setFile(files[0]);
+  }
+
+  useEffect(() => {
+    console.log('file Updated : ', file);
+    if (file) {
+      const extension = splitExtension(file.name).ext;
+      const url = URL.createObjectURL(file);
+      setLoading(true);
+      if (extension.endsWith('png')) {
+        loadPNGAsENV(url, threeExports.gl).then(texture => {
+          setTexture(texture);
+          setLoading(false);
+        });
+      } else {
+        loadHDRTexture(url).then(texture => {
+          setTexture(texture);
+          setLoading(false);
+        });
+      }
+    }
+  }, [file]);
+
+  return (
+    <div>
+      <button
+        onClick={() => {
+          setTexture(null);
+          setMode('select');
+        }}
+      >
+        돌아가기
+      </button>
+      <p style={{ textAlign: 'center' }}>Equirectangular 모드</p>
+      {file && (
+        <div className="flex justify-center">
+          <img
+            style={{ width: '100%', height: 300, marginTop: 8 }}
+            src={URL.createObjectURL(file)}
+            alt=""
+          />
+        </div>
+      )}
+      <ImageFileDragDiv onDrop={onDrop} />
+      {loading && (
+        <div className="w-full absolute top-0 left-0 h-full flex justify-center items-center">
+          Loading...
+        </div>
+      )}
+    </div>
+  );
+};
+
+const CustomTextureCubeMode = ({
+  setMode,
+}: {
+  setTexture: Dispatch<SetStateAction<THREE.Texture | null>>;
+  setMode: Dispatch<SetStateAction<'select' | 'equirectangular' | 'cube'>>;
+}) => {
+  const targets = ['px', 'nx', 'py', 'ny', 'pz', 'nz'] as const;
+  type TargetKeys = (typeof targets)[number];
+  type ArrangedFiles = Record<TargetKeys, File | null>;
+  const [arrangedFiles, setArrangedFiles] = useState<ArrangedFiles>({
+    px: null,
+    nx: null,
+    py: null,
+    ny: null,
+    pz: null,
+    nz: null,
+  });
+
+  async function onDrop(dtItems: DataTransferItemList) {
+    const acceptedExtensions = ['.png'];
+
+    const files = await listFilesFromDrop(dtItems, acceptedExtensions);
+
+    // Filter files by .gltf and .glb extensions
+    const filteredFiles = files.filter(file =>
+      acceptedExtensions.some(ext => file.name.toLowerCase().endsWith(ext)),
+    );
+
+    if (filteredFiles.length === 0) {
+      alert('다음 확장자만 가능 : ' + acceptedExtensions);
+      return;
+    }
+
+    const arranged: ArrangedFiles = {
+      ...arrangedFiles,
+    };
+
+    files.forEach(file => {
+      const name = file.name;
+      for (let i = 0; i < targets.length; i++) {
+        if (name.endsWith(`_${targets[i]}.png`)) {
+          arranged[targets[i]] = file;
+          break;
+        }
+      }
+    });
+
+    setArrangedFiles(arranged);
+  }
+
+  return (
+    <div>
+      <button onClick={() => setMode('select')}>돌아가기</button>
+      <strong>CubeTexture 모드</strong>
+      <ImageFileDragDiv onDrop={onDrop} />
+    </div>
+  );
+};
+
+const ImageFileDragDiv = ({
+  onDrop,
+}: {
+  onDrop: (dtItems: DataTransferItemList) => Promise<void>;
+}) => {
+  const [isDragging, setIsDragging] = useState(false);
+
+  const handleDragOver = (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDrop = async (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setIsDragging(false);
+
+    if (event.dataTransfer.files && event.dataTransfer.files.length > 0) {
+      await onDrop(event.dataTransfer.items);
+      event.dataTransfer.clearData();
+    }
+  };
+
+  return (
+    <div
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+      style={{
+        width: '100%',
+        height: '200px',
+        border: isDragging ? '2px dashed black' : '1px solid black',
+        padding: 16,
+        borderRadius: 8,
+        position: 'relative',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginTop: 8,
+      }}
+    >
+      <span className="text-gray-500">이 곳에 파일을 드래그 하세요.</span>
     </div>
   );
 };

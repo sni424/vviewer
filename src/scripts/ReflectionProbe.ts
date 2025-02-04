@@ -1,9 +1,12 @@
 import { Object3DEventMap } from 'three';
 import { TransformControls } from 'three-stdlib';
+import { KTX2Loader } from 'three/examples/jsm/loaders/KTX2Loader.js';
 import { v4 } from 'uuid';
-import { Layer } from '../Constants.ts';
+import { ENV, Layer } from '../Constants.ts';
 import * as THREE from './VTHREE.ts';
 import VTextureLoader from './VTextureLoader.ts';
+import { uploadPngToKtx } from './atomUtils.ts';
+import { splitExtension } from './utils.ts';
 
 const DEFAULT_RESOLUTION: ReflectionProbeResolutions = 1024;
 const DEFAULT_POSITION: THREE.Vector3 = new THREE.Vector3(0, 0, 0);
@@ -12,12 +15,21 @@ const CUBE_CAMERA_FILTER_LAYERS = [
   Layer.ReflectionBox,
   Layer.GizmoHelper,
   Layer.Selected,
+  Layer.Hotspot,
+  Layer.Room,
 ];
 const REFLECTION_BOX_LAYER = Layer.ReflectionBox;
 const CUBE_CAMERA_LAYER = 10;
 
 const AvailableResolutions = [16, 32, 64, 128, 256, 512, 1024, 2048] as const;
 export type ReflectionProbeResolutions = (typeof AvailableResolutions)[number];
+const directions = ['px', 'nx', 'py', 'ny', 'pz', 'nz'] as const;
+export type CubeMapFaceBlobs = {
+  [key in (typeof directions)[number]]: Blob;
+};
+export type CubeMapFaceUrls = {
+  [key in (typeof directions)[number]]: string;
+};
 
 export type ReflectionProbeJSON = {
   name: string;
@@ -29,6 +41,9 @@ export type ReflectionProbeJSON = {
   showProbe?: boolean;
   showControls?: boolean;
   url?: string;
+  textureBlobs?: CubeMapFaceBlobs;
+  textures?: CubeMapFaceUrls;
+  textureUrls?: string[];
 };
 
 export interface ProbeMeshEventMap extends Object3DEventMap {
@@ -79,7 +94,7 @@ export default class ReflectionProbe {
   private customTexture: THREE.Texture | null = null;
   private sSize: number = DEFAULT_SSIZE;
   private tSize: number = DEFAULT_TSIZE;
-  private textureFile: File | null = null;
+  private textureUrls: string[] | null = null;
 
   constructor(
     renderer: THREE.WebGLRenderer,
@@ -120,9 +135,8 @@ export default class ReflectionProbe {
     this.quad.scale.set(this.resolution / 2, this.resolution / 2, 1);
 
     this.renderTarget = new THREE.WebGLCubeRenderTarget(this.resolution, {
-      format: THREE.RGBFormat,
+      format: THREE.RGBAFormat,
       generateMipmaps: false,
-      type: THREE.UnsignedByteType,
     });
 
     const { height, center } = getBoxHeight(scene);
@@ -322,7 +336,7 @@ export default class ReflectionProbe {
   setResolution(resolution: ReflectionProbeResolutions) {
     this.resolution = resolution;
     this.renderTarget = new THREE.WebGLCubeRenderTarget(this.resolution, {
-      format: THREE.RGBFormat,
+      format: THREE.RGBAFormat,
       generateMipmaps: false,
     });
 
@@ -595,6 +609,9 @@ export default class ReflectionProbe {
   }
 
   renderCamera() {
+    if (this.customTexture) {
+      return;
+    }
     // Before render => Set No Render Objects Invisible
     const beforeUpdateObject = this.onBeforeCubeCameraUpdate();
     // Set Original WebGLRenderer.autoClear value
@@ -606,7 +623,8 @@ export default class ReflectionProbe {
     // reset to WebGLRenderer.autoClear value to original
     this.renderer.autoClear = rendererOriginalAutoClearValue;
     // Apply envMap to ReflectionProbe Sphere
-    this.reflectionProbeSphere.material.envMap = this.getTexture();
+    (this.reflectionProbeSphere.material as THREE.MeshStandardMaterial).envMap =
+      this.getTexture();
     // Apply Box In Box projected Meshes
     // this.updateObjectChildrenEnv();
     // After Render => set No Render Objects Visible
@@ -650,24 +668,72 @@ export default class ReflectionProbe {
     return this.renderTarget;
   }
 
+  async envToImage() {
+    this.renderCamera();
+    // Prepare for Image
+    const imageSize = this.resolution;
+    const renderer = this.renderer;
+    const cubeRenderTarget = this.renderTarget;
+
+    // Prepare Canvas
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    if (!ctx) {
+      throw new Error('Canvas 2d Context Not Supported');
+    }
+    canvas.width = imageSize;
+    canvas.height = imageSize;
+
+    const faceTexture: Partial<CubeMapFaceBlobs> = {};
+    const pixels = new Uint8Array(4 * imageSize * imageSize);
+
+    const promises = directions.map(async (dir, faceIndex) => {
+      const typedArray = await renderer.readRenderTargetPixelsAsync(
+        cubeRenderTarget,
+        0,
+        0,
+        imageSize,
+        imageSize,
+        pixels,
+        faceIndex,
+      );
+      const imageData = new ImageData(
+        new Uint8ClampedArray(typedArray),
+        imageSize,
+        imageSize,
+      );
+      ctx.putImageData(imageData, 0, 0);
+
+      const blob = (await new Promise(resolve =>
+        canvas.toBlob(resolve),
+      )) as Blob;
+      console.log('EnvToImage() : in Promise => ', blob);
+      faceTexture[dir] = blob;
+    });
+
+    await Promise.all(promises);
+
+    return faceTexture;
+  }
+
   async toJSON(): Promise<ReflectionProbeJSON> {
-    // const canvas = this.canvas;
-    // const blob = (await new Promise(resolve =>
-    //   canvas.toBlob(resolve),
-    // )) as Blob | null;
-    //
-    // if (blob) {
-    //   const file = new File([blob], this.serializedId + '_env.png', {
-    //     type: 'image/png',
-    //   });
-    //
-    //   const result = await uploadPngToKtx(file);
-    //   const url = result.data[0].fileUrl;
-    //
-    //
-    // } else {
-    //   throw new Error('create blob Failed');
-    // }
+    if (!this.textureUrls) {
+      const textureBlobs = await this.envToImage();
+
+      // TODO Upload Texture Blob => to URL
+      const files = Object.keys(textureBlobs).map(key => {
+        const blob = textureBlobs[key] as Blob;
+        return new File([blob], `probe_${this.serializedId}_${key}.png`);
+      });
+
+      await uploadPngToKtx(files);
+
+      const results = files.map(file => {
+        return ENV.base + splitExtension(file.name).name + '.ktx';
+      });
+      this.textureUrls = results;
+    }
+
     return {
       name: this.name,
       id: this.serializedId,
@@ -677,7 +743,7 @@ export default class ReflectionProbe {
       createFrom: 'probe.toJSON()',
       showProbe: this.showProbe,
       showControls: this.showControls,
-      // url: url,
+      textureUrls: this.textureUrls,
     };
   }
 
@@ -690,11 +756,7 @@ export default class ReflectionProbe {
     this.resolution = json.resolution;
 
     // if (json.url) {
-    //   const loader = new KTX2Loader()
-    //     .setTranscoderPath(
-    //       'https://unpkg.com/three@0.168.0/examples/jsm/libs/basis/',
-    //     )
-    //     .detectSupport(this.renderer);
+
     //
     //   await loader.init();
     //   this.customTexture = await loader.loadAsync(json.url);
@@ -714,9 +776,8 @@ export default class ReflectionProbe {
 
     // Update RenderTarget & CubeCamera
     this.renderTarget = new THREE.WebGLCubeRenderTarget(this.resolution, {
-      format: THREE.RGBFormat,
+      format: THREE.RGBAFormat,
       generateMipmaps: false,
-      type: THREE.UnsignedByteType,
     });
     const cubeCamera = new THREE.CubeCamera(
       this.cubeCameraNear,
@@ -727,7 +788,6 @@ export default class ReflectionProbe {
     CUBE_CAMERA_FILTER_LAYERS.forEach(layer => {
       cubeCamera.layers.disable(layer);
     });
-    cubeCamera.update(this.renderer, this.scene);
     this.cubeCamera = cubeCamera;
 
     this.boxMesh.vUserData.probeId = json.id;
@@ -744,7 +804,51 @@ export default class ReflectionProbe {
     this.boxMesh.visible = this.showProbe;
     this.setControlsVisible(this.showProbe && this.showControls);
 
+    if (json.textureUrls) {
+      const loader = new KTX2Loader()
+        .setTranscoderPath(
+          'https://unpkg.com/three@0.168.0/examples/jsm/libs/basis/',
+        )
+        .detectSupport(this.renderer);
+
+      const textureUrls = json.textureUrls;
+
+      const order = ['px', 'nx', 'py', 'ny', 'pz', 'nz'];
+
+      const sortedTextures = textureUrls.sort((a, b) => {
+        const getKey = str => str.match(/_(px|nx|py|ny|pz|nz)\.ktx$/)[1];
+        return order.indexOf(getKey(a)) - order.indexOf(getKey(b));
+      });
+
+      console.log(sortedTextures);
+
+      const loads = await Promise.all(
+        sortedTextures.map(async url => await loader.loadAsync(url)),
+      );
+      console.log(loads);
+      loads.forEach(load => {
+        load.flipY = true;
+        load.needsUpdate = true;
+      });
+
+      const cubeTexture = new THREE.CubeTexture(loads);
+      cubeTexture.format = loads[0].format;
+      cubeTexture.generateMipmaps = false;
+      cubeTexture.minFilter = THREE.LinearFilter;
+      cubeTexture.needsUpdate = true;
+      console.log(cubeTexture.images[0]);
+      const pmremTexture = this.pmremGenerator.fromCubemap(cubeTexture).texture;
+      this.customTexture = pmremTexture;
+      this.textureUrls = textureUrls;
+    } else {
+      cubeCamera.update(this.renderer, this.scene);
+    }
+
     return this;
+  }
+
+  isCustomTexture() {
+    return this.customTexture !== null;
   }
 
   getShowProbe() {
@@ -788,12 +892,16 @@ export default class ReflectionProbe {
     return this.center;
   }
 
-  async setTexture(url: string | File) {
+  async setTextureFromFile(url: string | File) {
     const result = (await VTextureLoader.load(url, {
       gl: this.renderer,
     })) as THREE.Texture;
     // TODO something
     this.customTexture = result;
+  }
+
+  setTexture(texture: THREE.Texture) {
+    this.customTexture = texture;
   }
 
   static isProbeJson(

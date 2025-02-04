@@ -29,7 +29,7 @@ const OptionPanel = () => {
   );
 
   return (
-    <ul className="absolute flex left-0 right-0 bottom-3 gap-3 items-center justify-center">
+    <ul className="absolute flex left-0 right-0 bottom-3 gap-3 items-center justify-center w-fit mx-auto">
       {toShows.map((option, i) => {
         return (
           <li

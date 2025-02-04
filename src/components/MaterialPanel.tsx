@@ -158,14 +158,11 @@ const MapInfo = (props: MapInfoProps) => {
           return;
         }
         if (file.name.toLowerCase().endsWith('png')) {
-          loadPNGAsENV(URL.createObjectURL(file)).then(texture => {
-            const pmremGenerator = new THREE.PMREMGenerator(threeExports.gl);
-            pmremGenerator.compileEquirectangularShader();
-            const compiled =
-              pmremGenerator.fromEquirectangular(texture).texture;
-            compiled.vUserData.isCustomEnvMap = true;
-            setMap(material, mapKey, compiled);
-          });
+          loadPNGAsENV(URL.createObjectURL(file), threeExports.gl).then(
+            texture => {
+              setMap(material, mapKey, texture);
+            },
+          );
         } else {
           loadHDRTexture(URL.createObjectURL(file)).then(texture => {
             setMap(material, mapKey, texture);
@@ -607,6 +604,13 @@ function MaterialPanelContainer() {
           </div>
         )}
       </>
+      <button
+        onClick={() => {
+          console.log(mat);
+        }}
+      >
+        디버깅
+      </button>
       <UserDataSection
         mat={mat as THREE.MeshStandardMaterial}
       ></UserDataSection>
