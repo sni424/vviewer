@@ -98,6 +98,7 @@ export default class ReflectionProbe {
   private textureUrls: string[] | null = null;
   private useCustomTexture: boolean = false;
   private renderedTime: number | null = null;
+  private customRenderedTime: number | null = null;
 
   // TODO 추후 개발
   // private modes: Modes = 'box';
@@ -701,10 +702,18 @@ export default class ReflectionProbe {
     this.textureUrls = files.map(file => {
       return ENV.base + splitExtension(file.name).name + '.ktx';
     });
+
+    console.log('uploadEnvImage Done');
   }
 
   async toJSON(): Promise<ReflectionProbeJSON> {
-    if (!this.textureUrls) {
+    console.log(this.customRenderedTime, this.renderedTime);
+    if (
+      !this.textureUrls ||
+      (this.renderedTime &&
+        this.customRenderedTime &&
+        this.customRenderedTime < this.renderedTime)
+    ) {
       await this.uploadEnvImage();
     }
 
@@ -731,7 +740,7 @@ export default class ReflectionProbe {
     this.size = new THREE.Vector3().fromArray(json.size);
     this.resolution = json.resolution;
     if (json.renderedTime) {
-      this.renderedTime = json.renderedTime;
+      this.customRenderedTime = json.renderedTime;
     }
     this.quad!!.scale.set(this.resolution / 2, this.resolution / 2, 1);
 
