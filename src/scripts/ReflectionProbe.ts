@@ -133,6 +133,8 @@ export default class ReflectionProbe {
       generateMipmaps: false,
     });
 
+    this.renderTarget.texture.type = THREE.HalfFloatType;
+
     const { height, center } = getBoxHeight(scene);
 
     this.size.setY(height);

@@ -52,6 +52,7 @@ export const FullscreenCanvas = ({ texture }: { texture: THREE.Texture }) => {
 
     if (isKtx) {
       const t = texture as THREE.CompressedTexture;
+      console.log(t);
       const mipmaps = t.mipmaps;
       if (mipmaps && mipmaps.length > 0) {
         const highestMipmap = mipmaps[0];

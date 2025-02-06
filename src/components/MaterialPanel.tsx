@@ -457,6 +457,7 @@ const MapSection = ({
                 mat.envMapIntensity = value;
                 mat.needsUpdate = true;
               },
+              max: 10,
             }}
           ></MapInfo>
           {isPhysical && (
