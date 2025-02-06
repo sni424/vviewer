@@ -21,8 +21,8 @@ import {
   threeExportsAtom,
 } from './atoms';
 import { uploadExrToKtx } from './atomUtils.ts';
+import VGLTFLoader from './loaders/VGLTFLoader.ts';
 import VGLTFExporter from './VGLTFExporter.ts';
-import VGLTFLoader from './VGLTFLoader.tsx';
 import * as THREE from './VTHREE';
 
 export const groupInfo = (
@@ -264,137 +264,104 @@ export async function loadFile(file: FileInfo): Promise<Blob> {
   });
 }
 
+async function validateHash() {
+  const latestHashUrl = ENV.latestHash;
+  if (!latestHashUrl) {
+    throw new Error('.env Error : latestHash');
+  }
+
+  // Get Local Hash
+  const localLatestHash = await get('latest-hash');
+  // Get Remote Hash
+  const remoteLatestHash = JSON.parse(
+    // -> JSON.parse()
+    pako.ungzip(
+      // pako.ungzip
+      await (await fetch(latestHashUrl, { cache: 'no-store' })).arrayBuffer(), // 호출 후 result -> arrayBuffer
+      { to: 'string' },
+    ),
+  );
+  const localEmpty = !localLatestHash; // 로컬 해시 없을 때
+  const areDifferent = localLatestHash !== remoteLatestHash; // Remote Hash 랑 다를 때
+  const result = localEmpty || areDifferent;
+
+  if (areDifferent) {
+    await set('latest-hash', remoteLatestHash);
+  }
+
+  return result;
+}
+
+function getGLTFLoader(gl: THREE.WebGLRenderer) {
+  if (VGLTFLoader.instance) {
+    return VGLTFLoader.instance;
+  } else {
+    return new VGLTFLoader(gl);
+  }
+}
+
 export const loadLatest = async ({
   threeExports,
   addBenchmark: _addBenchmark,
   dpOn = false,
-  // setSceneAnalysis,
 }: {
   threeExports: RootState;
   addBenchmark?: (key: keyof BenchMark, value?: number) => void;
-  dpOn: boolean;
+  dpOn?: boolean;
 }) => {
-  const addBenchmark = _addBenchmark ?? (() => {});
-
-  const latestHashUrl = ENV.latestHash;
+  const addBenchMark = _addBenchmark ?? (() => {});
   const latestUrl = ENV.latest;
-  if (!latestUrl || !latestHashUrl) {
-    alert('.env에 환경변수를 설정해주세요, latestUrl latestHashUrl');
+  if (!latestUrl) {
+    alert('.env에 환경변수를 설정해주세요, latestUrl');
     return;
   }
-  addBenchmark('start');
-  addBenchmark('downloadStart');
+  if (!threeExports) {
+    alert('threeExports 분기 문제');
+    return;
+  }
+  addBenchMark('start');
+  const { scene } = threeExports;
 
-  const localLatestHash = await get('latest-hash');
-  const remoteLatestHash = await (
-    await decompressFileToObject<{ hash: string }>(latestHashUrl)
-  ).hash;
+  /** Model Load **/
   const loadModel = async () => {
-    let url;
-    if (!localLatestHash || localLatestHash !== remoteLatestHash) {
+    let blob;
+    addBenchMark('downloadStart');
+    if (await validateHash()) {
       // CACHE UPDATE
-      const blob = await fetch(latestUrl, {
-        cache: 'no-store',
-      }).then(res => res.blob());
-      await set('latest-hash', remoteLatestHash);
+      blob = await fetch(latestUrl, { cache: 'no-store' }).then(res =>
+        res.blob(),
+      );
       await set('latest', blob);
-
-      url = URL.createObjectURL(blob);
-
-      // return decompressFileToObject(latestUrl).then(async (res) => {
-      //     // alert("decompressFileToObject+" + JSON.stringify(res))
-      //
-      //     await set("latest-hash", remoteLatestHash);
-      //     await set("latest", res);
-      //     // await set("latest", JSON.stringify(res));
-      //     return res;
-      // }).catch((e) => {
-      //     alert("모델을 불러오는데 실패했습니다." + e.message);
-      // })
     } else {
-      // return JSON.parse((await get("latest"))!);
-      const blob = await get('latest');
-      console.log('getLatest: ', blob);
-      url = URL.createObjectURL(blob);
+      blob = await get('latest');
     }
-    const loader = (() => {
-      if (VGLTFLoader.instance) {
-        return VGLTFLoader.instance;
-      } else {
-        return new VGLTFLoader(threeExports.gl);
-      }
-    })();
+    addBenchMark('downloadEnd');
+    const url = URL.createObjectURL(blob);
+    const loader = getGLTFLoader(threeExports.gl);
+    addBenchMark('parseStart');
     return loader.loadAsync(url);
   };
 
+  /** Model Apply On Scene **/
+  const applyModel = (glTF: GLTF) => {
+    addBenchMark('parseEnd');
+    addBenchMark('sceneAddStart');
+    const parsedScene = glTF.scene;
+    setAsModel(parsedScene);
+    scene.add(parsedScene);
+    toggleDP(scene, dpOn);
+    addBenchMark('sceneAddEnd');
+  };
+
+  /** Process **/
   return loadModel()
-    .then(res => {
-      addBenchmark('downloadEnd');
-      addBenchmark('parseStart');
-      // const loader = new THREE.ObjectLoader();
-      // const parsedScene = loader.parse(res);
-      const parsedScene = res.scene;
-      addBenchmark('parseEnd');
-
-      const { scene } = threeExports;
-      // threeExports.scene.add(parsedScene);
-
-      const loadAsync = new Promise((res, rej) => {
-        setAsModel(parsedScene);
-        scene.add(parsedScene);
-
-        toggleDP(scene, dpOn);
-
-        const interval = setInterval(() => {
-          //@ts-ignore
-          const found = scene.getObjectByProperty('uuid', parsedScene.uuid);
-          if (found) {
-            // console.log("loaded", elapsed, "ms");
-
-            // 1초 후에 메시,버텍스, 트라이앵글 수 계산
-            // setTimeout(() => {
-            //     let meshCount = 0;
-            //     let vertexCount = 0;
-            //     let triangleCount = 0;
-            //     let maxVertexInMesh = 0;
-            //     let maxTriangleInMesh = 0;
-            //     scene.traverse(obj => {
-            //         if (obj instanceof THREE.Mesh) {
-            //             meshCount++;
-            //             vertexCount += obj.geometry.attributes.position.count;
-            //             triangleCount += obj.geometry.index?.count ?? 0;
-            //             maxVertexInMesh = Math.max(maxVertexInMesh, obj.geometry.attributes.position.count);
-            //             maxTriangleInMesh = Math.max(maxTriangleInMesh, obj.geometry.index?.count ?? 0);
-            //         }
-            //     });
-            //     console.log("mesh count", meshCount);
-            //     console.log("vertex count", vertexCount);
-            //     console.log("triangle count", triangleCount);
-            //     console.log("max vertex in mesh", maxVertexInMesh);
-            //     console.log("max triangle in mesh", maxTriangleInMesh);
-            //     setSceneAnalysis({
-            //         meshCount,
-            //         vertexCount,
-            //         triangleCount,
-            //         maxVertexInMesh,
-            //         maxTriangleInMesh
-            //     });
-
-            // }, 1000);
-
-            clearInterval(interval);
-            addBenchmark('sceneAddEnd');
-            addBenchmark('end');
-            res(parsedScene);
-          }
-          rej('not found');
-        }, 30);
-      });
-      return loadAsync;
-    })
+    .then(applyModel)
     .catch(e => {
       console.error(e);
       alert('모델을 불러오는데 실패했습니다. : ' + e.message);
+    })
+    .finally(() => {
+      addBenchMark('end');
     });
 };
 

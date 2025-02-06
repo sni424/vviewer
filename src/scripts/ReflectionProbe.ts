@@ -4,8 +4,8 @@ import { KTX2Loader } from 'three/examples/jsm/loaders/KTX2Loader.js';
 import { v4 } from 'uuid';
 import { ENV, Layer } from '../Constants.ts';
 import * as THREE from './VTHREE.ts';
-import VTextureLoader from './VTextureLoader.ts';
 import { uploadPngToKtx } from './atomUtils.ts';
+import VTextureLoader from './loaders/VTextureLoader.ts';
 import { splitExtension } from './utils.ts';
 
 const DEFAULT_RESOLUTION: ReflectionProbeResolutions = 1024;

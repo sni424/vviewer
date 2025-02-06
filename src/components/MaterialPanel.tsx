@@ -6,9 +6,9 @@ import {
   selectedAtom,
   threeExportsAtom,
 } from '../scripts/atoms';
+import VTextureLoader from '../scripts/loaders/VTextureLoader.ts';
 import ReflectionProbe from '../scripts/ReflectionProbe.ts';
 import { loadHDRTexture, loadPNGAsENV } from '../scripts/utils';
-import VTextureLoader from '../scripts/VTextureLoader';
 import { THREE } from '../scripts/VTHREE';
 import MapPreview, { MapPreviewProps } from './MapPreview';
 

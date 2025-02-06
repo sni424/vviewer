@@ -10,7 +10,7 @@ import {
   setAtomValue,
   threeExportsAtom,
 } from './atoms';
-import VGLTFLoader from './VGLTFLoader';
+import VGLTFLoader from './loaders/VGLTFLoader.ts';
 import { THREE } from './VTHREE';
 
 interface PointXZ {

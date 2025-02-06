@@ -1,7 +1,7 @@
 import { useAtomValue } from 'jotai';
 import { useState } from 'react';
 import { selectedAtom, threeExportsAtom, useModal } from '../scripts/atoms';
-import VTextureLoader from '../scripts/VTextureLoader';
+import VTextureLoader from '../scripts/loaders/VTextureLoader.ts';
 import { THREE } from '../scripts/VTHREE';
 
 const ApplyLightMapComponent = () => {

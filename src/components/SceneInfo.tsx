@@ -39,15 +39,16 @@ import {
   ProbeAtom,
   selectedAtom,
   threeExportsAtom,
+  useBenchmark,
   useEnvParams,
   useModal,
 } from '../scripts/atoms';
 import { loadPostProcessAndSet, uploadJson } from '../scripts/atomUtils.ts';
+import VGLTFLoader from '../scripts/loaders/VGLTFLoader.ts';
 import ReflectionProbe from '../scripts/ReflectionProbe.ts';
 import useFilelist from '../scripts/useFilelist';
 import useStats, { StatPerSecond, VStats } from '../scripts/useStats.ts';
 import VGLTFExporter from '../scripts/VGLTFExporter.ts';
-import VGLTFLoader from '../scripts/VGLTFLoader.tsx';
 import {
   LightmapImageContrast,
   Quaternion,
@@ -179,6 +180,7 @@ const GeneralButtons = () => {
   const [dpcMode, setDPCMode] = useAtom(DPCModeAtom);
   const dpcModalRef = useRef(null);
   const [dp, setDP] = useAtom(DPAtom);
+  const { addBenchmark } = useBenchmark();
 
   // DPC Modal 모드에 따라 사이즈 변경
   useEffect(() => {
@@ -499,7 +501,7 @@ const GeneralButtons = () => {
       </button>
       <button
         onClick={() => {
-          loadLatest({ threeExports, dpOn: dp.on }).catch(e => {
+          loadLatest({ threeExports, addBenchmark, dpOn: dp.on }).catch(e => {
             console.error(e);
             alert('최신 업로드 불러오기 실패');
           });
