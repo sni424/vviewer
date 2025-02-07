@@ -10,7 +10,7 @@ import { KTX2Loader } from 'three/examples/jsm/loaders/KTX2Loader.js';
 import { ENV, Layer } from '../../Constants.ts';
 import { threes } from '../atomUtils.ts';
 import GainmapLoader from '../GainmapLoader.ts';
-import { splitExtension } from '../utils.ts';
+import { getGLStatus, splitExtension } from '../utils.ts';
 import * as THREE from '../VTHREE.ts';
 import { getVKTX2Loader } from './VKTX2Loader.ts';
 import VTextureLoader from './VTextureLoader.ts';
@@ -72,12 +72,18 @@ export default class VGLTFLoader extends GLTFLoader {
     // const gl = threes()?.gl;
 
     function customOnLoad(gltf: GLTF) {
+      const info = getGLStatus(VGLTFLoader.gl);
+      console.log('before traverse : ', info.geometries, info.textures);
       gltf.scene.traverseAll(async (object: THREE.Object3D) => {
         object.layers.enable(Layer.Model);
-        // updateLightMapFromEmissive(object);
-        // await getGainmap(object, gl);
         await getLightmap(object);
       });
+      const afterInfo = getGLStatus(VGLTFLoader.gl);
+      console.log(
+        'after traverse : ',
+        afterInfo.geometries,
+        afterInfo.textures,
+      );
 
       onLoad(gltf);
     }

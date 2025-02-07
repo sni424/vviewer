@@ -320,7 +320,7 @@ export const loadLatest = async ({
     return;
   }
   addBenchMark('start');
-  const { scene } = threeExports;
+  const { scene, gl } = threeExports;
 
   /** Model Load **/
   const loadModel = async () => {
@@ -339,6 +339,8 @@ export const loadLatest = async ({
     const url = URL.createObjectURL(blob);
     const loader = getGLTFLoader(threeExports.gl);
     addBenchMark('parseStart');
+    const info = getGLStatus(gl);
+    console.log('before load : ', info.geometries, info.textures);
     return loader.loadAsync(url);
   };
 
@@ -348,7 +350,11 @@ export const loadLatest = async ({
     addBenchMark('sceneAddStart');
     const parsedScene = glTF.scene;
     setAsModel(parsedScene);
+    const info = getGLStatus(gl);
+    console.log('before add : ', info.geometries, info.textures);
     scene.add(parsedScene);
+    const afterInfo = getGLStatus(gl);
+    console.log('after add : ', afterInfo.geometries, afterInfo.textures);
     toggleDP(scene, dpOn);
     addBenchMark('sceneAddEnd');
   };
@@ -1415,3 +1421,8 @@ export const topView = (value: boolean) => {
 
   // threeExports.camera = newCamera;
 };
+
+export function getGLStatus(gl: THREE.WebGLRenderer) {
+  const info = gl.info;
+  return info.memory;
+}
