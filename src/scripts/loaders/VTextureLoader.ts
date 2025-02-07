@@ -1,7 +1,8 @@
 import { set } from 'idb-keyval';
-import { EXRLoader, KTX2Loader } from 'three/examples/jsm/Addons.js';
-import GainmapLoader from './GainmapLoader';
-import { THREE } from './VTHREE';
+import { EXRLoader } from 'three/examples/jsm/Addons.js';
+import GainmapLoader from '../GainmapLoader.ts';
+import { THREE } from '../VTHREE.ts';
+import { getVKTX2Loader } from './VKTX2Loader.ts';
 
 const dispoableUrls: string[] = [];
 const disposables: { dispose?: Function }[] = [];
@@ -76,12 +77,7 @@ export default class VTextureLoader {
         if (isExr) {
           loader = new EXRLoader();
         } else if (isKtx) {
-          loader = new KTX2Loader();
-          if (!inputOption.gl) {
-            throw new Error('KTX2Loader의 경우 gl이 필요합니다.');
-          } else {
-            (loader as KTX2Loader).detectSupport(inputOption.gl);
-          }
+          loader = getVKTX2Loader(inputOption.gl);
         } else {
           loader = new THREE.TextureLoader();
         }

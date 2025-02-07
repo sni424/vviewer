@@ -30,6 +30,8 @@ import {
   useModal,
   viewGridAtom,
 } from '../../scripts/atoms';
+import VGLTFLoader from '../../scripts/loaders/VGLTFLoader.ts';
+import VTextureLoader from '../../scripts/loaders/VTextureLoader.ts';
 import {
   getIntersectLayer,
   getIntersects,
@@ -37,8 +39,6 @@ import {
   saveScene,
   zoomToSelected,
 } from '../../scripts/utils';
-import VGLTFLoader from '../../scripts/VGLTFLoader';
-import VTextureLoader from '../../scripts/VTextureLoader';
 import { THREE } from '../../scripts/VTHREE';
 import { View } from '../../types';
 import UnifiedCameraControls from '../camera/UnifiedCameraControls';

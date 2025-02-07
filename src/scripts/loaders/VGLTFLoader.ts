@@ -7,11 +7,12 @@ import {
   GLTFLoader,
 } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { KTX2Loader } from 'three/examples/jsm/loaders/KTX2Loader.js';
-import { ENV, Layer } from '../Constants.ts';
-import * as THREE from '../scripts/VTHREE.ts';
-import { threes } from './atomUtils.ts';
-import GainmapLoader from './GainmapLoader.ts';
-import { splitExtension } from './utils.ts';
+import { ENV, Layer } from '../../Constants.ts';
+import { threes } from '../atomUtils.ts';
+import GainmapLoader from '../GainmapLoader.ts';
+import { getGLStatus, splitExtension } from '../utils.ts';
+import * as THREE from '../VTHREE.ts';
+import { getVKTX2Loader } from './VKTX2Loader.ts';
 import VTextureLoader from './VTextureLoader.ts';
 
 export default class VGLTFLoader extends GLTFLoader {
@@ -49,16 +50,7 @@ export default class VGLTFLoader extends GLTFLoader {
 
     //KTX2
     if (!VGLTFLoader.ktx2Loader) {
-      VGLTFLoader.ktx2Loader = new KTX2Loader();
-      VGLTFLoader.ktx2Loader.setTranscoderPath(
-        'https://unpkg.com/three@0.168.0/examples/jsm/libs/basis/',
-      );
-
-      if (VGLTFLoader.gl) {
-        VGLTFLoader.ktx2Loader.detectSupport(VGLTFLoader.gl);
-      } else {
-        throw new Error('VGLTFLoader.gl is not set');
-      }
+      VGLTFLoader.ktx2Loader = getVKTX2Loader(VGLTFLoader.gl);
     }
     this.setKTX2Loader(VGLTFLoader.ktx2Loader);
 
@@ -77,15 +69,21 @@ export default class VGLTFLoader extends GLTFLoader {
     onLoad: (gltf: GLTF) => void,
     onError?: (event: ErrorEvent) => void,
   ): void {
-    const gl = threes()?.gl;
+    // const gl = threes()?.gl;
 
     function customOnLoad(gltf: GLTF) {
+      const info = getGLStatus(VGLTFLoader.gl);
+      console.log('before traverse : ', info.geometries, info.textures);
       gltf.scene.traverseAll(async (object: THREE.Object3D) => {
         object.layers.enable(Layer.Model);
-        updateLightMapFromEmissive(object);
-        await getGainmap(object, gl);
         await getLightmap(object);
       });
+      const afterInfo = getGLStatus(VGLTFLoader.gl);
+      console.log(
+        'after traverse : ',
+        afterInfo.geometries,
+        afterInfo.textures,
+      );
 
       onLoad(gltf);
     }

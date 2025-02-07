@@ -7,9 +7,9 @@ import {
   threeExportsAtom,
   useBenchmark,
 } from '../../scripts/atoms';
+import VGLTFLoader from '../../scripts/loaders/VGLTFLoader.ts';
 import useFilelist from '../../scripts/useFilelist';
 import { loadFile, loadLatest } from '../../scripts/utils';
-import VGLTFLoader from '../../scripts/VGLTFLoader';
 import { THREE } from '../../scripts/VTHREE';
 import { FileInfo } from '../../types';
 import FileInfoList from '../FileInfoList';

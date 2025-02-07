@@ -1,11 +1,11 @@
 import { Object3DEventMap } from 'three';
 import { TransformControls } from 'three-stdlib';
-import { KTX2Loader } from 'three/examples/jsm/loaders/KTX2Loader.js';
 import { v4 } from 'uuid';
 import { ENV, Layer } from '../Constants.ts';
 import * as THREE from './VTHREE.ts';
-import VTextureLoader from './VTextureLoader.ts';
 import { uploadPngToKtx } from './atomUtils.ts';
+import { getVKTX2Loader } from './loaders/VKTX2Loader.ts';
+import VTextureLoader from './loaders/VTextureLoader.ts';
 import { splitExtension } from './utils.ts';
 
 const DEFAULT_RESOLUTION: ReflectionProbeResolutions = 1024;
@@ -787,11 +787,7 @@ export default class ReflectionProbe {
     this.setControlsVisible(this.showProbe && this.showControls);
 
     if (json.textureUrls) {
-      const loader = new KTX2Loader()
-        .setTranscoderPath(
-          'https://unpkg.com/three@0.168.0/examples/jsm/libs/basis/',
-        )
-        .detectSupport(this.renderer);
+      const loader = getVKTX2Loader(this.renderer);
 
       const textureUrls = json.textureUrls;
 
