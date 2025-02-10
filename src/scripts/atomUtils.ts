@@ -184,6 +184,7 @@ export const loadPostProcessAndSet = async () => {
   return loadPostProcess().then(res => {
     if (res) {
       // 아톰 안에 아톰이라 2번 setAtomValue를 불러줘야함
+      console.log('postprocess Called : ', res);
       setAtomValue(postprocessAtoms, prev => {
         const copied = { ...prev };
         const loadedKeys = Object.keys(res);

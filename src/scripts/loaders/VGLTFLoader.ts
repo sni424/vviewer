@@ -8,9 +8,7 @@ import {
 } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { KTX2Loader } from 'three/examples/jsm/loaders/KTX2Loader.js';
 import { ENV, Layer } from '../../Constants.ts';
-import { threes } from '../atomUtils.ts';
 import GainmapLoader from '../GainmapLoader.ts';
-import { getGLStatus, splitExtension } from '../utils.ts';
 import * as THREE from '../VTHREE.ts';
 import { getVKTX2Loader } from './VKTX2Loader.ts';
 import VTextureLoader from './VTextureLoader.ts';
@@ -71,19 +69,39 @@ export default class VGLTFLoader extends GLTFLoader {
   ): void {
     // const gl = threes()?.gl;
 
-    function customOnLoad(gltf: GLTF) {
-      const info = getGLStatus(VGLTFLoader.gl);
-      console.log('before traverse : ', info.geometries, info.textures);
-      gltf.scene.traverseAll(async (object: THREE.Object3D) => {
+    async function customOnLoad(gltf: GLTF) {
+      const lightMapSet = new Set<string>([]);
+
+      gltf.scene.traverseAll((object: THREE.Object3D) => {
         object.layers.enable(Layer.Model);
-        await getLightmap(object);
+        getLightmap(object, lightMapSet);
       });
-      const afterInfo = getGLStatus(VGLTFLoader.gl);
-      console.log(
-        'after traverse : ',
-        afterInfo.geometries,
-        afterInfo.textures,
-      );
+
+      const lmMap = new Map();
+      for (const url1 of lightMapSet) {
+        const texture = await VGLTFLoader.ktx2Loader.loadAsync(url1);
+        texture.channel = 1;
+        texture.minFilter = THREE.LinearMipmapLinearFilter;
+        texture.magFilter = THREE.LinearFilter;
+        lmMap.set(url1, texture);
+      }
+
+      console.log(lmMap);
+
+      gltf.scene.traverse(ob => {
+        if (ob.type === 'Mesh') {
+          const mesh = ob as THREE.Mesh;
+          const mat = mesh.material as THREE.MeshStandardMaterial;
+          if (mat.vUserData.lightMap) {
+            const lmKey = getVUserDataLightMapURL(mat.vUserData.lightMap);
+            if (lmMap.has(lmKey)) {
+              const texture = lmMap.get(lmKey);
+              mat.lightMap = texture;
+              mat.lightMapIntensity = mat.userData.lightMapIntensity;
+            }
+          }
+        }
+      });
 
       onLoad(gltf);
     }
@@ -128,7 +146,7 @@ function updateLightMapFromEmissive(object: THREE.Object3D) {
   }
 }
 
-async function getLightmap(object: THREE.Object3D) {
+function getLightmap(object: THREE.Object3D, lightMapSet: Set<string>) {
   if ((object as THREE.Mesh).isMesh) {
     const mesh = object as THREE.Mesh;
     const mat = mesh.material as THREE.MeshStandardMaterial;
@@ -174,6 +192,12 @@ async function getLightmap(object: THREE.Object3D) {
         textures.push(getVUserDataLightMapURL(mat.vUserData.lightMap));
       }
 
+      if (textures.length > 0) {
+        textures.forEach(texture => lightMapSet.add(texture));
+      }
+
+      console.log('applyKey', applyKey);
+
       /**
        * Texture Call 분류
        * 1. dpOnTexture / dpOffTexture
@@ -181,70 +205,6 @@ async function getLightmap(object: THREE.Object3D) {
        * -> 추후
        * 3. Option 용 라이트맵 ?
        * **/
-
-      if (applyKey) {
-        const textureCache = new Map<string, THREE.Texture>();
-
-        const loadTexture = async (url: string): Promise<THREE.Texture> => {
-          const flipYMap: { [key: string]: boolean } = {
-            exr: true,
-            png: false,
-            ktx: false,
-          };
-
-          const extension = splitExtension(url).ext;
-          const flipY = flipYMap[extension];
-          if (flipY === undefined) {
-            throw new Error('FlipY Set Failed: ' + extension);
-          }
-
-          if (textureCache.has(url)) {
-            return textureCache.get(url)!;
-          }
-
-          console.log('before load : ', url);
-
-          const texture = (await VTextureLoader.load(url, {
-            flipY,
-            as: 'texture',
-            gl: threes()?.gl,
-          })) as THREE.Texture;
-
-          textureCache.set(url, texture);
-          return texture;
-        };
-
-        try {
-          const texturesToLoad = [...new Set(textures)];
-          await Promise.all(texturesToLoad.map(loadTexture));
-          const texture = textureCache.get(applyKey);
-
-          if (texture) {
-            mat.lightMap = texture;
-            mat.lightMapIntensity = mat.vUserData.lightMapIntensity ?? 1;
-            mat.needsUpdate = true;
-            if (modelType) {
-              if (modelType === 'DP') {
-                mat.vUserData.dpOnLightMap = texture;
-              } else {
-                mat.vUserData.dpOffLightMap = texture;
-                textureCache.forEach((value, key) => {
-                  if (key !== applyKey) {
-                    mat.vUserData.dpOnLightMap = value;
-                  }
-                });
-              }
-            }
-          } else {
-            console.warn(`Texture 로드 실패 : `, applyKey, {
-              textureCache,
-              texture,
-            });
-          }
-        } catch (error) {
-          console.error('Error Loading Textures: ', error);
-        }
-      }
     }
   }
 }

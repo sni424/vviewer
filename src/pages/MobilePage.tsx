@@ -17,9 +17,14 @@ import {
 import {
   loadHotspot,
   loadPostProcessAndSet,
+  loadProbes,
   loadRooms,
   loadTourSpot,
 } from '../scripts/atomUtils';
+import VGLTFLoader from '../scripts/loaders/VGLTFLoader.ts';
+import ReflectionProbe, {
+  ReflectionProbeJSON,
+} from '../scripts/ReflectionProbe.ts';
 import { loadLatest } from '../scripts/utils';
 import { THREE } from '../scripts/VTHREE';
 
@@ -81,6 +86,92 @@ const useLoad = () => {
       loadPostProcessAndSet();
     };
     loadLatest({ threeExports, dpOn: dp.on }).finally(() => {
+      loadProbes().then(async probes => {
+        if (!ReflectionProbe.isProbeJson(probes)) {
+          alert('프로브 불러오기 실패!');
+          console.warn(
+            'probe.json FromJSON 을 할 수 없음 => ReflectionProbe.isProbeJson === false',
+          );
+        } else {
+          const probeJsons = probes as ReflectionProbeJSON[];
+          const filtered = probeJsons.filter(
+            probeJson => probeJson.useCustomTexture,
+          );
+          const ktx2Loader = VGLTFLoader.ktx2Loader;
+          const pmremGenerator = new THREE.PMREMGenerator(gl);
+          pmremGenerator.compileEquirectangularShader();
+          pmremGenerator.compileCubemapShader();
+          const probeList = await Promise.all(
+            filtered.map(async json => {
+              const textureUrls = json.textureUrls;
+
+              const order = ['px', 'nx', 'py', 'ny', 'pz', 'nz'];
+
+              const sortedTextures = textureUrls.sort((a, b) => {
+                const getKey = (str: string) =>
+                  str.match(/_(px|nx|py|ny|pz|nz)\.ktx$/)[1];
+                return order.indexOf(getKey(a)) - order.indexOf(getKey(b));
+              });
+
+              const loads = await Promise.all(
+                sortedTextures.map(
+                  async url => await ktx2Loader.loadAsync(url),
+                ),
+              );
+
+              loads.forEach(load => {
+                load.flipY = false;
+                load.needsUpdate = true;
+              });
+
+              const cubeTexture = new THREE.CubeTexture(loads);
+              cubeTexture.mapping = THREE.CubeReflectionMapping;
+              cubeTexture.format = loads[0].format;
+              cubeTexture.generateMipmaps = false;
+              cubeTexture.minFilter = THREE.LinearFilter;
+              cubeTexture.needsUpdate = true;
+              const pmremTexture =
+                pmremGenerator.fromCubemap(cubeTexture).texture;
+              cubeTexture.dispose();
+              pmremTexture.rotation = Math.PI;
+              return {
+                texture: pmremTexture,
+                id: json.id,
+                center: new THREE.Vector3().fromArray(json.center),
+                size: new THREE.Vector3().fromArray(json.size),
+              };
+            }),
+          );
+
+          ktx2Loader.dispose();
+          pmremGenerator.dispose();
+
+          probeList.forEach(TnI => {
+            const texture = TnI.texture;
+            scene.traverse(node => {
+              if (node instanceof THREE.Mesh) {
+                const n = node as THREE.Mesh;
+                const material = n.material as THREE.MeshStandardMaterial;
+                if (material.vUserData.probeId === TnI.id) {
+                  material.envMap = texture;
+                  material.onBeforeCompile =
+                    ReflectionProbe.envProjectionFunction(
+                      TnI.center,
+                      TnI.size,
+                      true,
+                    );
+                  material.needsUpdate = true;
+                }
+              }
+            });
+          });
+
+          probeList.forEach(TnI => {
+            const texture = TnI.texture;
+            texture.dispose();
+          });
+        }
+      });
       setIsLoading(false);
     });
     loadSettings();
