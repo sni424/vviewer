@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Pure THREE.js Test</title>
+</head>
+<body>
+<button id="call-button">call</button>
+</body>
+<script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@latest/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@latest/examples/jsm/"
+    }
+  }
+</script>
+<script type="module">
+  import * as THREE from 'three';
+  import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
+  import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+  import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
+  import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
+  import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+  import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
+
+  const container = document.createElement( 'div' );
+  document.body.appendChild( container );
+  const button = document.getElementById( 'call-button' );
+
+  let camera, scene, renderer, controls;
+
+  button.addEventListener( 'click', async () => {
+    renderer = new THREE.WebGLRenderer( { antialias: true } );
+    renderer.setPixelRatio( window.devicePixelRatio );
+    renderer.setSize( window.innerWidth, window.innerHeight );
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1;
+    renderer.setAnimationLoop( animate );
+    container.appendChild( renderer.domElement );
+
+    const url = 'https://vra-configurator-dev.s3.ap-northeast-2.amazonaws.com/models/latest.glb';
+    const ktx2Loader = new KTX2Loader();
+    ktx2Loader.setTranscoderPath('https://unpkg.com/three@latest/examples/jsm/libs/basis/');
+    ktx2Loader.detectSupport(renderer);
+    const gltfLoader = new GLTFLoader();
+    const dracoLoader = new DRACOLoader();
+    dracoLoader.setDecoderPath('https://unpkg.com/three@latest/examples/jsm/libs/draco/gltf/');
+    gltfLoader.setKTX2Loader(ktx2Loader);
+    gltfLoader.setDRACOLoader()
+    gltfLoader.setMeshoptDecoder(MeshoptDecoder);
+
+    const result = await gltfLoader.loadAsync(url);
+    console.log('loaded');
+    console.log(result);
+
+    camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 0.25, 20 );
+
+    scene = new THREE.Scene();
+
+    controls = new OrbitControls( camera, renderer.domElement );
+    controls.target.set( 0, 0, 0 );
+    controls.minDistance = 1.0;
+    controls.maxDistance = 200.0;
+    controls.addEventListener( 'change', animate ); // use if there is no animation loop
+    controls.update();
+
+    function getLightmap(object, lightMaps) {
+      if (object.isMesh) {
+        const mesh = object;
+        const mat = mesh.material;
+        if (mat) {
+          // DP 는 항상 dpOnTextureFile, Base 는 dpOnTextureFile / dpOffTextureFile 둘 다 있거나 없음.
+          // 텍스쳐 적용 기준 =>
+          // BASE: dpOff 기준 / DP : dpOn 기준
+          const textures = [];
+          const modelType = mesh.userData.modelType;
+          console.log('mesh UserData = ', mesh.userData, mat.userData);
+          let applyKey = null;
+          if (modelType) {
+            // DP / Base 로 업로드 했다면?
+            if (modelType === 'DP') {
+              // DP 라면
+              const target = mat.userData.dpOnTextureFile;
+              if (target) {
+                textures.push(getVUserDataLightMapURL(target));
+                applyKey = getVUserDataLightMapURL(target);
+              } else {
+                console.warn(
+                  'getLightMap() => type DP : dpOnTextureFile 없음 ! ',
+                  mat,
+                );
+              }
+            } else {
+              // Base 라면
+              const offT = mat.userData.dpOffTextureFile;
+              const onT = mat.userData.dpOnTextureFile;
+
+              if (offT && onT) {
+                applyKey = getVUserDataLightMapURL(offT);
+                textures.push(
+                  getVUserDataLightMapURL(offT),
+                  getVUserDataLightMapURL(onT),
+                );
+              } else {
+                console.log('No LightMap with Base Model : ', mesh);
+              }
+            }
+          } else if (mat.userData.lightMap) {
+            // EXR 을 그냥 넣어서 업로드 한 경우
+            applyKey = getVUserDataLightMapURL(mat.userData.lightMap);
+            textures.push(getVUserDataLightMapURL(mat.userData.lightMap));
+          }
+          if (textures.length > 0) {
+            textures.forEach(texture => lightMaps.add(texture));
+          }
+
+          /**
+           * Texture Call 분류
+           * 1. dpOnTexture / dpOffTexture
+           * 2. dpOnTexture 및 raw LightMap
+           * -> 추후
+           * 3. Option 용 라이트맵 ?
+           * **/
+
+          // if (applyKey) {
+          //   const textureCache = new Map();
+          //
+          //   const loadTexture = async (url) => {
+          //     const flipYMap = {
+          //       exr: true,
+          //       png: false,
+          //       ktx: false,
+          //     };
+          //
+          //     const extension = splitExtension(url).ext;
+          //     const flipY = flipYMap[extension];
+          //     if (flipY === undefined) {
+          //       throw new Error('FlipY Set Failed: ' + extension);
+          //     }
+          //
+          //     if (textureCache.has(url)) {
+          //       return textureCache.get(url);
+          //     }
+          //
+          //     console.log('before load : ', url);
+          //
+          //     const texture = await ktx2Loader.loadAsync(url);
+          //
+          //     textureCache.set(url, texture);
+          //     return texture;
+          //   };
+          //
+          //   try {
+          //     const texturesToLoad = [...new Set(textures)];
+          //     // await Promise.all(texturesToLoad.map(loadTexture));
+          //     const texture = textureCache.get(applyKey);
+          //
+          //     if (texture) {
+          //       texture.channel = 1;
+          //       texture.minFilter = THREE.LinearMipmapLinearFilter;
+          //       texture.magFilter = THREE.LinearFilter;
+          //       mat.lightMap = texture;
+          //       mat.lightMapIntensity = mat.userData.lightMapIntensity ?? 1;
+          //       mat.needsUpdate = true;
+          //       if (modelType) {
+          //         if (modelType === 'DP') {
+          //           mat.userData.dpOnLightMap = texture;
+          //         } else {
+          //           mat.userData.dpOffLightMap = texture;
+          //           textureCache.forEach((value, key) => {
+          //             if (key !== applyKey) {
+          //               mat.userData.dpOnLightMap = value;
+          //             }
+          //           });
+          //         }
+          //       }
+          //     } else {
+          //       console.warn(`Texture 로드 실패 : `, applyKey, {
+          //         textureCache,
+          //         texture,
+          //       });
+          //     }
+          //   } catch (error) {
+          //     console.error('Error Loading Textures: ', error);
+          //   }
+          // }
+        }
+      }
+    }
+
+    function getVUserDataLightMapURL(lightMap) {
+      return lightMap.startsWith('http') ? lightMap : 'https://vra-configurator-dev.s3.ap-northeast-2.amazonaws.com/models/' + lightMap;
+    }
+
+    const splitExtension = (filename) => {
+      const lastDot = filename.lastIndexOf('.');
+      return {
+        name: filename.slice(0, lastDot),
+        ext: filename.slice(lastDot + 1),
+      };
+    };
+
+    const lightMaps = new Set([]);
+
+    result.scene.traverse(ob => {
+      if (ob.isMesh) {
+        getLightmap(ob, lightMaps)
+      }
+    })
+
+    console.log(lightMaps);
+
+    const lmMap = new Map();
+    for ( const url1 of lightMaps ) {
+      const texture = await ktx2Loader.loadAsync(url1);
+      texture.channel = 1;
+      texture.minFilter = THREE.LinearMipmapLinearFilter;
+      texture.magFilter = THREE.LinearFilter;
+      lmMap.set(url1, texture);
+    }
+
+    console.log(lmMap);
+
+    result.scene.traverse(ob => {
+      if (ob.isMesh) {
+        const mat = ob.material;
+        if (mat.userData.lightMap) {
+          const lmKey = getVUserDataLightMapURL(mat.userData.lightMap);
+          if (lmMap.has(lmKey)) {
+            const texture = lmMap.get(lmKey);
+            mat.lightMap = texture;
+            mat.lightMapIntensity = mat.userData.lightMapIntensity;
+          }
+        }
+      }
+    })
+
+    scene.add(result.scene);
+
+    renderer.render( scene, camera );
+
+    animate()
+  } );
+
+  function animate() {
+    console.log('animate');
+    renderer.render(scene, camera)
+  }
+
+</script>
+</html>

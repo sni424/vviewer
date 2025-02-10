@@ -354,10 +354,61 @@ export const loadLatest = async ({
     console.log('before add : ', info.geometries, info.textures);
     scene.add(parsedScene);
     const afterInfo = getGLStatus(gl);
+    parsedScene.traverseAll(t => {
+      if (t.type === 'Mesh') {
+        const m = t as THREE.Mesh;
+        m.geometry.dispose();
+        const mat = m.material as THREE.Material;
+        disposeMaterial(mat);
+      }
+    });
     console.log('after add : ', afterInfo.geometries, afterInfo.textures);
     toggleDP(scene, dpOn);
     addBenchMark('sceneAddEnd');
   };
+
+  function disposeMaterial(
+    material:
+      | THREE.Material
+      | THREE.MeshStandardMaterial
+      | THREE.MeshPhysicalMaterial,
+  ) {
+    if (!material) return;
+
+    // 사용된 모든 텍스처를 dispose
+    const textureKeys = [
+      'map',
+      'lightMap',
+      'aoMap',
+      'emissiveMap',
+      'bumpMap',
+      'normalMap',
+      'displacementMap',
+      'roughnessMap',
+      'metalnessMap',
+      'alphaMap',
+      'envMap',
+      'clearcoatMap',
+      'clearcoatNormalMap',
+      'clearcoatRoughnessMap',
+      'sheenColorMap',
+      'sheenRoughnessMap',
+      'specularMap',
+      'specularColorMap',
+      'transmissionMap',
+      'thicknessMap',
+    ];
+
+    textureKeys.forEach(key => {
+      if (material[key]) {
+        material[key].dispose(); // 텍스처 메모리 해제
+        // material[key] = null;     // 참조 제거
+      }
+    });
+
+    // material 자체 dispose
+    material.dispose();
+  }
 
   /** Process **/
   return loadModel()
