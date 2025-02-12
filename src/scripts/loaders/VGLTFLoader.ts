@@ -14,10 +14,10 @@ import { getVKTX2Loader } from './VKTX2Loader.ts';
 import VTextureLoader from './VTextureLoader.ts';
 
 export default class VGLTFLoader extends GLTFLoader {
-  dispoableUrls: string[] = [];
+  disposableURL: string[] = [];
 
   dispose() {
-    for (const url of this.dispoableUrls) {
+    for (const url of this.disposableURL) {
       URL.revokeObjectURL(url);
     }
     GainmapLoader.dispose();
@@ -72,21 +72,23 @@ export default class VGLTFLoader extends GLTFLoader {
     async function customOnLoad(gltf: GLTF) {
       const lightMapSet = new Set<string>([]);
 
-      gltf.scene.traverseAll((object: THREE.Object3D) => {
+      gltf.scene.traverseAll(async (object: THREE.Object3D) => {
         object.layers.enable(Layer.Model);
         getLightmap(object, lightMapSet);
       });
 
       const lmMap = new Map();
-      for (const url1 of lightMapSet) {
-        const texture = await VGLTFLoader.ktx2Loader.loadAsync(url1);
+
+      const arr = [...lightMapSet];
+      const promises = arr.map(async lmUrl => {
+        const texture = await VGLTFLoader.ktx2Loader.loadAsync(lmUrl);
         texture.channel = 1;
         texture.minFilter = THREE.LinearMipmapLinearFilter;
         texture.magFilter = THREE.LinearFilter;
-        lmMap.set(url1, texture);
-      }
+        lmMap.set(lmUrl, texture);
+      });
 
-      console.log(lmMap);
+      await Promise.all(promises);
 
       gltf.scene.traverse(ob => {
         if (ob.type === 'Mesh') {
@@ -98,6 +100,7 @@ export default class VGLTFLoader extends GLTFLoader {
               const texture = lmMap.get(lmKey);
               mat.lightMap = texture;
               mat.lightMapIntensity = mat.userData.lightMapIntensity;
+              mat.needsUpdate = true;
             }
           }
         }
@@ -115,7 +118,7 @@ export default class VGLTFLoader extends GLTFLoader {
       url = fileOrUrl;
     } else {
       url = URL.createObjectURL(fileOrUrl);
-      this.dispoableUrls.push(url);
+      this.disposableURL.push(url);
     }
     return super.loadAsync(url).finally(() => {
       // this.dispose();
