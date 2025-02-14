@@ -5,7 +5,7 @@ import MobileCameraManager from '../components/mobile/MobileCameraManager';
 import MobileRenderer from '../components/mobile/MobileRenderer';
 import MobileSimplePanel from '../components/MobileSimplePanel.tsx';
 import Modal from '../components/Modal';
-import OptionPanel from '../components/OptionPanel';
+import OptionPanel from '../components/OptionPanel.tsx';
 import {
   DPAtom,
   hotspotAtom,

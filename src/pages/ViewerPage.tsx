@@ -7,7 +7,7 @@ import RendererContainer from '../components/canvas/Renderer';
 import MaterialPanelContainer from '../components/MaterialPanel';
 import MeshInfoPanel from '../components/MeshInfoPanel';
 import Modal from '../components/Modal';
-import OptionPanel from '../components/OptionPanel';
+import OptionPanel from '../components/OptionPanel.tsx';
 import ThePanel from '../components/ThePanel';
 import {
   DPAtom,
