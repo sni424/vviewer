@@ -14,17 +14,22 @@ export type ModelOptionState = {
 };
 
 export type MeshEffect = {
-  targetMesh: THREE.Mesh;
+  targetMesh?: THREE.Mesh;
   targetMeshProperties: {
     uuid: string;
     name: string;
   };
-  effects: Effects[];
+  effects: Effects;
+  expanded: boolean;
 };
 
 export type Effects = {
-  type: 'VISIBLE' | 'LightMap' | 'Probe';
-  value: string;
+  useVisible: boolean;
+  useLightMap: boolean;
+  useProbe: boolean;
+  visibleValue: boolean;
+  lmValue: string | null;
+  pValue: string | null;
 };
 
 /**
@@ -34,5 +39,5 @@ export type Effects = {
  *    - 메시 visible On / Off
  *    - 라이트맵 변경
  *    - 프로브 변경
- * 2.
+ * 2. 옵션 변경 시의 카메라 이동 등
  * **/
