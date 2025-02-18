@@ -252,7 +252,7 @@ export const Tabs = [
   'option',
 ] as const;
 export type Tab = (typeof Tabs)[number];
-export const panelTabAtom = atom<Tab>('option');
+export const panelTabAtom = atom<Tab>('scene');
 
 export const treeSearchAtom = atom<string | undefined>();
 
