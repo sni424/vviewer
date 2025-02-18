@@ -85,6 +85,7 @@ export default class VGLTFLoader extends GLTFLoader {
         texture.channel = 1;
         texture.minFilter = THREE.LinearMipmapLinearFilter;
         texture.magFilter = THREE.LinearFilter;
+        texture.vUserData.mimeType = 'image/ktx2';
         lmMap.set(lmUrl, texture);
       });
 

@@ -400,7 +400,7 @@ const State = ({
           </div>
         )}
       </div>
-      {open && (
+      {open && models.length > 0 && (
         <div className="mt-1">
           <div className="flex items-center gap-x-1">
             <button>값 일괄 적용하기</button>

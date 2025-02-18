@@ -49,40 +49,75 @@ export const FullscreenCanvas = ({ texture }: { texture: THREE.Texture }) => {
     const isKtx = texture.vUserData?.mimeType === 'image/ktx2';
     innerCanvasRef.current.width = dstWidth;
     innerCanvasRef.current.height = dstHeight;
+    const renderer = new THREE.WebGLRenderer();
+    const m = new THREE.MeshBasicMaterial();
+    const planeGeometry = new THREE.PlaneGeometry(2, 2);
+    const plane = new THREE.Mesh(planeGeometry, m);
 
     if (isKtx) {
       const t = texture as THREE.CompressedTexture;
-      console.log(t);
-      const mipmaps = t.mipmaps;
-      if (mipmaps && mipmaps.length > 0) {
-        const highestMipmap = mipmaps[0];
-        const width = highestMipmap.width;
-        const height = highestMipmap.height;
-        const data = highestMipmap.data;
-        const context = innerCanvasRef.current.getContext('2d');
+      const isLightMap = t.channel === 1;
+      if (isLightMap) {
+        t.channel = 0;
+      }
+      m.map = t;
 
-        if (context) {
-          const imageData = new ImageData(width, height);
+      // WebGL 렌더러 생성
+      renderer.setSize(t.image.width, t.image.height);
+      document.body.appendChild(renderer.domElement); // 디버깅을 위해 renderer 추가
 
-          for (let i = 0; i < data.length; i += 4) {
-            imageData.data[i] = data[i];
-            imageData.data[i + 1] = data[i + 1];
-            imageData.data[i + 2] = data[i + 2];
-            imageData.data[i + 3] = 255;
-          }
+      const scene = new THREE.Scene();
+      const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 10);
+      camera.position.z = 1;
 
-          context.putImageData(imageData, 0, 0);
-        } else {
-          console.warn(
-            'Cannot Draw KTX image: Canvas 2D Context Not Supported',
+      // 텍스처를 표시할 PlaneMesh 생성
+      scene.add(plane);
+
+      // WebGLRenderer를 사용하여 Canvas로 변환
+      renderer.render(scene, camera);
+
+      if (isLightMap) {
+        t.channel = 1;
+      }
+
+      // Canvas 데이터를 2D Context로 가져오기
+      const glCanvas = renderer.domElement;
+      const context = innerCanvasRef.current.getContext('2d');
+
+      if (context) {
+        const image = new Image();
+        image.src = glCanvas.toDataURL(); // WebGL Canvas를 이미지로 변환
+        image.onload = () => {
+          const scale = Math.min(
+            dstWidth / image.width,
+            dstHeight / image.height,
           );
-        }
+          const newWidth = image.width * scale;
+          const newHeight = image.height * scale;
+
+          // 캔버스 중앙에 맞추기 위한 위치 계산
+          const offsetX = (dstWidth - newWidth) / 2;
+          const offsetY = (dstHeight - newHeight) / 2;
+
+          // 비율 유지하면서 캔버스에 이미지 그리기
+          context.clearRect(0, 0, dstWidth, dstHeight);
+          context.drawImage(image, offsetX, offsetY, newWidth, newHeight);
+        };
+      } else {
+        console.warn('Cannot Draw KTX image: Canvas 2D Context Not Supported');
       }
     } else {
       innerCanvasRef.current
         .getContext('2d')
         ?.drawImage(texture.image, 0, 0, dstWidth, dstHeight);
     }
+
+    return () => {
+      renderer.dispose();
+      renderer.forceContextLoss();
+      m.dispose();
+      planeGeometry.dispose();
+    };
   }, []);
   return (
     <div className="h-full flex flex-col" onClick={closer}>
@@ -151,33 +186,60 @@ const MapPreview: React.FC<MapPreviewProps> = ({
     canvasRef.current.height = h;
     // const source = texture.image || texture.source.data;
     // console.log(texture.image);
+    const renderer = new THREE.WebGLRenderer();
+    const m = new THREE.MeshBasicMaterial();
+    const planeGeometry = new THREE.PlaneGeometry(2, 2);
+    const plane = new THREE.Mesh(planeGeometry, m);
+
     try {
       if (isKtx) {
         const t = texture as THREE.CompressedTexture;
-        const mipmaps = t.mipmaps;
-        if (mipmaps && mipmaps.length > 0) {
-          const highestMipmap = mipmaps[0];
-          const width = highestMipmap.width;
-          const height = highestMipmap.height;
-          const data = highestMipmap.data;
-          const context = canvasRef.current.getContext('2d');
+        if (mapKey === 'lightMap') {
+          t.channel = 0;
+        }
+        m.map = t;
+        // WebGL 렌더러 생성
+        renderer.setSize(t.image.width, t.image.height);
 
-          if (context) {
-            const imageData = new ImageData(width, height);
+        const scene = new THREE.Scene();
+        const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 10);
+        camera.position.z = 1;
 
-            for (let i = 0; i < data.length; i += 4) {
-              imageData.data[i] = data[i];
-              imageData.data[i + 1] = data[i + 1];
-              imageData.data[i + 2] = data[i + 2];
-              imageData.data[i + 3] = 255;
-            }
+        // 텍스처를 표시할 PlaneMesh 생성
+        scene.add(plane);
 
-            context.putImageData(imageData, 0, 0);
-          } else {
-            console.warn(
-              'Cannot Draw KTX image: Canvas 2D Context Not Supported',
-            );
-          }
+        // WebGLRenderer를 사용하여 Canvas로 변환
+        renderer.render(scene, camera);
+
+        if (mapKey === 'lightMap') {
+          t.channel = 1;
+        }
+
+        // Canvas 데이터를 2D Context로 가져오기
+        const glCanvas = renderer.domElement;
+        const context = canvasRef.current.getContext('2d');
+
+        if (context) {
+          const image = new Image();
+          image.src = glCanvas.toDataURL(); // WebGL Canvas를 이미지로 변환
+          image.onload = () => {
+            // 원본 이미지 비율 유지하면서 축소하기 위해 비율 계산
+            const scale = Math.min(w / image.width, h / image.height);
+            const newWidth = image.width * scale;
+            const newHeight = image.height * scale;
+
+            // 캔버스 중앙에 맞추기 위한 위치 계산
+            const offsetX = (w - newWidth) / 2;
+            const offsetY = (h - newHeight) / 2;
+
+            // 비율 유지하면서 캔버스에 이미지 그리기
+            context.clearRect(0, 0, w, h);
+            context.drawImage(image, offsetX, offsetY, newWidth, newHeight);
+          };
+        } else {
+          console.warn(
+            'Cannot Draw KTX image: Canvas 2D Context Not Supported',
+          );
         }
       } else {
         canvasRef.current
@@ -187,6 +249,13 @@ const MapPreview: React.FC<MapPreviewProps> = ({
     } catch (e) {
       console.error(e);
     }
+
+    return () => {
+      renderer.dispose();
+      renderer.forceContextLoss();
+      m.dispose();
+      planeGeometry.dispose();
+    };
   }, [texture]);
 
   function onEnvMapSelectChange(event: ChangeEvent<HTMLSelectElement>) {
