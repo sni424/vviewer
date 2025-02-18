@@ -9,7 +9,7 @@ import {
   selectedAtom,
   useModal,
 } from '../scripts/atoms.ts';
-import { threes } from '../scripts/atomUtils.ts';
+import { loadOption, threes, uploadJson } from '../scripts/atomUtils.ts';
 import {
   Effects,
   MeshEffect,
@@ -24,26 +24,23 @@ const OptionConfigTab = () => {
   const [modelOptions, setModelOptions] = useAtom(modelOptionAtom);
   const { openModal } = useModal();
   function uploadOptionJSON() {
-    const toJSON = optionsToJSON();
-    console.log(toJSON);
-    // uploadJson('options.json', toJSON)
-    //   .then(res => res.json())
-    //   .then(res => {
-    //     if (res?.success === true) {
-    //       alert('업로드 완료');
-    //     } else {
-    //       throw res;
-    //     }
-    //   })
-    //   .catch(err => {
-    //     console.log(err);
-    //     alert('업로드 실패');
-    //   });
+    uploadJson('options.json', modelOptions)
+      .then(res => res.json())
+      .then(res => {
+        if (res?.success === true) {
+          alert('업로드 완료');
+        } else {
+          throw res;
+        }
+      })
+      .catch(err => {
+        console.log(err);
+        alert('업로드 실패');
+      });
   }
 
-  function optionsToJSON() {
-    const options = getAtomValue(modelOptionAtom);
-    return options;
+  function loadOptions() {
+    loadOption().then(res => setModelOptions(res));
   }
 
   return (
@@ -53,6 +50,7 @@ const OptionConfigTab = () => {
           옵션 생성하기
         </button>
         <button onClick={uploadOptionJSON}>업로드</button>
+        <button onClick={loadOptions}>불러오기</button>
       </div>
       <div className="pt-2">
         {modelOptions.map(modelOption => (
@@ -76,15 +74,24 @@ const OptionPreviewTab = () => {
 };
 
 const OptionPreview = ({ option }: { option: ModelOption }) => {
+  const threeExports = threes();
   const [processedState, setProcessedState] = useState<string | null>(null);
+  if (!threeExports) {
+    return null;
+  }
+
+  const { scene } = threeExports;
 
   function processState(state: ModelOptionState) {
     setProcessedState(state.id);
     const meshEffects = state.meshEffects;
     meshEffects.map(meshEffect => {
-      const mesh = meshEffect.targetMesh;
-      const effects = meshEffect.effects;
-      if (mesh) {
+      const object = scene.getObjectByName(
+        meshEffect.targetMeshProperties.name,
+      );
+      if (object && object.type === 'Mesh') {
+        const mesh = object as THREE.Mesh;
+        const effects = meshEffect.effects;
         // Visible Control
         if (effects.useVisible) {
           const originTransparent = (mesh.material as THREE.Material)
@@ -468,7 +475,10 @@ const MeshEffectElem = ({ meshEffect }: { meshEffect: MeshEffect }) => {
         </div>
         <button
           onClick={() => {
-            const mesh = meshEffect.targetMesh;
+            const mesh = scene.getObjectByProperty(
+              'uuid',
+              meshEffect.targetMeshProperties.uuid,
+            );
             if (mesh) {
               camera.lookAt(mesh.position);
               setSelectedMeshes([mesh.uuid]);
@@ -627,8 +637,10 @@ const MeshSelectModal = ({
     if (models.length > 0) {
       setModelSelected(
         models
-          .filter(m => m.targetMesh !== undefined)
-          .map(model => model.targetMesh!!),
+          .map(m =>
+            scene.getObjectByProperty('uuid', m.targetMeshProperties.uuid),
+          )
+          .filter(m => m !== undefined),
       );
     }
   }, [models]);
@@ -646,7 +658,6 @@ const MeshSelectModal = ({
       .filter(m => !filteredUuids.includes(m.uuid))
       .map(w => {
         return {
-          targetMesh: w,
           targetMeshProperties: {
             uuid: w.uuid,
             name: w.name,

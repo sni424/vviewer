@@ -8,6 +8,7 @@ import {
 } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { KTX2Loader } from 'three/examples/jsm/loaders/KTX2Loader.js';
 import { ENV, Layer } from '../../Constants.ts';
+import { lightMapAtom, setAtomValue } from '../atoms.ts';
 import GainmapLoader from '../GainmapLoader.ts';
 import * as THREE from '../VTHREE.ts';
 import { getVKTX2Loader } from './VKTX2Loader.ts';
@@ -77,7 +78,7 @@ export default class VGLTFLoader extends GLTFLoader {
         getLightmap(object, lightMapSet);
       });
 
-      const lmMap = new Map();
+      const lmMap = new Map<string, THREE.Texture>();
 
       const arr = [...lightMapSet];
       const promises = arr.map(async lmUrl => {
@@ -99,13 +100,22 @@ export default class VGLTFLoader extends GLTFLoader {
             const lmKey = getVUserDataLightMapURL(mat.vUserData.lightMap);
             if (lmMap.has(lmKey)) {
               const texture = lmMap.get(lmKey);
-              mat.lightMap = texture;
-              mat.lightMapIntensity = mat.userData.lightMapIntensity;
-              mat.needsUpdate = true;
+              if (texture) {
+                mat.lightMap = texture;
+                mat.lightMapIntensity = mat.userData.lightMapIntensity;
+                mat.needsUpdate = true;
+              } else {
+                console.warn('No Texture Found : ', lmKey);
+              }
             }
           }
         }
       });
+
+      setAtomValue(
+        lightMapAtom,
+        Object.fromEntries(lmMap) as { [key: string]: THREE.Texture },
+      );
 
       onLoad(gltf);
     }

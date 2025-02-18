@@ -34,6 +34,7 @@ import {
   DPAtom,
   DPCModeAtom,
   getAtomValue,
+  lightMapAtom,
   materialSettingAtom,
   postprocessAtoms,
   ProbeAtom,
@@ -586,6 +587,7 @@ const GeneralButtons = () => {
 const GeneralSceneInfo = () => {
   const [selecteds, setSelecteds] = useAtom(selectedAtom);
   const threeExports = useAtomValue(threeExportsAtom);
+  const lightMaps = useAtomValue(lightMapAtom);
   const { files, loadingFiles } = useFiles();
 
   if (!threeExports) {
@@ -641,6 +643,9 @@ const GeneralSceneInfo = () => {
         </div>
         <div style={{ paddingLeft: 4 }}>
           총 버텍스 : {formatNumber(totals.vertexCount)}개
+        </div>
+        <div style={{ paddingLeft: 4 }}>
+          총 라이트 맵 수: {Object.keys(lightMaps).length}개
         </div>
 
         <ul style={{ paddingLeft: 4, marginTop: 8 }}>

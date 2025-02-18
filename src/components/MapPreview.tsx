@@ -64,7 +64,6 @@ export const FullscreenCanvas = ({ texture }: { texture: THREE.Texture }) => {
 
       // WebGL 렌더러 생성
       renderer.setSize(t.image.width, t.image.height);
-      document.body.appendChild(renderer.domElement); // 디버깅을 위해 renderer 추가
 
       const scene = new THREE.Scene();
       const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 10);
