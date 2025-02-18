@@ -1,4 +1,3 @@
-import * as THREE from './VTHREE';
 export type ModelOption = {
   id: string;
   states: ModelOptionState[];
@@ -14,7 +13,6 @@ export type ModelOptionState = {
 };
 
 export type MeshEffect = {
-  targetMesh?: THREE.Mesh;
   targetMeshProperties: {
     uuid: string;
     name: string;
