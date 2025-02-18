@@ -56,7 +56,7 @@ const MeshChildren = ({ data }: { data: THREE.Mesh }) => {
   );
 };
 
-const RecursiveNode = ({
+export const RecursiveNode = ({
   data,
   depth = 0,
 }: {

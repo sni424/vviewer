@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Title</title>
+</head>
+<body>
+<div style="width: 100%; height: 100%">
+  <div style="display: flex; max-height: 10%">
+    <button id="loadButton">불러오기</button>
+    <button id="loadLMButton">LM</button>
+    <button id="addButton">add</button>
+    <button id="removeButton">제거</button>
+    <button id="disposeButton">dispose</button>
+  </div>
+  <div style="display: flex; max-height: 10%">
+    <button id="loadTButton">Textures call</button>
+    <button id="removeTButton">제거</button>
+  </div>
+  <div style="max-height: 90%" id="canvas-div"></div>
+</div>
+<script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@latest/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@latest/examples/jsm/"
+    }
+  }
+</script>
+<script type="module">
+  import * as THREE from 'three';
+  import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
+  import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+  import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
+  import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
+  import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+  import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
+
+  let isInit = false;
+  let loaded = false;
+
+  let scene, renderer, camera, controls, gltf, gltfLoader, ktx2Loader, dracoLoader;
+  let textures = [];
+  const container = document.querySelector( '#canvas-div' );
+
+  function init () {
+    renderer = new THREE.WebGLRenderer( { antialias: true } );
+    renderer.setPixelRatio( window.devicePixelRatio );
+    renderer.setSize( window.innerWidth, window.innerHeight );
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1;
+    renderer.setAnimationLoop( animate );
+    container.appendChild( renderer.domElement );
+
+    scene = new THREE.Scene();
+
+    camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 0.25, 20 );
+
+    controls = new OrbitControls( camera, renderer.domElement );
+    controls.target.set( 0, 0, 0 );
+    controls.minDistance = 1.0;
+    controls.maxDistance = 200.0;
+    controls.addEventListener( 'change', animate ); // use if there is no animation loop
+    controls.update();
+
+    isInit = true;
+  }
+
+  async function load () {
+    if ( !isInit ) {
+      alert( '아직 준비되지 않음.' );
+      return;
+    }
+
+    console.log( 'before Load : ', THREE.Cache.enabled );
+    const url = 'https://vra-configurator-dev.s3.ap-northeast-2.amazonaws.com/models/latest.glb';
+    ktx2Loader = new KTX2Loader();
+    ktx2Loader.setTranscoderPath( 'https://unpkg.com/three@latest/examples/jsm/libs/basis/' );
+    ktx2Loader.detectSupport( renderer );
+    gltfLoader = new GLTFLoader();
+    dracoLoader = new DRACOLoader();
+    dracoLoader.setDecoderPath( 'https://unpkg.com/three@latest/examples/jsm/libs/draco/gltf/' );
+    gltfLoader.setKTX2Loader( ktx2Loader );
+    gltfLoader.setDRACOLoader();
+    gltfLoader.setMeshoptDecoder( MeshoptDecoder );
+
+    const result = await gltfLoader.loadAsync( url );
+
+    gltf = result;
+
+    console.log( 'load Done' );
+  }
+
+  async function loadKTXTest () {
+    if ( !ktx2Loader ) {
+      ktx2Loader = new KTX2Loader();
+      ktx2Loader.setTranscoderPath( 'https://unpkg.com/three@latest/examples/jsm/libs/basis/' );
+      ktx2Loader.detectSupport( renderer );
+    }
+    const lms = [ "https://vra-configurator-dev.s3.ap-northeast-2.amazonaws.com/models/curtain_3.001_Bake1_CyclesBake_DIFFUSE.001.ktx", "https://vra-configurator-dev.s3.ap-northeast-2.amazonaws.com/models/Option.02.바닥_Bake1_CyclesBake_DIFFUSE.001.ktx", "https://vra-configurator-dev.s3.ap-northeast-2.amazonaws.com/models/Pantry_etc_Bake1_CyclesBake_DIFFUSE.001.ktx", "https://vra-configurator-dev.s3.ap-northeast-2.amazonaws.com/models/침실커튼_Bake1_CyclesBake_DIFFUSE.001.ktx", "https://vra-configurator-dev.s3.ap-northeast-2.amazonaws.com/models/설비_스프레이건_Bake1_CyclesBake_DIFFUSE.001.ktx", "https://vra-configurator-dev.s3.ap-northeast-2.amazonaws.com/models/104B_Basic_entry foyer_Bake1_CyclesBake_DIFFUSE.001.ktx", "https://vra-configurator-dev.s3.ap-northeast-2.amazonaws.com/models/MAINBED _PT_Bake1_CyclesBake_DIFFUSE.001.ktx", "https://vra-configurator-dev.s3.ap-northeast-2.amazonaws.com/models/SM_Common_Kitchen_Sink_Bake1_CyclesBake_DIFFUSE.001.ktx", "https://vra-configurator-dev.s3.ap-northeast-2.amazonaws.com/models/화장실1_BASE_Bake1_CyclesBake_DIFFUSE.001.ktx", "https://vra-configurator-dev.s3.ap-northeast-2.amazonaws.com/models/화장실1_BASE.001_Bake1_CyclesBake_DIFFUSE.001.ktx"];
+    for ( const url of lms ) {
+      const texture = await ktx2Loader.loadAsync( url );
+      texture.channel = 1;
+      texture.minFilter = THREE.LinearMipmapLinearFilter;
+      texture.magFilter = THREE.LinearFilter;
+      textures.push( texture );
+    }
+
+    console.log('call Done');
+  }
+
+  function removeAllTextures () {
+    textures.forEach( texture => {
+      texture.dispose();
+    } );
+
+    textures = [];
+
+    ktx2Loader.dispose();
+    ktx2Loader = null;
+  }
+
+  async function loadLM () {
+    function getLightmap ( object, lightMaps ) {
+      if ( object.isMesh ) {
+        const mesh = object;
+        const mat = mesh.material;
+        if ( mat ) {
+          // DP 는 항상 dpOnTextureFile, Base 는 dpOnTextureFile / dpOffTextureFile 둘 다 있거나 없음.
+          // 텍스쳐 적용 기준 =>
+          // BASE: dpOff 기준 / DP : dpOn 기준
+          const textures = [];
+          const modelType = mesh.userData.modelType;
+          console.log( 'mesh UserData = ', mesh.userData, mat.userData );
+          let applyKey = null;
+          if ( modelType ) {
+            // DP / Base 로 업로드 했다면?
+            if ( modelType === 'DP' ) {
+              // DP 라면
+              const target = mat.userData.dpOnTextureFile;
+              if ( target ) {
+                textures.push( getVUserDataLightMapURL( target ) );
+                applyKey = getVUserDataLightMapURL( target );
+              } else {
+                console.warn(
+                  'getLightMap() => type DP : dpOnTextureFile 없음 ! ',
+                  mat,
+                );
+              }
+            } else {
+              // Base 라면
+              const offT = mat.userData.dpOffTextureFile;
+              const onT = mat.userData.dpOnTextureFile;
+
+              if ( offT && onT ) {
+                applyKey = getVUserDataLightMapURL( offT );
+                textures.push(
+                  getVUserDataLightMapURL( offT ),
+                  getVUserDataLightMapURL( onT ),
+                );
+              } else {
+                console.log( 'No LightMap with Base Model : ', mesh );
+              }
+            }
+          } else if ( mat.userData.lightMap ) {
+            // EXR 을 그냥 넣어서 업로드 한 경우
+            applyKey = getVUserDataLightMapURL( mat.userData.lightMap );
+            textures.push( getVUserDataLightMapURL( mat.userData.lightMap ) );
+          }
+          if ( textures.length > 0 ) {
+            textures.forEach( texture => lightMaps.add( texture ) );
+          }
+
+          /**
+           * Texture Call 분류
+           * 1. dpOnTexture / dpOffTexture
+           * 2. dpOnTexture 및 raw LightMap
+           * -> 추후
+           * 3. Option 용 라이트맵 ?
+           * **/
+
+          // if (applyKey) {
+          //   const textureCache = new Map();
+          //
+          //   const loadTexture = async (url) => {
+          //     const flipYMap = {
+          //       exr: true,
+          //       png: false,
+          //       ktx: false,
+          //     };
+          //
+          //     const extension = splitExtension(url).ext;
+          //     const flipY = flipYMap[extension];
+          //     if (flipY === undefined) {
+          //       throw new Error('FlipY Set Failed: ' + extension);
+          //     }
+          //
+          //     if (textureCache.has(url)) {
+          //       return textureCache.get(url);
+          //     }
+          //
+          //     console.log('before load : ', url);
+          //
+          //     const texture = await ktx2Loader.loadAsync(url);
+          //
+          //     textureCache.set(url, texture);
+          //     return texture;
+          //   };
+          //
+          //   try {
+          //     const texturesToLoad = [...new Set(textures)];
+          //     // await Promise.all(texturesToLoad.map(loadTexture));
+          //     const texture = textureCache.get(applyKey);
+          //
+          //     if (texture) {
+          //       texture.channel = 1;
+          //       texture.minFilter = THREE.LinearMipmapLinearFilter;
+          //       texture.magFilter = THREE.LinearFilter;
+          //       mat.lightMap = texture;
+          //       mat.lightMapIntensity = mat.userData.lightMapIntensity ?? 1;
+          //       mat.needsUpdate = true;
+          //       if (modelType) {
+          //         if (modelType === 'DP') {
+          //           mat.userData.dpOnLightMap = texture;
+          //         } else {
+          //           mat.userData.dpOffLightMap = texture;
+          //           textureCache.forEach((value, key) => {
+          //             if (key !== applyKey) {
+          //               mat.userData.dpOnLightMap = value;
+          //             }
+          //           });
+          //         }
+          //       }
+          //     } else {
+          //       console.warn(`Texture 로드 실패 : `, applyKey, {
+          //         textureCache,
+          //         texture,
+          //       });
+          //     }
+          //   } catch (error) {
+          //     console.error('Error Loading Textures: ', error);
+          //   }
+          // }
+        }
+      }
+    }
+
+    function getVUserDataLightMapURL ( lightMap ) {
+      return lightMap.startsWith( 'http' ) ? lightMap : 'https://vra-configurator-dev.s3.ap-northeast-2.amazonaws.com/models/' + lightMap;
+    }
+
+    const splitExtension = ( filename ) => {
+      const lastDot = filename.lastIndexOf( '.' );
+      return {
+        name: filename.slice( 0, lastDot ),
+        ext: filename.slice( lastDot + 1 ),
+      };
+    };
+
+    const lightMaps = new Set( [] );
+
+    gltf.scene.traverse( ob => {
+      if ( ob.isMesh ) {
+        getLightmap( ob, lightMaps );
+      }
+    } );
+
+    const lmMap = new Map();
+    for ( const url1 of lightMaps ) {
+      const texture = await ktx2Loader.loadAsync( url1 );
+      texture.channel = 1;
+      texture.minFilter = THREE.LinearMipmapLinearFilter;
+      texture.magFilter = THREE.LinearFilter;
+      lmMap.set( url1, texture );
+    }
+
+
+    console.log( lightMaps );
+
+    gltf.scene.traverse( ob => {
+      if ( ob.isMesh ) {
+        const mat = ob.material;
+        if ( mat.userData.lightMap ) {
+          const lmKey = getVUserDataLightMapURL( mat.userData.lightMap );
+          if ( lmMap.has( lmKey ) ) {
+            const texture = lmMap.get( lmKey );
+            mat.lightMap = texture;
+            mat.lightMapIntensity = mat.userData.lightMapIntensity;
+          }
+        }
+      }
+    } );
+
+    ktx2Loader.dispose();
+    dracoLoader.dispose();
+    THREE.Cache.clear();
+
+    console.log( 'clearing arrays' );
+    lmMap.clear();
+    lightMaps.clear();
+    console.log( 'cleared' );
+  }
+
+  function add () {
+    scene.add( gltf.scene );
+
+    renderer.render( scene, camera );
+
+    animate();
+
+    loaded = true;
+    console.log( 'added' );
+  }
+
+  function animate () {
+    renderer.render( scene, camera );
+  }
+
+  function dispose () {
+    // if(!loaded) {
+    //   alert('아직 로드되지 않음');
+    //   return;
+    // }
+    console.log( 'before dispose : ', JSON.stringify( renderer.info ) );
+
+    if ( gltf && gltf.scene ) {
+      let count = 0;
+      gltf.scene.traverse( ob => {
+        if ( ob.isMesh ) {
+          count++;
+          const geometry = ob.geometry;
+          geometry.dispose();
+          const material = ob.material;
+          material.dispose();
+
+          // dispose textures
+          for ( const key of Object.keys( material ) ) {
+            const value = material[ key ];
+            if ( value && typeof value === 'object' && 'minFilter' in value ) {
+              console.log( 'dispose texture!' );
+              value.dispose();
+            }
+          }
+        }
+      } );
+      console.log( 'gltf.traverse count : ', count );
+    }
+    let count = 0;
+    scene.traverse( ob => {
+      if ( ob.isMesh ) {
+        count++;
+        const geometry = ob.geometry;
+        geometry.dispose();
+        const material = ob.material;
+        material.dispose();
+
+        // dispose textures
+        for ( const key of Object.keys( material ) ) {
+          const value = material[ key ];
+          if ( value && typeof value === 'object' && 'minFilter' in value ) {
+            console.log( 'dispose texture!' );
+            value.dispose();
+          }
+        }
+      }
+    } );
+    console.log( 'scene traverse count : ', count );
+
+    gltf = null;
+    renderer.dispose();
+    gltfLoader = null;
+    ktx2Loader = null;
+    console.log( 'after dispose : ', JSON.stringify( renderer.info ) );
+    console.log( 'disposed' );
+  }
+
+  function remove () {
+    if ( !loaded ) {
+      alert( '로드되지 않음' );
+      return;
+    }
+
+    const children = putChildren( scene );
+    children.forEach( child => {
+      child.removeFromParent();
+      if ( child.isMesh ) {
+        child.geometry.dispose();
+        child.material.dispose();
+        // dispose textures
+        for ( const key of Object.keys( child.material ) ) {
+          const value = child.material[ key ];
+          if ( value && typeof value === 'object' && 'minFilter' in value ) {
+            console.log( 'dispose texture!' );
+            value.dispose();
+          }
+        }
+      }
+    } );
+
+    console.log( 'removed' );
+  }
+
+  function putChildren ( scene, arr ) {
+    if ( !arr ) {
+      arr = [];
+    }
+    scene.children.forEach( child => {
+      arr.push( child );
+      if ( child.children && child.children.length > 0 ) {
+        putChildren( child, arr );
+      }
+    } );
+
+    return arr;
+  }
+
+  document.getElementById( 'loadButton' ).addEventListener( 'click', () => {
+    load();
+  } );
+
+  document.getElementById( 'loadTButton' ).addEventListener( 'click', () => {
+    loadKTXTest();
+  } );
+
+  document.getElementById( 'loadLMButton' ).addEventListener( 'click', () => {
+    loadLM();
+  } );
+
+  document.getElementById( 'addButton' ).addEventListener( 'click', () => {
+    add();
+  } );
+
+  document.getElementById( 'removeButton' ).addEventListener( 'click', () => {
+    remove();
+  } );
+
+  document.getElementById( 'disposeButton' ).addEventListener( 'click', () => {
+    dispose();
+  } );
+
+  document.getElementById( 'removeTButton' ).addEventListener( 'click', () => {
+    removeAllTextures();
+  } );
+
+  init();
+</script>
+</body>
+</html>

@@ -4,6 +4,7 @@ import SceneInfo from '../components/SceneInfo';
 import SceneTree from '../components/SceneTree';
 import { loadHistoryAtom, panelTabAtom, Tab, Tabs } from '../scripts/atoms';
 import HotSpotPanel from './HotspotPanel';
+import { OptionTab } from './OptionTab.tsx';
 import ProbeInfo from './ProbeInfo';
 import RoomPanel from './RoomPanel';
 import TourPanel from './TourPanel';
@@ -15,6 +16,7 @@ const tabMap: { [key in Tab]: React.ReactNode } = {
   tour: <TourPanel></TourPanel>,
   hotspot: <HotSpotPanel></HotSpotPanel>,
   room: <RoomPanel></RoomPanel>,
+  option: <OptionTab></OptionTab>,
 } as const;
 
 const ThePanel = () => {

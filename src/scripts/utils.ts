@@ -1,10 +1,10 @@
 import { RootState } from '@react-three/fiber';
 import gsap from 'gsap';
 import { get, set } from 'idb-keyval';
+import * as THREE from './VTHREE';
 
 import objectHash from 'object-hash';
 import pako from 'pako';
-import { Vector3, WebGLRenderer } from 'three';
 import { TransformControls } from 'three-stdlib';
 import { EXRLoader, OrbitControls } from 'three/examples/jsm/Addons.js';
 import { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
@@ -23,7 +23,6 @@ import {
 import { uploadExrToKtx } from './atomUtils.ts';
 import VGLTFLoader from './loaders/VGLTFLoader.ts';
 import VGLTFExporter from './VGLTFExporter.ts';
-import * as THREE from './VTHREE';
 
 export const groupInfo = (
   group: THREE.Group | { scene: THREE.Group } | THREE.Scene | THREE.Object3D,
@@ -458,7 +457,7 @@ export const listFilesFromDrop = async (
 
 export const loadPNGAsENV = (
   path: string,
-  gl: WebGLRenderer,
+  gl: THREE.WebGLRenderer,
 ): Promise<THREE.Texture> => {
   return new Promise((resolve, reject) => {
     const loader = new THREE.TextureLoader();
@@ -874,7 +873,7 @@ export const moveTo = (
         newPath.push(position);
         addPoints(
           ...newPath.map(vector => ({
-            point: new Vector3(vector.x, 0.05, vector.z),
+            point: new THREE.Vector3(vector.x, 0.05, vector.z),
             color: 'yellow',
           })),
         );

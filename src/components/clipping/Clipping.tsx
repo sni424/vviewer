@@ -16,11 +16,13 @@ const Clipping = () => {
 
   const { gl } = threeExports;
   useEffect(() => {
-    if (!glSetting.localClippingEnabled) {
-      gl.clippingPlanes = [];
-    } else {
-      globalPlane.constant = clippingY;
-      gl.clippingPlanes = [globalPlane];
+    if (gl) {
+      if (!glSetting.localClippingEnabled) {
+        gl.clippingPlanes = [];
+      } else {
+        globalPlane.constant = clippingY;
+        gl.clippingPlanes = [globalPlane];
+      }
     }
   }, [clippingY, glSetting.localClippingEnabled]);
   return (

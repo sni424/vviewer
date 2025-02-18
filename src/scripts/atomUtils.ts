@@ -180,6 +180,12 @@ export const loadPostProcess = async () => {
   }).then(res => res.json());
 };
 
+export const loadOption = async () => {
+  return fetch(ENV.base + 'options.json', {
+    cache: 'no-store',
+  }).then(res => res.json());
+};
+
 export const loadPostProcessAndSet = async () => {
   return loadPostProcess().then(res => {
     if (res) {

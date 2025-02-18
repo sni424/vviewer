@@ -1,0 +1,67 @@
+{
+  "states": [
+    {
+      "stateName": "라이브러리월 ON",
+      "meshEffects": [
+        {
+          "targetMesh": "mesh_1_ID",
+          "effects": [
+            {
+              "type": "VISIBLE",
+              "value": true
+            },
+            {
+              "type": "LightMap",
+              "value": "LightMap URL"
+            },
+            {
+              "type": "Probe",
+              "value": "ProbeID"
+            }
+          ]
+        },
+        {
+          "targetMesh": "mesh_2_ID",
+          "effects": [
+            {
+              "type": "VISIBLE",
+              "value": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "stateName": "라이브러리월 OFF",
+      "meshEffects": [
+        {
+          "targetMesh": "mesh_1_ID",
+          "effects": [
+            {
+              "type": "VISIBLE",
+              "value": false
+            }
+          ],
+        },
+        {
+          "targetMesh": "mesh_2_ID",
+          "effects": [
+            {
+              "type": "VISIBLE",
+              "value": true
+            },
+            {
+              "type": "LightMap",
+              "value": "LightMap URL"
+            },
+            {
+              "type": "Probe",
+              "value": "ProbeID"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "name": "라이브러리월"
+}
