@@ -99,6 +99,8 @@ export default class ReflectionProbe {
   private useCustomTexture: boolean = false;
   private renderedTime: number | null = null;
   private customRenderedTime: number | null = null;
+  private animationFrame: number | null = null;
+  private updatedFrame: number | null = null;
 
   // TODO 추후 개발
   // private modes: Modes = 'box';
@@ -589,15 +591,15 @@ export default class ReflectionProbe {
     this.renderer.autoClear = rendererOriginalAutoClearValue;
     // Apply envMap to ReflectionProbe Sphere
     (this.reflectionProbeSphere.material as THREE.MeshStandardMaterial).envMap =
-      this.getTexture();
+      this.renderTarget.texture;
     // Apply Box In Box projected Meshes
     // this.updateObjectChildrenEnv();
     // After Render => set No Render Objects Visible
     this.onAfterCubeCameraUpdate(beforeUpdateObject);
     // Canvas Update
-    this.applyTextureOnQuad();
+    // this.applyTextureOnQuad();
     document.dispatchEvent(new CustomEvent('probe-rendered', { detail: {} }));
-    console.log('probe Rendered : ' + this.serializedId);
+    // console.log('probe Rendered : ' + this.serializedId);
     this.renderedTime = new Date().getTime();
   }
 
@@ -855,10 +857,28 @@ export default class ReflectionProbe {
 
   setAutoUpdate(autoUpdate: boolean) {
     if (autoUpdate) {
-      this.renderCamera();
+      // this.animationFrame = requestAnimationFrame(this.renderLoop);
+      this.renderCamera(true);
+    } else {
+      // if (this.animationFrame) cancelAnimationFrame(this.animationFrame);
     }
     this.autoUpdate = autoUpdate;
   }
+
+  renderLoop = (timeStamp: number) => {
+    if (!this.updatedFrame) {
+      this.updatedFrame = timeStamp;
+      this.renderCamera(true);
+    } else {
+      const elapsed = timeStamp - this.updatedFrame;
+      if (elapsed >= 1000) {
+        // 1초(1000ms)마다 렌더링
+        this.updatedFrame = timeStamp;
+        this.renderCamera(true);
+      }
+    }
+    requestAnimationFrame(this.renderLoop);
+  };
 
   getCanvas() {
     return this.canvas;

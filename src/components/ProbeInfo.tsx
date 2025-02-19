@@ -68,19 +68,21 @@ const importProbes = async () => {
     const probeJsons = res as ReflectionProbeJSON[];
     const probes = await Promise.all(
       probeJsons.map(probeJson => {
+        probeJson.resolution = 256;
         return new ReflectionProbe(gl, scene, camera).fromJSON(probeJson);
       }),
     );
 
     probes.forEach(probe => {
+      probe.setAutoUpdate(true);
       probe.addToScene(true);
-      const texture = probe.getTexture(true);
+      // const texture = probe.getTexture(true);
+      const texture = probe.getRenderTargetTexture();
       scene.traverse(node => {
         if (node instanceof THREE.Mesh) {
           const n = node as THREE.Mesh;
           const material = n.material as THREE.MeshStandardMaterial;
           if (material.vUserData.probeId === probe.getId()) {
-            console.log('found : ', material, texture);
             material.envMap = texture;
             material.onBeforeCompile = probe.materialOnBeforeCompileFunc();
             material.needsUpdate = true;

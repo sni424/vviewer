@@ -266,8 +266,6 @@ function getLightmap(object: THREE.Object3D, lightMapSet: Set<string>) {
         textures.forEach(texture => lightMapSet.add(texture));
       }
 
-      console.log('applyKey', applyKey);
-
       /**
        * Texture Call 분류
        * 1. dpOnTexture / dpOffTexture

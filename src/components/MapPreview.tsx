@@ -387,8 +387,7 @@ const ProbeSelector = ({
     material: THREE.MeshStandardMaterial,
     probe: ReflectionProbe,
   ) {
-    material.envMap = probe.getTexture();
-    console.log('apply probe', probe, probe.getTexture());
+    material.envMap = probe.getRenderTargetTexture();
     material.onBeforeCompile = probe.materialOnBeforeCompileFunc();
     material.vUserData.probeId = value;
   }
