@@ -372,6 +372,7 @@ const CameraManager: React.FC<UnifiedCameraControlsProps> = ({
     });
 
     return () => {
+      console.log('removed camera Events');
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
       document.removeEventListener('control-dragged', () => {});

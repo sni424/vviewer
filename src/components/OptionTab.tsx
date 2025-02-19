@@ -230,24 +230,8 @@ const OptionPreview = ({ option }: { option: ModelOption }) => {
         return probesToRender.includes(probe.getId());
       });
 
-      const textures: { [key: string]: THREE.Texture } = {};
       toRenders.forEach(probe => {
-        console.log('toRender: ', probe);
         probe.renderCamera(true);
-        // Force To get Rendered Texture
-        textures[probe.getId()] = probe.getTexture(true);
-      });
-
-      scene.traverse(obj => {
-        if (obj.type === 'Mesh') {
-          const mat = (obj as THREE.Mesh)
-            .material as THREE.MeshStandardMaterial;
-          const probeId = mat.vUserData.probeId;
-          if (probeId && probesToRender.includes(probeId)) {
-            mat.envMap = textures[probeId];
-            mat.needsUpdate = true;
-          }
-        }
       });
       setIsProcessing(false);
     }
@@ -267,10 +251,13 @@ const OptionPreview = ({ option }: { option: ModelOption }) => {
         {option.states.map((state, idx) => (
           <>
             {isProcessing && (
-              <div className="absolute w-full h-full bg-transparent cursor-progress"></div>
+              <div
+                key={Math.random()}
+                className="absolute w-full h-full bg-transparent cursor-progress"
+              ></div>
             )}
             <button
-              key={idx}
+              key={Math.random()}
               className="rounded-none"
               style={{ width: `calc(100%/${option.states.length})` }}
               onClick={() => processState(state)}
