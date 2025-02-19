@@ -277,9 +277,9 @@ export default class ReflectionProbe {
     this.canvas = canvas;
   }
 
-  addToScene() {
+  addToScene(render?: boolean) {
     this.scene.add(this.boxMesh, this.translateControls, this.scaleControls);
-    this.updateCameraPosition(this.boxMesh.position);
+    this.updateCameraPosition(this.boxMesh.position, render);
   }
 
   removeFromScene() {
@@ -572,8 +572,9 @@ export default class ReflectionProbe {
     return imageData;
   }
 
-  renderCamera() {
-    if (this.customTexture && this.useCustomTexture) {
+  renderCamera(forceRender?: boolean) {
+    if (!forceRender && this.customTexture && this.useCustomTexture) {
+      console.log('no need to render');
       return;
     }
     // Before render => Set No Render Objects Invisible
@@ -606,13 +607,14 @@ export default class ReflectionProbe {
   ) {
     this.cubeCamera.position.copy(position);
     if (this.autoUpdate || renderCamera) {
-      this.renderCamera();
+      this.renderCamera(true);
     }
     return this;
   }
 
-  getTexture(): THREE.Texture {
-    if (this.customTexture && this.useCustomTexture) {
+  getTexture(forceRender?: boolean): THREE.Texture {
+    if (!forceRender && this.customTexture && this.useCustomTexture) {
+      console.log('giving CustomTexture');
       return this.customTexture;
     }
     const cubeTexture = this.renderTarget.texture;
@@ -735,7 +737,7 @@ export default class ReflectionProbe {
   }
 
   async fromJSON(json: ReflectionProbeJSON): Promise<ReflectionProbe> {
-    console.log('fromJSON', json);
+    console.log('load Probe fromJSON : ', json.name);
     this.name = json.name;
     this.serializedId = json.id;
     this.center = new THREE.Vector3().fromArray(json.center);
@@ -1119,7 +1121,7 @@ const materialOnBeforeCompileFunction = (
   isCustomTexture: boolean,
 ) => {
   return (shader: THREE.WebGLProgramParametersWithUniforms) => {
-    useBoxProjectedEnvMap(shader, pos, size, isCustomTexture);
+    useBoxProjectedEnvMap(shader, pos, size, false);
   };
 };
 

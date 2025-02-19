@@ -8,6 +8,7 @@ import {
   lightMapAtom,
   modelOptionAtom,
   ModelSelectorAtom,
+  ProbeAtom,
   selectedAtom,
   useModal,
 } from '../scripts/atoms.ts';
@@ -119,15 +120,25 @@ const OptionPreviewTab = () => {
 const OptionPreview = ({ option }: { option: ModelOption }) => {
   const threeExports = threes();
   const [processedState, setProcessedState] = useState<string | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
   if (!threeExports) {
     return null;
   }
 
   const { scene } = threeExports;
+  const probes = useAtomValue(ProbeAtom);
 
   function processState(state: ModelOptionState) {
+    if (isProcessing) {
+      console.warn('processState is On Processing');
+      return;
+    }
+    const animationDuration = 1; // 1s
     setProcessedState(state.id);
+    setIsProcessing(true);
     const meshEffects = state.meshEffects;
+    let hasAnimation = false;
+    const probesToRender: string[] = [];
     meshEffects.map(meshEffect => {
       const object = scene.getObjectByName(
         meshEffect.targetMeshProperties.name,
@@ -138,6 +149,7 @@ const OptionPreview = ({ option }: { option: ModelOption }) => {
         const mat = mesh.material as THREE.MeshStandardMaterial;
         // Visible Control
         if (effects.useVisible) {
+          hasAnimation = true;
           const originTransparent = mat.transparent;
           const from = effects.visibleValue ? 0 : 1;
           const to = effects.visibleValue ? 1 : 0;
@@ -147,7 +159,7 @@ const OptionPreview = ({ option }: { option: ModelOption }) => {
             },
             {
               t: 1,
-              duration: 1,
+              duration: animationDuration,
               onStart() {
                 mat.transparent = true;
                 mat.opacity = from;
@@ -195,6 +207,14 @@ const OptionPreview = ({ option }: { option: ModelOption }) => {
         // Probe Control
         if (effects.useProbe) {
         }
+
+        const probeId = mat.vUserData.probeId;
+        if (probeId) {
+          // 그냥 해당 프로브 리렌더
+          if (!probesToRender.includes(probeId)) {
+            probesToRender.push(probeId);
+          }
+        }
       } else {
         console.warn(
           'no Mesh Found On state, passing By : ',
@@ -202,21 +222,63 @@ const OptionPreview = ({ option }: { option: ModelOption }) => {
         );
       }
     });
+
+    console.log('processTORender : ', probesToRender);
+
+    function processAfter() {
+      const toRenders = probes.filter(probe => {
+        return probesToRender.includes(probe.getId());
+      });
+
+      const textures: { [key: string]: THREE.Texture } = {};
+      toRenders.forEach(probe => {
+        console.log('toRender: ', probe);
+        probe.renderCamera(true);
+        // Force To get Rendered Texture
+        textures[probe.getId()] = probe.getTexture(true);
+      });
+
+      scene.traverse(obj => {
+        if (obj.type === 'Mesh') {
+          const mat = (obj as THREE.Mesh)
+            .material as THREE.MeshStandardMaterial;
+          const probeId = mat.vUserData.probeId;
+          if (probeId && probesToRender.includes(probeId)) {
+            mat.envMap = textures[probeId];
+            mat.needsUpdate = true;
+          }
+        }
+      });
+      setIsProcessing(false);
+    }
+
+    if (hasAnimation) {
+      setTimeout(() => {
+        processAfter();
+      }, animationDuration * 1000);
+    } else {
+      processAfter();
+    }
   }
   return (
     <div className="mt-2 border border-gray-600 p-2">
       <p className="text-sm font-bold text-center mb-2">{option.name}</p>
-      <div className="flex items-center border-collapse">
+      <div className="flex items-center border-collapse relative">
         {option.states.map((state, idx) => (
-          <button
-            key={idx}
-            className="rounded-none"
-            style={{ width: `calc(100%/${option.states.length})` }}
-            onClick={() => processState(state)}
-            disabled={processedState === state.id}
-          >
-            {state.stateName}
-          </button>
+          <>
+            {isProcessing && (
+              <div className="absolute w-full h-full bg-transparent cursor-progress"></div>
+            )}
+            <button
+              key={idx}
+              className="rounded-none"
+              style={{ width: `calc(100%/${option.states.length})` }}
+              onClick={() => processState(state)}
+              disabled={processedState === state.id}
+            >
+              {state.stateName}
+            </button>
+          </>
         ))}
       </div>
     </div>
@@ -943,11 +1005,11 @@ const MeshSelectModal = ({
   }
 
   function syncScene() {
-    const selecteds = getAtomValue(selectedAtom);
+    const selects = getAtomValue(selectedAtom);
     const meshes: THREE.Object3D[] = [];
 
     scene.traverseAll(o => {
-      if (selecteds.includes(o.uuid)) {
+      if (selects.includes(o.uuid)) {
         meshes.push(o);
       }
     });

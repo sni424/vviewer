@@ -159,20 +159,27 @@ const CameraManager: React.FC<UnifiedCameraControlsProps> = ({
     const right = new THREE.Vector3(-forward.z, 0, forward.x);
     //카메라가 움직일 방향 설정
     const moveDirection = new THREE.Vector3();
+
+    let scale = 1;
+
+    const activeKey = activeKeys.current;
+
     //앞으로
-    if (activeKeys.current.has('w')) moveDirection.add(forward);
+    if (activeKey.has('KeyW')) moveDirection.add(forward);
     //뒤로
-    if (activeKeys.current.has('s')) moveDirection.sub(forward);
+    if (activeKey.has('KeyS')) moveDirection.sub(forward);
     //왼쪽으로
-    if (activeKeys.current.has('a')) moveDirection.sub(right);
+    if (activeKey.has('KeyA')) moveDirection.sub(right);
     //오른쪽으로
-    if (activeKeys.current.has('d')) moveDirection.add(right);
+    if (activeKey.has('KeyD')) moveDirection.add(right);
+
+    if (activeKey.has('ShiftLeft')) scale *= 1.5;
 
     if (moveDirection.length() > 0) {
       const movement = moveDirection
         .clone()
         .normalize()
-        .multiplyScalar(cameraSetting.moveSpeed * deltaTime);
+        .multiplyScalar(cameraSetting.moveSpeed * scale * deltaTime);
       camera.position.add(movement);
       camera.updateProjectionMatrix();
       updateCameraInfo();
@@ -348,11 +355,11 @@ const CameraManager: React.FC<UnifiedCameraControlsProps> = ({
           return; // 이벤트 핸들링 종료
         }
       }
-      activeKeys.current.add(event.key.toLowerCase());
+      activeKeys.current.add(event.code);
       setCameraAction(true);
     };
     const handleKeyUp = (event: KeyboardEvent): void => {
-      activeKeys.current.delete(event.key.toLowerCase());
+      activeKeys.current.delete(event.code);
       if (activeKeys.current.size === 0) setCameraAction(false);
     };
     window.addEventListener('keydown', handleKeyDown);
