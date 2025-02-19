@@ -485,7 +485,12 @@ export const moveToPointAtom = atom<{
   setting?: boolean;
 }>();
 
-export const lightMapAtom = atom<{ [key: string]: THREE.Texture }>({});
+export const lightMapAtom = atom<{
+  [key: string]: {
+    texture: THREE.Texture;
+    image: Blob;
+  };
+}>({});
 
 export type DrawablePoint = {
   point: THREE.Matrix4 | THREE.Vector3 | { x: number; z: number };

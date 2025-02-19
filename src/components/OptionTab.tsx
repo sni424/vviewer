@@ -1,15 +1,19 @@
 import gsap from 'gsap';
-import { useAtom, useSetAtom } from 'jotai';
+import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import { Dispatch, SetStateAction, useEffect, useRef, useState } from 'react';
 import { v4 } from 'uuid';
+import { ENV } from '../Constants.ts';
 import {
   getAtomValue,
+  lightMapAtom,
   modelOptionAtom,
   ModelSelectorAtom,
   selectedAtom,
   useModal,
 } from '../scripts/atoms.ts';
 import { loadOption, threes, uploadJson } from '../scripts/atomUtils.ts';
+import { createLightmapCache } from '../scripts/loaders/VGLTFLoader.ts';
+import { getVKTX2Loader } from '../scripts/loaders/VKTX2Loader.ts';
 import {
   Effects,
   MeshEffect,
@@ -22,6 +26,7 @@ import { SelectableNodes } from './DPC/DPCModelSelector.tsx';
 
 const OptionConfigTab = () => {
   const [modelOptions, setModelOptions] = useAtom(modelOptionAtom);
+  const [lightMaps, setLightMaps] = useAtom(lightMapAtom);
   const { openModal } = useModal();
   function uploadOptionJSON() {
     uploadJson('options.json', modelOptions)
@@ -39,8 +44,46 @@ const OptionConfigTab = () => {
       });
   }
 
-  function loadOptions() {
-    loadOption().then(res => setModelOptions(res));
+  async function loadOptions() {
+    const options = (await loadOption()) as ModelOption[];
+    const keys = Object.keys(lightMaps);
+    const keysToLoad: string[] = [];
+    options.forEach(option => {
+      const states = option.states;
+      states.forEach(state => {
+        const meshEffects = state.meshEffects;
+        meshEffects.forEach(effect => {
+          const lm = effect.effects.lmValue;
+          if (lm && !keys.includes(lm)) {
+            keysToLoad.push(lm);
+          }
+        });
+      });
+    });
+
+    console.log(keysToLoad);
+    if (keysToLoad.length > 0) {
+      const loader = getVKTX2Loader();
+      const map = new Map<string, THREE.Texture>();
+      await Promise.all(
+        keysToLoad.map(async key => {
+          const texture = await loader.loadAsync(key);
+          texture.minFilter = THREE.LinearMipmapLinearFilter;
+          texture.magFilter = THREE.LinearFilter;
+          texture.channel = 1;
+          texture.vUserData.mimeType = 'image/ktx2';
+          map.set(decodeURI(key), texture);
+        }),
+      );
+
+      const obj = await createLightmapCache(map);
+
+      setLightMaps(pre => {
+        return { ...pre, ...obj };
+      });
+    }
+
+    setModelOptions(options);
   }
 
   return (
@@ -53,8 +96,8 @@ const OptionConfigTab = () => {
         <button onClick={loadOptions}>불러오기</button>
       </div>
       <div className="pt-2">
-        {modelOptions.map(modelOption => (
-          <Option modelOption={modelOption} />
+        {modelOptions.map((modelOption, idx) => (
+          <Option key={idx} modelOption={modelOption} />
         ))}
       </div>
     </>
@@ -62,12 +105,12 @@ const OptionConfigTab = () => {
 };
 
 const OptionPreviewTab = () => {
-  const [modelOptions, setModelOptions] = useAtom(modelOptionAtom);
+  const modelOptions = useAtomValue(modelOptionAtom);
 
   return (
     <div>
-      {modelOptions.map(modelOption => (
-        <OptionPreview option={modelOption} />
+      {modelOptions.map((modelOption, idx) => (
+        <OptionPreview key={idx} option={modelOption} />
       ))}
     </div>
   );
@@ -92,13 +135,12 @@ const OptionPreview = ({ option }: { option: ModelOption }) => {
       if (object && object.type === 'Mesh') {
         const mesh = object as THREE.Mesh;
         const effects = meshEffect.effects;
+        const mat = mesh.material as THREE.MeshStandardMaterial;
         // Visible Control
         if (effects.useVisible) {
-          const originTransparent = (mesh.material as THREE.Material)
-            .transparent;
+          const originTransparent = mat.transparent;
           const from = effects.visibleValue ? 0 : 1;
           const to = effects.visibleValue ? 1 : 0;
-          console.log(from, to, effects.visibleValue);
           gsap.to(
             {
               t: 0,
@@ -107,20 +149,18 @@ const OptionPreview = ({ option }: { option: ModelOption }) => {
               t: 1,
               duration: 1,
               onStart() {
-                const mat = mesh.material as THREE.Material;
                 mat.transparent = true;
                 mat.opacity = from;
                 mesh.visible = true;
               },
               onUpdate() {
                 const progress = this.targets()[0].t;
-                const mat = mesh.material as THREE.Material;
                 mat.opacity = effects.visibleValue ? progress : 1 - progress;
+                // 메시 render depth 로 인해 뒷 메시가 안보이는 경우 해결
                 if (progress > 0.8) mat.depthWrite = effects.visibleValue;
                 mat.needsUpdate = true;
               },
               onComplete() {
-                const mat = mesh.material as THREE.Material;
                 mat.transparent = originTransparent;
                 mat.opacity = to;
                 mesh.visible = effects.visibleValue;
@@ -132,6 +172,24 @@ const OptionPreview = ({ option }: { option: ModelOption }) => {
 
         // LightMap control
         if (effects.useLightMap) {
+          const lightMapCache = getAtomValue(lightMapAtom);
+          const keys = Object.keys(lightMapCache);
+          let target = effects.lmValue
+            ? effects.lmValue
+            : mat.vUserData.lightMap;
+          if (target && !target.startsWith('https')) {
+            target = ENV.base + target;
+          }
+
+          if (!target) {
+            mat.lightMap = null;
+          } else if (keys.includes(target)) {
+            const { texture } = lightMapCache[target];
+            mat.lightMap = texture;
+            texture.flipY = false;
+          } else {
+            // TODO fetch
+          }
         }
 
         // Probe Control
@@ -149,8 +207,9 @@ const OptionPreview = ({ option }: { option: ModelOption }) => {
     <div className="mt-2 border border-gray-600 p-2">
       <p className="text-sm font-bold text-center mb-2">{option.name}</p>
       <div className="flex items-center border-collapse">
-        {option.states.map(state => (
+        {option.states.map((state, idx) => (
           <button
+            key={idx}
             className="rounded-none"
             style={{ width: `calc(100%/${option.states.length})` }}
             onClick={() => processState(state)}
@@ -210,10 +269,8 @@ const Option = ({ modelOption }: { modelOption: ModelOption }) => {
       const t = [...pre];
       const idx = t.findIndex(o => o.id === modelOption.id);
       t[idx].states = states;
-      console.log(t);
       return t;
     });
-    console.log(states.map(state => state.stateName));
   }, [states]);
 
   useEffect(() => {
@@ -283,8 +340,8 @@ const Option = ({ modelOption }: { modelOption: ModelOption }) => {
       </div>
       {modelOption.expanded && (
         <>
-          {states.map(state => (
-            <State state={state} setStates={setStates} />
+          {states.map((state, idx) => (
+            <State key={idx} state={state} setStates={setStates} />
           ))}
         </>
       )}
@@ -412,8 +469,8 @@ const State = ({
           <div className="flex items-center gap-x-1">
             <button>값 일괄 적용하기</button>
           </div>
-          {models.map(meshEffect => (
-            <MeshEffectElem meshEffect={meshEffect} />
+          {models.map((meshEffect, idx) => (
+            <MeshEffectElem key={idx} meshEffect={meshEffect} />
           ))}
         </div>
       )}
@@ -431,24 +488,43 @@ const MeshEffectElem = ({ meshEffect }: { meshEffect: MeshEffect }) => {
     lightMap: meshEffect.effects.useLightMap,
     probe: meshEffect.effects.useProbe,
   });
-  const [expanded, setExpanded] = useState<boolean>(meshEffect.expanded);
   const threeExports = threes();
   if (!threeExports) {
     return null;
   }
-  const setSelectedMeshes = useSetAtom(selectedAtom);
-
   const { scene, camera } = threeExports;
 
+  const object = scene.getObjectByProperty(
+    'name',
+    meshEffect.targetMeshProperties.name,
+  );
+
+  if (!object) {
+    return null;
+  }
+  const setSelectedMeshes = useSetAtom(selectedAtom);
+  const mesh = object!! as THREE.Mesh;
+  const { openModal } = useModal();
+
+  const [expanded, setExpanded] = useState<boolean>(meshEffect.expanded);
   const [visible, setVisible] = useState<boolean>(
     meshEffect.effects.visibleValue,
   );
-
+  const [lmValue, setLMValue] = useState<string | null>(
+    meshEffect.effects.lmValue,
+  );
+  const [pValue, setPValue] = useState<string | null>(
+    meshEffect.effects.pValue,
+  );
   useEffect(() => {
-    console.log(meshEffect);
     meshEffect.effects.visibleValue = visible;
   }, [visible]);
-
+  useEffect(() => {
+    meshEffect.effects.lmValue = lmValue;
+  }, [lmValue]);
+  useEffect(() => {
+    meshEffect.effects.pValue = pValue;
+  }, [pValue]);
   useEffect(() => {
     meshEffect.expanded = expanded;
   }, [expanded]);
@@ -467,6 +543,14 @@ const MeshEffectElem = ({ meshEffect }: { meshEffect: MeshEffect }) => {
     meshEffect.effects[key] = value;
   }
 
+  function openLightMapModal() {
+    openModal(<LightMapSelector mesh={mesh} setLMValue={setLMValue} />);
+  }
+
+  function resetToMeshDefault() {
+    setLMValue(null);
+  }
+
   return (
     <div className="pl-1 my-1.5 border-b border-b-gray-400 py-1">
       <div className="flex gap-x-1.5 items-center">
@@ -475,12 +559,32 @@ const MeshEffectElem = ({ meshEffect }: { meshEffect: MeshEffect }) => {
         </div>
         <button
           onClick={() => {
-            const mesh = scene.getObjectByProperty(
-              'uuid',
-              meshEffect.targetMeshProperties.uuid,
-            );
+            function setBestCameraView(
+              mesh: THREE.Mesh,
+              camera: THREE.PerspectiveCamera,
+            ) {
+              const box = new THREE.Box3().setFromObject(mesh);
+              const center = new THREE.Vector3();
+              box.getCenter(center); // Mesh 중심
+              const size = new THREE.Vector3();
+              box.getSize(size); // Mesh 크기
+              const maxDim = Math.max(size.x, size.y, size.z); // 가장 큰 축 찾기
+              const fov = camera.fov * (Math.PI / 180); // FOV를 라디안으로 변환
+
+              const distance = maxDim / 2 / Math.tan(fov / 2); // 거리 계산
+
+              // 카메라 위치 설정 (Z축 방향에서 Mesh를 바라보도록 설정)
+              camera.lookAt(center);
+              camera.position.set(
+                center.x,
+                camera.position.y,
+                center.z + distance,
+              );
+              camera.lookAt(center);
+            }
+
             if (mesh) {
-              camera.lookAt(mesh.position);
+              setBestCameraView(mesh, camera as THREE.PerspectiveCamera);
               setSelectedMeshes([mesh.uuid]);
             }
           }}
@@ -521,17 +625,29 @@ const MeshEffectElem = ({ meshEffect }: { meshEffect: MeshEffect }) => {
                 </>
               )}
             </div>
-            <div className="flex items-center gap-x-1.5 mt-1">
-              <span>LightMap:</span>
-              <span>사용</span>
-              <input
-                type="checkbox"
-                checked={use.lightMap}
-                onChange={e => {
-                  updateUseBoolean('lightMap', e.target.checked);
-                }}
-              />
-              {use.lightMap && <></>}
+            <div className="mt-1">
+              <div className="flex items-center gap-x-1">
+                <span>LightMap:</span>
+                <span>사용</span>
+                <input
+                  type="checkbox"
+                  checked={use.lightMap}
+                  onChange={e => {
+                    updateUseBoolean('lightMap', e.target.checked);
+                  }}
+                />
+              </div>
+              {use.lightMap && (
+                <div className="flex items-center gap-x-2 mt-1 pl-1">
+                  <div className="max-w-[70%] overflow-ellipsis overflow-hidden text-nowrap">
+                    {lmValue ? getNameFromURL(lmValue) : '메시 기본 값'}
+                  </div>
+                  {lmValue && (
+                    <button onClick={resetToMeshDefault}>리셋</button>
+                  )}
+                  <button onClick={openLightMapModal}>변경</button>
+                </div>
+              )}
             </div>
             <div className="flex items-center gap-x-1.5 mt-1">
               <span>Probe:</span>
@@ -548,6 +664,149 @@ const MeshEffectElem = ({ meshEffect }: { meshEffect: MeshEffect }) => {
           </div>
         </div>
       )}
+    </div>
+  );
+};
+
+const LightMapSelector = ({
+  mesh,
+  setLMValue,
+}: {
+  mesh: THREE.Mesh;
+  setLMValue: Dispatch<SetStateAction<string | null>>;
+}) => {
+  const [lightMaps, setLightMaps] = useAtom(lightMapAtom);
+  const [selected, setSelected] = useState<string>('');
+  const [customURL, setCustomURL] = useState<string>('');
+  const { closeModal } = useModal();
+  const meshLightMap = getNameFromURL(
+    (mesh.material as THREE.Material).vUserData.lightMap,
+  );
+
+  async function downloadFromURL() {
+    console.log('downloadFromURL');
+    if (customURL.trim().length === 0) {
+      alert('URL 입력하십쇼');
+      return;
+    } else if (!customURL.startsWith('https')) {
+      alert('올바른 URL 을 입력하세요.');
+      return;
+    } else {
+      const keys = Object.keys(lightMaps);
+      if (!keys.includes(customURL.trim())) {
+        const loader = getVKTX2Loader();
+        const texture = await loader.loadAsync(customURL);
+        texture.minFilter = THREE.LinearMipmapLinearFilter;
+        texture.magFilter = THREE.LinearFilter;
+        texture.channel = 1;
+        texture.vUserData.mimeType = 'image/ktx2';
+        const map = new Map<string, THREE.Texture>();
+        map.set(decodeURI(customURL), texture);
+        const obj = await createLightmapCache(map);
+        setLightMaps(pre => {
+          return { ...pre, ...obj };
+        });
+        setCustomURL('');
+      } else {
+        alert('이미 존재합니다.');
+        return;
+      }
+    }
+  }
+
+  function confirm() {
+    setLMValue(selected);
+    closeModal();
+  }
+
+  return (
+    <div
+      className="bg-white border border-gray-600 rounded p-2"
+      onClick={event => {
+        event.preventDefault();
+        event.stopPropagation();
+      }}
+    >
+      {/* Header */}
+      <div className="py-1 w-full mb-2">
+        <div className="flex">
+          <strong style={{ fontSize: 16 }}>
+            LightMap Select : {mesh.name}
+          </strong>
+          <button className="ml-auto">업로드</button>
+        </div>
+        <p>
+          Scene 에 업로드 된 라이트맵 갯수 : {Object.keys(lightMaps).length}개
+        </p>
+      </div>
+      <div className="w-full h-[400px] max-h-[400px] overflow-y-auto mb-2">
+        {Object.entries(lightMaps).map(([key, { texture, image }]) => (
+          <div
+            key={key}
+            className="hover-opacity cursor-pointer flex items-center gap-x-2 mb-1"
+            style={
+              selected === key
+                ? { backgroundColor: 'rgba(128,128,128,0.65)' }
+                : {}
+            }
+            onClick={() => setSelected(key)}
+          >
+            <KTXPreview texture={texture} image={image} />
+            <div>
+              <p>{getNameFromURL(key)}</p>
+              {meshLightMap === getNameFromURL(key) && (
+                <span className="text-gray-500">현재 메시의 기본 라이트맵</span>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+      {/* Footer  */}
+      <div className="flex w-full justify-end gap-x-2">
+        <div className="mr-auto flex items-center gap-x-2">
+          <input
+            type="text"
+            className="border border-gray-600 rounded"
+            value={customURL}
+            onChange={e => {
+              setCustomURL(e.target.value);
+            }}
+          />
+          <button className="mr-auto" onClick={downloadFromURL}>
+            url 입력
+          </button>
+        </div>
+        <button className="py-1.5 px-3 text-md" onClick={closeModal}>
+          취소
+        </button>
+        <button
+          className="py-1.5 px-3 text-md"
+          disabled={selected === ''}
+          onClick={confirm}
+        >
+          적용
+        </button>
+      </div>
+    </div>
+  );
+};
+
+const KTXPreview = ({
+  texture,
+  image,
+}: {
+  texture: THREE.Texture;
+  image: Blob;
+}) => {
+  const isKtx = texture.vUserData.mimeType === 'image/ktx2';
+
+  if (!isKtx) {
+    return <span>KTX2 이미지 아님</span>;
+  }
+
+  return (
+    <div className="rounded-[8px] w-[60px] h-[60px] bg-gray-700">
+      <img alt="" src={URL.createObjectURL(image)} className="w-full h-full" />
     </div>
   );
 };
@@ -638,7 +897,7 @@ const MeshSelectModal = ({
       setModelSelected(
         models
           .map(m =>
-            scene.getObjectByProperty('uuid', m.targetMeshProperties.uuid),
+            scene.getObjectByProperty('name', m.targetMeshProperties.name),
           )
           .filter(m => m !== undefined),
       );
@@ -648,14 +907,14 @@ const MeshSelectModal = ({
   function confirm() {
     // 원래 있는 models array 확인 및 유지
     const m = [...models];
-    const uuids = modelSelected.map(model => model.uuid);
+    const names = modelSelected.map(model => model.name);
     const filtered = m.filter(me =>
-      uuids.includes(me.targetMeshProperties.uuid),
+      names.includes(me.targetMeshProperties.name),
     );
     // filtered + modelSelected without filtered
-    const filteredUuids = filtered.map(f => f.targetMeshProperties.uuid);
+    const filteredNames = filtered.map(f => f.targetMeshProperties.name);
     const withouts = modelSelected
-      .filter(m => !filteredUuids.includes(m.uuid))
+      .filter(m => !filteredNames.includes(m.name))
       .map(w => {
         return {
           targetMeshProperties: {
@@ -856,3 +1115,13 @@ const OptionCreateModal = () => {
     </div>
   );
 };
+
+function getNameFromURL(url?: string): string | undefined {
+  if (!url) {
+    return url;
+  }
+  if (url.indexOf('/') === -1) {
+    return url;
+  }
+  return url.substring(url.lastIndexOf('/') + 1);
+}
