@@ -73,6 +73,8 @@ export default class VGLTFLoader extends GLTFLoader {
     async function customOnLoad(gltf: GLTF) {
       const lightMapSet = new Set<string>([]);
 
+      const isCreateLightMapCache = true;
+
       gltf.scene.traverseAll(async (object: THREE.Object3D) => {
         object.layers.enable(Layer.Model);
         getLightmap(object, lightMapSet);
@@ -112,10 +114,11 @@ export default class VGLTFLoader extends GLTFLoader {
         }
       });
 
-      setAtomValue(
-        lightMapAtom,
-        Object.fromEntries(lmMap) as { [key: string]: THREE.Texture },
-      );
+      // TODO 외부에서 isCreateLightMapCache 조정하기
+      if (isCreateLightMapCache) {
+        const toLightMapObj = await createLightmapCache(lmMap);
+        setAtomValue(lightMapAtom, toLightMapObj);
+      }
 
       onLoad(gltf);
     }
@@ -135,6 +138,59 @@ export default class VGLTFLoader extends GLTFLoader {
       // this.dispose();
     });
   }
+}
+
+export async function createLightmapCache(lmMap: Map<string, THREE.Texture>) {
+  const obj = Object.fromEntries(lmMap);
+
+  const newGL = new THREE.WebGLRenderer();
+  const geo = new THREE.PlaneGeometry(2, 2);
+  const mat = new THREE.MeshBasicMaterial();
+  const plane = new THREE.Mesh(geo, mat);
+  const scene = new THREE.Scene();
+  const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 10);
+  camera.position.z = 1;
+  scene.add(plane);
+
+  const toLightMapObj: {
+    [key: string]: {
+      image: Blob;
+      texture: THREE.Texture;
+    };
+  } = {};
+
+  const ps = Object.keys(obj).map(async (key: string) => {
+    const t = obj[key] as THREE.CompressedTexture;
+
+    // before Render
+    t.channel = 0;
+    mat.map = t;
+    newGL.setSize(t.image.width, t.image.height);
+    newGL.render(scene, camera);
+
+    // after Render
+    t.channel = 1;
+    const glCanvas = newGL.domElement;
+    const blob = (await new Promise(resolve =>
+      // @ts-ignore
+      glCanvas.toBlob(resolve),
+    )) as Blob;
+
+    console.log('blob', blob);
+
+    toLightMapObj[key] = {
+      image: blob,
+      texture: t,
+    };
+  });
+
+  await Promise.all(ps);
+
+  newGL.dispose();
+  mat.dispose();
+  geo.dispose();
+
+  return toLightMapObj;
 }
 
 function updateLightMapFromEmissive(object: THREE.Object3D) {

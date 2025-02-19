@@ -355,19 +355,22 @@ const MapPreview: React.FC<MapPreviewProps> = ({
         borderRadius: 8,
       }}
     >
-      {!hasImage ? '없음' : null}
-      <canvas
-        style={{ width: '100%', height: '100%', cursor: 'pointer' }}
-        ref={canvasRef}
-        onClick={() => {
-          if (!hasImage) {
-            return;
-          }
-          openModal(() => (
-            <FullscreenCanvas texture={texture}></FullscreenCanvas>
-          ));
-        }}
-      ></canvas>
+      {!hasImage ? (
+        '없음'
+      ) : (
+        <canvas
+          style={{ width: '100%', height: '100%', cursor: 'pointer' }}
+          ref={canvasRef}
+          onClick={() => {
+            if (!hasImage) {
+              return;
+            }
+            openModal(() => (
+              <FullscreenCanvas texture={texture}></FullscreenCanvas>
+            ));
+          }}
+        ></canvas>
+      )}
     </div>
   );
 };

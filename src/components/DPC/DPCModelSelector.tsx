@@ -94,9 +94,11 @@ export const SelectableNodes = ({
 
   function findChildHasKeyword() {
     if (keyword && keyword.length > 0) {
+      const lowered = keyword.toLowerCase();
       const matches: string[] = [];
       data.traverseAll(object => {
-        if (object.name.includes(keyword)) {
+        const objectNameToLower = object.name.toLowerCase();
+        if (objectNameToLower.includes(lowered)) {
           matches.push(object.name);
         }
       });
@@ -262,8 +264,13 @@ export const SelectableNodes = ({
       </div>
       {isOpen ? (
         <>
-          {data.children.map(child => (
-            <SelectableNodes data={child} depth={depth + 1} keyword={keyword} />
+          {data.children.map((child, idx) => (
+            <SelectableNodes
+              key={idx}
+              data={child}
+              depth={depth + 1}
+              keyword={keyword}
+            />
           ))}
         </>
       ) : null}

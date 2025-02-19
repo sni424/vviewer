@@ -51,3 +51,11 @@ button:active {
   width: 100dvw;
   height: 100dvh;
 }
+
+.hover-opacity {
+  opacity: 1;
+}
+
+.hover-opacity:hover {
+  opacity: 0.8;
+}
