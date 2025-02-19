@@ -73,14 +73,14 @@ const importProbes = async () => {
     );
 
     probes.forEach(probe => {
-      probe.addToScene();
-      probe.updateCameraPosition(probe.getCenter(), true);
-      const texture = probe.getTexture();
+      probe.addToScene(true);
+      const texture = probe.getTexture(true);
       scene.traverse(node => {
         if (node instanceof THREE.Mesh) {
           const n = node as THREE.Mesh;
           const material = n.material as THREE.MeshStandardMaterial;
           if (material.vUserData.probeId === probe.getId()) {
+            console.log('found : ', material, texture);
             material.envMap = texture;
             material.onBeforeCompile = probe.materialOnBeforeCompileFunc();
             material.needsUpdate = true;

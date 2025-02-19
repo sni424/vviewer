@@ -48,7 +48,7 @@ const CameraPanel = () => {
 
       // 카메라 y값 상승
       const velocity = 0.1;
-      if (e.key === ' ') {
+      if (e.code === 'Space') {
         e.preventDefault();
         const tooSoon = Date.now() - lastSpace.current < 16;
         if (tooSoon) {
@@ -63,7 +63,7 @@ const CameraPanel = () => {
         }));
       }
 
-      if (e.key.toLowerCase() === 'c') {
+      if (e.code === 'KeyC') {
         if (e.ctrlKey) {
           return;
         }

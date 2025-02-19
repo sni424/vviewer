@@ -479,7 +479,7 @@ const useKeyHandler = () => {
         return;
       }
 
-      if (e.ctrlKey && e.key.toLowerCase() === 'a') {
+      if (e.ctrlKey && e.code === 'KeyA') {
         e.preventDefault();
         const everyObject: string[] = [];
         scene.traverse(obj => {
@@ -492,7 +492,7 @@ const useKeyHandler = () => {
         return;
       }
 
-      if (e.key === 'Delete') {
+      if (e.code === 'Delete') {
         e.preventDefault();
         let deletes: THREE.Object3D[] = [];
         scene.traverse(obj => {
@@ -514,7 +514,7 @@ const useKeyHandler = () => {
       }
 
       // ctrl s
-      if (e.ctrlKey && e.key.toLowerCase() === 's') {
+      if (e.ctrlKey && e.code === 'KeyS') {
         e.preventDefault();
         saveScene(scene).then(() => {
           alert('저장 완료');
@@ -524,7 +524,7 @@ const useKeyHandler = () => {
 
       // 자유이동 <-> OrbitControls
       // tilde
-      if (e.key.toLowerCase() === 'q' || e.key === '`') {
+      if (e.code === 'KeyQ' || e.code === 'Backquote') {
         e.preventDefault();
         const { orbitSetting } = getSettings();
         setAtomValue(orbitSettingAtom, prev => ({
@@ -535,7 +535,7 @@ const useKeyHandler = () => {
       }
 
       // ctrl l
-      if (e.ctrlKey && e.key.toLowerCase() === 'l') {
+      if (e.ctrlKey && e.code === 'KeyL') {
         e.preventDefault();
         loadScene()
           .then(loaded => {
@@ -559,18 +559,18 @@ const useKeyHandler = () => {
         return;
       }
 
-      if (e.key.toLowerCase() === 'z') {
+      if (e.code === 'KeyZ') {
         zoomToSelected();
       }
 
-      if (e.key.toLowerCase() === 't') {
+      if (e.code === 'KeyT') {
         if (selected.length > 0) {
           setTab('tree');
           setTreeScrollTo(selected[0]);
         }
       }
 
-      if (e.key.toLowerCase() === 'g') {
+      if (e.code === 'KeyG') {
         toggleGrid();
       }
     };

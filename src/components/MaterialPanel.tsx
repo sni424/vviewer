@@ -7,7 +7,6 @@ import {
   threeExportsAtom,
 } from '../scripts/atoms';
 import VTextureLoader from '../scripts/loaders/VTextureLoader.ts';
-import ReflectionProbe from '../scripts/ReflectionProbe.ts';
 import { loadHDRTexture, loadPNGAsENV } from '../scripts/utils';
 import { THREE } from '../scripts/VTHREE';
 import MapPreview, { MapPreviewProps } from './MapPreview';
@@ -58,11 +57,6 @@ const setMap = (
   } else if (dstKey === 'envMap') {
     if (texture) {
       material.envMap = texture;
-      material.onBeforeCompile = ReflectionProbe.envProjectionFunction(
-        new THREE.Vector3(7.94, 1.125, -0.527),
-        new THREE.Vector3(1.15, 2.44, 3.96),
-        true,
-      );
     } else {
       material.envMap = null;
       delete material.vUserData.probeId;

@@ -2,7 +2,6 @@ import { useAtom, useAtomValue, WritableAtom } from 'jotai';
 import useFiles from '../scripts/useFiles';
 import {
   compressObjectToFile,
-  decompressFileToObject,
   formatNumber,
   getModelArrangedScene,
   groupInfo,
@@ -24,7 +23,6 @@ import { useNavigate } from 'react-router-dom';
 import {
   __UNDEFINED__,
   AOMAP_INTENSITY_MAX,
-  ENV,
   Layer,
   LIGHTMAP_INTENSITY_MAX,
 } from '../Constants';
@@ -45,7 +43,6 @@ import {
   useModal,
 } from '../scripts/atoms';
 import { loadPostProcessAndSet, uploadJson } from '../scripts/atomUtils.ts';
-import VGLTFLoader from '../scripts/loaders/VGLTFLoader.ts';
 import ReflectionProbe from '../scripts/ReflectionProbe.ts';
 import useFilelist from '../scripts/useFilelist';
 import useStats, { StatPerSecond, VStats } from '../scripts/useStats.ts';
@@ -64,7 +61,6 @@ import { FXAAOption } from './canvas/FXAA.tsx';
 import { HueSaturationOption } from './canvas/HueSaturation.tsx';
 import { SMAAOption } from './canvas/SMAA.tsx';
 import { ToneMappingOption } from './canvas/ToneMapping.tsx';
-import DPConfigurator from './DPC/DPConfigurator.tsx';
 import UploadPage from './UploadModal';
 
 const useEnvUrl = () => {
@@ -176,7 +172,6 @@ const GeneralButtons = () => {
   const [hasSaved, setHasSaved] = useState(false);
   const { openModal, closeModal } = useModal();
   const navigate = useNavigate();
-  const [statsOn, setStatsOn] = useState(false);
   const [probes, setProbes] = useAtom<ReflectionProbe[]>(ProbeAtom);
   const [dpcMode, setDPCMode] = useAtom(DPCModeAtom);
   const dpcModalRef = useRef(null);
@@ -310,13 +305,6 @@ const GeneralButtons = () => {
         gridTemplateColumns: '1fr 1fr 1fr',
       }}
     >
-      <button
-        onClick={() => {
-          setStatsOn(prev => !prev);
-        }}
-      >
-        {statsOn ? 'FPS끄기' : 'FPS켜기'}
-      </button>
       <button
         onClick={() => {
           navigate('/mobile');
@@ -502,6 +490,13 @@ const GeneralButtons = () => {
       </button>
       <button
         onClick={() => {
+          handleResetSettings();
+        }}
+      >
+        카메라 세팅 초기화
+      </button>
+      <button
+        onClick={() => {
           loadLatest({ threeExports, addBenchmark, dpOn: dp.on }).catch(e => {
             console.error(e);
             alert('최신 업로드 불러오기 실패');
@@ -509,76 +504,6 @@ const GeneralButtons = () => {
         }}
       >
         업로드한 씬 불러오기
-      </button>
-      <button
-        onClick={() => {
-          openModal(
-            () => (
-              <div
-                ref={dpcModalRef}
-                style={{
-                  width: '80%',
-                  marginLeft: 0,
-                  marginBottom: 0,
-                  maxHeight: '80%',
-                  backgroundColor: '#ffffffcc',
-                  padding: 16,
-                  borderRadius: 8,
-                  boxSizing: 'border-box',
-                  position: 'relative',
-                }}
-              >
-                <DPConfigurator />
-              </div>
-            ),
-            () => {
-              setDPCMode('file');
-            },
-          );
-        }}
-      >
-        BASE / DP 업로드
-      </button>
-      <button
-        onClick={async () => {
-          const baseURL = ENV.model_base;
-          const latestHashUrl = ENV.baseHash;
-          const localLatestHash = await get('base-hash');
-          const remoteLatestHash = (
-            await decompressFileToObject<{ hash: string }>(latestHashUrl)
-          ).hash;
-          const loadModel = async () => {
-            let url;
-            if (!localLatestHash || localLatestHash !== remoteLatestHash) {
-              // CACHE UPDATE
-              const blob = await fetch(baseURL, {
-                cache: 'no-store',
-              }).then(res => res.blob());
-              await set('base-hash', remoteLatestHash);
-              await set('baseModel', blob);
-
-              url = URL.createObjectURL(blob);
-            } else {
-              const blob = await get('baseModel');
-              url = URL.createObjectURL(blob);
-            }
-            return await new VGLTFLoader().loadAsync(url);
-          };
-
-          loadModel().then(res => {
-            const parsedScene = res.scene;
-            scene.add(parsedScene);
-          });
-        }}
-      >
-        BASE 불러오기
-      </button>
-      <button
-        onClick={() => {
-          handleResetSettings();
-        }}
-      >
-        카메라 세팅 초기화
       </button>
     </section>
   );
