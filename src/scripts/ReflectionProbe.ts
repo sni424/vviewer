@@ -714,14 +714,14 @@ export default class ReflectionProbe {
 
   async toJSON(): Promise<ReflectionProbeJSON> {
     console.log(this.customRenderedTime, this.renderedTime);
-    if (
-      !this.textureUrls ||
-      (this.renderedTime &&
-        this.customRenderedTime &&
-        this.customRenderedTime < this.renderedTime)
-    ) {
-      await this.uploadEnvImage();
-    }
+    // if (
+    //   !this.textureUrls ||
+    //   (this.renderedTime &&
+    //     this.customRenderedTime &&
+    //     this.customRenderedTime < this.renderedTime)
+    // ) {
+    //   await this.uploadEnvImage();
+    // }
 
     return {
       name: this.name,
