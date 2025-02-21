@@ -248,7 +248,7 @@ const OptionPreview = ({ option }: { option: ModelOption }) => {
     <div className="mt-2 border border-gray-600 p-2">
       <p className="text-sm font-bold text-center mb-2">{option.name}</p>
       <div className="flex items-center border-collapse relative">
-        {option.states.map((state, idx) => (
+        {option.states.map((state) => (
           <>
             {isProcessing && (
               <div
@@ -279,7 +279,7 @@ export const OptionTab = () => {
     <div className="overflow-y-auto max-h-full h-full">
       <div className="flex w-full mb-2" style={{ borderCollapse: 'collapse' }}>
         <div
-          className="w-[50%] p-1 border-black border-r cursor-pointer"
+          className="w-[50%] p-1 border-black cursor-pointer"
           onClick={() => setTabMode('preview')}
           style={{
             backgroundColor: tabMode === 'preview' ? 'wheat' : 'lightgray',

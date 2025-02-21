@@ -1,61 +1,71 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+@font-face {
+    font-family: 'NanumSquareNeo';
+    src: url(https://hangeul.pstatic.net/hangeul_static/webfont/NanumSquareNeo/NanumSquareNeoTTF-bRg.eot);
+    src: url(https://hangeul.pstatic.net/hangeul_static/webfont/NanumSquareNeo/NanumSquareNeoTTF-bRg.eot?#iefix) format("embedded-opentype"), url(https://hangeul.pstatic.net/hangeul_static/webfont/NanumSquareNeo/NanumSquareNeoTTF-bRg.woff) format("woff"), url(https://hangeul.pstatic.net/hangeul_static/webfont/NanumSquareNeo/NanumSquareNeoTTF-bRg.ttf) format("truetype");
+}
 
 * {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
 }
+
 ul,
 ol {
-  list-style: none;
+    list-style: none;
 }
 
 button {
-  cursor: pointer;
-  border: 1px solid #333a;
-  box-sizing: border-box;
-  padding: 2px 4px;
-  border-radius: 4px;
-  font-size: 10px;
-  line-height: 1.4;
-  background-color: #f5f5f5;
+    cursor: pointer;
+    border: 1px solid #333a;
+    box-sizing: border-box;
+    padding: 2px 4px;
+    border-radius: 4px;
+    font-size: 10px;
+    line-height: 1.4;
+    background-color: #f5f5f5;
+}
+
+* {
+    font-family: NanumSquareNeo, "Droid Sans Mono", serif;
 }
 
 button:disabled,
 button:disabled:hover {
-  background-color: #d0d0d0;
-  color: #a0a0a0;
+    background-color: #d0d0d0;
+    color: #a0a0a0;
 }
 
 button:hover {
-  background-color: #d0d0d0;
+    background-color: #d0d0d0;
 }
 
 button:active {
-  background-color: #a0a0a0;
+    background-color: #a0a0a0;
 }
 
 .fillwidth {
-  flex: 1;
-  min-width: 0;
+    flex: 1;
+    min-width: 0;
 }
 
 .fillheight {
-  flex: 1;
-  min-height: 0;
+    flex: 1;
+    min-height: 0;
 }
 
 .fullscreen {
-  width: 100dvw;
-  height: 100dvh;
+    width: 100dvw;
+    height: 100dvh;
 }
 
 .hover-opacity {
-  opacity: 1;
+    opacity: 1;
 }
 
 .hover-opacity:hover {
-  opacity: 0.8;
+    opacity: 0.8;
 }
