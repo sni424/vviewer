@@ -68,7 +68,6 @@ const importProbes = async () => {
     const probeJsons = res as ReflectionProbeJSON[];
     const probes = await Promise.all(
       probeJsons.map(probeJson => {
-        probeJson.resolution = 256;
         return new ReflectionProbe(gl, scene, camera).fromJSON(probeJson);
       }),
     );

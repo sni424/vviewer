@@ -29,6 +29,7 @@ const OptionConfigTab = () => {
   const [modelOptions, setModelOptions] = useAtom(modelOptionAtom);
   const [lightMaps, setLightMaps] = useAtom(lightMapAtom);
   const { openModal } = useModal();
+
   function uploadOptionJSON() {
     uploadJson('options.json', modelOptions)
       .then(res => res.json())
@@ -244,11 +245,12 @@ const OptionPreview = ({ option }: { option: ModelOption }) => {
       processAfter();
     }
   }
+
   return (
     <div className="mt-2 border border-gray-600 p-2">
       <p className="text-sm font-bold text-center mb-2">{option.name}</p>
       <div className="flex items-center border-collapse relative">
-        {option.states.map((state) => (
+        {option.states.map(state => (
           <>
             {isProcessing && (
               <div
@@ -484,6 +486,10 @@ const State = ({
     });
   }, [models]);
 
+  function openValueModal() {
+    openModal(<ValueModal meshEffects={models} />);
+  }
+
   return (
     <div className="px-2 py-1 border  border-gray-600 mb-1">
       <div className="flex gap-x-1.5 items-center">
@@ -516,13 +522,77 @@ const State = ({
       {open && models.length > 0 && (
         <div className="mt-1">
           <div className="flex items-center gap-x-1">
-            <button>값 일괄 적용하기</button>
+            <button onClick={openValueModal}>값 일괄 적용하기</button>
           </div>
           {models.map((meshEffect, idx) => (
             <MeshEffectElem key={idx} meshEffect={meshEffect} />
           ))}
         </div>
       )}
+    </div>
+  );
+};
+
+const ValueModal = ({ meshEffects }: { meshEffects: MeshEffect[] }) => {
+  const { closeModal } = useModal();
+  const [useVisible, setUseVisible] = useState<boolean>(false);
+  const [visibleValue, setVisibleValue] = useState<boolean>(false);
+
+  function confirm() {
+    meshEffects.forEach(meshEffect => {
+      meshEffect.effects.useVisible = useVisible;
+      meshEffect.effects.visibleValue = visibleValue;
+    });
+    closeModal();
+  }
+
+  useEffect(() => {
+    console.log(useVisible, visibleValue);
+  }, [useVisible, visibleValue]);
+
+  return (
+    <div
+      className="w-[30%] bg-white px-4 py-3"
+      onClick={e => {
+        e.preventDefault();
+        e.stopPropagation();
+      }}
+    >
+      {/* Header */}
+      <div className="py-1 w-full mb-2">
+        <strong style={{ fontSize: 16 }}>값 일괄 적용</strong>
+      </div>
+      {/* Body */}
+      <div className="w-full mb-2 flex flex-col gap-y-2">
+        <div className="flex items-center gap-x-1.5 mt-1">
+          <div
+            className="flex items-center gap-x-1"
+            // onClick={() => setUseVisible(pre => !pre)}
+          >
+            <span>Visible:</span>
+            <button onClick={() => setUseVisible(pre => !pre)}>
+              {useVisible ? '사용함' : '사용안함'}
+            </button>
+          </div>
+          {useVisible && (
+            <div className="flex items-center gap-x-1">
+              <span>value</span>
+              <button onClick={() => setVisibleValue(pre => !pre)}>
+                {visibleValue ? 'true' : 'false'}
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+      {/* Footer  */}
+      <div className="flex w-full justify-end gap-x-2">
+        <button className="py-1.5 px-3 text-md" onClick={closeModal}>
+          취소
+        </button>
+        <button className="py-1.5 px-3 text-md" onClick={confirm}>
+          생성
+        </button>
+      </div>
     </div>
   );
 };
