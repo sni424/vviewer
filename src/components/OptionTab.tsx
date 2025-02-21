@@ -227,11 +227,14 @@ const OptionPreview = ({ option }: { option: ModelOption }) => {
     console.log('processTORender : ', probesToRender);
 
     function processAfter() {
-      const toRenders = probes.filter(probe => {
-        return probesToRender.includes(probe.getId());
-      });
-
-      toRenders.forEach(probe => {
+      // const toRenders = probes.filter(probe => {
+      //   return probesToRender.includes(probe.getId());
+      // });
+      //
+      // toRenders.forEach(probe => {
+      //   probe.renderCamera(true);
+      // });
+      probes.forEach(probe => {
         probe.renderCamera(true);
       });
       setIsProcessing(false);
