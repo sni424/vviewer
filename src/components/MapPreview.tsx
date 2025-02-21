@@ -1,27 +1,18 @@
 import { get } from 'idb-keyval';
-import { useAtomValue } from 'jotai';
+import { useAtom, useAtomValue } from 'jotai';
 import React, { ChangeEvent, useEffect, useRef, useState } from 'react';
-import { ProbeAtom, useModal } from '../scripts/atoms';
+import {
+  ktxTexturePreviewCachedAtom,
+  MaterialSlot,
+  ProbeAtom,
+  useModal,
+} from '../scripts/atoms';
 import ReflectionProbe from '../scripts/ReflectionProbe.ts';
 import { THREE } from '../scripts/VTHREE';
+
 export interface MapPreviewProps {
   material: THREE.MeshStandardMaterial;
-  matKey:
-    | 'lightMap'
-    | 'map'
-    | 'emissiveMap'
-    | 'bumpMap'
-    | 'normalMap'
-    | 'displacementMap'
-    | 'roughnessMap'
-    | 'metalnessMap'
-    | 'alphaMap'
-    | 'envMap'
-    | 'aoMap'
-    | 'gradientMap'
-    | 'specularMap'
-    | 'clearcoatMap'
-    | 'clearcoat';
+  matKey: MaterialSlot;
   width?: number;
   height?: number;
 }
@@ -32,6 +23,9 @@ export const FullscreenCanvas = ({ texture }: { texture: THREE.Texture }) => {
   const maxHeight = window.innerHeight - 100;
   const maxWidth = window.innerWidth - 100;
   const aspect = texture.image.width / texture.image.height;
+  const [cachedTexture, setCachedTexture] = useAtom(
+    ktxTexturePreviewCachedAtom,
+  );
   let dstHeight = maxHeight;
   let dstWidth = maxHeight * aspect;
   if (dstWidth > maxWidth) {
@@ -56,36 +50,43 @@ export const FullscreenCanvas = ({ texture }: { texture: THREE.Texture }) => {
 
     if (isKtx) {
       const t = texture as THREE.CompressedTexture;
-      const isLightMap = t.channel === 1;
-      if (isLightMap) {
-        t.channel = 0;
+      const cache = cachedTexture[t.uuid];
+      let src;
+      if (cache) {
+        src = cache;
+      } else {
+        const isLightMap = t.channel === 1;
+        if (isLightMap) {
+          t.channel = 0;
+        }
+        m.map = t;
+
+        // WebGL 렌더러 생성
+        renderer.setSize(t.image.width, t.image.height);
+
+        const scene = new THREE.Scene();
+        const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 10);
+        camera.position.z = 1;
+
+        // 텍스처를 표시할 PlaneMesh 생성
+        scene.add(plane);
+
+        // WebGLRenderer를 사용하여 Canvas로 변환
+        renderer.render(scene, camera);
+
+        if (isLightMap) {
+          t.channel = 1;
+        }
+
+        // Canvas 데이터를 2D Context로 가져오기
+        const glCanvas = renderer.domElement;
+        src = glCanvas.toDataURL();
       }
-      m.map = t;
-
-      // WebGL 렌더러 생성
-      renderer.setSize(t.image.width, t.image.height);
-
-      const scene = new THREE.Scene();
-      const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 10);
-      camera.position.z = 1;
-
-      // 텍스처를 표시할 PlaneMesh 생성
-      scene.add(plane);
-
-      // WebGLRenderer를 사용하여 Canvas로 변환
-      renderer.render(scene, camera);
-
-      if (isLightMap) {
-        t.channel = 1;
-      }
-
-      // Canvas 데이터를 2D Context로 가져오기
-      const glCanvas = renderer.domElement;
       const context = innerCanvasRef.current.getContext('2d');
 
       if (context) {
         const image = new Image();
-        image.src = glCanvas.toDataURL(); // WebGL Canvas를 이미지로 변환
+        image.src = src; // WebGL Canvas를 이미지로 변환
         image.onload = () => {
           const scale = Math.min(
             dstWidth / image.width,
@@ -157,6 +158,9 @@ const MapPreview: React.FC<MapPreviewProps> = ({
   const isGainmap = Boolean(texture?.vUserData?.gainMap);
   const isKtx = texture?.vUserData?.mimeType === 'image/ktx2';
   const hasImage = texture && texture.image && !isGainmap;
+  const [materialPreviewCache, setMaterialPreviewCache] = useAtom(
+    ktxTexturePreviewCachedAtom,
+  );
   const cannotDraw =
     mapKey === 'envMap' ||
     isGainmap ||
@@ -192,35 +196,43 @@ const MapPreview: React.FC<MapPreviewProps> = ({
 
     try {
       if (isKtx) {
-        const t = texture as THREE.CompressedTexture;
-        if (mapKey === 'lightMap') {
-          t.channel = 0;
-        }
-        m.map = t;
-        // WebGL 렌더러 생성
-        renderer.setSize(t.image.width, t.image.height);
-
-        const scene = new THREE.Scene();
-        const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 10);
-        camera.position.z = 1;
-
-        // 텍스처를 표시할 PlaneMesh 생성
-        scene.add(plane);
-
-        // WebGLRenderer를 사용하여 Canvas로 변환
-        renderer.render(scene, camera);
-
-        if (mapKey === 'lightMap') {
-          t.channel = 1;
-        }
-
-        // Canvas 데이터를 2D Context로 가져오기
-        const glCanvas = renderer.domElement;
         const context = canvasRef.current.getContext('2d');
-
         if (context) {
+          console.log(materialPreviewCache);
+          const t = texture as THREE.CompressedTexture;
+          const cache = materialPreviewCache[t.uuid];
+          let src;
+          if (cache) {
+            src = cache;
+          } else {
+            if (mapKey === 'lightMap') {
+              t.channel = 0;
+            }
+            m.map = t;
+            // WebGL 렌더러 생성
+            renderer.setSize(t.image.width, t.image.height);
+
+            const scene = new THREE.Scene();
+            const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 10);
+            camera.position.z = 1;
+
+            // 텍스처를 표시할 PlaneMesh 생성
+            scene.add(plane);
+
+            // WebGLRenderer를 사용하여 Canvas로 변환
+            renderer.render(scene, camera);
+
+            if (mapKey === 'lightMap') {
+              t.channel = 1;
+            }
+
+            // Canvas 데이터를 2D Context로 가져오기
+            const glCanvas = renderer.domElement;
+            src = glCanvas.toDataURL();
+          }
+
           const image = new Image();
-          image.src = glCanvas.toDataURL(); // WebGL Canvas를 이미지로 변환
+          image.src = src;
           image.onload = () => {
             // 원본 이미지 비율 유지하면서 축소하기 위해 비율 계산
             const scale = Math.min(w / image.width, h / image.height);
@@ -235,6 +247,12 @@ const MapPreview: React.FC<MapPreviewProps> = ({
             context.clearRect(0, 0, w, h);
             context.drawImage(image, offsetX, offsetY, newWidth, newHeight);
           };
+
+          setMaterialPreviewCache(prev => {
+            const p = { ...prev };
+            p[t.uuid] = src;
+            return p;
+          });
         } else {
           console.warn(
             'Cannot Draw KTX image: Canvas 2D Context Not Supported',
@@ -420,7 +438,9 @@ const ProbeSelector = ({
       </option>
       {material.envMap && <option value="delete">ENV 삭제</option>}
       {probes.map(probe => (
-        <option value={probe.getId()}>{probe.getName()}</option>
+        <option key={Math.random()} value={probe.getId()}>
+          {probe.getName()}
+        </option>
       ))}
     </select>
   );

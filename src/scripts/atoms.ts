@@ -44,6 +44,23 @@ export function setAtomValue<T = any>(
   store.set(atom, value);
 }
 
+export type MaterialSlot =
+  | 'lightMap'
+  | 'map'
+  | 'emissiveMap'
+  | 'bumpMap'
+  | 'normalMap'
+  | 'displacementMap'
+  | 'roughnessMap'
+  | 'metalnessMap'
+  | 'alphaMap'
+  | 'envMap'
+  | 'aoMap'
+  | 'gradientMap'
+  | 'specularMap'
+  | 'clearcoatMap'
+  | 'clearcoat';
+
 // 훅 내부가 아닌 일반 함수에서 전달받아서 사용하기 위헤 store.get
 // 사용방법: const [atom, getAtom, setAtom] = createAtomCombo<타입>(초기값?, store?);
 // 이렇게 선언된 atom은 컴포넌트에서 useAtom(atom) 형태로도 사용 가능하다
@@ -121,6 +138,9 @@ export const envAtom = atom<Env>({
 });
 export const cameraMatrixAtom = atom<THREE.Matrix4>();
 export const cameraModeAtom = atom<'perspective' | 'iso'>('perspective');
+export const ktxTexturePreviewCachedAtom = atom<{
+  [key: string]: string;
+}>({});
 
 export const selectedAtom = atom<string[]>([]);
 export const forceUpdateAtom = atom<number>(0);
