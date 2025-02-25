@@ -490,10 +490,12 @@ const GeneralButtons = () => {
       </button>
       <button
         onClick={() => {
-          handleResetSettings();
+          uploadExrLightmap(threeExports.scene).then(res => {
+            alert('업로드 완료');
+          });
         }}
       >
-        카메라 세팅 초기화
+        라이트맵만 업로드
       </button>
       <button
         onClick={() => {
@@ -504,6 +506,13 @@ const GeneralButtons = () => {
         }}
       >
         업로드한 씬 불러오기
+      </button>
+      <button
+        onClick={() => {
+          handleResetSettings();
+        }}
+      >
+        카메라 세팅 초기화
       </button>
     </section>
   );
@@ -1265,7 +1274,7 @@ const GeneralMaterialControl = () => {
   const { scene } = threeExports;
 
   const [aoValue, setAoValue] = useState(0);
-  const [lmIntensityValue, setlmIntensityValue] = useState(6);
+  const [lmIntensityValue, setlmIntensityValue] = useState(1);
   const [wireframe, setWireframe] = useState(false);
   const [materialSetting, setMaterialSetting] = useAtom(materialSettingAtom);
 

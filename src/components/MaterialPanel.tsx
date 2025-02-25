@@ -439,6 +439,7 @@ const MapSection = ({
                 mat.emissiveIntensity = value;
                 mat.needsUpdate = true;
               },
+              max: 10,
             }}
           ></MapInfo>
           <MapInfo
