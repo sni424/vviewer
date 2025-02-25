@@ -466,6 +466,15 @@ const useKeyHandler = () => {
 
     const { scene } = threeExports;
     const handleKeyDown = (e: KeyboardEvent) => {
+      const activeElement = document.activeElement;
+      if (activeElement) {
+        const isInputFocused =
+          activeElement.tagName === 'INPUT' ||
+          activeElement.tagName === 'TEXTAREA';
+        if (isInputFocused) {
+          return; // 이벤트 핸들링 종료
+        }
+      }
       // on escape
       if (e.key === 'Escape') {
         setSelected([]);

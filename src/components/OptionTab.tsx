@@ -63,7 +63,6 @@ const OptionConfigTab = () => {
       });
     });
 
-    console.log(keysToLoad);
     if (keysToLoad.length > 0) {
       const loader = getVKTX2Loader();
       const map = new Map<string, THREE.Texture>();
@@ -139,11 +138,13 @@ const OptionPreview = ({ option }: { option: ModelOption }) => {
     setIsProcessing(true);
     const meshEffects = state.meshEffects;
     let hasAnimation = false;
+    let animation: gsap.core.Tween | null = null;
     const probesToRender: string[] = [];
     meshEffects.map(meshEffect => {
-      const object = scene.getObjectByName(
-        meshEffect.targetMeshProperties.name,
-      );
+      const objects = scene
+        .getObjectsByProperty('name', meshEffect.targetMeshProperties.name)
+        .filter(o => o.type === 'Mesh');
+      const object = objects[0];
       if (object && object.type === 'Mesh') {
         const mesh = object as THREE.Mesh;
         const effects = meshEffect.effects;
@@ -154,7 +155,7 @@ const OptionPreview = ({ option }: { option: ModelOption }) => {
           const originTransparent = mat.transparent;
           const from = effects.visibleValue ? 0 : 1;
           const to = effects.visibleValue ? 1 : 0;
-          gsap.to(
+          animation = gsap.to(
             {
               t: 0,
             },
@@ -165,6 +166,7 @@ const OptionPreview = ({ option }: { option: ModelOption }) => {
                 mat.transparent = true;
                 mat.opacity = from;
                 mesh.visible = true;
+                mat.needsUpdate = true;
               },
               onUpdate() {
                 const progress = this.targets()[0].t;
@@ -178,6 +180,7 @@ const OptionPreview = ({ option }: { option: ModelOption }) => {
                 mat.opacity = to;
                 mesh.visible = effects.visibleValue;
                 mat.depthWrite = true;
+                mat.needsUpdate = true;
               },
             },
           );
@@ -190,6 +193,7 @@ const OptionPreview = ({ option }: { option: ModelOption }) => {
           let target = effects.lmValue
             ? effects.lmValue
             : mat.vUserData.lightMap;
+
           if (target && !target.startsWith('https')) {
             target = ENV.base + target;
           }
@@ -200,6 +204,7 @@ const OptionPreview = ({ option }: { option: ModelOption }) => {
             const { texture } = lightMapCache[target];
             mat.lightMap = texture;
             texture.flipY = false;
+            mat.needsUpdate = true;
           } else {
             // TODO fetch
           }
@@ -240,7 +245,8 @@ const OptionPreview = ({ option }: { option: ModelOption }) => {
       setIsProcessing(false);
     }
 
-    if (hasAnimation) {
+    if (hasAnimation && animation) {
+      (animation as gsap.core.Tween).play(0);
       setTimeout(() => {
         processAfter();
       }, animationDuration * 1000);
@@ -263,7 +269,7 @@ const OptionPreview = ({ option }: { option: ModelOption }) => {
             )}
             <button
               key={Math.random()}
-              className="rounded-none"
+              className="rounded-none w-full"
               style={{ width: `calc(100%/${option.states.length})` }}
               onClick={() => processState(state)}
               disabled={processedState === state.id}
@@ -493,6 +499,12 @@ const State = ({
     openModal(<ValueModal meshEffects={models} />);
   }
 
+  function closeAll() {
+    models.forEach((meshEffect: MeshEffect) => {
+      meshEffect.expanded = false;
+    });
+  }
+
   return (
     <div className="px-2 py-1 border  border-gray-600 mb-1">
       <div className="flex gap-x-1.5 items-center">
@@ -526,9 +538,14 @@ const State = ({
         <div className="mt-1">
           <div className="flex items-center gap-x-1">
             <button onClick={openValueModal}>값 일괄 적용하기</button>
+            <button onClick={closeAll}>모두 접기</button>
           </div>
           {models.map((meshEffect, idx) => (
-            <MeshEffectElem key={idx} meshEffect={meshEffect} />
+            <MeshEffectElem
+              key={idx}
+              meshEffect={meshEffect}
+              setMeshEffects={setModels}
+            />
           ))}
         </div>
       )}
@@ -548,10 +565,6 @@ const ValueModal = ({ meshEffects }: { meshEffects: MeshEffect[] }) => {
     });
     closeModal();
   }
-
-  useEffect(() => {
-    console.log(useVisible, visibleValue);
-  }, [useVisible, visibleValue]);
 
   return (
     <div
@@ -600,7 +613,13 @@ const ValueModal = ({ meshEffects }: { meshEffects: MeshEffect[] }) => {
   );
 };
 
-const MeshEffectElem = ({ meshEffect }: { meshEffect: MeshEffect }) => {
+const MeshEffectElem = ({
+  meshEffect,
+  setMeshEffects,
+}: {
+  meshEffect: MeshEffect;
+  setMeshEffects: Dispatch<SetStateAction<MeshEffect[]>>;
+}) => {
   const [use, setUse] = useState<{
     visible: boolean;
     lightMap: boolean;
@@ -616,16 +635,12 @@ const MeshEffectElem = ({ meshEffect }: { meshEffect: MeshEffect }) => {
   }
   const { scene, camera } = threeExports;
 
-  const object = scene.getObjectByProperty(
-    'name',
-    meshEffect.targetMeshProperties.name,
-  );
+  const objects = scene
+    .getObjectsByProperty('name', meshEffect.targetMeshProperties.name)
+    .filter(o => o.type === 'Mesh');
 
-  if (!object) {
-    return null;
-  }
   const setSelectedMeshes = useSetAtom(selectedAtom);
-  const mesh = object!! as THREE.Mesh;
+  const mesh = objects[0]!! as THREE.Mesh;
   const { openModal } = useModal();
 
   const [expanded, setExpanded] = useState<boolean>(meshEffect.expanded);
@@ -673,11 +688,24 @@ const MeshEffectElem = ({ meshEffect }: { meshEffect: MeshEffect }) => {
     setLMValue(null);
   }
 
+  function deleteThis() {
+    setMeshEffects(pre =>
+      pre.filter(
+        p =>
+          p.targetMeshProperties.name !== meshEffect.targetMeshProperties.name,
+      ),
+    );
+  }
+
+  if (objects.length <= 0) {
+    return null;
+  }
+
   return (
     <div className="pl-1 my-1.5 border-b border-b-gray-400 py-1">
       <div className="flex gap-x-1.5 items-center">
         <div className="max-w-[150px] text-nowrap overflow-ellipsis overflow-hidden">
-          메시 : {meshEffect.targetMeshProperties.name}
+          {meshEffect.targetMeshProperties.name}
         </div>
         <button
           onClick={() => {
@@ -717,7 +745,7 @@ const MeshEffectElem = ({ meshEffect }: { meshEffect: MeshEffect }) => {
           <button onClick={() => setExpanded(pre => !pre)}>
             {expanded ? '접기' : '펼치기'}
           </button>
-          <button>삭제</button>
+          <button onClick={deleteThis}>삭제</button>
         </div>
       </div>
       {expanded && (
@@ -1029,7 +1057,9 @@ const MeshSelectModal = ({
   function confirm() {
     // 원래 있는 models array 확인 및 유지
     const m = [...models];
-    const names = modelSelected.map(model => model.name);
+    const names = modelSelected
+      .filter(model => model.type === 'Mesh')
+      .map(model => model.name);
     const filtered = m.filter(me =>
       names.includes(me.targetMeshProperties.name),
     );

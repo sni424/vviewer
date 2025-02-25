@@ -597,7 +597,7 @@ export default class ReflectionProbe {
     // After Render => set No Render Objects Visible
     this.onAfterCubeCameraUpdate(beforeUpdateObject);
     // Canvas Update
-    // this.applyTextureOnQuad();
+    this.applyTextureOnQuad();
     document.dispatchEvent(new CustomEvent('probe-rendered', { detail: {} }));
     // console.log('probe Rendered : ' + this.serializedId);
     this.renderedTime = new Date().getTime();
