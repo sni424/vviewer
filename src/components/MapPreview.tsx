@@ -198,7 +198,6 @@ const MapPreview: React.FC<MapPreviewProps> = ({
       if (isKtx) {
         const context = canvasRef.current.getContext('2d');
         if (context) {
-          console.log(materialPreviewCache);
           const t = texture as THREE.CompressedTexture;
           const cache = materialPreviewCache[t.uuid];
           let src;

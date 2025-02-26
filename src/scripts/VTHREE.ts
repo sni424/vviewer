@@ -35,11 +35,13 @@ export interface ThreeUserData {
   dpOnLightMapIntensity?: number;
   dpOffLightMapIntensity?: number;
   isCustomEnvMap?: boolean;
+  originalOpacity?: number;
 }
 
 declare module 'three' {
   interface Matrix4 {
     toArray(): Matrix4Array;
+
     decomposed(): [Vector3, THREE.Quaternion, Vector3];
   }
 
@@ -49,6 +51,7 @@ declare module 'three' {
       width?: number,
       height?: number,
     ): { x: number; y: number };
+
     inCameraView(camera: THREE.Camera): boolean;
 
     // 카메라와 점 사이의 물체
@@ -76,22 +79,28 @@ declare module 'three' {
 
   interface Material {
     get vUserData(): ThreeUserData;
+
     set vUserData(userData: Partial<ThreeUserData>);
   }
 
   interface Texture {
     get vUserData(): ThreeUserData;
+
     set vUserData(userData: Partial<ThreeUserData>);
   }
 
   interface Object3D {
     get vUserData(): ThreeUserData;
+
     set vUserData(userData: Partial<ThreeUserData>);
+
     getUserData(): ThreeUserData;
+
     // extend가 true이면 기존 데이터를 유지하면서 새로운 데이터를 추가한다.
     // false이면 오버라이드
     // default : true
     setUserData(userData: ThreeUserData, extend?: boolean): Object3D;
+
     traverse(callback: (node: Object3D) => any): void;
 
     traverse(callback: (node: Object3D) => any): void;
@@ -99,8 +108,11 @@ declare module 'three' {
     traverseAll(callback: (node: Object3D) => any): void;
 
     isSystemGenerated(): boolean;
+
     isBoxHelper(): boolean;
+
     isXYZGizmo(): boolean;
+
     isTransformControl(): boolean;
 
     traverseParent(
@@ -113,8 +125,11 @@ declare module 'three' {
     all<T = Object3D>(includeSelf?: boolean): T[];
 
     ofIDs(ids: string[]): Object3D[];
+
     meshes(): THREE.Mesh[];
+
     materials(): THREE.Material[];
+
     updateAllMaterials(threeExports?: RootState): void;
   }
 

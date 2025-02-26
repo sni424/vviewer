@@ -77,6 +77,13 @@ export default class VGLTFLoader extends GLTFLoader {
 
       gltf.scene.traverseAll(async (object: THREE.Object3D) => {
         object.layers.enable(Layer.Model);
+        if (object.type === 'Mesh') {
+          const mat = (object as THREE.Mesh).material as THREE.Material;
+          mat.vUserData.originalOpacity = mat.opacity;
+          if (object.name === '프레임') {
+            mat.side = THREE.DoubleSide;
+          }
+        }
         getLightmap(object, lightMapSet);
       });
 
