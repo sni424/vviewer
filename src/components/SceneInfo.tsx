@@ -507,6 +507,8 @@ const GeneralButtons = () => {
       >
         업로드한 씬 불러오기
       </button>
+      <button>알파룸 세팅 업로드</button>
+      <button>알파룸 세팅 불러오기</button>
       <button
         onClick={() => {
           handleResetSettings();

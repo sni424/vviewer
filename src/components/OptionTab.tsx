@@ -46,7 +46,66 @@ const OptionConfigTab = () => {
       });
   }
 
+  function uploadAlphaRoomOptionJSON() {
+    uploadJson('optionAlpha.json', modelOptions)
+      .then(res => res.json())
+      .then(res => {
+        if (res?.success === true) {
+          alert('업로드 완료');
+        } else {
+          throw res;
+        }
+      })
+      .catch(err => {
+        console.log(err);
+        alert('업로드 실패');
+      });
+  }
+
+  async function loadAlphaRoomOption() {
+    setModelOptions([]);
+    const options = (await loadOption('optionAlpha.json')) as ModelOption[];
+    const keys = Object.keys(lightMaps);
+    const keysToLoad: string[] = [];
+    options.forEach(option => {
+      const states = option.states;
+      states.forEach(state => {
+        const meshEffects = state.meshEffects;
+        meshEffects.forEach(effect => {
+          const lm = effect.effects.lmValue;
+          if (lm && !keys.includes(lm)) {
+            keysToLoad.push(lm);
+          }
+        });
+      });
+    });
+
+    if (keysToLoad.length > 0) {
+      const loader = getVKTX2Loader();
+      const map = new Map<string, THREE.Texture>();
+      await Promise.all(
+        keysToLoad.map(async key => {
+          const texture = await loader.loadAsync(key);
+          texture.minFilter = THREE.LinearMipmapLinearFilter;
+          texture.magFilter = THREE.LinearFilter;
+          texture.channel = 1;
+          texture.vUserData.mimeType = 'image/ktx2';
+          map.set(decodeURI(key), texture);
+        }),
+      );
+
+      const obj = await createLightmapCache(map);
+
+      setLightMaps(pre => {
+        return { ...pre, ...obj };
+      });
+    }
+
+    setModelOptions(options);
+  }
+
   async function loadOptions() {
+    setModelOptions([]);
     const options = (await loadOption()) as ModelOption[];
     const keys = Object.keys(lightMaps);
     const keysToLoad: string[] = [];
@@ -95,6 +154,8 @@ const OptionConfigTab = () => {
         </button>
         <button onClick={uploadOptionJSON}>업로드</button>
         <button onClick={loadOptions}>불러오기</button>
+        <button onClick={uploadAlphaRoomOptionJSON}>알파룸 업로드</button>
+        <button onClick={loadAlphaRoomOption}>알파룸 불러오기</button>
       </div>
       <div className="pt-2">
         {modelOptions.map((modelOption, idx) => (
