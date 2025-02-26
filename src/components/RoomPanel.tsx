@@ -32,6 +32,8 @@ const uploadRooms = async () => {
 function RoomSetting() {
   const [rooms, setRooms] = useAtom(roomAtom);
   const [newRooms, setNewRooms] = useState<RoomCreateOption[]>([]);
+  // 각 방 이름의 로컬 상태를 관리할 객체
+  const [localNames, setLocalNames] = useState<{ [key: number]: string }>({});
   const createRoom = () => {
     setRooms(prev => {
       return [
@@ -47,18 +49,33 @@ function RoomSetting() {
     });
   };
 
-  const creatingRoom = rooms.find(room => Boolean(room.creating));
-  useEffect(() => {
-    if (rooms.length > 0) {
-      const sorted = [...rooms];
-      sorted.sort((l, r) => {
-        return l.index - r.index;
+  // 입력 핸들러 수정
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement>,
+    index: number,
+  ) => {
+    const value = e.target.value;
+    // 로컬 상태 업데이트
+    setLocalNames(prev => ({
+      ...prev,
+      [index]: value,
+    }));
+  };
+
+  // 포커스를 잃을 때 최종 값으로 방 이름 업데이트
+  const handleInputBlur = (index: number, roomIndex: number) => {
+    if (localNames[index] !== undefined) {
+      setRooms(prev => {
+        const newRooms = [...prev];
+        newRooms[index] = {
+          ...newRooms[index],
+          name: localNames[index],
+        };
+        return newRooms;
       });
-      setNewRooms(sorted);
-    } else {
-      setNewRooms([]);
     }
-  }, [rooms]);
+  };
+  const creatingRoom = rooms.find(room => Boolean(room.creating));
 
   const ondDragStart = (
     e: React.DragEvent<HTMLDivElement>,
@@ -113,6 +130,27 @@ function RoomSetting() {
     setRooms(dropRooms);
   };
 
+  useEffect(() => {
+    if (rooms.length > 0) {
+      const sorted = [...rooms];
+      sorted.sort((l, r) => {
+        return l.index - r.index;
+      });
+      setNewRooms(sorted);
+    } else {
+      setNewRooms([]);
+    }
+  }, [rooms]);
+  useEffect(() => {
+    if (rooms.length > 0) {
+      const nameMap: { [key: number]: string } = {};
+      rooms.forEach((room, index) => {
+        nameMap[index] = room.name;
+      });
+      setLocalNames(nameMap);
+    }
+  }, []);
+
   return (
     <div className="w-full h-full overflow-y-auto">
       <div className="p-2">
@@ -147,6 +185,8 @@ function RoomSetting() {
       </div>
       {newRooms.length > 0 &&
         newRooms.map((room, i) => {
+          const inputValue =
+            localNames[i] !== undefined ? localNames[i] : room.name;
           return (
             <div
               className="mb-1 p-1 box-border"
@@ -172,27 +212,9 @@ function RoomSetting() {
                 이름 :
                 <input
                   type="text"
-                  value={room.name}
-                  onChange={e => {
-                    setRooms(prev => {
-                      const newRooms = [...prev];
-                      newRooms[i] = {
-                        ...newRooms[i],
-                        name: e.target.value,
-                      };
-                      return newRooms;
-                    });
-                  }}
-                  onBlur={e => {
-                    setRooms(prev => {
-                      const newRooms = [...prev];
-                      newRooms[i] = {
-                        ...newRooms[i],
-                        name: e.target.value,
-                      };
-                      return newRooms;
-                    });
-                  }}
+                  value={inputValue}
+                  onChange={e => handleInputChange(e, i)}
+                  onBlur={() => handleInputBlur(i, room.index)}
                 />
               </div>
               <div className="mt-1">
