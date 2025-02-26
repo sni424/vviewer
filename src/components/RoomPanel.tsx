@@ -1,6 +1,13 @@
 import { useAtom } from 'jotai';
+import { useEffect, useState } from 'react';
 import { roomColorString } from '../Constants';
-import { getAtomValue, roomAtom, threeExportsAtom } from '../scripts/atoms';
+import {
+  getAtomValue,
+  Room,
+  roomAtom,
+  RoomCreateOption,
+  threeExportsAtom,
+} from '../scripts/atoms';
 import { loadRooms, uploadJson } from '../scripts/atomUtils';
 import { THREE } from '../scripts/VTHREE';
 
@@ -24,6 +31,7 @@ const uploadRooms = async () => {
 
 function RoomSetting() {
   const [rooms, setRooms] = useAtom(roomAtom);
+  const [newRooms, setNewRooms] = useState<RoomCreateOption[]>([]);
   const createRoom = () => {
     setRooms(prev => {
       return [
@@ -39,14 +47,71 @@ function RoomSetting() {
     });
   };
 
-  console.log(rooms);
-
   const creatingRoom = rooms.find(room => Boolean(room.creating));
+  useEffect(() => {
+    if (rooms.length > 0) {
+      const sorted = [...rooms];
+      sorted.sort((l, r) => {
+        return l.index - r.index;
+      });
+      setNewRooms(sorted);
+    } else {
+      setNewRooms([]);
+    }
+  }, [rooms]);
 
-  const sorted = [...rooms];
-  sorted.sort((l, r) => {
-    return l.index - r.index;
-  });
+  const ondDragStart = (
+    e: React.DragEvent<HTMLDivElement>,
+    childData: Room,
+  ) => {
+    e.stopPropagation();
+
+    e.dataTransfer.setData('text/plain', String(childData.index));
+  };
+
+  const onDragOverFun = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+
+    const target = e.target as HTMLElement;
+    // const area = e.nativeEvent.offsetY / target.clientHeight;
+
+    // if (target.id !== '') {
+    //   if (area < 0.25) {
+    //     console.log('탑');
+    //   } else if (area > 0.75) {
+    //     console.log('바텀');
+    //   } else {
+    //     console.log('드래그');
+    //   }
+    // }
+  };
+
+  const onDragDropFun = (
+    e: React.DragEvent<HTMLDivElement>,
+    childData: Room,
+  ) => {
+    e.preventDefault();
+
+    const target = e.currentTarget as HTMLElement;
+
+    const area = e.nativeEvent.offsetY / target.clientHeight;
+    const draggedId = Number(e.dataTransfer.getData('text/plain'));
+    console.log('childData', childData.index, draggedId);
+
+    if (draggedId === childData.index) {
+      return;
+    }
+
+    const dropRooms = [...newRooms];
+
+    const copyIndex = dropRooms[childData.index - 1].index;
+    dropRooms[childData.index - 1].index = draggedId;
+    dropRooms[draggedId - 1].index = copyIndex;
+    dropRooms.sort((l, r) => {
+      return l.index - r.index;
+    });
+    setRooms(dropRooms);
+  };
 
   return (
     <div className="w-full h-full overflow-y-auto">
@@ -80,165 +145,190 @@ function RoomSetting() {
           전체숨기기
         </button>
       </div>
-      {sorted.map((room, i) => {
-        return (
-          <div className="mb-1 p-1 box-border" key={`room-panel-${room.index}`}>
-            <div>
-              {room.index}.{' '}
-              <span
-                className="w-3 inline-block h-3"
-                style={{ backgroundColor: roomColorString(room.index) }}
-              ></span>
-              이름 :
-              <input
-                type="text"
-                value={room.name}
-                onChange={e => {
-                  setRooms(prev => {
-                    const newRooms = [...prev];
-                    newRooms[i] = {
-                      ...newRooms[i],
-                      name: e.target.value.trim(),
-                    };
-                    return newRooms;
-                  });
+      {newRooms.length > 0 &&
+        newRooms.map((room, i) => {
+          return (
+            <div
+              className="mb-1 p-1 box-border"
+              key={`room-panel-${room.index}`}
+            >
+              <div
+                draggable={true}
+                className="hover:pointer"
+                onDragStart={e => ondDragStart(e, room)}
+                onDragOver={e => {
+                  onDragOverFun(e);
                 }}
-              />
-            </div>
-            <div className="mt-1">
-              보기 :{' '}
-              <input
-                type="checkbox"
-                checked={Boolean(room.show)}
-                onChange={e => {
-                  setRooms(prev => {
-                    const newRooms = [...prev];
-                    newRooms[i] = {
-                      ...newRooms[i],
-                      show: e.target.checked,
-                    };
-                    return newRooms;
-                  });
+                onDrop={e => {
+                  onDragDropFun(e, room);
                 }}
-              />
-              <button
-                onClick={() => {
-                  const isCreating = Boolean(room.creating);
-                  if (isCreating) {
+              >
+                <span>🔗</span>
+                {room.index}.{' '}
+                <span
+                  className="w-3 inline-block h-3"
+                  style={{ backgroundColor: roomColorString(room.index) }}
+                ></span>
+                이름 :
+                <input
+                  type="text"
+                  value={room.name}
+                  onChange={e => {
                     setRooms(prev => {
                       const newRooms = [...prev];
-                      newRooms[i].creating = undefined;
+                      newRooms[i] = {
+                        ...newRooms[i],
+                        name: e.target.value,
+                      };
                       return newRooms;
                     });
-                  } else {
-                    // 다른 지정 중인 방을 종료하고 이 방을 지정하기
+                  }}
+                  onBlur={e => {
                     setRooms(prev => {
                       const newRooms = [...prev];
-                      newRooms.forEach(room => {
-                        room.creating = undefined;
+                      newRooms[i] = {
+                        ...newRooms[i],
+                        name: e.target.value,
+                      };
+                      return newRooms;
+                    });
+                  }}
+                />
+              </div>
+              <div className="mt-1">
+                보기 :{' '}
+                <input
+                  type="checkbox"
+                  checked={Boolean(room.show)}
+                  onChange={e => {
+                    setRooms(prev => {
+                      const newRooms = [...prev];
+                      newRooms[i] = {
+                        ...newRooms[i],
+                        show: e.target.checked,
+                      };
+                      return newRooms;
+                    });
+                  }}
+                />
+                <button
+                  onClick={() => {
+                    const isCreating = Boolean(room.creating);
+                    if (isCreating) {
+                      setRooms(prev => {
+                        const newRooms = [...prev];
+                        newRooms[i].creating = undefined;
+                        return newRooms;
                       });
-                      newRooms[i].creating = true;
+                    } else {
+                      // 다른 지정 중인 방을 종료하고 이 방을 지정하기
+                      setRooms(prev => {
+                        const newRooms = [...prev];
+                        newRooms.forEach(room => {
+                          room.creating = undefined;
+                        });
+                        newRooms[i].creating = true;
+                        return newRooms;
+                      });
+                    }
+                  }}
+                  disabled={Boolean(creatingRoom) && creatingRoom !== room}
+                >
+                  {Boolean(room.creating) ? '지정 종료하기' : '지정하기'}
+                </button>
+                <button
+                  onClick={() => {
+                    setRooms(prev => {
+                      const newRooms = [...prev];
+                      newRooms[i].border = [];
                       return newRooms;
                     });
-                  }
-                }}
-                disabled={Boolean(creatingRoom) && creatingRoom !== room}
-              >
-                {Boolean(room.creating) ? '지정 종료하기' : '지정하기'}
-              </button>
-              <button
-                onClick={() => {
-                  setRooms(prev => {
-                    const newRooms = [...prev];
-                    newRooms[i].border = [];
-                    return newRooms;
-                  });
-                }}
-              >
-                초기화
-              </button>
-              <button
-                onClick={() => {
-                  setRooms(prev => {
-                    const newRooms = [...prev];
-                    newRooms.splice(i, 1);
-                    return newRooms;
-                  });
-                }}
-              >
-                삭제
-              </button>
-            </div>
-            <div>
-              <button
-                onClick={() => {
-                  const three = getAtomValue(threeExportsAtom);
-                  if (!three) {
-                    return console.log('no Three');
-                  }
-                  const { camera } = three;
-                  setRooms(prev => {
-                    const copied = [...prev];
-                    copied[i].tourMatrix = camera.matrix.toArray();
-                    return copied;
-                  });
-                }}
-              >
-                투어 카메라위치 설정하기
-              </button>
-              {room.tourMatrix && (
-                <div className="flex items-center gap-4">
-                  <div>
-                    <span>위치</span>
-                    <div>X : {room.tourMatrix[12].toFixed(2)}</div>
-                    <div>Y : {room.tourMatrix[13].toFixed(2)}</div>
-                    <div>Z : {room.tourMatrix[14].toFixed(2)}</div>
-                  </div>
-                  <div>
-                    <span>회전</span>
+                  }}
+                >
+                  초기화
+                </button>
+                <button
+                  onClick={() => {
+                    setRooms(prev => {
+                      const newRooms = [...prev];
+                      newRooms.splice(i, 1);
+                      return newRooms;
+                    });
+                  }}
+                >
+                  삭제
+                </button>
+              </div>
+              <div>
+                <button
+                  onClick={() => {
+                    const three = getAtomValue(threeExportsAtom);
+                    if (!three) {
+                      return console.log('no Three');
+                    }
+                    const { camera } = three;
+                    setRooms(prev => {
+                      const copied = [...prev];
+                      copied[i].tourMatrix = camera.matrix.toArray();
+                      return copied;
+                    });
+                  }}
+                >
+                  투어 카메라위치 설정하기
+                </button>
+                {room.tourMatrix && (
+                  <div className="flex items-center gap-4">
                     <div>
-                      X :{' '}
-                      {(() => {
-                        const threeMatrix = new THREE.Matrix4().fromArray(
-                          room.tourMatrix,
-                        ); // 배열에서 행렬 생성
-                        const euler = new THREE.Euler().setFromRotationMatrix(
-                          threeMatrix,
-                        ); // 회전값 추출
-                        return THREE.MathUtils.radToDeg(euler.x).toFixed(2);
-                      })()}
+                      <span>위치</span>
+                      <div>X : {room.tourMatrix[12].toFixed(2)}</div>
+                      <div>Y : {room.tourMatrix[13].toFixed(2)}</div>
+                      <div>Z : {room.tourMatrix[14].toFixed(2)}</div>
                     </div>
                     <div>
-                      Y :{' '}
-                      {(() => {
-                        const threeMatrix = new THREE.Matrix4().fromArray(
-                          room.tourMatrix,
-                        ); // 배열에서 행렬 생성
-                        const euler = new THREE.Euler().setFromRotationMatrix(
-                          threeMatrix,
-                        ); // 회전값 추출
-                        return THREE.MathUtils.radToDeg(euler.y).toFixed(2);
-                      })()}
-                    </div>
-                    <div>
-                      Z :{' '}
-                      {(() => {
-                        const threeMatrix = new THREE.Matrix4().fromArray(
-                          room.tourMatrix,
-                        ); // 배열에서 행렬 생성
-                        const euler = new THREE.Euler().setFromRotationMatrix(
-                          threeMatrix,
-                        ); // 회전값 추출
-                        return THREE.MathUtils.radToDeg(euler.z).toFixed(2);
-                      })()}
+                      <span>회전</span>
+                      <div>
+                        X :{' '}
+                        {(() => {
+                          const threeMatrix = new THREE.Matrix4().fromArray(
+                            room.tourMatrix,
+                          ); // 배열에서 행렬 생성
+                          const euler = new THREE.Euler().setFromRotationMatrix(
+                            threeMatrix,
+                          ); // 회전값 추출
+                          return THREE.MathUtils.radToDeg(euler.x).toFixed(2);
+                        })()}
+                      </div>
+                      <div>
+                        Y :{' '}
+                        {(() => {
+                          const threeMatrix = new THREE.Matrix4().fromArray(
+                            room.tourMatrix,
+                          ); // 배열에서 행렬 생성
+                          const euler = new THREE.Euler().setFromRotationMatrix(
+                            threeMatrix,
+                          ); // 회전값 추출
+                          return THREE.MathUtils.radToDeg(euler.y).toFixed(2);
+                        })()}
+                      </div>
+                      <div>
+                        Z :{' '}
+                        {(() => {
+                          const threeMatrix = new THREE.Matrix4().fromArray(
+                            room.tourMatrix,
+                          ); // 배열에서 행렬 생성
+                          const euler = new THREE.Euler().setFromRotationMatrix(
+                            threeMatrix,
+                          ); // 회전값 추출
+                          return THREE.MathUtils.radToDeg(euler.z).toFixed(2);
+                        })()}
+                      </div>
                     </div>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
-          </div>
-        );
-      })}
+          );
+        })}
       <div className="mt-4 flex items-center justify-center gap-4">
         <button
           onClick={() => {
