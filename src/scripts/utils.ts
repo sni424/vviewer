@@ -1476,3 +1476,156 @@ export function getGLStatus(gl: THREE.WebGLRenderer) {
   const info = gl.info;
   return info.memory;
 }
+
+export function changeMeshVisibleWithTransition(
+  mesh: THREE.Mesh,
+  transitionDelay: number,
+  targetVisible: boolean,
+) {
+  const mat = mesh.material as THREE.MeshStandardMaterial;
+  const originTransparent = mat.transparent;
+  const originalOpacity = mat.vUserData.originalOpacity ?? 1;
+  const from = targetVisible ? 0.3 : originalOpacity;
+  const to = targetVisible ? originalOpacity : 0;
+  return gsap.to(
+    {
+      t: 0,
+    },
+    {
+      t: 1,
+      duration: transitionDelay,
+      ease: 'circ.out',
+      onStart() {
+        mat.transparent = true;
+        mat.opacity = from;
+        mesh.visible = true;
+        mat.depthWrite = true;
+        mat.alphaTest = 0;
+        mat.needsUpdate = true;
+      },
+      onUpdate() {
+        const progress = this.targets()[0].t;
+        let targetOpacity = 0;
+        if (targetVisible) {
+          targetOpacity = progress * originalOpacity;
+        } else {
+          targetOpacity = (1 - progress) * originalOpacity;
+        }
+        mat.opacity = targetOpacity;
+        // 메시 render depth 로 인해 뒷 메시가 안보이는 경우 해결
+        if (progress > 0.8) mat.depthWrite = targetVisible;
+        mat.needsUpdate = true;
+      },
+      onComplete() {
+        mat.transparent = originTransparent;
+        mat.opacity = to;
+        mesh.visible = targetVisible;
+        mat.depthWrite = true;
+        mat.needsUpdate = true;
+      },
+    },
+  );
+}
+
+export function changeMeshLightMapWithTransition(
+  mesh: THREE.Mesh,
+  transitionDelay: number,
+  targetLightMap: THREE.Texture,
+) {
+  const mat = mesh.material as THREE.MeshStandardMaterial;
+  const beforeLightMap = mat.lightMap;
+  if (!beforeLightMap) {
+    throw new Error('No LightMap Found in Material');
+  }
+  const cloned = mat.clone();
+
+  const LIGHTMAP_PROGRESS_SHADER = `#if defined( RE_IndirectDiffuse )
+
+                  #ifdef USE_LIGHTMAP
+                
+                    vec4 lightMap1 = texture2D(texture1, vLightMapUv);
+                    vec4 lightMap2 = texture2D(texture2, vLightMapUv);
+                    vec4 lightMapTexel = mix(lightMap1, lightMap2, progress);;
+                    vec3 lightMapIrradiance = lightMapTexel.rgb * lightMapIntensity;
+                
+                    irradiance += lightMapIrradiance;
+                
+                  #endif
+                
+                  #if defined( USE_ENVMAP ) && defined( STANDARD ) && defined( ENVMAP_TYPE_CUBE_UV )
+                
+                    iblIrradiance += getIBLIrradiance( geometryNormal );
+                
+                  #endif
+                
+                #endif
+                
+                #if defined( USE_ENVMAP ) && defined( RE_IndirectSpecular )
+                
+                  #ifdef USE_ANISOTROPY
+                
+                    radiance += getIBLAnisotropyRadiance( geometryViewDir, geometryNormal, material.roughness, material.anisotropyB, material.anisotropy );
+                
+                  #else
+                
+                    radiance += getIBLRadiance( geometryViewDir, geometryNormal, material.roughness );
+                
+                  #endif
+                
+                  #ifdef USE_CLEARCOAT
+                
+                    clearcoatRadiance += getIBLRadiance( geometryViewDir, geometryClearcoatNormal, material.clearcoatRoughness );
+                
+                  #endif
+                
+                #endif`;
+
+  cloned.onBeforeCompile = shader => {
+    // 유니폼 변수 설정
+    shader.uniforms.progress = { value: 0.0 };
+    shader.uniforms.texture1 = { value: beforeLightMap };
+    shader.uniforms.texture2 = { value: targetLightMap };
+
+    // 프래그먼트 쉐이더에 유니폼 변수 추가
+    shader.fragmentShader =
+      `uniform float progress;
+                 uniform sampler2D texture1;
+                 uniform sampler2D texture2;
+                 ` + shader.fragmentShader;
+
+    // lights_fragment_maps 부분 완전히 대체 (중요: 기존 lightMap 계산 무시)
+    shader.fragmentShader = shader.fragmentShader.replace(
+      '#include <lights_fragment_maps>',
+      LIGHTMAP_PROGRESS_SHADER,
+    );
+
+    cloned.vUserData.shader = shader;
+  };
+
+  return gsap.to(
+    {
+      t: 0,
+    },
+    {
+      t: 1,
+      duration: transitionDelay,
+      onStart() {
+        mesh.material = cloned;
+      },
+      onUpdate() {
+        const progress = this.targets()[0].t;
+        const shader = cloned.vUserData.shader;
+        if (shader) {
+          shader.uniforms.progress.value = progress;
+          cloned.needsUpdate = true;
+        }
+      },
+      onComplete() {
+        mat.lightMap = targetLightMap;
+        mesh.material = mat;
+        mat.needsUpdate = true;
+        cloned.dispose();
+      },
+    },
+  );
+}
