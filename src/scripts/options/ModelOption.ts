@@ -31,13 +31,11 @@ class ModelOption {
   }
 
   removeState(state: OptionState) {
-    const index = this.states.findIndex(
-      (v: OptionState) => v.getId() === state.getId(),
-    );
+    const index = this.states.findIndex((v: OptionState) => v.id === state.id);
     if (index >= 0) {
       this.states.splice(index, 1);
     } else {
-      console.warn('No state with id : ' + state.getId());
+      console.warn('No state with id : ' + state.id);
     }
   }
 
