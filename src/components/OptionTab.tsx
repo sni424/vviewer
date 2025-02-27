@@ -21,7 +21,11 @@ import {
   ModelOption,
   ModelOptionState,
 } from '../scripts/ModelOption.ts';
-import { loadLatest } from '../scripts/utils.ts';
+import {
+  changeMeshLightMapWithTransition,
+  changeMeshVisibleWithTransition,
+  loadLatest,
+} from '../scripts/utils.ts';
 import * as THREE from '../scripts/VTHREE.ts';
 import { SelectableNodes } from './DPC/DPCModelSelector.tsx';
 
@@ -213,48 +217,10 @@ const OptionPreview = ({ option }: { option: ModelOption }) => {
         const mat = mesh.material as THREE.MeshStandardMaterial;
         // Visible Control
         if (effects.useVisible) {
-          hasAnimation = true;
-          const originTransparent = mat.transparent;
-          const originalOpacity = mat.vUserData.originalOpacity ?? 1;
-          const from = effects.visibleValue ? 0.3 : originalOpacity;
-          const to = effects.visibleValue ? originalOpacity : 0;
-          visibleAnimation = gsap.to(
-            {
-              t: 0,
-            },
-            {
-              t: 1,
-              duration: animationDuration,
-              ease: 'circ.out',
-              onStart() {
-                mat.transparent = true;
-                mat.opacity = from;
-                mesh.visible = true;
-                mat.depthWrite = true;
-                mat.alphaTest = 0;
-                mat.needsUpdate = true;
-              },
-              onUpdate() {
-                const progress = this.targets()[0].t;
-                let targetOpacity = 0;
-                if (effects.visibleValue) {
-                  targetOpacity = progress * originalOpacity;
-                } else {
-                  targetOpacity = (1 - progress) * originalOpacity;
-                }
-                mat.opacity = targetOpacity;
-                // 메시 render depth 로 인해 뒷 메시가 안보이는 경우 해결
-                if (progress > 0.8) mat.depthWrite = effects.visibleValue;
-                mat.needsUpdate = true;
-              },
-              onComplete() {
-                mat.transparent = originTransparent;
-                mat.opacity = to;
-                mesh.visible = effects.visibleValue;
-                mat.depthWrite = true;
-                mat.needsUpdate = true;
-              },
-            },
+          visibleAnimation = changeMeshVisibleWithTransition(
+            mesh,
+            animationDuration,
+            effects.visibleValue,
           );
         }
 
@@ -265,7 +231,6 @@ const OptionPreview = ({ option }: { option: ModelOption }) => {
           let target = effects.lmValue
             ? effects.lmValue
             : mat.vUserData.lightMap;
-          const beforeLightMap = mat.lightMap;
 
           if (target && !target.startsWith('https')) {
             target = ENV.base + target;
@@ -276,62 +241,11 @@ const OptionPreview = ({ option }: { option: ModelOption }) => {
           } else if (keys.includes(target)) {
             const { texture } = lightMapCache[target];
             texture.flipY = false;
-
-            // const cloned = mat.clone();
-            // cloned.onBeforeCompile = shader => {
-            //   // 유니폼 변수 설정
-            //   shader.uniforms.progress = { value: 0 };
-            //   shader.uniforms.texture1 = { value: beforeLightMap };
-            //   shader.uniforms.texture2 = { value: texture };
-            //
-            //   // 프래그먼트 쉐이더에 유니폼 변수 추가
-            //   shader.fragmentShader =
-            //     `
-            //           uniform float progress;
-            //           uniform sampler2D texture1;
-            //           uniform sampler2D texture2;
-            //         ` + shader.fragmentShader;
-            //
-            //   // lights_fragment_maps 부분 완전히 대체 (중요: 기존 lightMap 계산 무시)
-            //   shader.fragmentShader = shader.fragmentShader.replace(
-            //     '#include <lights_fragment_maps>',
-            //     `
-            //             #ifdef USE_LIGHTMAP
-            //                 // 기존 lightMap 계산은 무시하고 새로 계산
-            //                 vec4 lightMap1 = texture2D(texture1, vLightMapUv);
-            //                 vec4 lightMap2 = texture2D(texture2, vLightMapUv);
-            //                 vec4 mixedLightMap = mix(lightMap1, lightMap2, progress);
-            //                 reflectedLight.indirectDiffuse += mixedLightMap.rgb*0.4;
-            //             #endif
-            //                 #include <lights_fragment_maps>
-            //             `,
-            //   );
-            // };
-
-            mat.lightMap = texture;
-
-            // lightMapAnimation = gsap.to(
-            //   {
-            //     t: 0,
-            //   },
-            //   {
-            //     t: 1,
-            //     duration: animationDuration,
-            //     // ease: 'circ.out',
-            //     onStart() {
-            //       mesh.material = cloned;
-            //     },
-            //     onUpdate() {
-            //       const progress = this.targets()[0].t;
-            //
-            //     },
-            //     onComplete() {
-            //       mesh.material = mat;
-            //       mat.needsUpdate = true;
-            //       cloned.dispose();
-            //     },
-            //   },
-            // );
+            lightMapAnimation = changeMeshLightMapWithTransition(
+              mesh,
+              animationDuration,
+              texture,
+            );
           } else {
             // TODO fetch
           }
@@ -369,6 +283,8 @@ const OptionPreview = ({ option }: { option: ModelOption }) => {
       });
       setIsProcessing(false);
     }
+
+    hasAnimation = visibleAnimation !== null || lightMapAnimation !== null;
 
     if (hasAnimation) {
       if (visibleAnimation) (visibleAnimation as gsap.core.Tween).play(0);

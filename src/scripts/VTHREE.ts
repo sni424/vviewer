@@ -36,6 +36,7 @@ export interface ThreeUserData {
   dpOffLightMapIntensity?: number;
   isCustomEnvMap?: boolean;
   originalOpacity?: number;
+  shader?: WebGLProgramParametersWithUniforms;
 }
 
 declare module 'three' {
@@ -508,5 +509,6 @@ window.getThree = (view: View = View.Shared) => {
 };
 
 // THREE.Material.prototype.onBeforeCompile 오버라이딩
+import { WebGLProgramParametersWithUniforms } from 'three';
 import '../scripts/postprocess/MaterialShader';
 import { PlaneControlDirections } from './CubePlaneControls.ts';
