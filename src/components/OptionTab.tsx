@@ -190,14 +190,16 @@ const OptionPreview = ({ option }: { option: ModelOption }) => {
     return null;
   }
 
-  const { scene, gl } = threeExports;
+  const { scene } = threeExports;
   const probes = useAtomValue(ProbeAtom);
+  const setSelecteds = useSetAtom(selectedAtom);
 
   function processState(state: ModelOptionState) {
     if (isProcessing) {
       console.warn('processState is On Processing');
       return;
     }
+    setSelecteds([]);
     const animationDuration = 1; // 1s
     setProcessedState(state.id);
     setIsProcessing(true);
@@ -211,7 +213,7 @@ const OptionPreview = ({ option }: { option: ModelOption }) => {
         .getObjectsByProperty('name', meshEffect.targetMeshProperties.name)
         .filter(o => o.type === 'Mesh');
       const object = objects[0];
-      if (object && object.type === 'Mesh') {
+      if (object) {
         const mesh = object as THREE.Mesh;
         const effects = meshEffect.effects;
         const mat = mesh.material as THREE.MeshStandardMaterial;
@@ -251,10 +253,6 @@ const OptionPreview = ({ option }: { option: ModelOption }) => {
           }
         }
 
-        // Probe Control
-        if (effects.useProbe) {
-        }
-
         const probeId = mat.vUserData.probeId;
         if (probeId) {
           // 그냥 해당 프로브 리렌더
@@ -271,13 +269,6 @@ const OptionPreview = ({ option }: { option: ModelOption }) => {
     });
 
     function processAfter() {
-      // const toRenders = probes.filter(probe => {
-      //   return probesToRender.includes(probe.getId());
-      // });
-      //
-      // toRenders.forEach(probe => {
-      //   probe.renderCamera(true);
-      // });
       probes.forEach(probe => {
         probe.renderCamera(true);
       });
@@ -492,10 +483,8 @@ const State = ({
       const defaultEffect: Effects = {
         useVisible: false,
         useLightMap: false,
-        useProbe: false,
         visibleValue: false,
         lmValue: null,
-        pValue: null,
       };
       const resultEffect = {
         ...defaultEffect,
@@ -666,11 +655,9 @@ const MeshEffectElem = ({
   const [use, setUse] = useState<{
     visible: boolean;
     lightMap: boolean;
-    probe: boolean;
   }>({
     visible: meshEffect.effects.useVisible,
     lightMap: meshEffect.effects.useLightMap,
-    probe: meshEffect.effects.useProbe,
   });
   const threeExports = threes();
   if (!threeExports) {
@@ -693,18 +680,12 @@ const MeshEffectElem = ({
   const [lmValue, setLMValue] = useState<string | null>(
     meshEffect.effects.lmValue,
   );
-  const [pValue, setPValue] = useState<string | null>(
-    meshEffect.effects.pValue,
-  );
   useEffect(() => {
     meshEffect.effects.visibleValue = visible;
   }, [visible]);
   useEffect(() => {
     meshEffect.effects.lmValue = lmValue;
   }, [lmValue]);
-  useEffect(() => {
-    meshEffect.effects.pValue = pValue;
-  }, [pValue]);
   useEffect(() => {
     meshEffect.expanded = expanded;
   }, [expanded]);
@@ -841,18 +822,6 @@ const MeshEffectElem = ({
                   <button onClick={openLightMapModal}>변경</button>
                 </div>
               )}
-            </div>
-            <div className="flex items-center gap-x-1.5 mt-1">
-              <span>Probe:</span>
-              <span>사용</span>
-              <input
-                type="checkbox"
-                checked={use.probe}
-                onChange={e => {
-                  updateUseBoolean('probe', e.target.checked);
-                }}
-              />
-              {use.probe && <></>}
             </div>
           </div>
         </div>
@@ -1119,10 +1088,8 @@ const MeshSelectModal = ({
           effects: {
             useVisible: false,
             useLightMap: false,
-            useProbe: false,
             visibleValue: false,
             lmValue: null,
-            pValue: null,
           },
           expanded: true,
         } as MeshEffect;

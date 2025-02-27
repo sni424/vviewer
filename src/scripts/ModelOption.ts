@@ -24,10 +24,8 @@ export type MeshEffect = {
 export type Effects = {
   useVisible: boolean;
   useLightMap: boolean;
-  useProbe: boolean;
   visibleValue: boolean;
   lmValue: string | null;
-  pValue: string | null;
 };
 
 /**
@@ -36,6 +34,5 @@ export type Effects = {
  * 1. 옵션에 따라 메시에 영향을 주는 형식
  *    - 메시 visible On / Off
  *    - 라이트맵 변경
- *    - 프로브 변경
  * 2. 옵션 변경 시의 카메라 이동 등
  * **/
