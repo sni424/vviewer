@@ -18,9 +18,9 @@ import { getVKTX2Loader } from '../scripts/loaders/VKTX2Loader.ts';
 import {
   Effects,
   MeshEffect,
-  ModelOption,
+  ModelOptionObject,
   ModelOptionState,
-} from '../scripts/ModelOption.ts';
+} from '../scripts/ModelOptionObject.ts';
 import {
   changeMeshLightMapWithTransition,
   changeMeshVisibleWithTransition,
@@ -68,7 +68,7 @@ const OptionConfigTab = () => {
 
   async function loadAlphaRoomOption() {
     setModelOptions([]);
-    const options = (await loadOption('optionAlpha.json')) as ModelOption[];
+    const options = (await loadOption('optionAlpha.json')) as ModelOptionObject[];
     const keys = Object.keys(lightMaps);
     const keysToLoad: string[] = [];
     options.forEach(option => {
@@ -110,7 +110,7 @@ const OptionConfigTab = () => {
 
   async function loadOptions() {
     setModelOptions([]);
-    const options = (await loadOption()) as ModelOption[];
+    const options = (await loadOption()) as ModelOptionObject[];
     const keys = Object.keys(lightMaps);
     const keysToLoad: string[] = [];
     options.forEach(option => {
@@ -182,7 +182,7 @@ const OptionPreviewTab = () => {
   );
 };
 
-const OptionPreview = ({ option }: { option: ModelOption }) => {
+const OptionPreview = ({ option }: { option: ModelOptionObject }) => {
   const threeExports = threes();
   const [processedState, setProcessedState] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -351,7 +351,7 @@ export const OptionTab = () => {
   );
 };
 
-const Option = ({ modelOption }: { modelOption: ModelOption }) => {
+const Option = ({ modelOption }: { modelOption: ModelOptionObject }) => {
   const setModelOptions = useSetAtom(modelOptionAtom);
   const [states, setStates] = useState<ModelOptionState[]>(modelOption.states);
   const [nameEditMode, setNameEditMode] = useState<boolean>(false);
@@ -1211,7 +1211,7 @@ const OptionCreateModal = () => {
       alert('이미 존재하는 이름입니다.');
       return;
     }
-    const newModelOption: ModelOption = {
+    const newModelOption: ModelOptionObject = {
       id: v4(),
       states: [],
       name: name,

@@ -1,4 +1,6 @@
-export type ModelOption = {
+import { atom } from 'jotai';
+
+export type ModelOptionObject = {
   id: string;
   states: ModelOptionState[];
   name: string;
@@ -27,6 +29,12 @@ export type Effects = {
   visibleValue: boolean;
   lmValue: string | null;
 };
+
+export type ModelOptionSelectedState = {
+  [key: string]: ModelOptionState;
+}
+
+export const ModelOptionSelectedStateAtom = atom<ModelOptionSelectedState>({});
 
 /**
  * 모델 옵션에 관한 고찰
