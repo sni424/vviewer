@@ -29,6 +29,8 @@ type KTXApiResponse = {
   }[];
 };
 
+type KTXApiBody = {};
+
 function isPointOnLineSegment(p: PointXZ, v1: PointXZ, v2: PointXZ): boolean {
   const crossProduct =
     (p.z - v1.z) * (v2.x - v1.x) - (p.x - v1.x) * (v2.z - v1.z);

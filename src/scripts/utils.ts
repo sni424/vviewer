@@ -1494,18 +1494,21 @@ export function changeMeshVisibleWithTransition(
     {
       t: 1,
       duration: transitionDelay,
-      ease: 'circ.out',
       onStart() {
         mat.transparent = true;
         mat.opacity = from;
         mesh.visible = true;
         mat.depthWrite = true;
-        mat.alphaTest = 0;
+        mat.alphaTest = 0.001;
         mat.needsUpdate = true;
       },
       onUpdate() {
-        const progress = this.targets()[0].t;
+        let progress = this.targets()[0].t;
         let targetOpacity = 0;
+        if (progress > 0.97) {
+          mat.depthWrite = targetVisible;
+          progress = 1;
+        }
         if (targetVisible) {
           targetOpacity = progress * originalOpacity;
         } else {
@@ -1513,7 +1516,6 @@ export function changeMeshVisibleWithTransition(
         }
         mat.opacity = targetOpacity;
         // 메시 render depth 로 인해 뒷 메시가 안보이는 경우 해결
-        if (progress > 0.8) mat.depthWrite = targetVisible;
         mat.needsUpdate = true;
       },
       onComplete() {
@@ -1545,7 +1547,7 @@ export function changeMeshLightMapWithTransition(
                 
                     vec4 lightMap1 = texture2D(texture1, vLightMapUv);
                     vec4 lightMap2 = texture2D(texture2, vLightMapUv);
-                    vec4 lightMapTexel = mix(lightMap1, lightMap2, progress);;
+                    vec4 lightMapTexel = mix(lightMap1, lightMap2, progress);
                     vec3 lightMapIrradiance = lightMapTexel.rgb * lightMapIntensity;
                 
                     irradiance += lightMapIrradiance;

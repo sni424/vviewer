@@ -22,9 +22,9 @@ import {
   View,
   ViewportOption,
 } from '../types';
-import { ModelOption } from './ModelOption.ts';
 import ReflectionProbe from './ReflectionProbe.ts';
 import { THREE } from './VTHREE';
+import ModelOption from './options/ModelOption.ts';
 
 type AtomArgType<T> = T | ((prev: T) => T);
 export type Store = ReturnType<typeof createStore>;
@@ -276,7 +276,7 @@ export const panelTabAtom = atom<Tab>('scene');
 
 export const treeSearchAtom = atom<string | undefined>();
 
-export const modelOptionAtom = atom<ModelOption[]>([]);
+export const modelOptionClassAtom = atom<ModelOption[]>([]);
 
 //카메라 정보값
 export const lastCameraInfoAtom = atom<{

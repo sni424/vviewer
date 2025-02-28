@@ -1,12 +1,10 @@
-import gsap from 'gsap';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import { Dispatch, SetStateAction, useEffect, useRef, useState } from 'react';
-import { v4 } from 'uuid';
 import { ENV } from '../Constants.ts';
 import {
   getAtomValue,
   lightMapAtom,
-  modelOptionAtom,
+  modelOptionClassAtom,
   ModelSelectorAtom,
   ProbeAtom,
   selectedAtom,
@@ -15,12 +13,10 @@ import {
 import { loadOption, threes, uploadJson } from '../scripts/atomUtils.ts';
 import { createLightmapCache } from '../scripts/loaders/VGLTFLoader.ts';
 import { getVKTX2Loader } from '../scripts/loaders/VKTX2Loader.ts';
-import {
-  Effects,
-  MeshEffect,
-  ModelOption,
-  ModelOptionState,
-} from '../scripts/ModelOption.ts';
+import { ModelOptionObject } from '../scripts/ModelOptionObject.ts';
+import ModelOption from '../scripts/options/ModelOption.ts';
+import OptionState from '../scripts/options/OptionState.ts';
+import OptionStateMesh from '../scripts/options/OptionStateMesh.ts';
 import {
   changeMeshLightMapWithTransition,
   changeMeshVisibleWithTransition,
@@ -30,12 +26,15 @@ import * as THREE from '../scripts/VTHREE.ts';
 import { SelectableNodes } from './DPC/DPCModelSelector.tsx';
 
 const OptionConfigTab = () => {
-  const [modelOptions, setModelOptions] = useAtom(modelOptionAtom);
+  const [mcOptions, setMcOptions] = useAtom(modelOptionClassAtom);
   const [lightMaps, setLightMaps] = useAtom(lightMapAtom);
   const { openModal } = useModal();
 
   function uploadOptionJSON() {
-    uploadJson('options.json', modelOptions)
+    uploadJson(
+      'options.json',
+      mcOptions.map(o => o.toJSON()),
+    )
       .then(res => res.json())
       .then(res => {
         if (res?.success === true) {
@@ -51,7 +50,10 @@ const OptionConfigTab = () => {
   }
 
   function uploadAlphaRoomOptionJSON() {
-    uploadJson('optionAlpha.json', modelOptions)
+    uploadJson(
+      'optionAlpha.json',
+      mcOptions.map(o => o.toJSON()),
+    )
       .then(res => res.json())
       .then(res => {
         if (res?.success === true) {
@@ -67,8 +69,10 @@ const OptionConfigTab = () => {
   }
 
   async function loadAlphaRoomOption() {
-    setModelOptions([]);
-    const options = (await loadOption('optionAlpha.json')) as ModelOption[];
+    setMcOptions([]);
+    const options = (await loadOption(
+      'optionAlpha.json',
+    )) as ModelOptionObject[];
     const keys = Object.keys(lightMaps);
     const keysToLoad: string[] = [];
     options.forEach(option => {
@@ -104,13 +108,17 @@ const OptionConfigTab = () => {
         return { ...pre, ...obj };
       });
     }
+    const classes = options.map(option => {
+      return new ModelOption().fromJSON(option);
+    });
 
-    setModelOptions(options);
+    setMcOptions(classes);
   }
 
   async function loadOptions() {
-    setModelOptions([]);
-    const options = (await loadOption()) as ModelOption[];
+    console.time('loadOptions');
+    setMcOptions([]);
+    const options = (await loadOption()) as ModelOptionObject[];
     const keys = Object.keys(lightMaps);
     const keysToLoad: string[] = [];
     options.forEach(option => {
@@ -146,8 +154,12 @@ const OptionConfigTab = () => {
         return { ...pre, ...obj };
       });
     }
+    const classes = options.map(option => {
+      return new ModelOption().fromJSON(option);
+    });
 
-    setModelOptions(options);
+    setMcOptions(classes);
+    console.timeEnd('loadOptions');
   }
 
   return (
@@ -162,7 +174,7 @@ const OptionConfigTab = () => {
         <button onClick={loadAlphaRoomOption}>알파룸 불러오기</button>
       </div>
       <div className="pt-2">
-        {modelOptions.map((modelOption, idx) => (
+        {mcOptions.map((modelOption, idx) => (
           <Option key={idx} modelOption={modelOption} />
         ))}
       </div>
@@ -171,11 +183,11 @@ const OptionConfigTab = () => {
 };
 
 const OptionPreviewTab = () => {
-  const modelOptions = useAtomValue(modelOptionAtom);
+  const mcOptions = useAtomValue(modelOptionClassAtom);
 
   return (
     <div>
-      {modelOptions.map((modelOption, idx) => (
+      {mcOptions.map((modelOption, idx) => (
         <OptionPreview key={idx} option={modelOption} />
       ))}
     </div>
@@ -190,30 +202,31 @@ const OptionPreview = ({ option }: { option: ModelOption }) => {
     return null;
   }
 
-  const { scene, gl } = threeExports;
+  const { scene } = threeExports;
   const probes = useAtomValue(ProbeAtom);
+  const setSelecteds = useSetAtom(selectedAtom);
 
-  function processState(state: ModelOptionState) {
+  function processState(state: OptionState) {
     if (isProcessing) {
       console.warn('processState is On Processing');
       return;
     }
+    setSelecteds([]);
     const animationDuration = 1; // 1s
     setProcessedState(state.id);
     setIsProcessing(true);
-    const meshEffects = state.meshEffects;
+    const meshEffects = state.effects;
     let hasAnimation = false;
     let visibleAnimation: gsap.core.Tween | null = null;
     let lightMapAnimation: gsap.core.Tween | null = null;
     const probesToRender: string[] = [];
     meshEffects.map(meshEffect => {
-      const objects = scene
-        .getObjectsByProperty('name', meshEffect.targetMeshProperties.name)
-        .filter(o => o.type === 'Mesh');
-      const object = objects[0];
-      if (object && object.type === 'Mesh') {
+      const object = scene
+        .getObjectsByProperty('name', meshEffect.name)
+        .find(o => o.type === 'Mesh');
+      if (object) {
         const mesh = object as THREE.Mesh;
-        const effects = meshEffect.effects;
+        const effects = meshEffect.effect;
         const mat = mesh.material as THREE.MeshStandardMaterial;
         // Visible Control
         if (effects.useVisible) {
@@ -251,10 +264,6 @@ const OptionPreview = ({ option }: { option: ModelOption }) => {
           }
         }
 
-        // Probe Control
-        if (effects.useProbe) {
-        }
-
         const probeId = mat.vUserData.probeId;
         if (probeId) {
           // 그냥 해당 프로브 리렌더
@@ -263,21 +272,11 @@ const OptionPreview = ({ option }: { option: ModelOption }) => {
           }
         }
       } else {
-        console.warn(
-          'no Mesh Found On state, passing By : ',
-          meshEffect.targetMeshProperties,
-        );
+        console.warn('no Mesh Found On state, passing By : ', meshEffect.name);
       }
     });
 
     function processAfter() {
-      // const toRenders = probes.filter(probe => {
-      //   return probesToRender.includes(probe.getId());
-      // });
-      //
-      // toRenders.forEach(probe => {
-      //   probe.renderCamera(true);
-      // });
       probes.forEach(probe => {
         probe.renderCamera(true);
       });
@@ -317,7 +316,7 @@ const OptionPreview = ({ option }: { option: ModelOption }) => {
               onClick={() => processState(state)}
               disabled={processedState === state.id}
             >
-              {state.stateName}
+              {state.name}
             </button>
           </>
         ))}
@@ -361,8 +360,8 @@ export const OptionTab = () => {
 };
 
 const Option = ({ modelOption }: { modelOption: ModelOption }) => {
-  const setModelOptions = useSetAtom(modelOptionAtom);
-  const [states, setStates] = useState<ModelOptionState[]>(modelOption.states);
+  const setModelOptions = useSetAtom(modelOptionClassAtom);
+  const [states, setStates] = useState<OptionState[]>(modelOption.states);
   const [nameEditMode, setNameEditMode] = useState<boolean>(false);
   const [name, setName] = useState<string>(modelOption.name);
 
@@ -395,13 +394,7 @@ const Option = ({ modelOption }: { modelOption: ModelOption }) => {
   }
 
   function createNewState() {
-    const newState: ModelOptionState = {
-      id: v4(),
-      stateName: 'new state',
-      expanded: true,
-      meshEffects: [],
-    };
-    setStates(pre => [...pre, newState]);
+    setStates(pre => [...pre, new OptionState(modelOption)]);
     if (!modelOption.expanded) {
       toggleOpen(true);
     }
@@ -456,14 +449,14 @@ const State = ({
   state,
   setStates,
 }: {
-  state: ModelOptionState;
-  setStates: Dispatch<SetStateAction<ModelOptionState[]>>;
+  state: OptionState;
+  setStates: Dispatch<SetStateAction<OptionState[]>>;
 }) => {
   const threeExports = threes();
   const { openModal } = useModal();
-  const [name, setName] = useState<string>(state.stateName);
+  const [name, setName] = useState<string>(state.name);
   const [nameEditMode, setNameEditMode] = useState<boolean>(false);
-  const [models, setModels] = useState<MeshEffect[]>(state.meshEffects);
+  const [models, setModels] = useState<OptionStateMesh[]>(state.effects);
   const [open, setOpen] = useState<boolean>(state.expanded);
 
   function openMeshSelectModal() {
@@ -487,32 +480,7 @@ const State = ({
   }
 
   function copyState() {
-    const newEffects: MeshEffect[] = [];
-    state.meshEffects.map(meshEffect => {
-      const defaultEffect: Effects = {
-        useVisible: false,
-        useLightMap: false,
-        useProbe: false,
-        visibleValue: false,
-        lmValue: null,
-        pValue: null,
-      };
-      const resultEffect = {
-        ...defaultEffect,
-        ...meshEffect.effects,
-      };
-
-      const newEffect: MeshEffect = {
-        ...meshEffect,
-        effects: resultEffect,
-      };
-      newEffects.push(newEffect);
-    });
-    const newState = {
-      ...state,
-      meshEffects: newEffects,
-      id: v4(),
-    };
+    const newState = state.copy();
     setStates(pre => [...pre, newState]);
   }
 
@@ -524,7 +492,7 @@ const State = ({
     setStates(pre => {
       const t = [...pre];
       const idx = t.findIndex(o => o.id === state.id);
-      t[idx].stateName = name;
+      t[idx].name = name;
       return t;
     });
   }, [name]);
@@ -533,7 +501,7 @@ const State = ({
     setStates(pre => {
       const t = [...pre];
       const idx = t.findIndex(o => o.id === state.id);
-      t[idx].meshEffects = models;
+      t[idx].effects = models;
       return t;
     });
   }, [models]);
@@ -543,7 +511,7 @@ const State = ({
   }
 
   function closeAll() {
-    models.forEach((meshEffect: MeshEffect) => {
+    models.forEach((meshEffect: OptionStateMesh) => {
       meshEffect.expanded = false;
     });
   }
@@ -560,9 +528,7 @@ const State = ({
             }}
           />
         ) : (
-          <div onDoubleClick={() => setNameEditMode(true)}>
-            {state.stateName}
-          </div>
+          <div onDoubleClick={() => setNameEditMode(true)}>{state.name}</div>
         )}
         {!nameEditMode && (
           <div className="flex items-center ml-auto gap-x-1">
@@ -596,15 +562,15 @@ const State = ({
   );
 };
 
-const ValueModal = ({ meshEffects }: { meshEffects: MeshEffect[] }) => {
+const ValueModal = ({ meshEffects }: { meshEffects: OptionStateMesh[] }) => {
   const { closeModal } = useModal();
   const [useVisible, setUseVisible] = useState<boolean>(false);
   const [visibleValue, setVisibleValue] = useState<boolean>(false);
 
   function confirm() {
     meshEffects.forEach(meshEffect => {
-      meshEffect.effects.useVisible = useVisible;
-      meshEffect.effects.visibleValue = visibleValue;
+      meshEffect.useVisible = useVisible;
+      meshEffect.visibleValue = visibleValue;
     });
     closeModal();
   }
@@ -660,17 +626,15 @@ const MeshEffectElem = ({
   meshEffect,
   setMeshEffects,
 }: {
-  meshEffect: MeshEffect;
-  setMeshEffects: Dispatch<SetStateAction<MeshEffect[]>>;
+  meshEffect: OptionStateMesh;
+  setMeshEffects: Dispatch<SetStateAction<OptionStateMesh[]>>;
 }) => {
   const [use, setUse] = useState<{
     visible: boolean;
     lightMap: boolean;
-    probe: boolean;
   }>({
-    visible: meshEffect.effects.useVisible,
-    lightMap: meshEffect.effects.useLightMap,
-    probe: meshEffect.effects.useProbe,
+    visible: meshEffect.useVisible,
+    lightMap: meshEffect.useLightMap,
   });
   const threeExports = threes();
   if (!threeExports) {
@@ -678,41 +642,28 @@ const MeshEffectElem = ({
   }
   const { scene, camera } = threeExports;
 
-  const objects = scene
-    .getObjectsByProperty('name', meshEffect.targetMeshProperties.name)
-    .filter(o => o.type === 'Mesh');
+  const object = scene
+    .getObjectsByProperty('name', meshEffect.name)
+    .find(o => o.type === 'Mesh');
 
   const setSelectedMeshes = useSetAtom(selectedAtom);
-  const mesh = objects[0]!! as THREE.Mesh;
+  const mesh = object!! as THREE.Mesh;
   const { openModal } = useModal();
 
   const [expanded, setExpanded] = useState<boolean>(meshEffect.expanded);
-  const [visible, setVisible] = useState<boolean>(
-    meshEffect.effects.visibleValue,
-  );
-  const [lmValue, setLMValue] = useState<string | null>(
-    meshEffect.effects.lmValue,
-  );
-  const [pValue, setPValue] = useState<string | null>(
-    meshEffect.effects.pValue,
-  );
+  const [visible, setVisible] = useState<boolean>(meshEffect.visibleValue);
+  const [lmValue, setLMValue] = useState<string | null>(meshEffect.lmValue);
   useEffect(() => {
-    meshEffect.effects.visibleValue = visible;
+    meshEffect.visibleValue = visible;
   }, [visible]);
   useEffect(() => {
-    meshEffect.effects.lmValue = lmValue;
+    meshEffect.lmValue = lmValue;
   }, [lmValue]);
-  useEffect(() => {
-    meshEffect.effects.pValue = pValue;
-  }, [pValue]);
   useEffect(() => {
     meshEffect.expanded = expanded;
   }, [expanded]);
 
-  function updateUseBoolean(
-    target: 'visible' | 'lightMap' | 'probe',
-    value: boolean,
-  ) {
+  function updateUseBoolean(target: 'visible' | 'lightMap', value: boolean) {
     setUse(pre => {
       const newP = { ...pre };
       newP[target] = value;
@@ -720,7 +671,7 @@ const MeshEffectElem = ({
     });
     const key = 'use' + target.charAt(0).toUpperCase() + target.slice(1);
     // @ts-ignore
-    meshEffect.effects[key] = value;
+    meshEffect[key] = value;
   }
 
   function openLightMapModal() {
@@ -732,15 +683,10 @@ const MeshEffectElem = ({
   }
 
   function deleteThis() {
-    setMeshEffects(pre =>
-      pre.filter(
-        p =>
-          p.targetMeshProperties.name !== meshEffect.targetMeshProperties.name,
-      ),
-    );
+    setMeshEffects(pre => pre.filter(p => p.name !== meshEffect.name));
   }
 
-  if (objects.length <= 0) {
+  if (!object) {
     return null;
   }
 
@@ -748,7 +694,7 @@ const MeshEffectElem = ({
     <div className="pl-1 my-1.5 border-b border-b-gray-400 py-1">
       <div className="flex gap-x-1.5 items-center">
         <div className="max-w-[150px] text-nowrap overflow-ellipsis overflow-hidden">
-          {meshEffect.targetMeshProperties.name}
+          {meshEffect.name}
         </div>
         <button
           onClick={() => {
@@ -841,18 +787,6 @@ const MeshEffectElem = ({
                   <button onClick={openLightMapModal}>변경</button>
                 </div>
               )}
-            </div>
-            <div className="flex items-center gap-x-1.5 mt-1">
-              <span>Probe:</span>
-              <span>사용</span>
-              <input
-                type="checkbox"
-                checked={use.probe}
-                onChange={e => {
-                  updateUseBoolean('probe', e.target.checked);
-                }}
-              />
-              {use.probe && <></>}
             </div>
           </div>
         </div>
@@ -1057,9 +991,9 @@ const MeshSelectModal = ({
   models,
   setModels,
 }: {
-  state: ModelOptionState;
-  models: MeshEffect[];
-  setModels: Dispatch<SetStateAction<MeshEffect[]>>;
+  state: OptionState;
+  models: OptionStateMesh[];
+  setModels: Dispatch<SetStateAction<OptionStateMesh[]>>;
 }) => {
   const threeExports = threes();
   if (!threeExports) {
@@ -1089,9 +1023,7 @@ const MeshSelectModal = ({
     if (models.length > 0) {
       setModelSelected(
         models
-          .map(m =>
-            scene.getObjectByProperty('name', m.targetMeshProperties.name),
-          )
+          .map(m => scene.getObjectByProperty('name', m.name))
           .filter(m => m !== undefined),
       );
     }
@@ -1103,29 +1035,17 @@ const MeshSelectModal = ({
     const names = modelSelected
       .filter(model => model.type === 'Mesh')
       .map(model => model.name);
-    const filtered = m.filter(me =>
-      names.includes(me.targetMeshProperties.name),
-    );
+    const filtered = m.filter(me => names.includes(me.name));
     // filtered + modelSelected without filtered
-    const filteredNames = filtered.map(f => f.targetMeshProperties.name);
+    const filteredNames = filtered.map(f => f.name);
     const withouts = modelSelected
       .filter(m => !filteredNames.includes(m.name))
       .map(w => {
-        return {
-          targetMeshProperties: {
-            uuid: w.uuid,
-            name: w.name,
-          },
-          effects: {
-            useVisible: false,
-            useLightMap: false,
-            useProbe: false,
-            visibleValue: false,
-            lmValue: null,
-            pValue: null,
-          },
-          expanded: true,
-        } as MeshEffect;
+        return new OptionStateMesh(
+          state,
+          { uuid: w.uuid, name: w.name },
+          w as THREE.Mesh,
+        );
       });
 
     setModels([...filtered, ...withouts]);
@@ -1173,7 +1093,7 @@ const MeshSelectModal = ({
 
       {/* Header */}
       <div className="py-1 w-full mb-2 border-b-2 flex">
-        <strong style={{ fontSize: 16 }}>메시 선택 - {state.stateName}</strong>
+        <strong style={{ fontSize: 16 }}>메시 선택 - {state.name}</strong>
         <button className="ml-auto" onClick={load}>
           최신 업로드 불러오기
         </button>
@@ -1226,13 +1146,13 @@ const MeshSelectModal = ({
 };
 
 const OptionCreateModal = () => {
-  const [modelOptions, setModelOptions] = useAtom(modelOptionAtom);
+  const [mcOptions, setMcOptions] = useAtom(modelOptionClassAtom);
   const [name, setName] = useState<string>('');
   const { closeModal } = useModal();
   const inputRef = useRef<HTMLInputElement>(null);
 
   function checkNameDuplicate(n: string): boolean {
-    return modelOptions.some(model => model.name === n);
+    return mcOptions.some(model => model.name === n);
   }
 
   function confirm() {
@@ -1244,13 +1164,10 @@ const OptionCreateModal = () => {
       alert('이미 존재하는 이름입니다.');
       return;
     }
-    const newModelOption: ModelOption = {
-      id: v4(),
-      states: [],
-      name: name,
-      expanded: false,
-    };
-    setModelOptions(prev => [...prev, newModelOption]);
+
+    const newModelOption = new ModelOption();
+    newModelOption.name = name;
+    setMcOptions(prev => [...prev, newModelOption]);
     closeModal();
   }
 

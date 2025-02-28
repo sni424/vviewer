@@ -533,13 +533,6 @@ const GeneralSceneInfo = () => {
   const { scene } = threeExports;
   const totals = groupInfo(scene);
 
-  useEffect(() => {
-    const objects = selecteds.map(uuid =>
-      scene.getObjectByProperty('uuid', uuid),
-    );
-    console.log(objects);
-  }, [selecteds]);
-
   return (
     <>
       <section style={{ marginTop: 16 }}>
