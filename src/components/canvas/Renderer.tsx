@@ -280,6 +280,13 @@ function Renderer() {
   const setCameraAtom = useSetAtom(cameraMatrixAtom);
 
   useEffect(() => {
+    scene.addEventListener('childadded', event => {
+      // Scene 에 Mesh 추가 시 윈도우 전체에 이벤트 발생.
+      if (event.child.layers.isEnabled(Layer.Model)) {
+        console.log('Added New Child Mesh on Scene');
+        window.dispatchEvent(new CustomEvent('scene-added'));
+      }
+    });
     setThreeExportsAtom(threeExports);
     camera.position.set(1, 1, 1);
     const mat = camera.matrix.clone();

@@ -1,4 +1,5 @@
 import { v4 } from 'uuid';
+import { threes } from '../atomUtils.ts';
 import { Effects, ModelOptionState } from '../ModelOptionObject.ts';
 import * as THREE from '../VTHREE.ts';
 import ModelOption from './ModelOption.ts';
@@ -9,7 +10,7 @@ export default class OptionState {
   private _name: string;
   private _effects: OptionStateMesh[] = [];
   private _expanded: boolean = true;
-  private _parent: ModelOption;
+  private readonly _parent: ModelOption;
 
   constructor(parent: ModelOption, name: string = 'New State') {
     this._parent = parent;
@@ -72,9 +73,11 @@ export default class OptionState {
       {};
     e.forEach(effect => {
       const mesh = effect.mesh;
-      const effects = effect.effect;
+      if (mesh) {
+        const effects = effect.effect;
 
-      result[mesh.name] = { mesh, effects };
+        result[mesh.name] = { mesh, effects };
+      }
     });
 
     return result;
@@ -98,10 +101,83 @@ export default class OptionState {
   }
 
   fromJSON(state: ModelOptionState) {
+    const three = threes();
+    if (!three) {
+      console.warn('아직 THREE 객체가 초기화 되지 않았음');
+    }
     this._id = state.id;
     this.name = state.stateName;
     this.expanded = state.expanded;
-    // this.effects = state.meshEffects.map(effect => new OptionStateMesh(this, ))
+    this.effects = state.meshEffects.map(effect => {
+      let mesh: THREE.Mesh | null = null;
+
+      if (three) {
+        const { scene } = three;
+        const object = scene
+          .getObjectsByProperty('name', effect.targetMeshProperties.name)
+          .find(m => m.type === 'Mesh');
+        mesh = object as THREE.Mesh;
+      }
+      return new OptionStateMesh(
+        this,
+        effect.targetMeshProperties,
+        mesh,
+      ).fromJSON(effect);
+    });
     return this;
+  }
+
+  reload() {
+    const three = threes();
+
+    if (!three) {
+      console.error(
+        'OptionState.reload() : 아직 Three.js 객체가 로드되지 않음',
+      );
+      return;
+    }
+
+    const { scene } = three;
+    const effects = this.effects;
+
+    const noMeshEffects = effects.filter(effect => {
+      return effect.mesh === null;
+    });
+
+    const effectsToLoad = noMeshEffects.length;
+    let loadedEffects = 0;
+    const notLoadedMeshes: string[] = [];
+    if (effectsToLoad === 0) {
+      console.log(`OptionState.reload() - ${this._id} : 로드할 Effect 없음`);
+      return;
+    }
+
+    console.log(
+      `OptionState.reload() - ${this._id} -> 로드할 effect 갯수 : `,
+      effectsToLoad,
+    );
+
+    noMeshEffects.forEach(effect => {
+      const property = effect.meshProperty;
+      const object = scene
+        .getObjectsByProperty('name', property.name)
+        .find(m => m.type === 'Mesh');
+      if (object) {
+        effect.mesh = object as THREE.Mesh;
+        loadedEffects++;
+      } else {
+        notLoadedMeshes.push(property.name);
+      }
+    });
+
+    console.log(
+      `OptionState.reload() - ${this._id} : ${effectsToLoad} 개 중 ${loadedEffects}개 로드 됨`,
+    );
+    if (notLoadedMeshes.length > 0) {
+      console.log(
+        `OptionState.reload() - ${this._id} 로드 되지 않은 메시 목록`,
+        notLoadedMeshes,
+      );
+    }
   }
 }

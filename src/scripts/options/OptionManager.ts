@@ -1,3 +1,7 @@
 export default class OptionManager {
-  constructor() {}
+  static instance: OptionManager;
+
+  constructor() {
+    OptionManager.instance = this;
+  }
 }

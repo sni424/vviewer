@@ -1,87 +1,125 @@
 import { v4 } from 'uuid';
-import { ModelOptionObject } from '../ModelOptionObject.ts';
+import { Effects, ModelOptionObject } from '../ModelOptionObject.ts';
+import * as THREE from '../VTHREE.ts';
 import OptionState from './OptionState.ts';
 
 class ModelOption {
-  private id: string = v4();
-  private states: OptionState[] = [];
-  private name: string = 'New Option';
-  private expanded: boolean = true;
+  private _id: string = v4();
+  private _states: OptionState[] = [];
+  private _name: string = 'New Option';
+  private _expanded: boolean = true;
 
-  constructor() {}
-
-  getID() {
-    return this.id;
+  constructor() {
+    window.addEventListener('scene-added', () => {
+      this.reload();
+    });
   }
 
-  getStates() {
-    return this.states;
+  get id() {
+    return this._id;
   }
 
-  setStates(states: OptionState[]) {
-    this.states = states;
+  get states() {
+    return this._states;
+  }
+
+  set states(states: OptionState[]) {
+    this._states = states;
+  }
+
+  getStateById(id: string) {
+    return this._states.find(state => state.id === id);
   }
 
   addState(state: OptionState) {
-    this.states.push(state);
+    if (!this._states.some(s => s.id === state.id)) {
+      this._states.push(state);
+    }
   }
 
   addStates(states: OptionState[]) {
-    this.states.push(...states);
+    const newStates = states.filter(
+      state => !this._states.some(s => s.id === state.id),
+    );
+    this._states.push(...newStates);
   }
 
-  removeState(state: OptionState) {
-    const index = this.states.findIndex((v: OptionState) => v.id === state.id);
-    if (index >= 0) {
-      this.states.splice(index, 1);
+  updateState(state: OptionState) {
+    const idx = this._states.findIndex(s => s.id === state.id);
+    if (idx !== -1) {
+      this._states[idx] = state;
     } else {
       console.warn('No state with id : ' + state.id);
     }
   }
 
+  removeState(state: OptionState) {
+    this._states = this._states.filter(s => s.id !== state.id);
+  }
+
   resetState() {
-    this.states = [];
+    this._states = [];
   }
 
-  getName() {
-    return this.name;
+  get name() {
+    return this._name;
   }
 
-  setName(name: string) {
-    this.name = name;
+  set name(name: string) {
+    this._name = name;
   }
 
-  isExpanded() {
-    return this.expanded;
+  get expanded() {
+    return this._expanded;
   }
 
-  setExpanded(expanded: boolean) {
-    this.expanded = expanded;
+  set expanded(expanded: boolean) {
+    this._expanded = expanded;
+  }
+
+  arrangeEffects() {
+    return this._states.reduce(
+      (acc, state) => {
+        acc[state.id] = state.arrangeEffects();
+        return acc;
+      },
+      {} as {
+        [key: string]: {
+          [key: string]: { mesh: THREE.Mesh; effects: Effects };
+        };
+      },
+    );
   }
 
   copy() {
     const newOption = new ModelOption();
-    newOption.states = this.states.map(state => state.copy());
+    newOption._states = this._states.map(state => state.copy());
     return newOption;
   }
 
   toJSON(): ModelOptionObject {
     return {
       id: this.id,
-      states: this.states.map(state => state.toJSON()),
-      name: this.name,
-      expanded: this.expanded,
+      states: this._states.map(state => state.toJSON()),
+      name: this._name,
+      expanded: this._expanded,
     };
   }
 
   fromJSON(json: ModelOptionObject) {
-    this.id = json.id;
-    this.name = json.name;
-    this.states = json.states.map(state =>
+    this._id = json.id;
+    this._name = json.name;
+    this._states = json.states.map(state =>
       new OptionState(this).fromJSON(state),
     );
-    this.expanded = json.expanded;
+    this._expanded = json.expanded;
     return this;
+  }
+
+  reload() {
+    console.log('reloading');
+    // Scene에 메시 로드 전에 클래스 생성 시 안될 수 있음
+    this._states.forEach(state => state.reload());
   }
 }
 

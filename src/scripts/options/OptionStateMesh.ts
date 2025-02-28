@@ -3,7 +3,8 @@ import * as THREE from '../VTHREE.ts';
 import OptionState from './OptionState.ts';
 
 export default class OptionStateMesh {
-  private readonly _targetMesh: THREE.Mesh;
+  private readonly _targetMeshProperties: { name: string; uuid: string };
+  private _targetMesh: THREE.Mesh | null = null;
   private _expanded: boolean = true;
   private _optionEffect: Effects = {
     useVisible: false,
@@ -13,21 +14,44 @@ export default class OptionStateMesh {
   };
   private readonly _parent: OptionState;
 
-  constructor(parent: OptionState, targetMesh: THREE.Mesh) {
+  constructor(
+    parent: OptionState,
+    targetMeshInfo: { name: string; uuid: string },
+    targetMesh?: THREE.Mesh | null,
+  ) {
     this._parent = parent;
-    this._targetMesh = targetMesh;
+    this._targetMeshProperties = targetMeshInfo;
+    if (targetMesh) {
+      this._targetMesh = targetMesh;
+    }
+  }
+
+  get meshProperty() {
+    return this._targetMeshProperties;
   }
 
   get parent(): OptionState {
     return this._parent;
   }
 
-  get mesh() {
-    return this._targetMesh;
+  get mesh(): THREE.Mesh | null {
+    if (this._targetMesh) {
+      return this._targetMesh;
+    } else {
+      return null;
+    }
+  }
+
+  set mesh(mesh: THREE.Mesh) {
+    this._targetMesh = mesh;
   }
 
   get name() {
-    return this._targetMesh.name;
+    if (this._targetMesh) {
+      return this._targetMesh.name;
+    } else {
+      return this.meshProperty.name;
+    }
   }
 
   get useVisible() {
@@ -58,7 +82,7 @@ export default class OptionStateMesh {
     return this._optionEffect.lmValue;
   }
 
-  set lmValue(value: string) {
+  set lmValue(value: string | null) {
     this._optionEffect.lmValue = value;
   }
 
@@ -79,19 +103,26 @@ export default class OptionStateMesh {
   }
 
   copy() {
-    const newState = new OptionStateMesh(this.parent, this.mesh);
+    const newState = new OptionStateMesh(
+      this.parent,
+      this._targetMeshProperties,
+      this.mesh,
+    );
     newState.effect = this.effect;
     return newState;
   }
 
   toJSON(): MeshEffect {
     return {
-      targetMeshProperties: {
-        uuid: this.mesh.uuid,
-        name: this.name,
-      },
+      targetMeshProperties: this._targetMeshProperties,
       effects: this.effect,
       expanded: this.expanded,
     };
+  }
+
+  fromJSON(effect: MeshEffect) {
+    this.effect = effect.effects;
+    this.expanded = effect.expanded;
+    return this;
   }
 }
