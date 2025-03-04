@@ -160,6 +160,48 @@ export const modalAtom = atom<
 
 export const onModalCloseAtom = atom<() => void>();
 
+export const ToastAtom = atom<{ on: boolean; message: string }>({
+  on: false,
+  message: '',
+});
+
+export const useToast = () => {
+  const [toast, setToast] = useAtom(ToastAtom);
+
+  return {
+    openToast: (
+      message: string,
+      {
+        duration,
+        autoClose,
+        override,
+      }: { duration?: number; autoClose?: boolean; override?: boolean } = {
+        duration: 1,
+        autoClose: true,
+        override: false,
+      },
+    ) => {
+      if (toast.on && !override) {
+        console.warn('Toast is Progressing, abort');
+        return false;
+      }
+      const time = duration || 1;
+      setToast({ on: true, message });
+
+      if (autoClose) {
+        setTimeout(() => {
+          setToast(pre => ({ ...pre, on: false }));
+        }, time * 1000);
+      }
+
+      return true;
+    },
+    closeToast: () => {
+      setToast(pre => ({ ...pre, on: false }));
+    },
+  };
+};
+
 export const useModal = () => {
   const setModal = useSetAtom(modalAtom);
   const setOnModalClose = useSetAtom(onModalCloseAtom);
@@ -277,6 +319,7 @@ export const panelTabAtom = atom<Tab>('scene');
 export const treeSearchAtom = atom<string | undefined>();
 
 export const modelOptionClassAtom = atom<ModelOption[]>([]);
+export const optionSelectedAtom = atom<{ [key: string]: string }>({});
 
 //카메라 정보값
 export const lastCameraInfoAtom = atom<{

@@ -5,6 +5,7 @@ export type ModelOptionObject = {
   states: ModelOptionState[];
   name: string;
   expanded: boolean;
+  defaultSelected?: string;
 };
 
 export type ModelOptionState = {
@@ -32,7 +33,7 @@ export type Effects = {
 
 export type ModelOptionSelectedState = {
   [key: string]: ModelOptionState;
-}
+};
 
 export const ModelOptionSelectedStateAtom = atom<ModelOptionSelectedState>({});
 

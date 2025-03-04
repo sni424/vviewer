@@ -8,6 +8,7 @@ class ModelOption {
   private _states: OptionState[] = [];
   private _name: string = 'New Option';
   private _expanded: boolean = true;
+  private _defaultSelected: string | null = null;
 
   constructor() {
     window.addEventListener('scene-added', () => {
@@ -77,6 +78,14 @@ class ModelOption {
     this._expanded = expanded;
   }
 
+  get defaultSelected() {
+    return this._defaultSelected;
+  }
+
+  set defaultSelected(selected: string) {
+    this._defaultSelected = selected;
+  }
+
   arrangeEffects() {
     return this._states.reduce(
       (acc, state) => {
@@ -103,6 +112,7 @@ class ModelOption {
       states: this._states.map(state => state.toJSON()),
       name: this._name,
       expanded: this._expanded,
+      defaultSelected: this._states[0].id,
     };
   }
 
@@ -113,6 +123,7 @@ class ModelOption {
       new OptionState(this).fromJSON(state),
     );
     this._expanded = json.expanded;
+    this._defaultSelected = json.defaultSelected ?? this._states[0].id;
     return this;
   }
 

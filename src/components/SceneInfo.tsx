@@ -41,6 +41,7 @@ import {
   useBenchmark,
   useEnvParams,
   useModal,
+  useToast,
 } from '../scripts/atoms';
 import { loadPostProcessAndSet, uploadJson } from '../scripts/atomUtils.ts';
 import ReflectionProbe from '../scripts/ReflectionProbe.ts';
@@ -171,6 +172,7 @@ const GeneralButtons = () => {
   const threeExports = useAtomValue(threeExportsAtom);
   const [hasSaved, setHasSaved] = useState(false);
   const { openModal, closeModal } = useModal();
+  const { openToast, closeToast } = useToast();
   const navigate = useNavigate();
   const [probes, setProbes] = useAtom<ReflectionProbe[]>(ProbeAtom);
   const [dpcMode, setDPCMode] = useAtom(DPCModeAtom);
@@ -432,10 +434,12 @@ const GeneralButtons = () => {
           }
 
           const before = onBeforeSceneExport();
+          openToast('라이트맵 업로드 중...', { autoClose: false });
           Promise.all([
             uploadExrLightmap(threeExports.scene),
             uploadGainmap(threeExports.scene),
           ]).then(() => {
+            openToast('GLB 업로드 중...', { autoClose: false, override: true });
             new VGLTFExporter()
               .parseAsync(threeExports.scene, { binary: true })
               .then(glbArr => {
@@ -475,12 +479,14 @@ const GeneralButtons = () => {
                   ]).then(() => {
                     alert('업로드 완료');
                     onAfterSceneExport(before);
+                    closeToast();
                   });
                 } else {
                   console.error(
                     'VGLTFExporter GLB 처리 안됨, "binary: true" option 확인',
                   );
                   alert('VGLTFExporter 문제 발생함, 로그 확인');
+                  closeToast();
                 }
               });
           });
@@ -499,16 +505,21 @@ const GeneralButtons = () => {
       </button>
       <button
         onClick={() => {
-          loadLatest({ threeExports, addBenchmark, dpOn: dp.on }).catch(e => {
+          openToast('업로드한 씬 불러오는 중..', { autoClose: false });
+          loadLatest({
+            threeExports,
+            addBenchmark,
+            dpOn: dp.on,
+            closeToast,
+          }).catch(e => {
             console.error(e);
             alert('최신 업로드 불러오기 실패');
+            closeToast();
           });
         }}
       >
         업로드한 씬 불러오기
       </button>
-      <button>알파룸 세팅 업로드</button>
-      <button>알파룸 세팅 불러오기</button>
       <button
         onClick={() => {
           handleResetSettings();

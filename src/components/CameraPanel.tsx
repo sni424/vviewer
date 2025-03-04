@@ -445,6 +445,7 @@ const CameraPanel = () => {
             cursor: 'pointer',
             border: '1px solid gray',
             padding: '4px 8px',
+            backgroundColor: 'lightgray',
           }}
           onClick={() => {
             setCameraPanel(true);

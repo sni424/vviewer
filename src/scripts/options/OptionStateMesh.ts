@@ -102,13 +102,13 @@ export default class OptionStateMesh {
     this._optionEffect = value;
   }
 
-  copy() {
+  copy(newParent?: OptionState) {
     const newState = new OptionStateMesh(
-      this.parent,
+      newParent ?? this.parent,
       this._targetMeshProperties,
       this.mesh,
     );
-    newState.effect = this.effect;
+    newState.effect = { ...this.effect };
     return newState;
   }
 

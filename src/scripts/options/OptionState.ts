@@ -85,7 +85,7 @@ export default class OptionState {
 
   copy() {
     const state = new OptionState(this.parent);
-    state.effects = this.effects.map(effect => effect.copy());
+    state.effects = this.effects.map(effect => effect.copy(state));
     return state;
   }
 

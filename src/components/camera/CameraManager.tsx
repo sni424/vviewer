@@ -182,6 +182,11 @@ const CameraManager: React.FC<UnifiedCameraControlsProps> = ({
         .multiplyScalar(cameraSetting.moveSpeed * scale * deltaTime);
       camera.position.add(movement);
       camera.updateProjectionMatrix();
+      window.dispatchEvent(
+        new CustomEvent('camera-move', {
+          detail: { position: camera.position },
+        }),
+      );
       updateCameraInfo();
     }
 
