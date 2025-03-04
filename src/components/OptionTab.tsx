@@ -54,80 +54,6 @@ const OptionConfigTab = () => {
       });
   }
 
-  function uploadAlphaRoomOptionJSON() {
-    uploadJson(
-      'optionAlpha.json',
-      mcOptions.map(o => o.toJSON()),
-    )
-      .then(res => res.json())
-      .then(res => {
-        if (res?.success === true) {
-          alert('업로드 완료');
-        } else {
-          throw res;
-        }
-      })
-      .catch(err => {
-        console.log(err);
-        alert('업로드 실패');
-      });
-  }
-
-  async function loadAlphaRoomOption() {
-    openToast('알파룸 옵션 불러오는 중..', { autoClose: false });
-    setMcOptions([]);
-    const options = (await loadOption(
-      'optionAlpha.json',
-    )) as ModelOptionObject[];
-    const keys = Object.keys(lightMaps);
-    const keysToLoad: string[] = [];
-    options.forEach(option => {
-      const states = option.states;
-      states.forEach(state => {
-        const meshEffects = state.meshEffects;
-        meshEffects.forEach(effect => {
-          const lm = effect.effects.lmValue;
-          if (lm && !keys.includes(lm)) {
-            keysToLoad.push(lm);
-          }
-        });
-      });
-    });
-
-    if (keysToLoad.length > 0) {
-      const loader = getVKTX2Loader();
-      const map = new Map<string, THREE.Texture>();
-      await Promise.all(
-        keysToLoad.map(async key => {
-          const texture = await loader.loadAsync(key);
-          texture.minFilter = THREE.LinearMipmapLinearFilter;
-          texture.magFilter = THREE.LinearFilter;
-          texture.channel = 1;
-          texture.vUserData.mimeType = 'image/ktx2';
-          map.set(decodeURI(key), texture);
-        }),
-      );
-
-      const obj = await createLightmapCache(map);
-
-      setLightMaps(pre => {
-        return { ...pre, ...obj };
-      });
-    }
-    const classes = options.map(option => {
-      return new ModelOption().fromJSON(option);
-    });
-
-    setMcOptions(classes);
-    const optionSelected = {};
-    classes.forEach(option => {
-      optionSelected[option.id] = option.defaultSelected;
-    });
-
-    setOptionSelected(optionSelected);
-    closeToast();
-  }
-
   async function loadOptions() {
     openToast('옵션 불러오는 중..', { autoClose: false });
     setMcOptions([]);
@@ -172,6 +98,13 @@ const OptionConfigTab = () => {
     });
 
     setMcOptions(classes);
+
+    const optionSelected = {};
+    classes.forEach(option => {
+      optionSelected[option.id] = option.defaultSelected;
+    });
+
+    setOptionSelected(optionSelected);
     closeToast();
   }
 
@@ -184,8 +117,6 @@ const OptionConfigTab = () => {
         </button>
         <button onClick={uploadOptionJSON}>업로드</button>
         <button onClick={loadOptions}>불러오기</button>
-        <button onClick={uploadAlphaRoomOptionJSON}>알파룸 업로드</button>
-        <button onClick={loadAlphaRoomOption}>알파룸 불러오기</button>
       </div>
       <div className="pt-2">
         {mcOptions.map((modelOption, idx) => (
@@ -384,13 +315,14 @@ const OptionPreview = ({ option }: { option: ModelOption }) => {
     const timeLine = gsap.timeline();
 
     if (hasAnimation) {
-      if (visibleAnimation) timeLine.add(visibleAnimation);
-      if (lightMapAnimation) timeLine.add(lightMapAnimation);
+      if (visibleAnimation) timeLine.add(visibleAnimation, 0);
+      if (lightMapAnimation) timeLine.add(lightMapAnimation, 0);
 
       openToast('애니메이션 실행됨', {
         duration: animationDuration,
         autoClose: true,
       });
+
       timeLine.play(0).then(() => {
         processAfter();
       });

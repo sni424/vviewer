@@ -1617,6 +1617,7 @@ export function changeMeshLightMapWithTransition(
     {
       t: 1,
       duration: transitionDelay,
+      ease: 'none',
       onStart() {
         mesh.material = cloned;
       },
@@ -1636,4 +1637,24 @@ export function changeMeshLightMapWithTransition(
       },
     },
   );
+}
+
+function getRandomColorWithComplementary() {
+  // 1. 랜덤한 RGB 색상 생성
+  const r = Math.floor(Math.random() * 256);
+  const g = Math.floor(Math.random() * 256);
+  const b = Math.floor(Math.random() * 256);
+
+  // 2. RGB를 HEX로 변환
+  const randomColor = `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+
+  // 3. 보색 계산
+  const compR = 255 - r;
+  const compG = 255 - g;
+  const compB = 255 - b;
+
+  // 4. 보색을 HEX로 변환
+  const complementaryColor = `#${compR.toString(16).padStart(2, '0')}${compG.toString(16).padStart(2, '0')}${compB.toString(16).padStart(2, '0')}`;
+
+  return { randomColor, complementaryColor };
 }
