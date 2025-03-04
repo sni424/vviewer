@@ -1,3 +1,4 @@
+import gsap from 'gsap';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import { Dispatch, SetStateAction, useEffect, useRef, useState } from 'react';
 import { ENV } from '../Constants.ts';
@@ -6,9 +7,11 @@ import {
   lightMapAtom,
   modelOptionClassAtom,
   ModelSelectorAtom,
+  optionSelectedAtom,
   ProbeAtom,
   selectedAtom,
   useModal,
+  useToast,
 } from '../scripts/atoms.ts';
 import { loadOption, threes, uploadJson } from '../scripts/atomUtils.ts';
 import { createLightmapCache } from '../scripts/loaders/VGLTFLoader.ts';
@@ -27,8 +30,10 @@ import { SelectableNodes } from './DPC/DPCModelSelector.tsx';
 
 const OptionConfigTab = () => {
   const [mcOptions, setMcOptions] = useAtom(modelOptionClassAtom);
+  const setOptionSelected = useSetAtom(optionSelectedAtom);
   const [lightMaps, setLightMaps] = useAtom(lightMapAtom);
   const { openModal } = useModal();
+  const { openToast, closeToast } = useToast();
 
   function uploadOptionJSON() {
     uploadJson(
@@ -69,6 +74,7 @@ const OptionConfigTab = () => {
   }
 
   async function loadAlphaRoomOption() {
+    openToast('알파룸 옵션 불러오는 중..', { autoClose: false });
     setMcOptions([]);
     const options = (await loadOption(
       'optionAlpha.json',
@@ -113,10 +119,17 @@ const OptionConfigTab = () => {
     });
 
     setMcOptions(classes);
+    const optionSelected = {};
+    classes.forEach(option => {
+      optionSelected[option.id] = option.defaultSelected;
+    });
+
+    setOptionSelected(optionSelected);
+    closeToast();
   }
 
   async function loadOptions() {
-    console.time('loadOptions');
+    openToast('옵션 불러오는 중..', { autoClose: false });
     setMcOptions([]);
     const options = (await loadOption()) as ModelOptionObject[];
     const keys = Object.keys(lightMaps);
@@ -159,12 +172,13 @@ const OptionConfigTab = () => {
     });
 
     setMcOptions(classes);
-    console.timeEnd('loadOptions');
+    closeToast();
   }
 
   return (
     <>
       <div className="flex gap-x-1 items-center">
+        <OptionManager />
         <button onClick={() => openModal(<OptionCreateModal />)}>
           옵션 생성하기
         </button>
@@ -182,6 +196,45 @@ const OptionConfigTab = () => {
   );
 };
 
+const OptionManager = () => {
+  const mcOptions = useAtomValue(modelOptionClassAtom);
+  const selected = useAtomValue(optionSelectedAtom);
+
+  /**
+   * 1. 하나의 옵션을 토글할 때 다른 옵션들의 상태를 체크
+   * 2. 다른 옵션들의 토글 여부에 있는 겹쳐지는 메시를 체크
+   * 3. 겹쳐지는 메시를 정리할 때 아래의 방식을 따라갈 것
+   *    1) Visible 의 경우 모든 옵션에 대해 모두 visible On 일 때 최종 Visible = true / 그게 아니라면 Off
+   *    2) LightMap 의 경우 현재 적용될 옵션에 맞춰서 LightMap On ? // TODO check 필요
+   * **/
+  function analyze() {
+    const effects = mcOptions.map(modelOption => {
+      return {
+        id: modelOption.id,
+        effect: modelOption.arrangeEffects(),
+      };
+    });
+
+    const result: { [key: string]: { visible: boolean } } = {};
+
+    effects.forEach(effect => {
+      const selectedId = selected[effect.id];
+      const targetEffect = effect.effect[selectedId];
+      Object.entries(targetEffect).forEach(([key, value]) => {
+        const originalValue: { visible: boolean } | undefined = result[key];
+        if (originalValue) {
+          originalValue.visible =
+            originalValue.visible && value.effects.visibleValue;
+        } else {
+          result[key] = { visible: value.effects.visibleValue };
+        }
+      });
+    });
+  }
+
+  return <button onClick={analyze}>분석 사항 로그</button>;
+};
+
 const OptionPreviewTab = () => {
   const mcOptions = useAtomValue(modelOptionClassAtom);
 
@@ -196,15 +249,50 @@ const OptionPreviewTab = () => {
 
 const OptionPreview = ({ option }: { option: ModelOption }) => {
   const threeExports = threes();
-  const [processedState, setProcessedState] = useState<string | null>(null);
-  const [isProcessing, setIsProcessing] = useState(false);
   if (!threeExports) {
     return null;
   }
+  const mcOptions = useAtomValue(modelOptionClassAtom);
+  const [processedState, setProcessedState] = useState<string | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [optionSelected, setOptionSelected] = useAtom(optionSelectedAtom);
+  const { openToast } = useToast();
 
   const { scene } = threeExports;
   const probes = useAtomValue(ProbeAtom);
   const setSelecteds = useSetAtom(selectedAtom);
+
+  function analyze(nowSelected: { [key: string]: string }) {
+    const effects = mcOptions.map(modelOption => {
+      return {
+        id: modelOption.id,
+        effect: modelOption.arrangeEffects(),
+      };
+    });
+
+    console.log(effects, nowSelected);
+
+    const result: { [key: string]: { visible: boolean } } = {};
+
+    effects.forEach(effect => {
+      const selectedId = nowSelected[effect.id];
+      if (selectedId) {
+        const targetEffect = effect.effect[selectedId];
+        Object.entries(targetEffect).forEach(([key, value]) => {
+          const originalValue: { visible: boolean } | undefined = result[key];
+          if (originalValue) {
+            originalValue.visible =
+              originalValue.visible && value.effects.visibleValue;
+          } else {
+            result[key] = { visible: value.effects.visibleValue };
+          }
+        });
+      } else {
+      }
+    });
+
+    return result;
+  }
 
   function processState(state: OptionState) {
     if (isProcessing) {
@@ -212,7 +300,10 @@ const OptionPreview = ({ option }: { option: ModelOption }) => {
       return;
     }
     setSelecteds([]);
-    const animationDuration = 1; // 1s
+    const nowSelected = { ...optionSelected };
+    nowSelected[option.id] = state.id;
+    setOptionSelected(nowSelected);
+    const animationDuration = 0.8; // 1s
     setProcessedState(state.id);
     setIsProcessing(true);
     const meshEffects = state.effects;
@@ -220,7 +311,8 @@ const OptionPreview = ({ option }: { option: ModelOption }) => {
     let visibleAnimation: gsap.core.Tween | null = null;
     let lightMapAnimation: gsap.core.Tween | null = null;
     const probesToRender: string[] = [];
-    meshEffects.map(meshEffect => {
+    const anlayzed = analyze(nowSelected);
+    meshEffects.forEach(meshEffect => {
       const object = scene
         .getObjectsByProperty('name', meshEffect.name)
         .find(o => o.type === 'Mesh');
@@ -230,11 +322,14 @@ const OptionPreview = ({ option }: { option: ModelOption }) => {
         const mat = mesh.material as THREE.MeshStandardMaterial;
         // Visible Control
         if (effects.useVisible) {
-          visibleAnimation = changeMeshVisibleWithTransition(
-            mesh,
-            animationDuration,
-            effects.visibleValue,
-          );
+          const isThisMeshResultVisible = anlayzed[mesh.name].visible;
+          if (mesh.visible !== isThisMeshResultVisible) {
+            visibleAnimation = changeMeshVisibleWithTransition(
+              mesh,
+              animationDuration,
+              isThisMeshResultVisible,
+            );
+          }
         }
 
         // LightMap control
@@ -250,6 +345,7 @@ const OptionPreview = ({ option }: { option: ModelOption }) => {
           }
 
           if (!target) {
+            console.log('lightMap Setting null : ', mat, mesh);
             mat.lightMap = null;
           } else if (keys.includes(target)) {
             const { texture } = lightMapCache[target];
@@ -285,13 +381,19 @@ const OptionPreview = ({ option }: { option: ModelOption }) => {
 
     hasAnimation = visibleAnimation !== null || lightMapAnimation !== null;
 
-    if (hasAnimation) {
-      if (visibleAnimation) (visibleAnimation as gsap.core.Tween).play(0);
-      if (lightMapAnimation) (lightMapAnimation as gsap.core.Tween).play(0);
+    const timeLine = gsap.timeline();
 
-      setTimeout(() => {
+    if (hasAnimation) {
+      if (visibleAnimation) timeLine.add(visibleAnimation);
+      if (lightMapAnimation) timeLine.add(lightMapAnimation);
+
+      openToast('애니메이션 실행됨', {
+        duration: animationDuration,
+        autoClose: true,
+      });
+      timeLine.play(0).then(() => {
         processAfter();
-      }, animationDuration * 1000);
+      });
     } else {
       processAfter();
     }
@@ -314,7 +416,9 @@ const OptionPreview = ({ option }: { option: ModelOption }) => {
               className="rounded-none w-full"
               style={{ width: `calc(100%/${option.states.length})` }}
               onClick={() => processState(state)}
-              disabled={processedState === state.id}
+              disabled={
+                optionSelected && optionSelected[option.id] === state.id
+              }
             >
               {state.name}
             </button>
@@ -373,6 +477,8 @@ const Option = ({ modelOption }: { modelOption: ModelOption }) => {
       t[idx].states = states;
       return t;
     });
+
+    console.log(modelOption);
   }, [states]);
 
   useEffect(() => {
@@ -394,7 +500,8 @@ const Option = ({ modelOption }: { modelOption: ModelOption }) => {
   }
 
   function createNewState() {
-    setStates(pre => [...pre, new OptionState(modelOption)]);
+    const newState = new OptionState(modelOption);
+    setStates(pre => [...pre, newState]);
     if (!modelOption.expanded) {
       toggleOpen(true);
     }

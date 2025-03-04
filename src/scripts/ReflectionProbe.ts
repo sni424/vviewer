@@ -946,10 +946,6 @@ export default class ReflectionProbe {
 
   setUseCustomTexture(useCustomTexture: boolean) {
     this.useCustomTexture = useCustomTexture;
-    if (useCustomTexture) {
-    } else {
-      this.renderCamera();
-    }
   }
 }
 
@@ -1151,7 +1147,6 @@ function useBoxProjectedEnvMap(
   envMapSize: THREE.Vector3,
   isCustomTexture: boolean = false,
 ) {
-  console.log('isCustomTexture: ', isCustomTexture);
   // defines
   if (!shader.defines) {
     shader.defines = {};

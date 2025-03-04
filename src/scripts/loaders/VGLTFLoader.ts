@@ -183,8 +183,6 @@ export async function createLightmapCache(lmMap: Map<string, THREE.Texture>) {
       glCanvas.toBlob(resolve),
     )) as Blob;
 
-    console.log('blob', blob);
-
     toLightMapObj[key] = {
       image: blob,
       texture: t,
@@ -192,6 +190,7 @@ export async function createLightmapCache(lmMap: Map<string, THREE.Texture>) {
   });
 
   await Promise.all(ps);
+  console.log(ps.length + '개의 라이트맵 캐시 생성 완료');
 
   newGL.dispose();
   mat.dispose();

@@ -14,6 +14,7 @@ import {
   setAtomValue,
   threeExportsAtom,
   useModal,
+  useToast,
 } from '../scripts/atoms.ts';
 import { loadProbes, threes, uploadJson } from '../scripts/atomUtils.ts';
 import ReflectionProbe, {
@@ -48,56 +49,11 @@ const uploadProbes = async () => {
     });
 };
 
-const importProbes = async () => {
-  const threeExports = threes();
-
-  if (!threeExports) {
-    return;
-  }
-
-  const { scene, gl, camera } = threeExports;
-
-  loadProbes().then(async res => {
-    if (!ReflectionProbe.isProbeJson(res)) {
-      alert('Probe 불러오기 실패');
-      console.warn(
-        'probe.json FromJSON 을 할 수 없음 => ReflectionProbe.isProbeJson === false',
-      );
-      return;
-    }
-    const probeJsons = res as ReflectionProbeJSON[];
-    const probes = await Promise.all(
-      probeJsons.map(probeJson => {
-        return new ReflectionProbe(gl, scene, camera).fromJSON(probeJson);
-      }),
-    );
-
-    probes.forEach(probe => {
-      probe.setAutoUpdate(true);
-      probe.addToScene(true);
-      // const texture = probe.getTexture(true);
-      const texture = probe.getRenderTargetTexture();
-      scene.traverse(node => {
-        if (node instanceof THREE.Mesh) {
-          const n = node as THREE.Mesh;
-          const material = n.material as THREE.MeshStandardMaterial;
-          if (material.vUserData.probeId === probe.getId()) {
-            material.envMap = texture;
-            material.onBeforeCompile = probe.materialOnBeforeCompileFunc();
-            material.needsUpdate = true;
-          }
-        }
-      });
-    });
-
-    setAtomValue(ProbeAtom, probes);
-  });
-};
-
 const ProbeInfo = () => {
   const threeExports = useAtomValue(threeExportsAtom);
   const [probes, setProbes] = useAtom<ReflectionProbe[]>(ProbeAtom);
   const [probeEditMode, setProbeEditMode] = useState<boolean>(false);
+  const { openToast, closeToast } = useToast();
   const [lastCamera, setLastCamera] = useState<{
     matrix: THREE.Matrix4;
     fov: number;
@@ -108,6 +64,53 @@ const ProbeInfo = () => {
   const globalPlane = new THREE.Plane(new THREE.Vector3(0, -1, 0), 5);
   const { scene, gl, camera } = threeExports;
   const { openModal } = useModal();
+
+  const importProbes = async () => {
+    const threeExports = threes();
+
+    if (!threeExports) {
+      return;
+    }
+    const { scene, gl, camera } = threeExports;
+
+    openToast('프로브 로딩중..', { autoClose: false });
+    loadProbes().then(async res => {
+      if (!ReflectionProbe.isProbeJson(res)) {
+        alert('Probe 불러오기 실패');
+        console.warn(
+          'probe.json FromJSON 을 할 수 없음 => ReflectionProbe.isProbeJson === false',
+        );
+        return;
+      }
+      const probeJsons = res as ReflectionProbeJSON[];
+      const probes = await Promise.all(
+        probeJsons.map(probeJson => {
+          return new ReflectionProbe(gl, scene, camera).fromJSON(probeJson);
+        }),
+      );
+
+      probes.forEach(probe => {
+        probe.setAutoUpdate(true);
+        probe.addToScene(true);
+        // const texture = probe.getTexture(true);
+        const texture = probe.getRenderTargetTexture();
+        scene.traverse(node => {
+          if (node instanceof THREE.Mesh) {
+            const n = node as THREE.Mesh;
+            const material = n.material as THREE.MeshStandardMaterial;
+            if (material.vUserData.probeId === probe.getId()) {
+              material.envMap = texture;
+              material.onBeforeCompile = probe.materialOnBeforeCompileFunc();
+              material.needsUpdate = true;
+            }
+          }
+        });
+      });
+
+      setAtomValue(ProbeAtom, probes);
+      closeToast();
+    });
+  };
 
   useEffect(() => {
     if (probeEditMode) {
@@ -311,7 +314,6 @@ export const ProbeComponent = ({ probe }: { probe: ReflectionProbe }) => {
   }, [autoUpdate]);
 
   useEffect(() => {
-    console.log('custom Changed : ', name, isCustom);
     probe.setUseCustomTexture(isCustom);
   }, [isCustom]);
 
@@ -337,6 +339,10 @@ export const ProbeComponent = ({ probe }: { probe: ReflectionProbe }) => {
 
     document.addEventListener('probe-rendered', event => {
       setImageData(probe.getImageData());
+    });
+
+    window.addEventListener('scene-added', () => {
+      probe.renderCamera(true);
     });
 
     return () => {

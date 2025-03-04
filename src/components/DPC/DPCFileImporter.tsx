@@ -16,6 +16,7 @@ type ImportType = { name: string; url: string; file: File; size: number };
 type GLBWithExrs = {
   glb: ImportType;
   type: 'DP' | 'BASE';
+  lightMap?: ImportType;
   dpOnTexture?: ImportType;
   dpOffTexture?: ImportType;
 };

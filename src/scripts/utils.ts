@@ -303,10 +303,12 @@ export const loadLatest = async ({
   threeExports,
   addBenchmark: _addBenchmark,
   dpOn = false,
+  closeToast,
 }: {
   threeExports: RootState;
   addBenchmark?: (key: keyof BenchMark, value?: number) => void;
   dpOn?: boolean;
+  closeToast?: () => void;
 }) => {
   const addBenchMark = _addBenchmark ?? (() => {});
   const latestUrl = ENV.latest;
@@ -418,6 +420,7 @@ export const loadLatest = async ({
     })
     .finally(() => {
       addBenchMark('end');
+      closeToast?.();
     });
 };
 
@@ -1487,6 +1490,7 @@ export function changeMeshVisibleWithTransition(
   const originalOpacity = mat.vUserData.originalOpacity ?? 1;
   const from = targetVisible ? 0.3 : originalOpacity;
   const to = targetVisible ? originalOpacity : 0;
+  const originalBlending = mat.blending;
   return gsap.to(
     {
       t: 0,
@@ -1494,21 +1498,20 @@ export function changeMeshVisibleWithTransition(
     {
       t: 1,
       duration: transitionDelay,
+      ease: 'none',
       onStart() {
         mat.transparent = true;
         mat.opacity = from;
         mesh.visible = true;
-        mat.depthWrite = true;
-        mat.alphaTest = 0.001;
+        if (!targetVisible) {
+          mat.depthWrite = false;
+          mat.depthTest = false;
+        }
         mat.needsUpdate = true;
       },
       onUpdate() {
         let progress = this.targets()[0].t;
         let targetOpacity = 0;
-        if (progress > 0.97) {
-          mat.depthWrite = targetVisible;
-          progress = 1;
-        }
         if (targetVisible) {
           targetOpacity = progress * originalOpacity;
         } else {
@@ -1523,7 +1526,9 @@ export function changeMeshVisibleWithTransition(
         mat.opacity = to;
         mesh.visible = targetVisible;
         mat.depthWrite = true;
+        mat.depthTest = true;
         mat.needsUpdate = true;
+        mat.blending = originalBlending;
       },
     },
   );
@@ -1537,6 +1542,7 @@ export function changeMeshLightMapWithTransition(
   const mat = mesh.material as THREE.MeshStandardMaterial;
   const beforeLightMap = mat.lightMap;
   if (!beforeLightMap) {
+    console.warn('No LightMap : ', mesh);
     throw new Error('No LightMap Found in Material');
   }
   const cloned = mat.clone();

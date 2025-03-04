@@ -9,6 +9,7 @@ import MeshInfoPanel from '../components/MeshInfoPanel';
 import Modal from '../components/Modal';
 import OptionPanel from '../components/OptionPanel.tsx';
 import ThePanel from '../components/ThePanel';
+import { Toast } from '../components/Toast.tsx';
 import {
   DPAtom,
   modalAtom,
@@ -229,6 +230,7 @@ const ViewerPage = () => {
       {/* <ControlPanel></ControlPanel> */}
       <Modal></Modal>
       <Loading />
+      <Toast></Toast>
     </div>
   );
 };
