@@ -10,6 +10,8 @@ import { KTX2Loader } from 'three/examples/jsm/loaders/KTX2Loader.js';
 import { ENV, Layer } from '../../Constants.ts';
 import { lightMapAtom, setAtomValue } from '../atoms.ts';
 import GainmapLoader from '../GainmapLoader.ts';
+import VMeshPhysicalMaterial from '../material/VMeshPhysicalMaterial.ts';
+import VMeshStandardMaterial from '../material/VMeshStandardMaterial.ts';
 import * as THREE from '../VTHREE.ts';
 import { getVKTX2Loader } from './VKTX2Loader.ts';
 import VTextureLoader from './VTextureLoader.ts';
@@ -78,10 +80,17 @@ export default class VGLTFLoader extends GLTFLoader {
       gltf.scene.traverseAll(async (object: THREE.Object3D) => {
         object.layers.enable(Layer.Model);
         if (object.type === 'Mesh') {
-          const mat = (object as THREE.Mesh).material as THREE.Material;
+          const mesh = object as THREE.Mesh;
+          const mat = mesh.material as THREE.Material;
           mat.vUserData.originalOpacity = mat.opacity;
           if (object.name === '프레임') {
             mat.side = THREE.DoubleSide;
+          }
+
+          if (mat.type === 'MeshStandardMaterial') {
+            mesh.material = VMeshStandardMaterial.fromThree(mat);
+          } else if (mat.type === 'MeshPhysicalMaterial') {
+            mesh.material = VMeshPhysicalMaterial.fromThree(mat);
           }
         }
         getLightmap(object, lightMapSet);

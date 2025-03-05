@@ -43,6 +43,7 @@ import {
   useToast,
 } from '../scripts/atoms';
 import { loadPostProcessAndSet, uploadJson } from '../scripts/atomUtils.ts';
+import VMeshStandardMaterial from '../scripts/material/VMeshStandardMaterial.ts';
 import ReflectionProbe from '../scripts/ReflectionProbe.ts';
 import useFilelist from '../scripts/useFilelist';
 import useStats, { StatPerSecond, VStats } from '../scripts/useStats.ts';
@@ -670,51 +671,26 @@ const LightmapImageContrastControl = () => {
     scene.traverse(o => {
       if (o.type === 'Mesh') {
         const mesh = o as THREE.Mesh;
-        const hasMaterialTemp = mesh['matTemp'] !== undefined;
-        const mat = mesh.material as THREE.MeshStandardMaterial;
+        const mat = mesh.material as VMeshStandardMaterial;
+        const shader = mat.shader;
+        shader.uniforms.useLightMapContrast = { value: lmContrastOn };
         if (lmContrastOn) {
-          mesh['matTemp'] = mat;
-          const newMat = (mat as THREE.MeshStandardMaterial).clone();
-          newMat.onBeforeCompile = shader => {
-            shader.uniforms.lightMapContrast = { value: lmContrastValue };
-
-            shader.fragmentShader = shader.fragmentShader.replace(
-              '#include <lightmap_pars_fragment>',
-              LIGHTMAP_PARS,
-            );
-
-            shader.fragmentShader = shader.fragmentShader.replace(
-              '#include <lights_fragment_maps>',
-              LightMapContrastShader,
-            );
-
-            newMat.vUserData.shader = shader;
-          };
-          mesh.material = newMat;
-          newMat.needsUpdate = true;
+          shader.uniforms.lightMapContrast.value = lmContrastValue;
         } else {
-          if (hasMaterialTemp) {
-            mesh.material = mesh['matTemp'] as THREE.MeshStandardMaterial;
-            // delete mesh['matTemp'];
-            mesh.material.needsUpdate = true;
-          }
+          shader.uniforms.lightMapContrast.value = 1;
         }
       }
     });
   }, [lmContrastOn]);
 
   useEffect(() => {
-    console.log('lMContrastValue Changed :', lmContrastValue);
     if (lmContrastOn) {
       scene.traverse(o => {
         if (o.type === 'Mesh') {
           const mesh = o as THREE.Mesh;
-          const mat = mesh.material as THREE.MeshStandardMaterial;
-          const shader = mat.vUserData.shader;
-          if (shader) {
-            shader.uniforms.lightMapContrast = { value: lmContrastValue };
-            mat.needsUpdate = true;
-          }
+          const mat = mesh.material as VMeshStandardMaterial;
+          const shader = mat.shader;
+          shader.uniforms.lightMapContrast.value = lmContrastValue;
         }
       });
     }
@@ -1550,6 +1526,7 @@ const LIGHTMAP_PARS = `
 	uniform sampler2D lightMap;
 	uniform float lightMapIntensity;
 	uniform float lightMapContrast;
+	uniform bool useLightMapContrast;
 
 #endif
 `;
