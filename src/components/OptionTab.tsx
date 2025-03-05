@@ -1,6 +1,13 @@
 import gsap from 'gsap';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
-import { Dispatch, SetStateAction, useEffect, useRef, useState } from 'react';
+import {
+  ChangeEvent,
+  Dispatch,
+  SetStateAction,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import { ENV } from '../Constants.ts';
 import {
   getAtomValue,
@@ -24,6 +31,7 @@ import {
   changeMeshLightMapWithTransition,
   changeMeshVisibleWithTransition,
   loadLatest,
+  splitExtension,
 } from '../scripts/utils.ts';
 import * as THREE from '../scripts/VTHREE.ts';
 import { SelectableNodes } from './DPC/DPCModelSelector.tsx';
@@ -845,6 +853,7 @@ const LightMapSelector = ({
   const [selected, setSelected] = useState<string>('');
   const [customURL, setCustomURL] = useState<string>('');
   const { closeModal } = useModal();
+  const inputRef = useRef<HTMLInputElement>(null);
   const meshLightMap = getNameFromURL(
     (mesh.material as THREE.Material).vUserData.lightMap,
   );
@@ -885,6 +894,28 @@ const LightMapSelector = ({
     closeModal();
   }
 
+  function openInput() {
+    console.log(inputRef.current);
+    if (inputRef.current) {
+      inputRef.current.click();
+    }
+  }
+
+  function onInputChange(event: ChangeEvent<HTMLInputElement>) {
+    const fileList = event.target.files;
+    if (fileList && fileList.length > 0) {
+      const files = Array.from(fileList);
+      const hasAnother = files.some(
+        file => splitExtension(file.name).ext.toLowerCase() !== 'exr',
+      );
+      if (hasAnother) {
+        alert('EXR 파일만 업로드 가능합니다.');
+        return;
+      } else {
+      }
+    }
+  }
+
   return (
     <div
       className="bg-white border border-gray-600 rounded p-2"
@@ -899,7 +930,19 @@ const LightMapSelector = ({
           <strong style={{ fontSize: 16 }}>
             LightMap Select : {mesh.name}
           </strong>
-          <button className="ml-auto">업로드</button>
+          <button className="ml-auto" onClick={() => openInput()}>
+            업로드
+          </button>
+          <input
+            ref={inputRef}
+            type="file"
+            className="hidden"
+            multiple
+            onChange={onInputChange}
+            onClick={e => {
+              e.stopPropagation();
+            }}
+          />
         </div>
         <p>
           Scene 에 업로드 된 라이트맵 갯수 : {Object.keys(lightMaps).length}개
