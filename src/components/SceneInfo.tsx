@@ -664,7 +664,7 @@ const LightmapImageContrastControl = () => {
   const { scene } = threeExports;
 
   const [lmContrastOn, setLmContrastOn] = useState<boolean>(false);
-  const [lmContrastValue, setLmContrastValue] = useState<number>(2);
+  const [lmContrastValue, setLmContrastValue] = useState<number>(1);
 
   useEffect(() => {
     scene.traverse(o => {
@@ -676,18 +676,7 @@ const LightmapImageContrastControl = () => {
           mesh['matTemp'] = mat;
           const newMat = (mat as THREE.MeshStandardMaterial).clone();
           newMat.onBeforeCompile = shader => {
-            const lmR = new THREE.Vector2();
-            if (newMat.lightMap) {
-              lmR.set(
-                newMat.lightMap.image.width,
-                newMat.lightMap.image.height,
-              );
-            }
-            shader.uniforms.lightMapContrast = { value: 2 };
-            shader.uniforms.lmR = { value: lmR };
-
-            shader.fragmentShader =
-              newFragmentForLightMapContrast + shader.fragmentShader;
+            shader.uniforms.lightMapContrast = { value: lmContrastValue };
 
             shader.fragmentShader = shader.fragmentShader.replace(
               '#include <lightmap_pars_fragment>',
@@ -723,7 +712,6 @@ const LightmapImageContrastControl = () => {
           const mat = mesh.material as THREE.MeshStandardMaterial;
           const shader = mat.vUserData.shader;
           if (shader) {
-            console.log(shader);
             shader.uniforms.lightMapContrast = { value: lmContrastValue };
             mat.needsUpdate = true;
           }
@@ -746,11 +734,11 @@ const LightmapImageContrastControl = () => {
         }}
       />
       {lmContrastOn && (
-        <div>
+        <div className="flex items-center gap-x-1">
           <label>Contrast</label>
           <button
             onClick={() => {
-              setLmContrastValue(2);
+              setLmContrastValue(1);
             }}
           >
             초기화
@@ -760,15 +748,60 @@ const LightmapImageContrastControl = () => {
             type="range"
             min={0}
             max={7}
-            step={0.1}
+            step={0.01}
             onChange={e => {
               setLmContrastValue(parseFloat(e.target.value));
             }}
             value={lmContrastValue}
           />
-          <span>{toNthDigit(lmContrastValue, 2)}</span>
+          <input
+            type="number"
+            value={lmContrastValue}
+            min={0}
+            max={7}
+            step={0.01}
+            onChange={e => {
+              setLmContrastValue(parseFloat(e.target.value));
+            }}
+          />
         </div>
       )}
+    </div>
+  );
+};
+
+const SRGBControl = () => {
+  const threeExports = useAtomValue(threeExportsAtom);
+
+  if (!threeExports) {
+    return null;
+  }
+
+  const { gl } = threeExports;
+
+  const [srgb, setSrgb] = useState<boolean>(
+    gl.outputColorSpace === THREE.SRGBColorSpace,
+  );
+
+  useEffect(() => {
+    gl.outputColorSpace = srgb
+      ? THREE.SRGBColorSpace
+      : THREE.LinearSRGBColorSpace;
+  }, [srgb]);
+
+  return (
+    <div>
+      <strong>SRGB</strong>
+      <input
+        type="checkbox"
+        checked={srgb}
+        onChange={e => {
+          if (!threeExports) {
+            return;
+          }
+          setSrgb(e.target.checked);
+        }}
+      />
     </div>
   );
 };
@@ -815,6 +848,7 @@ const GeneralPostProcessingControl = () => {
       <ColorTemperatureOption></ColorTemperatureOption>
       <BrightnessContrastOption></BrightnessContrastOption>
       <LightmapImageContrastControl></LightmapImageContrastControl>
+      <SRGBControl></SRGBControl>
       <BloomOption></BloomOption>
       <ColorLUTOption></ColorLUTOption>
       <ToneMappingOption></ToneMappingOption>
@@ -1470,50 +1504,6 @@ const SceneInfo = () => {
   );
 };
 
-const newFragmentForLightMapContrast = `
-vec4 HCToLinear( in vec4 value, in float bf ) {
-    vec3 x = value.rgb;
-    vec3 b = vec3(bf);
-    x = max( vec3(0.0), b * (vec3(0.5) * sqrt(pow(b, vec3(2)) * pow((x-vec3(1)), vec3(2)) + vec3(4)*x) + b * (vec3(0.5) * x - vec3(0.5))) );
-    return vec4(x, value.a);
-}
-vec4 RMToLinear( in vec4 value, in float maxRange ) {
-    return vec4( value.rgb * value.a * maxRange, 1.0 );
-}
-vec4 RCToLinear( in vec4 value, in float factor, in float bf ) {
-    return HCToLinear(RMToLinear(value, factor), bf);
-}
-vec4 lightMapTexelToLinear ( vec4 value ) {
-    return RCToLinear ( value, 7.0, 4.0 );
-}
-float w0(float a) {
-    return (1.0/6.0)*(a*(a*(-a + 3.0) - 3.0) + 1.0);
-}
-float w1(float a) {
-    return (1.0/6.0)*(a*a*(3.0*a - 6.0) + 4.0);
-}
-float w2(float a) {
-    return (1.0/6.0)*(a*(a*(-3.0*a + 3.0) + 3.0) + 1.0);
-}
-float w3(float a) {
-    return (1.0/6.0)*(a*a*a);
-}
-float g0(float a) {
-    return w0(a) + w1(a);
-}
-float g1(float a) {
-    return w2(a) + w3(a);
-}
-float h0(float a) {
-    return -1.0 + w1(a) / (w0(a) + w1(a));
-}
-float h1(float a) {
-    return 1.0 + w3(a) / (w2(a) + w3(a));
-}
-vec4 vtb(sampler2D tex, vec2 uv, vec2 txR) {
-    return texture2D( tex, uv );
-}
-`;
 const LightMapContrastShader = `
 #if defined( RE_IndirectDiffuse )
 
@@ -1560,7 +1550,6 @@ const LIGHTMAP_PARS = `
 	uniform sampler2D lightMap;
 	uniform float lightMapIntensity;
 	uniform float lightMapContrast;
-  uniform vec2 lmR;
 
 #endif
 `;
