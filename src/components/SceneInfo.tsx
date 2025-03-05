@@ -9,7 +9,6 @@ import {
   isTransformControlOrChild,
   loadLatest,
   loadScene,
-  resetGL,
   saveScene,
   toNthDigit,
   uploadExrLightmap,
@@ -48,12 +47,7 @@ import ReflectionProbe from '../scripts/ReflectionProbe.ts';
 import useFilelist from '../scripts/useFilelist';
 import useStats, { StatPerSecond, VStats } from '../scripts/useStats.ts';
 import VGLTFExporter from '../scripts/VGLTFExporter.ts';
-import {
-  LightmapImageContrast,
-  Quaternion,
-  THREE,
-  Vector3,
-} from '../scripts/VTHREE';
+import { Quaternion, THREE, Vector3 } from '../scripts/VTHREE';
 import { BloomOption } from './canvas/Bloom.tsx';
 import { BrightnessContrastOption } from './canvas/BrightnessContrast.tsx';
 import { ColorLUTOption } from './canvas/ColorLUT.tsx';
@@ -667,45 +661,76 @@ const LightmapImageContrastControl = () => {
     return null;
   }
 
-  const [lmContrastOn, setLmContrastOn] = useState(LightmapImageContrast.on);
-  const [lmContrastValue, setLmContrastValue] = useState({
-    gammaFactor: LightmapImageContrast.gammaFactor,
-    standard: LightmapImageContrast.standard,
-    k: LightmapImageContrast.k,
-  });
+  const { scene } = threeExports;
 
-  const adjustContrast = (color: number[]) => {
-    const gammaFactor = lmContrastValue.gammaFactor;
-    const standard = lmContrastValue.standard;
-    const t = Math.log(2.0) / Math.log(standard);
-    const k = lmContrastValue.k;
-    const r = 0; // lmContrastValue.r;
+  const [lmContrastOn, setLmContrastOn] = useState<boolean>(false);
+  const [lmContrastValue, setLmContrastValue] = useState<number>(2);
 
-    const corrected = color.map(value => Math.pow(value, gammaFactor));
-    // const inputColor = color;
-    const inputColor = corrected;
-    const intensity =
-      inputColor[0] * 0.2126 + inputColor[1] * 0.7152 + inputColor[2] * 0.0722;
-    const adjustedIntensity = S_k_t(intensity, k, t, r);
-    const reflectance = inputColor.map(value => value / (intensity + 0.0001));
-    const reflectanceAdjusted = reflectance.map(
-      value => (value - standard) * 1.0 + standard,
-    );
-    const adjustedColor = reflectanceAdjusted.map(
-      value => value * adjustedIntensity,
-    );
-    const adjustedColorGamma = adjustedColor.map(value =>
-      Math.pow(value, 1.0 / gammaFactor),
-    );
+  useEffect(() => {
+    scene.traverse(o => {
+      if (o.type === 'Mesh') {
+        const mesh = o as THREE.Mesh;
+        const hasMaterialTemp = mesh['matTemp'] !== undefined;
+        const mat = mesh.material as THREE.MeshStandardMaterial;
+        if (lmContrastOn) {
+          mesh['matTemp'] = mat;
+          const newMat = (mat as THREE.MeshStandardMaterial).clone();
+          newMat.onBeforeCompile = shader => {
+            const lmR = new THREE.Vector2();
+            if (newMat.lightMap) {
+              lmR.set(
+                newMat.lightMap.image.width,
+                newMat.lightMap.image.height,
+              );
+            }
+            shader.uniforms.lightMapContrast = { value: 2 };
+            shader.uniforms.lmR = { value: lmR };
 
-    return adjustedColorGamma;
-  };
+            shader.fragmentShader =
+              newFragmentForLightMapContrast + shader.fragmentShader;
 
-  const lmGraphWidth = 100;
-  const linearData = Array.from(
-    { length: lmGraphWidth },
-    (_, index) => index / lmGraphWidth,
-  );
+            shader.fragmentShader = shader.fragmentShader.replace(
+              '#include <lightmap_pars_fragment>',
+              LIGHTMAP_PARS,
+            );
+
+            shader.fragmentShader = shader.fragmentShader.replace(
+              '#include <lights_fragment_maps>',
+              LightMapContrastShader,
+            );
+
+            newMat.vUserData.shader = shader;
+          };
+          mesh.material = newMat;
+          newMat.needsUpdate = true;
+        } else {
+          if (hasMaterialTemp) {
+            mesh.material = mesh['matTemp'] as THREE.MeshStandardMaterial;
+            // delete mesh['matTemp'];
+            mesh.material.needsUpdate = true;
+          }
+        }
+      }
+    });
+  }, [lmContrastOn]);
+
+  useEffect(() => {
+    console.log('lMContrastValue Changed :', lmContrastValue);
+    if (lmContrastOn) {
+      scene.traverse(o => {
+        if (o.type === 'Mesh') {
+          const mesh = o as THREE.Mesh;
+          const mat = mesh.material as THREE.MeshStandardMaterial;
+          const shader = mat.vUserData.shader;
+          if (shader) {
+            console.log(shader);
+            shader.uniforms.lightMapContrast = { value: lmContrastValue };
+            mat.needsUpdate = true;
+          }
+        }
+      });
+    }
+  }, [lmContrastValue]);
 
   return (
     <div>
@@ -718,232 +743,31 @@ const LightmapImageContrastControl = () => {
             return;
           }
           setLmContrastOn(e.target.checked);
-          LightmapImageContrast.on = e.target.checked;
-          resetGL(threeExports);
         }}
       />
       {lmContrastOn && (
-        <>
-          <div>
-            <label>Gamma</label>
-            <button
-              onClick={() => {
-                if (!threeExports) {
-                  return;
-                }
-                const value = 2.2;
-                setLmContrastValue(prev => ({
-                  ...prev,
-                  gammaFactor: value,
-                }));
-                LightmapImageContrast.gammaFactor = value;
-                resetGL(threeExports);
-              }}
-            >
-              초기화
-            </button>
-            <input
-              className="w-[100px]"
-              type="range"
-              min={0.11}
-              max={3}
-              step={(3 - 0.1) / 200}
-              onChange={e => {
-                if (!threeExports) {
-                  return;
-                }
-                setLmContrastValue(prev => ({
-                  ...prev,
-                  gammaFactor: parseFloat(e.target.value),
-                }));
-                LightmapImageContrast.gammaFactor = parseFloat(e.target.value);
-                resetGL(threeExports);
-              }}
-              value={lmContrastValue.gammaFactor}
-            />
-            <span>{toNthDigit(lmContrastValue.gammaFactor, 2)}</span>
-          </div>
-          <div>
-            <label>대비기준</label>
-            <button
-              onClick={() => {
-                if (!threeExports) {
-                  return;
-                }
-                const value = 0.45;
-                setLmContrastValue(prev => ({
-                  ...prev,
-                  standard: value,
-                }));
-                LightmapImageContrast.standard = value;
-                resetGL(threeExports);
-              }}
-            >
-              초기화
-            </button>
-            <input
-              className="w-[100px]"
-              type="range"
-              min={0.1}
-              max={0.99}
-              step={(0.99 - 0.1) / 200}
-              onChange={e => {
-                if (!threeExports) {
-                  return;
-                }
-                setLmContrastValue(prev => ({
-                  ...prev,
-                  standard: parseFloat(e.target.value),
-                }));
-                LightmapImageContrast.standard = parseFloat(e.target.value);
-                resetGL(threeExports);
-              }}
-              value={lmContrastValue.standard}
-            />
-            <span>{toNthDigit(lmContrastValue.standard, 2)}</span>
-          </div>
-          <div>
-            <label>명도세기</label>
-            <button
-              onClick={() => {
-                if (!threeExports) {
-                  return;
-                }
-                const value = 1.7;
-                setLmContrastValue(prev => ({
-                  ...prev,
-                  k: value,
-                }));
-                LightmapImageContrast.k = value;
-                resetGL(threeExports);
-              }}
-            >
-              초기화
-            </button>
-            <input
-              className="w-[100px]"
-              type="range"
-              min={1.0}
-              max={3}
-              step={(3 - 1) / 200}
-              onChange={e => {
-                if (!threeExports) {
-                  return;
-                }
-                setLmContrastValue(prev => ({
-                  ...prev,
-                  k: parseFloat(e.target.value),
-                }));
-                LightmapImageContrast.k = parseFloat(e.target.value);
-                resetGL(threeExports);
-              }}
-              value={lmContrastValue.k}
-            />
-            <span>{toNthDigit(lmContrastValue.k, 2)}</span>
-          </div>
-
-          <div className="w-full grid grid-cols-2">
-            <div className="w-full">
-              <span>그래프 매핑</span>
-              <div
-                style={{
-                  width: lmGraphWidth,
-                  height: lmGraphWidth,
-                  borderBottom: '1px solid black',
-                  borderLeft: '1px solid black',
-                  boxSizing: 'border-box',
-                  position: 'relative',
-                }}
-              >
-                {linearData.map((val, i) => (
-                  <div
-                    key={`linear-${i}`}
-                    style={{
-                      position: 'absolute',
-                      left: i,
-                      // bottom: lmContrastGraphWidth * 0.5,
-                      bottom: i,
-                      width: 1,
-                      height: 1,
-                      backgroundColor: 'black',
-                      boxSizing: 'border-box',
-                    }}
-                  ></div>
-                ))}
-                {linearData.map((val, i) => (
-                  <div
-                    key={`adj-${i}`}
-                    style={{
-                      position: 'absolute',
-                      left: i,
-                      bottom: adjustContrast([val, val, val])[0] * lmGraphWidth,
-                      width: 1,
-                      height: 1,
-                      backgroundColor: 'red',
-                      boxSizing: 'border-box',
-                    }}
-                  ></div>
-                ))}
-
-                {linearData.map((val, i) => (
-                  <div
-                    key={`adj-${i}`}
-                    style={{
-                      position: 'absolute',
-                      left: i,
-                      bottom:
-                        S_k_t(
-                          val,
-                          lmContrastValue.k,
-                          Math.log(2.0) / Math.log(lmContrastValue.standard),
-                          0, // lmContrastValue.r,
-                        ) * lmGraphWidth,
-                      width: 1,
-                      height: 1,
-                      backgroundColor: 'gray',
-                      boxSizing: 'border-box',
-                    }}
-                  ></div>
-                ))}
-              </div>
-            </div>
-            <div className={`w-full h-[${lmGraphWidth}px]`}>
-              <span>대비 적용 전/후</span>
-              <div className={`grid grid-cols-2 h-full`}>
-                <ul className="w-full flex flex-col">
-                  {Array.from({ length: lmGraphWidth }).map((_, i) => {
-                    const bgColor = (255 * (i + 0.5)) / lmGraphWidth;
-                    return (
-                      <li
-                        className={`w-full flex-1`}
-                        style={{
-                          backgroundColor: `rgba(${bgColor}, ${bgColor}, ${bgColor}, 1)`,
-                        }}
-                        key={`org-color-${i}`}
-                      ></li>
-                    );
-                  })}
-                </ul>
-                <ul className="w-full flex flex-col h-full">
-                  {Array.from({ length: lmGraphWidth }).map((_, i) => {
-                    const bgColor = (i + 0.5) / lmGraphWidth;
-                    const adjusted =
-                      255 * adjustContrast([bgColor, bgColor, bgColor])[0];
-                    return (
-                      <li
-                        className={`w-full flex-1`}
-                        style={{
-                          backgroundColor: `rgba(${adjusted}, ${adjusted}, ${adjusted}, 1)`,
-                        }}
-                        key={`org-color-${i}`}
-                      ></li>
-                    );
-                  })}
-                </ul>
-              </div>
-            </div>
-          </div>
-        </>
+        <div>
+          <label>Contrast</label>
+          <button
+            onClick={() => {
+              setLmContrastValue(2);
+            }}
+          >
+            초기화
+          </button>
+          <input
+            className="w-[100px]"
+            type="range"
+            min={0}
+            max={7}
+            step={0.1}
+            onChange={e => {
+              setLmContrastValue(parseFloat(e.target.value));
+            }}
+            value={lmContrastValue}
+          />
+          <span>{toNthDigit(lmContrastValue, 2)}</span>
+        </div>
       )}
     </div>
   );
@@ -1645,5 +1469,100 @@ const SceneInfo = () => {
     </div>
   );
 };
+
+const newFragmentForLightMapContrast = `
+vec4 HCToLinear( in vec4 value, in float bf ) {
+    vec3 x = value.rgb;
+    vec3 b = vec3(bf);
+    x = max( vec3(0.0), b * (vec3(0.5) * sqrt(pow(b, vec3(2)) * pow((x-vec3(1)), vec3(2)) + vec3(4)*x) + b * (vec3(0.5) * x - vec3(0.5))) );
+    return vec4(x, value.a);
+}
+vec4 RMToLinear( in vec4 value, in float maxRange ) {
+    return vec4( value.rgb * value.a * maxRange, 1.0 );
+}
+vec4 RCToLinear( in vec4 value, in float factor, in float bf ) {
+    return HCToLinear(RMToLinear(value, factor), bf);
+}
+vec4 lightMapTexelToLinear ( vec4 value ) {
+    return RCToLinear ( value, 7.0, 4.0 );
+}
+float w0(float a) {
+    return (1.0/6.0)*(a*(a*(-a + 3.0) - 3.0) + 1.0);
+}
+float w1(float a) {
+    return (1.0/6.0)*(a*a*(3.0*a - 6.0) + 4.0);
+}
+float w2(float a) {
+    return (1.0/6.0)*(a*(a*(-3.0*a + 3.0) + 3.0) + 1.0);
+}
+float w3(float a) {
+    return (1.0/6.0)*(a*a*a);
+}
+float g0(float a) {
+    return w0(a) + w1(a);
+}
+float g1(float a) {
+    return w2(a) + w3(a);
+}
+float h0(float a) {
+    return -1.0 + w1(a) / (w0(a) + w1(a));
+}
+float h1(float a) {
+    return 1.0 + w3(a) / (w2(a) + w3(a));
+}
+vec4 vtb(sampler2D tex, vec2 uv, vec2 txR) {
+    return texture2D( tex, uv );
+}
+`;
+const LightMapContrastShader = `
+#if defined( RE_IndirectDiffuse )
+
+  #ifdef USE_LIGHTMAP
+
+    vec4 lightMapTexel = texture2D( lightMap, vLightMapUv );
+		vec3 lightMapIrradiance = lightMapTexel.rgb * lightMapIntensity;
+    irradiance += pow(lightMapIrradiance, vec3(lightMapContrast));
+    
+  #endif
+
+  #if defined( USE_ENVMAP ) && defined( STANDARD ) && defined( ENVMAP_TYPE_CUBE_UV )
+
+    iblIrradiance += getIBLIrradiance( geometryNormal );
+
+  #endif
+
+#endif
+
+#if defined( USE_ENVMAP ) && defined( RE_IndirectSpecular )
+
+  #ifdef USE_ANISOTROPY
+
+    radiance += getIBLAnisotropyRadiance( geometryViewDir, geometryNormal, material.roughness, material.anisotropyB, material.anisotropy );
+
+  #else
+
+    radiance += getIBLRadiance( geometryViewDir, geometryNormal, material.roughness );
+
+  #endif
+
+  #ifdef USE_CLEARCOAT
+
+    clearcoatRadiance += getIBLRadiance( geometryViewDir, geometryClearcoatNormal, material.clearcoatRoughness );
+
+  #endif
+
+#endif
+`;
+
+const LIGHTMAP_PARS = `
+#ifdef USE_LIGHTMAP
+
+	uniform sampler2D lightMap;
+	uniform float lightMapIntensity;
+	uniform float lightMapContrast;
+  uniform vec2 lmR;
+
+#endif
+`;
 
 export default SceneInfo;
