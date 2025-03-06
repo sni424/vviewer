@@ -1,8 +1,10 @@
 import { THREE } from '../VTHREE.ts';
 import * as MaterialConstants from './VMaterialConstants.ts';
 
-function adjustLightMap(shader: THREE.WebGLProgramParametersWithUniforms) {
-  shader.uniforms.useLightMapContrast = { value: false };
+type Shader = THREE.WebGLProgramParametersWithUniforms;
+
+function adjustLightMapFragments(shader: Shader) {
+  // LightMapContrast
   shader.uniforms.lightMapContrast = { value: 1 };
 
   shader.fragmentShader = shader.fragmentShader.replace(
@@ -16,9 +18,15 @@ function adjustLightMap(shader: THREE.WebGLProgramParametersWithUniforms) {
   );
 }
 
-function adjustProjectedEnv(shader: THREE.WebGLProgramParametersWithUniforms) {
+function adjustProjectedEnv(shader: Shader) {
   // TODO Get ReflectionProbe Shader Code
   // TODO 2 원준씨 코드 완성 시 여기에 적용
 }
 
-export { adjustLightMap };
+function addWorldPosition(shader: Shader) {
+  console.log('addWorld position');
+  shader.vertexShader =
+    MaterialConstants.VShaderLib.V_VERTEX_WORLD_POSITION + shader.vertexShader;
+}
+
+export { addWorldPosition, adjustLightMapFragments, adjustProjectedEnv };

@@ -43,7 +43,7 @@ import {
   useToast,
 } from '../scripts/atoms';
 import { loadPostProcessAndSet, uploadJson } from '../scripts/atomUtils.ts';
-import VMeshStandardMaterial from '../scripts/material/VMeshStandardMaterial.ts';
+import { VMaterial } from '../scripts/material/VMaterial.ts';
 import ReflectionProbe from '../scripts/ReflectionProbe.ts';
 import useFilelist from '../scripts/useFilelist';
 import useStats, { StatPerSecond, VStats } from '../scripts/useStats.ts';
@@ -522,6 +522,13 @@ const GeneralButtons = () => {
       >
         카메라 세팅 초기화
       </button>
+      <button
+        onClick={() => {
+          console.log(gl);
+        }}
+      >
+        GL Debug
+      </button>
     </section>
   );
 };
@@ -671,9 +678,10 @@ const LightmapImageContrastControl = () => {
     scene.traverse(o => {
       if (o.type === 'Mesh') {
         const mesh = o as THREE.Mesh;
-        const mat = mesh.material as VMeshStandardMaterial;
+        const mat = mesh.material as VMaterial;
         const shader = mat.shader;
-        shader.uniforms.useLightMapContrast = { value: lmContrastOn };
+        console.log(mat);
+        mat.setUseLightMapContrast(lmContrastOn);
         if (lmContrastOn) {
           shader.uniforms.lightMapContrast.value = lmContrastValue;
         } else {
@@ -688,7 +696,7 @@ const LightmapImageContrastControl = () => {
       scene.traverse(o => {
         if (o.type === 'Mesh') {
           const mesh = o as THREE.Mesh;
-          const mat = mesh.material as VMeshStandardMaterial;
+          const mat = mesh.material as VMaterial;
           const shader = mat.shader;
           shader.uniforms.lightMapContrast.value = lmContrastValue;
         }
@@ -1479,56 +1487,5 @@ const SceneInfo = () => {
     </div>
   );
 };
-
-const LightMapContrastShader = `
-#if defined( RE_IndirectDiffuse )
-
-  #ifdef USE_LIGHTMAP
-
-    vec4 lightMapTexel = texture2D( lightMap, vLightMapUv );
-		vec3 lightMapIrradiance = lightMapTexel.rgb * lightMapIntensity;
-    irradiance += pow(lightMapIrradiance, vec3(lightMapContrast));
-    
-  #endif
-
-  #if defined( USE_ENVMAP ) && defined( STANDARD ) && defined( ENVMAP_TYPE_CUBE_UV )
-
-    iblIrradiance += getIBLIrradiance( geometryNormal );
-
-  #endif
-
-#endif
-
-#if defined( USE_ENVMAP ) && defined( RE_IndirectSpecular )
-
-  #ifdef USE_ANISOTROPY
-
-    radiance += getIBLAnisotropyRadiance( geometryViewDir, geometryNormal, material.roughness, material.anisotropyB, material.anisotropy );
-
-  #else
-
-    radiance += getIBLRadiance( geometryViewDir, geometryNormal, material.roughness );
-
-  #endif
-
-  #ifdef USE_CLEARCOAT
-
-    clearcoatRadiance += getIBLRadiance( geometryViewDir, geometryClearcoatNormal, material.clearcoatRoughness );
-
-  #endif
-
-#endif
-`;
-
-const LIGHTMAP_PARS = `
-#ifdef USE_LIGHTMAP
-
-	uniform sampler2D lightMap;
-	uniform float lightMapIntensity;
-	uniform float lightMapContrast;
-	uniform bool useLightMapContrast;
-
-#endif
-`;
 
 export default SceneInfo;

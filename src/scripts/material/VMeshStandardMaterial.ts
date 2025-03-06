@@ -1,7 +1,11 @@
 import { THREE } from '../VTHREE.ts';
+import { VMaterial } from './VMaterial.ts';
 import * as VMaterialUtils from './VMaterialUtils.ts';
 
-export default class VMeshStandardMaterial extends THREE.MeshStandardMaterial {
+class VMeshStandardMaterial
+  extends THREE.MeshStandardMaterial
+  implements VMaterial
+{
   private _shader: THREE.WebGLProgramParametersWithUniforms;
 
   constructor(parameters?: THREE.MeshStandardMaterialParameters) {
@@ -9,9 +13,9 @@ export default class VMeshStandardMaterial extends THREE.MeshStandardMaterial {
     this.onBeforeCompile = (shader, renderer) => {
       THREE.MeshStandardMaterial.prototype.onBeforeCompile(shader, renderer);
 
-      VMaterialUtils.adjustLightMap(shader);
+      VMaterialUtils.adjustLightMapFragments(shader);
 
-      this._shader = shader;
+      this.shader = shader;
     };
   }
 
@@ -26,11 +30,29 @@ export default class VMeshStandardMaterial extends THREE.MeshStandardMaterial {
   }
 
   set shader(shader: THREE.WebGLProgramParametersWithUniforms) {
+    console.log('shader in : ', this, shader);
     this._shader = shader;
   }
 
-  addUniform() {
+  setUniformByValue(key: string, value: any) {
+    const uniform = new THREE.Uniform(value);
+    this.setUniform(key, uniform);
+  }
+
+  setUniform(key: string, uniform: THREE.Uniform) {
     const shader = this._shader;
+    if (!shader) {
+      console.warn('Material Uniform Not initialized');
+      return;
+    }
+    const uniforms = shader.uniforms;
+    if (Object.keys(uniforms).includes(key)) {
+      // 이미 있는 uniform
+      uniforms[key].value = uniform.value;
+    } else {
+      // 새로운 유니폼
+      uniforms[key] = uniform;
+    }
   }
 
   get uniforms() {
@@ -40,54 +62,17 @@ export default class VMeshStandardMaterial extends THREE.MeshStandardMaterial {
   clone(): this {
     return new VMeshStandardMaterial(this);
   }
+
+  setUseLightMapContrast(use: boolean) {
+    const defines = this.defines || {};
+    if (use) defines['USE_LIGHTMAP_CONTRAST'] = '';
+    else delete defines['USE_LIGHTMAP_CONTRAST'];
+    this.needsUpdate = true;
+  }
+
+  getUseLightMapContrast(): boolean {
+    return this.defines?.USE_LIGHTMAP_CONTRAST !== undefined;
+  }
 }
-const LightMapContrastShader = `
-#if defined( RE_IndirectDiffuse )
 
-  #ifdef USE_LIGHTMAP
-
-    vec4 lightMapTexel = texture2D( lightMap, vLightMapUv );
-		vec3 lightMapIrradiance = lightMapTexel.rgb * lightMapIntensity;
-    irradiance += pow(lightMapIrradiance, vec3(lightMapContrast));
-    
-  #endif
-
-  #if defined( USE_ENVMAP ) && defined( STANDARD ) && defined( ENVMAP_TYPE_CUBE_UV )
-
-    iblIrradiance += getIBLIrradiance( geometryNormal );
-
-  #endif
-
-#endif
-
-#if defined( USE_ENVMAP ) && defined( RE_IndirectSpecular )
-
-  #ifdef USE_ANISOTROPY
-
-    radiance += getIBLAnisotropyRadiance( geometryViewDir, geometryNormal, material.roughness, material.anisotropyB, material.anisotropy );
-
-  #else
-
-    radiance += getIBLRadiance( geometryViewDir, geometryNormal, material.roughness );
-
-  #endif
-
-  #ifdef USE_CLEARCOAT
-
-    clearcoatRadiance += getIBLRadiance( geometryViewDir, geometryClearcoatNormal, material.clearcoatRoughness );
-
-  #endif
-
-#endif
-`;
-
-const LIGHTMAP_PARS = `
-#ifdef USE_LIGHTMAP
-
-	uniform sampler2D lightMap;
-	uniform float lightMapIntensity;
-	uniform float lightMapContrast;
-	uniform bool useLightMapContrast;
-
-#endif
-`;
+export default VMeshStandardMaterial;

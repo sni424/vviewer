@@ -275,7 +275,7 @@ function Renderer() {
   const setThreeExportsAtom = useSetAtom(threeExportsAtom);
   // const setSharedExports = useSetAtom(sharedThreeAtom);
   const setSharedExports = useSetThreeExports();
-  const { scene, camera } = threeExports;
+  const { scene, camera, gl } = threeExports;
   useLoadModel(threeExports);
   const setCameraAtom = useSetAtom(cameraMatrixAtom);
 
@@ -285,6 +285,7 @@ function Renderer() {
       if (event.child.layers.isEnabled(Layer.Model)) {
         console.log('Added New Child Mesh on Scene');
         window.dispatchEvent(new CustomEvent('scene-added'));
+        gl.compileAsync(scene, camera);
       }
     });
     setThreeExportsAtom(threeExports);

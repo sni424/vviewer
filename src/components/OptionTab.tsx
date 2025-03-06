@@ -192,7 +192,6 @@ const OptionPreview = ({ option }: { option: ModelOption }) => {
     return null;
   }
   const mcOptions = useAtomValue(modelOptionClassAtom);
-  const [processedState, setProcessedState] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [optionSelected, setOptionSelected] = useAtom(optionSelectedAtom);
   const { openToast } = useToast();
@@ -243,7 +242,6 @@ const OptionPreview = ({ option }: { option: ModelOption }) => {
     nowSelected[option.id] = state.id;
     setOptionSelected(nowSelected);
     const animationDuration = 0.8; // 1s
-    setProcessedState(state.id);
     setIsProcessing(true);
     const meshEffects = state.effects;
     let hasAnimation = false;

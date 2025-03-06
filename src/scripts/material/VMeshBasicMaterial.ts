@@ -2,16 +2,13 @@ import { THREE } from '../VTHREE.ts';
 import { VMaterial } from './VMaterial.ts';
 import * as VMaterialUtils from './VMaterialUtils.ts';
 
-export default class VMeshPhysicalMaterial
-  extends THREE.MeshPhysicalMaterial
-  implements VMaterial
-{
+class VMeshBasicMaterial extends THREE.MeshBasicMaterial implements VMaterial {
   private _shader: THREE.WebGLProgramParametersWithUniforms;
 
-  constructor(parameters?: THREE.MeshPhysicalMaterialParameters) {
+  constructor(parameters?: THREE.MeshBasicMaterialParameters) {
     super(parameters);
     this.onBeforeCompile = (shader, renderer) => {
-      THREE.MeshPhysicalMaterial.prototype.onBeforeCompile(shader, renderer);
+      THREE.MeshBasicMaterial.prototype.onBeforeCompile(shader, renderer);
 
       VMaterialUtils.adjustLightMapFragments(shader);
 
@@ -19,10 +16,8 @@ export default class VMeshPhysicalMaterial
     };
   }
 
-  static fromThree(
-    material: THREE.MeshPhysicalMaterial,
-  ): VMeshPhysicalMaterial {
-    return new VMeshPhysicalMaterial(material);
+  static fromThree(material: THREE.MeshBasicMaterial): VMeshBasicMaterial {
+    return new VMeshBasicMaterial(material);
   }
 
   get shader() {
@@ -30,7 +25,7 @@ export default class VMeshPhysicalMaterial
   }
 
   set shader(shader: THREE.WebGLProgramParametersWithUniforms) {
-    console.log('shader in : ', this, shader);
+    console.log(`shader in ${this.type} : `, this, shader);
     this._shader = shader;
   }
 
@@ -61,7 +56,7 @@ export default class VMeshPhysicalMaterial
 
   clone(): this {
     // TODO Clone 시 shader 안담기는 문제 해결해야함.
-    return new VMeshPhysicalMaterial(this);
+    return new VMeshBasicMaterial(this);
   }
 
   setUseLightMapContrast(use: boolean) {
@@ -75,3 +70,5 @@ export default class VMeshPhysicalMaterial
     return this.defines?.USE_LIGHTMAP_CONTRAST !== undefined;
   }
 }
+
+export default VMeshBasicMaterial;

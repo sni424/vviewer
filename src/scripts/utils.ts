@@ -22,6 +22,7 @@ import {
 } from './atoms';
 import { uploadExrToKtx } from './atomUtils.ts';
 import VGLTFLoader from './loaders/VGLTFLoader.ts';
+import { VMaterial } from './material/VMaterial.ts';
 import VGLTFExporter from './VGLTFExporter.ts';
 
 export const groupInfo = (
@@ -1485,12 +1486,13 @@ export function changeMeshVisibleWithTransition(
   transitionDelay: number,
   targetVisible: boolean,
 ) {
-  const mat = mesh.material as THREE.MeshStandardMaterial;
+  const mat = mesh.material as VMaterial;
   const originTransparent = mat.transparent;
   const originalOpacity = mat.vUserData.originalOpacity ?? 1;
   const from = targetVisible ? 0.3 : originalOpacity;
   const to = targetVisible ? originalOpacity : 0;
   const originalBlending = mat.blending;
+  const originalRenderOrder = mesh.renderOrder;
   return gsap.to(
     {
       t: 0,
@@ -1503,22 +1505,39 @@ export function changeMeshVisibleWithTransition(
         mat.transparent = true;
         mat.opacity = from;
         mesh.visible = true;
-        if (!targetVisible) {
-          mat.depthWrite = false;
-          mat.depthTest = false;
-        }
         mat.needsUpdate = true;
       },
       onUpdate() {
-        let progress = this.targets()[0].t;
-        let targetOpacity = 0;
+        // let progress = this.targets()[0].t;
+        // let targetOpacity = 0;
+        // if (targetVisible) {
+        //   targetOpacity = progress * originalOpacity;
+        // } else {
+        //   if (progress > 0.5) {
+        //     targetOpacity = (1 - (progress - 0.5) * 2) * originalOpacity;
+        //   } else {
+        //     targetOpacity = originalOpacity;
+        //   }
+        // }
+        // mat.opacity = targetOpacity;
+        // // 메시 render depth 로 인해 뒷 메시가 안보이는 경우 해결
+
+        mat.shader.fragmentShader.replace(
+          'void main()',
+          `
+        float alpha(float progress, float x, float xMin, float xMax) {
+    float mid = mix(xMin, xMax, 0.5); // Midpoint of xMin and xMax
+    float factor = abs(x - mid) / (xMax - mid); // Symmetric distance from mid
+    return clamp(1.0 - 2.0 * progress * factor, 0.0, 1.0);
+}
+void main()
+        `,
+        );
+        // VMaterialUtils.addWorldPosition(mat.shader);
         if (targetVisible) {
-          targetOpacity = progress * originalOpacity;
+          // frag.replace('#include <dithering_fragment>', ditheringReplace);
         } else {
-          targetOpacity = (1 - progress) * originalOpacity;
         }
-        mat.opacity = targetOpacity;
-        // 메시 render depth 로 인해 뒷 메시가 안보이는 경우 해결
         mat.needsUpdate = true;
       },
       onComplete() {
@@ -1529,6 +1548,7 @@ export function changeMeshVisibleWithTransition(
         mat.depthTest = true;
         mat.needsUpdate = true;
         mat.blending = originalBlending;
+        mesh.renderOrder = originalRenderOrder;
       },
     },
   );
@@ -1658,3 +1678,9 @@ function getRandomColorWithComplementary() {
 
   return { randomColor, complementaryColor };
 }
+
+const ditheringReplace = `
+#include <dithering_fragment>
+
+gl_FragColor.a = alpha(progress, wp.x, 0, 10);
+`;

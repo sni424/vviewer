@@ -6,8 +6,10 @@ const V_LIGHTS_FRAGMENT_MAPS = `
 
     vec4 lightMapTexel = texture2D( lightMap, vLightMapUv );
 		vec3 lightMapIrradiance = lightMapTexel.rgb * lightMapIntensity;
-    irradiance += pow(lightMapIrradiance, vec3(lightMapContrast));
-    
+		#ifdef USE_LIGHTMAP_CONTRAST
+      lightMapIrradiance = pow(lightMapIrradiance, vec3(lightMapContrast));
+    #endif
+    irradiance += lightMapIrradiance;
   #endif
 
   #if defined( USE_ENVMAP ) && defined( STANDARD ) && defined( ENVMAP_TYPE_CUBE_UV )
@@ -45,12 +47,17 @@ const V_LIGHTMAP_PARS_FRAGMENT = `
 	uniform sampler2D lightMap;
 	uniform float lightMapIntensity;
 	uniform float lightMapContrast;
-	uniform bool useLightMapContrast;
 
 #endif
 `;
 
+const VERTEX_WORLD_POSITION = `
+varying vec3 wp;
+wp = modelMatrix * vec4( transformed, 1.0 ).xyz;
+`;
+
 export const VShaderLib = {
   V_LIGHTS_FRAGMENT_MAPS: V_LIGHTS_FRAGMENT_MAPS,
-  V_LIGHTMAP_PARS_FRAGMENT: V_LIGHTS_FRAGMENT_MAPS,
+  V_LIGHTMAP_PARS_FRAGMENT: V_LIGHTMAP_PARS_FRAGMENT,
+  V_VERTEX_WORLD_POSITION: VERTEX_WORLD_POSITION,
 };
