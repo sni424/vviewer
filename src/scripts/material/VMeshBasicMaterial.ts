@@ -9,11 +9,18 @@ class VMeshBasicMaterial extends THREE.MeshBasicMaterial implements VMaterial {
     super(parameters);
     this.onBeforeCompile = (shader, renderer) => {
       THREE.MeshBasicMaterial.prototype.onBeforeCompile(shader, renderer);
-
+      // VERTEX
+      VMaterialUtils.addWorldPosition(shader);
+      // FRAGMENT
       VMaterialUtils.adjustLightMapFragments(shader);
+      VMaterialUtils.addAlphaFunction(shader);
 
       this.shader = shader;
     };
+  }
+
+  oBC() {
+    return this.onBeforeCompile;
   }
 
   static fromThree(material: THREE.MeshBasicMaterial): VMeshBasicMaterial {
@@ -25,7 +32,6 @@ class VMeshBasicMaterial extends THREE.MeshBasicMaterial implements VMaterial {
   }
 
   set shader(shader: THREE.WebGLProgramParametersWithUniforms) {
-    console.log(`shader in ${this.type} : `, this, shader);
     this._shader = shader;
   }
 

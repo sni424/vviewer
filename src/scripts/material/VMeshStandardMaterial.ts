@@ -13,10 +13,18 @@ class VMeshStandardMaterial
     this.onBeforeCompile = (shader, renderer) => {
       THREE.MeshStandardMaterial.prototype.onBeforeCompile(shader, renderer);
 
+      // VERTEX
+      VMaterialUtils.addWorldPosition(shader);
+      // FRAGMENT
+      VMaterialUtils.addAlphaFunction(shader);
       VMaterialUtils.adjustLightMapFragments(shader);
 
       this.shader = shader;
     };
+  }
+
+  oBC() {
+    return this.onBeforeCompile;
   }
 
   static fromThree(
@@ -30,7 +38,6 @@ class VMeshStandardMaterial
   }
 
   set shader(shader: THREE.WebGLProgramParametersWithUniforms) {
-    console.log('shader in : ', this, shader);
     this._shader = shader;
   }
 

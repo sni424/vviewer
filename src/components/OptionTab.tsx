@@ -241,7 +241,7 @@ const OptionPreview = ({ option }: { option: ModelOption }) => {
     const nowSelected = { ...optionSelected };
     nowSelected[option.id] = state.id;
     setOptionSelected(nowSelected);
-    const animationDuration = 0.8; // 1s
+    const animationDuration = 1.3; // 1s
     setIsProcessing(true);
     const meshEffects = state.effects;
     let hasAnimation = false;
@@ -342,7 +342,10 @@ const OptionPreview = ({ option }: { option: ModelOption }) => {
       <p className="text-sm font-bold text-center mb-2">{option.name}</p>
       <div className="flex items-center border-collapse relative">
         {option.states.map(state => (
-          <>
+          <div
+            style={{ width: `calc(100%/${option.states.length})` }}
+            key={Math.random()}
+          >
             {isProcessing && (
               <div
                 key={Math.random()}
@@ -352,7 +355,6 @@ const OptionPreview = ({ option }: { option: ModelOption }) => {
             <button
               key={Math.random()}
               className="rounded-none w-full"
-              style={{ width: `calc(100%/${option.states.length})` }}
               onClick={() => processState(state)}
               disabled={
                 optionSelected && optionSelected[option.id] === state.id
@@ -360,7 +362,7 @@ const OptionPreview = ({ option }: { option: ModelOption }) => {
             >
               {state.name}
             </button>
-          </>
+          </div>
         ))}
       </div>
     </div>

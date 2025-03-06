@@ -92,11 +92,9 @@ export default class VGLTFLoader extends GLTFLoader {
           mat.vUserData.originalOpacity = mat.opacity;
 
           const originalMatID = mat.uuid;
-          console.log('original mat ? : ', mat);
 
           if (vMaterialCache.has(originalMatID)) {
             mesh.material = vMaterialCache.get(originalMatID);
-            console.log('has Cache : ', mat, mesh.material);
           } else {
             let vMat: VMaterial;
             if (mat.type === 'MeshStandardMaterial') {
@@ -108,7 +106,6 @@ export default class VGLTFLoader extends GLTFLoader {
             } else {
               console.warn('???', mat);
             }
-            console.log('after -> hasShader : ', vMat.shader !== undefined);
             mesh.material = vMat;
             vMaterialCache.set(originalMatID, vMat);
           }

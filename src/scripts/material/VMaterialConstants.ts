@@ -53,11 +53,30 @@ const V_LIGHTMAP_PARS_FRAGMENT = `
 
 const VERTEX_WORLD_POSITION = `
 varying vec3 wp;
-wp = modelMatrix * vec4( transformed, 1.0 ).xyz;
+`;
+
+// const addAlphaMixFunc = `
+// float progressiveAlpha(float progress, float x, float xMin, float xMax) {
+//   float mid = mix(xMin, xMax, 0.5); // Midpoint of xMin and xMax
+//   float denominator = max(abs(xMax - mid), 0.0001); // 0으로 나누기 방지
+//   float factor = abs(x - mid) / denominator; // Symmetric distance from mid
+//   return clamp(1.0 - 2.0 * progress * factor, 0.0, 1.0);
+// }
+// void main()
+// `;
+
+const addAlphaMixFunc = `
+float progressiveAlpha(float progress, float x, float xMin, float xMax) {
+  float mid = mix(xMin, xMax, 0.5); // Midpoint of xMin and xMax
+  float factor = abs(x - mid) / max(xMax - mid, 0.0001); // 0으로 나누는 문제 방지
+  return clamp(1.0 - 4.0 * progress * factor, 0.0, 1.0);
+}
+void main()
 `;
 
 export const VShaderLib = {
   V_LIGHTS_FRAGMENT_MAPS: V_LIGHTS_FRAGMENT_MAPS,
   V_LIGHTMAP_PARS_FRAGMENT: V_LIGHTMAP_PARS_FRAGMENT,
   V_VERTEX_WORLD_POSITION: VERTEX_WORLD_POSITION,
+  V_ALPHA_MIX_FUNC: addAlphaMixFunc,
 };

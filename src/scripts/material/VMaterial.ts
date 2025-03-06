@@ -1,3 +1,5 @@
+import { WebGLProgramParametersWithUniforms } from 'three/src/renderers/webgl/WebGLPrograms';
+import { WebGLRenderer } from 'three/src/renderers/WebGLRenderer';
 import * as THREE from '../VTHREE.ts';
 
 export interface VMaterial extends THREE.MeshStandardMaterial {
@@ -6,6 +8,11 @@ export interface VMaterial extends THREE.MeshStandardMaterial {
   set shader(shader: THREE.WebGLProgramParametersWithUniforms);
 
   get uniforms(): { [uniform: string]: THREE.IUniform };
+
+  oBC(): (
+    parameters: WebGLProgramParametersWithUniforms,
+    renderer: WebGLRenderer,
+  ) => void;
 
   clone(): this;
 

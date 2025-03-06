@@ -285,6 +285,7 @@ function Renderer() {
       if (event.child.layers.isEnabled(Layer.Model)) {
         console.log('Added New Child Mesh on Scene');
         window.dispatchEvent(new CustomEvent('scene-added'));
+        // Material shader 미리 컴파일
         gl.compileAsync(scene, camera);
       }
     });
@@ -686,6 +687,7 @@ function RendererContainer() {
         camera={{ layers: cameraLayer }}
         onMouseDown={mouse?.handleMouseDown}
         onMouseUp={mouse?.handleMouseUp}
+        id="main-canvas"
         style={{
           width: '100%',
           height: '100%',
