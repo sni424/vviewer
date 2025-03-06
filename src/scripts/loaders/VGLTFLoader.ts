@@ -10,6 +10,10 @@ import { KTX2Loader } from 'three/examples/jsm/loaders/KTX2Loader.js';
 import { ENV, Layer } from '../../Constants.ts';
 import { lightMapAtom, setAtomValue } from '../atoms.ts';
 import GainmapLoader from '../GainmapLoader.ts';
+import { VMaterial } from '../material/VMaterial.ts';
+import VMeshBasicMaterial from '../material/VMeshBasicMaterial.ts';
+import VMeshPhysicalMaterial from '../material/VMeshPhysicalMaterial.ts';
+import VMeshStandardMaterial from '../material/VMeshStandardMaterial.ts';
 import * as THREE from '../VTHREE.ts';
 import { getVKTX2Loader } from './VKTX2Loader.ts';
 import VTextureLoader from './VTextureLoader.ts';
@@ -75,17 +79,41 @@ export default class VGLTFLoader extends GLTFLoader {
 
       const isCreateLightMapCache = true;
 
+      const vMaterialCache = new Map<string, VMaterial>();
+
       gltf.scene.traverseAll(async (object: THREE.Object3D) => {
         object.layers.enable(Layer.Model);
         if (object.type === 'Mesh') {
-          const mat = (object as THREE.Mesh).material as THREE.Material;
-          mat.vUserData.originalOpacity = mat.opacity;
+          const mesh = object as THREE.Mesh;
+          const mat = mesh.material as THREE.Material;
           if (object.name === '프레임') {
             mat.side = THREE.DoubleSide;
+          }
+          mat.vUserData.originalOpacity = mat.opacity;
+
+          const originalMatID = mat.uuid;
+
+          if (vMaterialCache.has(originalMatID)) {
+            mesh.material = vMaterialCache.get(originalMatID);
+          } else {
+            let vMat: VMaterial;
+            if (mat.type === 'MeshStandardMaterial') {
+              vMat = VMeshStandardMaterial.fromThree(mat);
+            } else if (mat.type === 'MeshPhysicalMaterial') {
+              vMat = VMeshPhysicalMaterial.fromThree(mat);
+            } else if (mat.type === 'MeshBasicMaterial') {
+              vMat = VMeshBasicMaterial.fromThree(mat);
+            } else {
+              console.warn('???', mat);
+            }
+            mesh.material = vMat;
+            vMaterialCache.set(originalMatID, vMat);
           }
         }
         getLightmap(object, lightMapSet);
       });
+
+      vMaterialCache.clear();
 
       const lmMap = new Map<string, THREE.Texture>();
 

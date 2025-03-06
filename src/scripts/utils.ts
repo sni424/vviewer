@@ -22,6 +22,7 @@ import {
 } from './atoms';
 import { uploadExrToKtx } from './atomUtils.ts';
 import VGLTFLoader from './loaders/VGLTFLoader.ts';
+import { VMaterial } from './material/VMaterial.ts';
 import VGLTFExporter from './VGLTFExporter.ts';
 
 export const groupInfo = (
@@ -1485,12 +1486,13 @@ export function changeMeshVisibleWithTransition(
   transitionDelay: number,
   targetVisible: boolean,
 ) {
-  const mat = mesh.material as THREE.MeshStandardMaterial;
+  const mat = mesh.material as VMaterial;
   const originTransparent = mat.transparent;
   const originalOpacity = mat.vUserData.originalOpacity ?? 1;
-  const from = targetVisible ? 0.3 : originalOpacity;
+  const from = targetVisible ? 0 : originalOpacity;
   const to = targetVisible ? originalOpacity : 0;
   const originalBlending = mat.blending;
+  const originalRenderOrder = mesh.renderOrder;
   return gsap.to(
     {
       t: 0,
@@ -1501,34 +1503,45 @@ export function changeMeshVisibleWithTransition(
       ease: 'none',
       onStart() {
         mat.transparent = true;
-        mat.opacity = from;
-        mesh.visible = true;
         if (!targetVisible) {
-          mat.depthWrite = false;
-          mat.depthTest = false;
+          mesh.renderOrder = 9999;
         }
+        mesh.visible = true;
+        const defines = mat.defines;
+        defines['USE_PROGRESSIVE_ALPHA'] = '';
+        // 메시의 바운딩 박스 계산
+        const box = new THREE.Box3().setFromObject(mesh);
+
+        // dissolveOrigin 설정: x는 minX, y는 중앙, z는 minZ
+        const minX = box.min.x; // 왼쪽 X 좌표
+        const centerY = (box.min.y + box.max.y) / 2; // Y 중앙
+        const minZ = box.min.z; // 가장 앞쪽 (액자의 왼쪽 테두리)
+
+        // dissolveOrigin을 Three.js Vector3로 설정
+        const dissolveOrigin = new THREE.Vector3(minX, centerY, minZ);
+
+        // 3D 거리 사용 // X축 길이 사용
+        mat.uniforms.dissolveMaxDist.value = box.max.distanceTo(box.min);
+
+        // Shader Uniform에 dissolveOrigin 전달
+        mat.uniforms.dissolveOrigin.value = dissolveOrigin;
+        mat.uniforms.dissolveDirection.value = targetVisible;
+        mat.shader.uniforms.progress.value = 0;
         mat.needsUpdate = true;
       },
       onUpdate() {
         let progress = this.targets()[0].t;
-        let targetOpacity = 0;
-        if (targetVisible) {
-          targetOpacity = progress * originalOpacity;
-        } else {
-          targetOpacity = (1 - progress) * originalOpacity;
-        }
-        mat.opacity = targetOpacity;
-        // 메시 render depth 로 인해 뒷 메시가 안보이는 경우 해결
-        mat.needsUpdate = true;
+        mat.shader.uniforms.progress.value = progress;
       },
       onComplete() {
-        mat.transparent = originTransparent;
-        mat.opacity = to;
         mesh.visible = targetVisible;
         mat.depthWrite = true;
         mat.depthTest = true;
-        mat.needsUpdate = true;
         mat.blending = originalBlending;
+        mesh.renderOrder = originalRenderOrder;
+        const defines = mat.defines;
+        delete defines['USE_PROGRESSIVE_ALPHA'];
+        mat.needsUpdate = true;
       },
     },
   );
@@ -1658,3 +1671,19 @@ function getRandomColorWithComplementary() {
 
   return { randomColor, complementaryColor };
 }
+
+const ditheringReplace = `
+#include <dithering_fragment>
+//gl_FragColor.a = progress;
+//gl_FragColor.rgb *= gl_FragColor.a;
+gl_FragColor.rgb = vec3(progress);
+`;
+
+const addAlphaMixFunc = `
+float alpha(float progress, float x, float xMin, float xMax) {
+  float mid = mix(xMin, xMax, 0.5); // Midpoint of xMin and xMax
+  float factor = abs(x - mid) / (xMax - mid); // Symmetric distance from mid
+  return clamp(1.0 - 2.0 * progress * factor, 0.0, 1.0);
+}
+void main()
+`;

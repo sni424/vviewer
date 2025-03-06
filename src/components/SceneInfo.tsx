@@ -43,6 +43,7 @@ import {
   useToast,
 } from '../scripts/atoms';
 import { loadPostProcessAndSet, uploadJson } from '../scripts/atomUtils.ts';
+import { VMaterial } from '../scripts/material/VMaterial.ts';
 import ReflectionProbe from '../scripts/ReflectionProbe.ts';
 import useFilelist from '../scripts/useFilelist';
 import useStats, { StatPerSecond, VStats } from '../scripts/useStats.ts';
@@ -521,6 +522,13 @@ const GeneralButtons = () => {
       >
         카메라 세팅 초기화
       </button>
+      <button
+        onClick={() => {
+          console.log(gl);
+        }}
+      >
+        GL Debug
+      </button>
     </section>
   );
 };
@@ -670,51 +678,27 @@ const LightmapImageContrastControl = () => {
     scene.traverse(o => {
       if (o.type === 'Mesh') {
         const mesh = o as THREE.Mesh;
-        const hasMaterialTemp = mesh['matTemp'] !== undefined;
-        const mat = mesh.material as THREE.MeshStandardMaterial;
+        const mat = mesh.material as VMaterial;
+        const shader = mat.shader;
+        console.log(mat);
+        mat.setUseLightMapContrast(lmContrastOn);
         if (lmContrastOn) {
-          mesh['matTemp'] = mat;
-          const newMat = (mat as THREE.MeshStandardMaterial).clone();
-          newMat.onBeforeCompile = shader => {
-            shader.uniforms.lightMapContrast = { value: lmContrastValue };
-
-            shader.fragmentShader = shader.fragmentShader.replace(
-              '#include <lightmap_pars_fragment>',
-              LIGHTMAP_PARS,
-            );
-
-            shader.fragmentShader = shader.fragmentShader.replace(
-              '#include <lights_fragment_maps>',
-              LightMapContrastShader,
-            );
-
-            newMat.vUserData.shader = shader;
-          };
-          mesh.material = newMat;
-          newMat.needsUpdate = true;
+          shader.uniforms.lightMapContrast.value = lmContrastValue;
         } else {
-          if (hasMaterialTemp) {
-            mesh.material = mesh['matTemp'] as THREE.MeshStandardMaterial;
-            // delete mesh['matTemp'];
-            mesh.material.needsUpdate = true;
-          }
+          shader.uniforms.lightMapContrast.value = 1;
         }
       }
     });
   }, [lmContrastOn]);
 
   useEffect(() => {
-    console.log('lMContrastValue Changed :', lmContrastValue);
     if (lmContrastOn) {
       scene.traverse(o => {
         if (o.type === 'Mesh') {
           const mesh = o as THREE.Mesh;
-          const mat = mesh.material as THREE.MeshStandardMaterial;
-          const shader = mat.vUserData.shader;
-          if (shader) {
-            shader.uniforms.lightMapContrast = { value: lmContrastValue };
-            mat.needsUpdate = true;
-          }
+          const mat = mesh.material as VMaterial;
+          const shader = mat.shader;
+          shader.uniforms.lightMapContrast.value = lmContrastValue;
         }
       });
     }
@@ -1503,55 +1487,5 @@ const SceneInfo = () => {
     </div>
   );
 };
-
-const LightMapContrastShader = `
-#if defined( RE_IndirectDiffuse )
-
-  #ifdef USE_LIGHTMAP
-
-    vec4 lightMapTexel = texture2D( lightMap, vLightMapUv );
-		vec3 lightMapIrradiance = lightMapTexel.rgb * lightMapIntensity;
-    irradiance += pow(lightMapIrradiance, vec3(lightMapContrast));
-    
-  #endif
-
-  #if defined( USE_ENVMAP ) && defined( STANDARD ) && defined( ENVMAP_TYPE_CUBE_UV )
-
-    iblIrradiance += getIBLIrradiance( geometryNormal );
-
-  #endif
-
-#endif
-
-#if defined( USE_ENVMAP ) && defined( RE_IndirectSpecular )
-
-  #ifdef USE_ANISOTROPY
-
-    radiance += getIBLAnisotropyRadiance( geometryViewDir, geometryNormal, material.roughness, material.anisotropyB, material.anisotropy );
-
-  #else
-
-    radiance += getIBLRadiance( geometryViewDir, geometryNormal, material.roughness );
-
-  #endif
-
-  #ifdef USE_CLEARCOAT
-
-    clearcoatRadiance += getIBLRadiance( geometryViewDir, geometryClearcoatNormal, material.clearcoatRoughness );
-
-  #endif
-
-#endif
-`;
-
-const LIGHTMAP_PARS = `
-#ifdef USE_LIGHTMAP
-
-	uniform sampler2D lightMap;
-	uniform float lightMapIntensity;
-	uniform float lightMapContrast;
-
-#endif
-`;
 
 export default SceneInfo;
