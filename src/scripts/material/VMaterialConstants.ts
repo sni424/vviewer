@@ -74,9 +74,30 @@ float progressiveAlpha(float progress, float x, float xMin, float xMax) {
 void main()
 `;
 
+const ditheringReplace = `
+  #ifdef USE_PROGRESSIVE_ALPHA
+    float distance = distance(wp.xyz, dissolveOrigin );
+    float falloffRange = dissolveMaxDist * 0.01;
+    float distToBorder = (dissolveMaxDist + falloffRange) * abs(progress);
+    float falloff = step( distToBorder-falloffRange, distance );
+    float glowFalloff;
+    if ( dissolveDirection ) {
+      falloff = 1.0 - falloff;
+      glowFalloff = 1.0 - smoothstep(distToBorder-falloffRange*5.0, distToBorder+falloffRange*4.0, distance);
+    }
+    else {
+      glowFalloff = smoothstep(distToBorder-falloffRange, distToBorder, distance);
+    }
+    gl_FragColor.a *= falloff;
+    vec3 glowColor = vec3(1.0);
+    gl_FragColor.rgb = mix(glowColor, gl_FragColor.rgb, glowFalloff);
+  #endif
+`;
+
 export const VShaderLib = {
   V_LIGHTS_FRAGMENT_MAPS: V_LIGHTS_FRAGMENT_MAPS,
   V_LIGHTMAP_PARS_FRAGMENT: V_LIGHTMAP_PARS_FRAGMENT,
   V_VERTEX_WORLD_POSITION: VERTEX_WORLD_POSITION,
   V_ALPHA_MIX_FUNC: addAlphaMixFunc,
+  V_USE_PROGRESSIVE_ALPHA: ditheringReplace,
 };

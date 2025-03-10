@@ -289,6 +289,9 @@ function Renderer() {
         gl.compileAsync(scene, camera);
       }
     });
+    window.addEventListener('vmaterial-cloned', () => {
+      gl.compileAsync(scene, camera);
+    });
     setThreeExportsAtom(threeExports);
     camera.position.set(1, 1, 1);
     const mat = camera.matrix.clone();

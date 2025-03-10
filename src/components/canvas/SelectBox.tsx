@@ -65,6 +65,7 @@ const SelectBox = () => {
         mesh.getWorldQuaternion(cloned.quaternion);
         mesh.getWorldScale(cloned.scale);
         mesh.layers.enable(Layer.Selected);
+        cloned.name = 'selectBox';
         return (
           <primitive
             object={cloned}

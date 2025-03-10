@@ -32,6 +32,7 @@ import {
   DPCModeAtom,
   getAtomValue,
   lightMapAtom,
+  lightMapContrastAtom,
   materialSettingAtom,
   postprocessAtoms,
   ProbeAtom,
@@ -671,8 +672,7 @@ const LightmapImageContrastControl = () => {
 
   const { scene } = threeExports;
 
-  const [lmContrastOn, setLmContrastOn] = useState<boolean>(false);
-  const [lmContrastValue, setLmContrastValue] = useState<number>(1);
+  const [{ use, value }, setLightMapContrast] = useAtom(lightMapContrastAtom);
 
   useEffect(() => {
     scene.traverse(o => {
@@ -680,49 +680,52 @@ const LightmapImageContrastControl = () => {
         const mesh = o as THREE.Mesh;
         const mat = mesh.material as VMaterial;
         const shader = mat.shader;
-        console.log(mat);
-        mat.setUseLightMapContrast(lmContrastOn);
-        if (lmContrastOn) {
-          shader.uniforms.lightMapContrast.value = lmContrastValue;
+        mat.useLightMapContrast = use;
+        if (use) {
+          shader.uniforms.lightMapContrast.value = value;
         } else {
           shader.uniforms.lightMapContrast.value = 1;
         }
       }
     });
-  }, [lmContrastOn]);
+  }, [use]);
 
   useEffect(() => {
-    if (lmContrastOn) {
+    if (use) {
       scene.traverse(o => {
         if (o.type === 'Mesh') {
           const mesh = o as THREE.Mesh;
           const mat = mesh.material as VMaterial;
           const shader = mat.shader;
-          shader.uniforms.lightMapContrast.value = lmContrastValue;
+          shader.uniforms.lightMapContrast.value = value;
         }
       });
     }
-  }, [lmContrastValue]);
+  }, [value]);
+
+  function updateValue(value: number) {
+    setLightMapContrast(pre => ({ ...pre, value: value }));
+  }
 
   return (
     <div>
       <strong>라이트맵 이미지 대비</strong>
       <input
         type="checkbox"
-        checked={lmContrastOn}
+        checked={use}
         onChange={e => {
           if (!threeExports) {
             return;
           }
-          setLmContrastOn(e.target.checked);
+          setLightMapContrast(pre => ({ ...pre, use: e.target.checked }));
         }}
       />
-      {lmContrastOn && (
+      {use && (
         <div className="flex items-center gap-x-1">
           <label>Contrast</label>
           <button
             onClick={() => {
-              setLmContrastValue(1);
+              updateValue(1);
             }}
           >
             초기화
@@ -734,18 +737,18 @@ const LightmapImageContrastControl = () => {
             max={7}
             step={0.01}
             onChange={e => {
-              setLmContrastValue(parseFloat(e.target.value));
+              updateValue(parseFloat(e.target.value));
             }}
-            value={lmContrastValue}
+            value={value}
           />
           <input
             type="number"
-            value={lmContrastValue}
+            value={value}
             min={0}
             max={7}
             step={0.01}
             onChange={e => {
-              setLmContrastValue(parseFloat(e.target.value));
+              updateValue(parseFloat(e.target.value));
             }}
           />
         </div>
@@ -1125,6 +1128,49 @@ const GeneralMaterialControl = () => {
   const [lmIntensityValue, setlmIntensityValue] = useState(1);
   const [wireframe, setWireframe] = useState(false);
   const [materialSetting, setMaterialSetting] = useAtom(materialSettingAtom);
+  const [progress, setProgress] = useState<number>(0);
+  const [isProgress, setIsProgress] = useState<boolean>(true);
+
+  useEffect(() => {
+    scene.traverse(o => {
+      if (o.type === 'Mesh') {
+        const mesh = o as THREE.Mesh;
+        const mat = mesh.material as VMaterial;
+        const box = new THREE.Box3().setFromObject(mesh);
+
+        // dissolveOrigin 설정: x는 minX, y는 중앙, z는 minZ
+        const minX = box.min.x; // 왼쪽 X 좌표
+        const centerY = (box.min.y + box.max.y) / 2; // Y 중앙
+        const minZ = box.min.z; // 가장 앞쪽 (액자의 왼쪽 테두리)
+
+        // dissolveOrigin을 Three.js Vector3로 설정
+        const dissolveOrigin = new THREE.Vector3(minX, centerY, minZ);
+
+        // 3D 거리 사용
+        mat.setUniformByValue('dissolveMaxDist', box.max.distanceTo(box.min));
+
+        // Shader Uniform에 dissolveOrigin 전달
+        mat.setUniformByValue('dissolveOrigin', dissolveOrigin);
+        mat.setUniformByValue('dissolveDirection', false);
+        mat.setUniformByValue('progress', progress);
+        mat.needsUpdate = true;
+
+        mat.useProgressiveAlpha = isProgress;
+      }
+    });
+  }, [isProgress]);
+
+  useEffect(() => {
+    if (isProgress) {
+      scene.traverse(o => {
+        if (o.type === 'Mesh') {
+          const mesh = o as THREE.Mesh;
+          const mat = mesh.material as VMaterial;
+          mat.setUniformByValue('progress', progress);
+        }
+      });
+    }
+  }, [progress]);
 
   return (
     <section className="w-full">
@@ -1238,6 +1284,43 @@ const GeneralMaterialControl = () => {
           }}
         />
       </div>
+      <div className="flex">
+        <div className="mr-3">setProgress</div>
+        <input
+          type="checkbox"
+          checked={isProgress}
+          onChange={event => {
+            const checked = event.target.checked;
+            setIsProgress(checked);
+          }}
+        />
+      </div>
+      {isProgress && (
+        <div className="flex">
+          <div className="mr-3">progress Test</div>
+          <input
+            className="flex-1 min-w-0"
+            type="range"
+            value={progress}
+            onChange={e => {
+              setProgress(parseFloat(e.target.value));
+            }}
+            min={0}
+            max={1}
+            step={0.01}
+          ></input>
+          <input
+            type="number"
+            value={progress}
+            onChange={e => {
+              setProgress(parseFloat(e.target.value));
+            }}
+            min={0}
+            max={1}
+            step={0.01}
+          ></input>
+        </div>
+      )}
     </section>
   );
 };

@@ -303,6 +303,10 @@ export const globalGlAtom = atom<GLProps>({
 // REFLECTION PROBES
 export const ProbeAtom = atom<ReflectionProbe[]>([]);
 export const treeScrollToAtom = atom<string | null>(null);
+export const lightMapContrastAtom = atom<{ use: boolean; value: number }>({
+  use: false,
+  value: 1,
+});
 
 export const Tabs = [
   'scene',

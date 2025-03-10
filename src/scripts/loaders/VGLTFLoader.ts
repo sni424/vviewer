@@ -8,7 +8,6 @@ import {
 } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { KTX2Loader } from 'three/examples/jsm/loaders/KTX2Loader.js';
 import { ENV, Layer } from '../../Constants.ts';
-import { lightMapAtom, setAtomValue } from '../atoms.ts';
 import GainmapLoader from '../GainmapLoader.ts';
 import { VMaterial } from '../material/VMaterial.ts';
 import VMeshBasicMaterial from '../material/VMeshBasicMaterial.ts';
@@ -150,10 +149,10 @@ export default class VGLTFLoader extends GLTFLoader {
       });
 
       // TODO 외부에서 isCreateLightMapCache 조정하기
-      if (isCreateLightMapCache) {
-        const toLightMapObj = await createLightmapCache(lmMap);
-        setAtomValue(lightMapAtom, toLightMapObj);
-      }
+      // if (isCreateLightMapCache) {
+      //   const toLightMapObj = await createLightmapCache(lmMap);
+      //   setAtomValue(lightMapAtom, toLightMapObj);
+      // }
 
       onLoad(gltf);
     }
