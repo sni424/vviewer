@@ -17,6 +17,9 @@ import {
   optionSelectedAtom,
   ProbeAtom,
   selectedAtom,
+  setTimeline,
+  threeExportsAtom,
+  timelineAtom,
   useModal,
   useToast,
 } from '../scripts/atoms.ts';
@@ -181,17 +184,15 @@ const OptionPreviewTab = () => {
   return (
     <div>
       {mcOptions.map((modelOption, idx) => (
-        <OptionPreview key={idx} option={modelOption} />
+        <OptionPreview key={`option-preview-${idx}`} option={modelOption} />
       ))}
     </div>
   );
 };
 
 const OptionPreview = ({ option }: { option: ModelOption }) => {
-  const threeExports = threes();
-  if (!threeExports) {
-    return null;
-  }
+  const threeExports = useAtomValue(threeExportsAtom)!;
+
   const mcOptions = useAtomValue(modelOptionClassAtom);
   const [isProcessing, setIsProcessing] = useState(false);
   const [optionSelected, setOptionSelected] = useAtom(optionSelectedAtom);
@@ -242,15 +243,17 @@ const OptionPreview = ({ option }: { option: ModelOption }) => {
     const nowSelected = { ...optionSelected };
     nowSelected[option.id] = state.id;
     setOptionSelected(nowSelected);
-    const animationDuration = 1; // 1s
+    // const animationDuration = 10; // 1s
+    const animationDuration = 2; // 1s
     setIsProcessing(true);
     const meshEffects = state.effects;
     let hasAnimation;
     const probesToRender: string[] = [];
     const anlayzed = analyze(nowSelected);
+    console.log(anlayzed);
     const timeLines: gsap.core.Timeline[] = [];
     meshEffects.forEach(meshEffect => {
-      const timeLine = gsap.timeline();
+      const timeLine = gsap.timeline().pause();
       const object = scene
         .getObjectsByProperty('name', meshEffect.name)
         .find(o => o.type === 'Mesh');
@@ -261,16 +264,15 @@ const OptionPreview = ({ option }: { option: ModelOption }) => {
         // Visible Control
         if (effects.useVisible) {
           const isThisMeshResultVisible = anlayzed[mesh.name].visible;
-          // if (mesh.visible !== isThisMeshResultVisible) {
-          //   console.log('has MeshVisible animation :', mesh.name);
-          //
-          // }
-          changeMeshVisibleWithTransition(
-            mesh,
-            animationDuration,
-            isThisMeshResultVisible,
-            timeLine,
-          );
+          if (mesh.visible !== isThisMeshResultVisible) {
+            console.log('has MeshVisible animation :', mesh.name);
+            changeMeshVisibleWithTransition(
+              mesh,
+              animationDuration,
+              isThisMeshResultVisible,
+              timeLine,
+            );
+          }
         }
 
         console.log('setting LightMap');
@@ -330,12 +332,14 @@ const OptionPreview = ({ option }: { option: ModelOption }) => {
       autoClose: true,
     });
 
-    if (timeLines.length > 0) {
-      timeLines.forEach(timeLine => {
-        timeLine.play(0);
-      });
+    // const { scene: _scene, camera: _camera, gl } = threes()!;
 
-      processAfter();
+    if (timeLines.length > 0) {
+      // timeLines.forEach(timeLine => {
+      //   timeLine.play(0);
+      // });
+      // processAfter();
+      setTimeline({ timelines: timeLines, processAfter });
     }
   }
 
@@ -343,19 +347,15 @@ const OptionPreview = ({ option }: { option: ModelOption }) => {
     <div className="mt-2 border border-gray-600 p-2">
       <p className="text-sm font-bold text-center mb-2">{option.name}</p>
       <div className="flex items-center border-collapse relative">
-        {option.states.map(state => (
+        {option.states.map((state, i) => (
           <div
             style={{ width: `calc(100%/${option.states.length})` }}
-            key={Math.random()}
+            key={`state-${i}`}
           >
             {isProcessing && (
-              <div
-                key={Math.random()}
-                className="absolute w-full h-full bg-transparent cursor-progress"
-              ></div>
+              <div className="absolute w-full h-full bg-transparent cursor-progress"></div>
             )}
             <button
-              key={Math.random()}
               className="rounded-none w-full"
               onClick={() => processState(state)}
               disabled={
@@ -368,6 +368,29 @@ const OptionPreview = ({ option }: { option: ModelOption }) => {
         ))}
       </div>
     </div>
+  );
+};
+
+const OptionTimelineExe = () => {
+  const timelineValue = useAtomValue(timelineAtom);
+
+  console.log(timelineValue);
+
+  return (
+    <button
+      onClick={() => {
+        const { timelines, processAfter } = timelineValue;
+
+        timelines.forEach(timeLine => {
+          timeLine.play(0);
+        });
+        processAfter();
+        setTimeline(undefined);
+      }}
+      disabled={!timelineValue}
+    >
+      애니메이션 실행
+    </button>
   );
 };
 
@@ -398,6 +421,7 @@ export const OptionTab = () => {
           <p className="text-center">Config</p>
         </div>
       </div>
+      <OptionTimelineExe></OptionTimelineExe>
       <div className="p-3 max-h-[calc(100%-20px)] h-[calc(100%-20px)]">
         {tabMode === 'config' ? <OptionConfigTab /> : <OptionPreviewTab />}
       </div>

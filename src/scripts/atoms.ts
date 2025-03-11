@@ -571,3 +571,6 @@ export const addPoints = (...points: DrawablePoint[]) => {
     return [...uniquePrev, ...points];
   });
 };
+
+export const [timelineAtom, getTimeline, setTimeline] = createAtomCombo<
+  { timelines: any; processAfter: Function }>();
