@@ -64,6 +64,7 @@ const applyTexture = (
   object: THREE.Object3D,
   texture: THREE.Texture,
   mapDst?: MapDst,
+  map?: File,
 ) => {
   object.traverseAll(obj => {
     // console.log('obj : ', obj);
@@ -75,6 +76,9 @@ const applyTexture = (
       }
       if (mapDst === 'gainmap' || mapDst === 'lightmap' || !mapDst) {
         material.lightMap = texture;
+        if (map) {
+          material.vUserData.lightMap = map.name;
+        }
         // material.map = texture;
       } else {
         throw new Error('Invalid mapDst @Renderer');
@@ -252,7 +256,7 @@ const useLoadModel = ({
             flipY,
           });
 
-          applyTexture(gltf.scene, texture, mapDst);
+          applyTexture(gltf.scene, texture, mapDst, map);
         }
 
         scene.add(...gltf.scene.children);

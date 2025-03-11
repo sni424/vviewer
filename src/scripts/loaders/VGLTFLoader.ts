@@ -138,7 +138,12 @@ export default class VGLTFLoader extends GLTFLoader {
               const texture = lmMap.get(lmKey);
               if (texture) {
                 mat.lightMap = texture;
-                mat.lightMapIntensity = mat.userData.lightMapIntensity;
+                const lightMapIntensity = mat.vUserData.lightMapIntensity;
+                if (lightMapIntensity && lightMapIntensity > 0) {
+                  mat.lightMapIntensity = lightMapIntensity;
+                } else {
+                  mat.lightMapIntensity = 1;
+                }
                 mat.needsUpdate = true;
               } else {
                 console.warn('No Texture Found : ', lmKey);
