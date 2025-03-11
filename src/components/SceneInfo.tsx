@@ -492,6 +492,75 @@ const GeneralButtons = () => {
       </button>
       <button
         onClick={() => {
+          const uploadUrl = import.meta.env.VITE_UPLOAD_URL;
+          if (!uploadUrl) {
+            alert('.env에 환경변수를 설정해주세요, uploadUrl');
+            return;
+          }
+          const scene = threeExports.scene;
+          scene.traverse(o => {
+            if (o.type === 'Mesh') {
+              const mesh = o as THREE.Mesh;
+              const mat = mesh.material as VMaterial;
+              const ud = mat.vUserData;
+              if (ud.lightMap && ud.lightMap.endsWith('.exr')) {
+                ud.lightMap = ud.lightMap.replace('.exr', '.ktx');
+                ud.lightMapIntensity = mat.lightMapIntensity;
+              }
+            }
+          });
+          new VGLTFExporter()
+            .parseAsync(threeExports.scene, { binary: true })
+            .then(glbArr => {
+              if (glbArr instanceof ArrayBuffer) {
+                console.log('before File Make');
+                const blob = new Blob([glbArr], {
+                  type: 'application/octet-stream',
+                });
+                const file = new File([blob], 'latest.glb', {
+                  type: 'model/gltf-binary',
+                });
+                const fd = new FormData();
+                fd.append('files', file);
+
+                // latest 캐싱을 위한 hash
+                const uploadHash = objectHash(new Date().toISOString());
+                const hashData = {
+                  hash: uploadHash,
+                };
+                // convert object to File:
+                const hashFile = compressObjectToFile(hashData, 'latest-hash');
+                const hashFd = new FormData();
+                hashFd.append('files', hashFile);
+                console.log('before Upload');
+                Promise.all([
+                  fetch(uploadUrl, {
+                    method: 'POST',
+                    body: hashFd,
+                  }),
+                  fetch(uploadUrl, {
+                    method: 'POST',
+                    body: fd,
+                  }),
+                ]).then(() => {
+                  alert('업로드 완료');
+                  onAfterSceneExport(before);
+                  closeToast();
+                });
+              } else {
+                console.error(
+                  'VGLTFExporter GLB 처리 안됨, "binary: true" option 확인',
+                );
+                alert('VGLTFExporter 문제 발생함, 로그 확인');
+                closeToast();
+              }
+            });
+        }}
+      >
+        GLB 만 업로드
+      </button>
+      <button
+        onClick={() => {
           uploadExrLightmap(threeExports.scene).then(res => {
             alert('업로드 완료');
           });

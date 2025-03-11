@@ -23,6 +23,7 @@ import {
 import { loadOption, threes, uploadJson } from '../scripts/atomUtils.ts';
 import { createLightmapCache } from '../scripts/loaders/VGLTFLoader.ts';
 import { getVKTX2Loader } from '../scripts/loaders/VKTX2Loader.ts';
+import { VMaterial } from '../scripts/material/VMaterial.ts';
 import { ModelOptionObject } from '../scripts/ModelOptionObject.ts';
 import ModelOption from '../scripts/options/ModelOption.ts';
 import OptionState from '../scripts/options/OptionState.ts';
@@ -245,29 +246,34 @@ const OptionPreview = ({ option }: { option: ModelOption }) => {
     setIsProcessing(true);
     const meshEffects = state.effects;
     let hasAnimation;
-    let visibleAnimation: gsap.core.Tween | null = null;
-    let lightMapAnimation: gsap.core.Tween | null = null;
     const probesToRender: string[] = [];
     const anlayzed = analyze(nowSelected);
+    const timeLines: gsap.core.Timeline[] = [];
     meshEffects.forEach(meshEffect => {
+      const timeLine = gsap.timeline();
       const object = scene
         .getObjectsByProperty('name', meshEffect.name)
         .find(o => o.type === 'Mesh');
       if (object) {
         const mesh = object as THREE.Mesh;
         const effects = meshEffect.effect;
-        const mat = mesh.material as THREE.MeshStandardMaterial;
+        const mat = mesh.material as VMaterial;
         // Visible Control
         if (effects.useVisible) {
           const isThisMeshResultVisible = anlayzed[mesh.name].visible;
-          if (mesh.visible !== isThisMeshResultVisible) {
-            visibleAnimation = changeMeshVisibleWithTransition(
-              mesh,
-              animationDuration,
-              isThisMeshResultVisible,
-            );
-          }
+          // if (mesh.visible !== isThisMeshResultVisible) {
+          //   console.log('has MeshVisible animation :', mesh.name);
+          //
+          // }
+          changeMeshVisibleWithTransition(
+            mesh,
+            animationDuration,
+            isThisMeshResultVisible,
+            timeLine,
+          );
         }
+
+        console.log('setting LightMap');
 
         // LightMap control
         if (effects.useLightMap) {
@@ -287,10 +293,11 @@ const OptionPreview = ({ option }: { option: ModelOption }) => {
           } else if (keys.includes(target)) {
             const { texture } = lightMapCache[target];
             texture.flipY = false;
-            lightMapAnimation = changeMeshLightMapWithTransition(
+            changeMeshLightMapWithTransition(
               mesh,
               animationDuration,
               texture,
+              timeLine,
             );
           } else {
             // TODO fetch
@@ -304,6 +311,8 @@ const OptionPreview = ({ option }: { option: ModelOption }) => {
             probesToRender.push(probeId);
           }
         }
+
+        timeLines.push(timeLine);
       } else {
         console.warn('no Mesh Found On state, passing By : ', meshEffect.name);
       }
@@ -316,23 +325,16 @@ const OptionPreview = ({ option }: { option: ModelOption }) => {
       setIsProcessing(false);
     }
 
-    hasAnimation = visibleAnimation !== null || lightMapAnimation !== null;
+    openToast('애니메이션 실행됨', {
+      duration: animationDuration,
+      autoClose: true,
+    });
 
-    const timeLine = gsap.timeline();
-
-    if (hasAnimation) {
-      if (visibleAnimation) timeLine.add(visibleAnimation, 0);
-      if (lightMapAnimation) timeLine.add(lightMapAnimation, 0);
-
-      openToast('애니메이션 실행됨', {
-        duration: animationDuration,
-        autoClose: true,
+    if (timeLines.length > 0) {
+      timeLines.forEach(timeLine => {
+        timeLine.play(0);
       });
 
-      timeLine.play(0).then(() => {
-        processAfter();
-      });
-    } else {
       processAfter();
     }
   }

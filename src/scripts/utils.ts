@@ -1485,6 +1485,7 @@ export function changeMeshVisibleWithTransition(
   mesh: THREE.Mesh,
   transitionDelay: number,
   targetVisible: boolean,
+  timeLine: gsap.core.Timeline,
 ) {
   const mat = mesh.material as VMaterial;
   const originalRenderOrder = mesh.renderOrder;
@@ -1510,7 +1511,7 @@ export function changeMeshVisibleWithTransition(
   mat.useProgressiveAlpha = true;
   mat.needsUpdate = true;
 
-  return gsap.to(
+  timeLine.to(
     {
       t: 0,
     },
@@ -1519,6 +1520,7 @@ export function changeMeshVisibleWithTransition(
       duration: transitionDelay,
       ease: 'none',
       onStart() {
+        console.log('started');
         mat.transparent = true;
         if (!targetVisible) {
           mesh.renderOrder = 9999;
@@ -1530,12 +1532,14 @@ export function changeMeshVisibleWithTransition(
         mat.setUniformByValue('progress', progress);
       },
       onComplete() {
+        console.log('completed');
         mesh.visible = targetVisible;
         mesh.renderOrder = originalRenderOrder;
         mat.transparent = originalTransparent;
         mat.useProgressiveAlpha = false; // needsUpdate = true 자동
       },
     },
+    0,
   );
 }
 
@@ -1543,6 +1547,7 @@ export function changeMeshLightMapWithTransition(
   mesh: THREE.Mesh,
   transitionDelay: number,
   targetLightMap: THREE.Texture,
+  timeLine: gsap.core.Timeline,
 ) {
   const mat = mesh.material as THREE.MeshStandardMaterial;
   const beforeLightMap = mat.lightMap;
@@ -1616,7 +1621,7 @@ export function changeMeshLightMapWithTransition(
     cloned.vUserData.shader = shader;
   };
 
-  return gsap.to(
+  timeLine.to(
     {
       t: 0,
     },
@@ -1642,6 +1647,7 @@ export function changeMeshLightMapWithTransition(
         cloned.dispose();
       },
     },
+    0,
   );
 }
 
