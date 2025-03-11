@@ -232,7 +232,7 @@ const OptionPreview = ({ option }: { option: ModelOption }) => {
     return result;
   }
 
-  function processState(state: OptionState) {
+  async function processState(state: OptionState) {
     if (isProcessing) {
       console.warn('processState is On Processing');
       return;
@@ -241,10 +241,10 @@ const OptionPreview = ({ option }: { option: ModelOption }) => {
     const nowSelected = { ...optionSelected };
     nowSelected[option.id] = state.id;
     setOptionSelected(nowSelected);
-    const animationDuration = 1.3; // 1s
+    const animationDuration = 1; // 1s
     setIsProcessing(true);
     const meshEffects = state.effects;
-    let hasAnimation = false;
+    let hasAnimation;
     let visibleAnimation: gsap.core.Tween | null = null;
     let lightMapAnimation: gsap.core.Tween | null = null;
     const probesToRender: string[] = [];

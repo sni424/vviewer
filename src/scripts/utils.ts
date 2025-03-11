@@ -1487,12 +1487,29 @@ export function changeMeshVisibleWithTransition(
   targetVisible: boolean,
 ) {
   const mat = mesh.material as VMaterial;
-  const originTransparent = mat.transparent;
-  const originalOpacity = mat.vUserData.originalOpacity ?? 1;
-  const from = targetVisible ? 0 : originalOpacity;
-  const to = targetVisible ? originalOpacity : 0;
-  const originalBlending = mat.blending;
   const originalRenderOrder = mesh.renderOrder;
+  const originalTransparent = mat.transparent;
+  // 메시의 바운딩 박스 계산
+  const box = new THREE.Box3().setFromObject(mesh);
+
+  // dissolveOrigin 설정: x는 minX, y는 중앙, z는 minZ
+  const minX = box.min.x; // 왼쪽 X 좌표
+  const centerY = (box.min.y + box.max.y) / 2; // Y 중앙
+  const minZ = box.min.z; // 가장 앞쪽 (액자의 왼쪽 테두리)
+
+  // dissolveOrigin을 Three.js Vector3로 설정
+  const dissolveOrigin = new THREE.Vector3(minX, centerY, minZ);
+
+  // 3D 거리 사용
+  mat.setUniformByValue('dissolveMaxDist', box.max.distanceTo(box.min));
+
+  // Shader Uniform에 dissolveOrigin 전달
+  mat.setUniformByValue('dissolveOrigin', dissolveOrigin);
+  mat.setUniformByValue('dissolveDirection', targetVisible);
+  mat.setUniformByValue('progress', 0);
+  mat.useProgressiveAlpha = true;
+  mat.needsUpdate = true;
+
   return gsap.to(
     {
       t: 0,
@@ -1507,41 +1524,16 @@ export function changeMeshVisibleWithTransition(
           mesh.renderOrder = 9999;
         }
         mesh.visible = true;
-        const defines = mat.defines;
-        defines['USE_PROGRESSIVE_ALPHA'] = '';
-        // 메시의 바운딩 박스 계산
-        const box = new THREE.Box3().setFromObject(mesh);
-
-        // dissolveOrigin 설정: x는 minX, y는 중앙, z는 minZ
-        const minX = box.min.x; // 왼쪽 X 좌표
-        const centerY = (box.min.y + box.max.y) / 2; // Y 중앙
-        const minZ = box.min.z; // 가장 앞쪽 (액자의 왼쪽 테두리)
-
-        // dissolveOrigin을 Three.js Vector3로 설정
-        const dissolveOrigin = new THREE.Vector3(minX, centerY, minZ);
-
-        // 3D 거리 사용 // X축 길이 사용
-        mat.uniforms.dissolveMaxDist.value = box.max.distanceTo(box.min);
-
-        // Shader Uniform에 dissolveOrigin 전달
-        mat.uniforms.dissolveOrigin.value = dissolveOrigin;
-        mat.uniforms.dissolveDirection.value = targetVisible;
-        mat.shader.uniforms.progress.value = 0;
-        mat.needsUpdate = true;
       },
       onUpdate() {
-        let progress = this.targets()[0].t;
-        mat.shader.uniforms.progress.value = progress;
+        const progress = this.targets()[0].t;
+        mat.setUniformByValue('progress', progress);
       },
       onComplete() {
         mesh.visible = targetVisible;
-        mat.depthWrite = true;
-        mat.depthTest = true;
-        mat.blending = originalBlending;
         mesh.renderOrder = originalRenderOrder;
-        const defines = mat.defines;
-        delete defines['USE_PROGRESSIVE_ALPHA'];
-        mat.needsUpdate = true;
+        mat.transparent = originalTransparent;
+        mat.useProgressiveAlpha = false; // needsUpdate = true 자동
       },
     },
   );
@@ -1560,46 +1552,47 @@ export function changeMeshLightMapWithTransition(
   }
   const cloned = mat.clone();
 
-  const LIGHTMAP_PROGRESS_SHADER = `#if defined( RE_IndirectDiffuse )
+  const LIGHTMAP_PROGRESS_SHADER = `
+  #if defined( RE_IndirectDiffuse )
 
-                  #ifdef USE_LIGHTMAP
-                
-                    vec4 lightMap1 = texture2D(texture1, vLightMapUv);
-                    vec4 lightMap2 = texture2D(texture2, vLightMapUv);
-                    vec4 lightMapTexel = mix(lightMap1, lightMap2, progress);
-                    vec3 lightMapIrradiance = lightMapTexel.rgb * lightMapIntensity;
-                
-                    irradiance += lightMapIrradiance;
-                
-                  #endif
-                
-                  #if defined( USE_ENVMAP ) && defined( STANDARD ) && defined( ENVMAP_TYPE_CUBE_UV )
-                
-                    iblIrradiance += getIBLIrradiance( geometryNormal );
-                
-                  #endif
-                
-                #endif
-                
-                #if defined( USE_ENVMAP ) && defined( RE_IndirectSpecular )
-                
-                  #ifdef USE_ANISOTROPY
-                
-                    radiance += getIBLAnisotropyRadiance( geometryViewDir, geometryNormal, material.roughness, material.anisotropyB, material.anisotropy );
-                
-                  #else
-                
-                    radiance += getIBLRadiance( geometryViewDir, geometryNormal, material.roughness );
-                
-                  #endif
-                
-                  #ifdef USE_CLEARCOAT
-                
-                    clearcoatRadiance += getIBLRadiance( geometryViewDir, geometryClearcoatNormal, material.clearcoatRoughness );
-                
-                  #endif
-                
-                #endif`;
+    #ifdef USE_LIGHTMAP
+  
+      vec4 lightMap1 = texture2D(texture1, vLightMapUv);
+      vec4 lightMap2 = texture2D(texture2, vLightMapUv);
+      vec4 lightMapTexel = mix(lightMap1, lightMap2, progress);
+      vec3 lightMapIrradiance = lightMapTexel.rgb * lightMapIntensity;
+  
+      irradiance += lightMapIrradiance;
+  
+    #endif
+  
+    #if defined( USE_ENVMAP ) && defined( STANDARD ) && defined( ENVMAP_TYPE_CUBE_UV )
+  
+      iblIrradiance += getIBLIrradiance( geometryNormal );
+  
+    #endif
+  
+  #endif
+  
+  #if defined( USE_ENVMAP ) && defined( RE_IndirectSpecular )
+  
+    #ifdef USE_ANISOTROPY
+  
+      radiance += getIBLAnisotropyRadiance( geometryViewDir, geometryNormal, material.roughness, material.anisotropyB, material.anisotropy );
+  
+    #else
+  
+      radiance += getIBLRadiance( geometryViewDir, geometryNormal, material.roughness );
+  
+    #endif
+  
+    #ifdef USE_CLEARCOAT
+  
+      clearcoatRadiance += getIBLRadiance( geometryViewDir, geometryClearcoatNormal, material.clearcoatRoughness );
+  
+    #endif
+  
+  #endif`;
 
   cloned.onBeforeCompile = shader => {
     // 유니폼 변수 설정
@@ -1671,19 +1664,3 @@ function getRandomColorWithComplementary() {
 
   return { randomColor, complementaryColor };
 }
-
-const ditheringReplace = `
-#include <dithering_fragment>
-//gl_FragColor.a = progress;
-//gl_FragColor.rgb *= gl_FragColor.a;
-gl_FragColor.rgb = vec3(progress);
-`;
-
-const addAlphaMixFunc = `
-float alpha(float progress, float x, float xMin, float xMax) {
-  float mid = mix(xMin, xMax, 0.5); // Midpoint of xMin and xMax
-  float factor = abs(x - mid) / (xMax - mid); // Symmetric distance from mid
-  return clamp(1.0 - 2.0 * progress * factor, 0.0, 1.0);
-}
-void main()
-`;

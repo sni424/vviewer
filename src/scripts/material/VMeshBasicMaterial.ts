@@ -7,20 +7,28 @@ class VMeshBasicMaterial extends THREE.MeshBasicMaterial implements VMaterial {
 
   constructor(parameters?: THREE.MeshBasicMaterialParameters) {
     super(parameters);
+
+    /** 기본적으로 three.js 의 Material 은 defines === undefined
+     * 그러나 Basic 으로부터 파생되는 Material 은 defines 가 정의 되어있음.
+     * MeshStandardMaterial -> defines : {STANDARD: ''}
+     * MeshPhysicalMaterial -> defines : {PHYSICAL: '', STANDARD: ''}
+     */
+    if (!this.defines) {
+      this.defines = {};
+      this.useProgressiveAlpha = true;
+    }
+
     this.onBeforeCompile = (shader, renderer) => {
       THREE.MeshBasicMaterial.prototype.onBeforeCompile(shader, renderer);
       // VERTEX
       VMaterialUtils.addWorldPosition(shader);
       // FRAGMENT
       VMaterialUtils.adjustLightMapFragments(shader);
-      VMaterialUtils.addAlphaFunction(shader);
+      VMaterialUtils.addProgressiveAlpha(shader);
 
       this.shader = shader;
+      this.needsUpdate = true;
     };
-  }
-
-  oBC() {
-    return this.onBeforeCompile;
   }
 
   static fromThree(material: THREE.MeshBasicMaterial): VMeshBasicMaterial {
@@ -65,15 +73,33 @@ class VMeshBasicMaterial extends THREE.MeshBasicMaterial implements VMaterial {
     return new VMeshBasicMaterial(this);
   }
 
-  setUseLightMapContrast(use: boolean) {
-    const defines = this.defines || {};
-    if (use) defines['USE_LIGHTMAP_CONTRAST'] = '';
-    else delete defines['USE_LIGHTMAP_CONTRAST'];
+  addDefines(key: string, value?: any = '') {
+    const defines = this.defines!!;
+    defines[key] = value;
+  }
+
+  removeDefines(key: string) {
+    delete this.defines!![key];
+  }
+
+  set useLightMapContrast(use: boolean) {
+    if (use) this.addDefines('USE_LIGHTMAP_CONTRAST');
+    else this.removeDefines('USE_LIGHTMAP_CONTRAST');
     this.needsUpdate = true;
   }
 
-  getUseLightMapContrast(): boolean {
-    return this.defines?.USE_LIGHTMAP_CONTRAST !== undefined;
+  get useLightMapContrast(): boolean {
+    return this.defines!!.USE_LIGHTMAP_CONTRAST !== undefined;
+  }
+
+  set useProgressiveAlpha(use: boolean) {
+    if (use) this.addDefines('USE_PROGRESSIVE_ALPHA');
+    else this.removeDefines('USE_PROGRESSIVE_ALPHA');
+    this.needsUpdate = true;
+  }
+
+  get useProgressiveAlpha(): boolean {
+    return this.defines!!.USE_PROGRESSIVE_ALPHA !== undefined;
   }
 }
 

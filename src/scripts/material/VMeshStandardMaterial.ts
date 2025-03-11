@@ -10,21 +10,19 @@ class VMeshStandardMaterial
 
   constructor(parameters?: THREE.MeshStandardMaterialParameters) {
     super(parameters);
+    this.useProgressiveAlpha = true;
     this.onBeforeCompile = (shader, renderer) => {
       THREE.MeshStandardMaterial.prototype.onBeforeCompile(shader, renderer);
 
       // VERTEX
       VMaterialUtils.addWorldPosition(shader);
       // FRAGMENT
-      VMaterialUtils.addAlphaFunction(shader);
+      VMaterialUtils.addProgressiveAlpha(shader);
       VMaterialUtils.adjustLightMapFragments(shader);
 
       this.shader = shader;
+      this.needsUpdate = true;
     };
-  }
-
-  oBC() {
-    return this.onBeforeCompile;
   }
 
   static fromThree(
@@ -70,15 +68,33 @@ class VMeshStandardMaterial
     return new VMeshStandardMaterial(this);
   }
 
-  setUseLightMapContrast(use: boolean) {
-    const defines = this.defines || {};
-    if (use) defines['USE_LIGHTMAP_CONTRAST'] = '';
-    else delete defines['USE_LIGHTMAP_CONTRAST'];
+  addDefines(key: string, value?: any = '') {
+    const defines = this.defines!!;
+    defines[key] = value;
+  }
+
+  removeDefines(key: string) {
+    delete this.defines!![key];
+  }
+
+  set useLightMapContrast(use: boolean) {
+    if (use) this.addDefines('USE_LIGHTMAP_CONTRAST');
+    else this.removeDefines('USE_LIGHTMAP_CONTRAST');
     this.needsUpdate = true;
   }
 
-  getUseLightMapContrast(): boolean {
-    return this.defines?.USE_LIGHTMAP_CONTRAST !== undefined;
+  get useLightMapContrast(): boolean {
+    return this.defines!!.USE_LIGHTMAP_CONTRAST !== undefined;
+  }
+
+  set useProgressiveAlpha(use: boolean) {
+    if (use) this.addDefines('USE_PROGRESSIVE_ALPHA');
+    else this.removeDefines('USE_PROGRESSIVE_ALPHA');
+    this.needsUpdate = true;
+  }
+
+  get useProgressiveAlpha(): boolean {
+    return this.defines!!.USE_PROGRESSIVE_ALPHA !== undefined;
   }
 }
 

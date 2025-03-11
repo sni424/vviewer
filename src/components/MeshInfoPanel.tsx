@@ -87,6 +87,7 @@ const MeshView = ({
         >
           트리에서 보기
         </button>
+        <button onClick={() => console.log(object)}>debug</button>
         {currentMat && (
           <button
             onClick={() => {
