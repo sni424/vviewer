@@ -3,16 +3,12 @@ import useFiles from '../scripts/useFiles';
 import {
   compressObjectToFile,
   formatNumber,
-  getModelArrangedScene,
   groupInfo,
   isProbeMesh,
   isTransformControlOrChild,
   loadLatest,
-  loadScene,
-  saveScene,
   toNthDigit,
   uploadExrLightmap,
-  uploadGainmap,
 } from '../scripts/utils';
 
 import { get, set } from 'idb-keyval';
@@ -35,17 +31,16 @@ import {
   lightMapContrastAtom,
   materialSettingAtom,
   postprocessAtoms,
-  ProbeAtom,
   selectedAtom,
   threeExportsAtom,
+  uploadingAtom,
   useBenchmark,
   useEnvParams,
   useModal,
   useToast,
 } from '../scripts/atoms';
 import { loadPostProcessAndSet, uploadJson } from '../scripts/atomUtils.ts';
-import { VMaterial } from '../scripts/material/VMaterial.ts';
-import ReflectionProbe from '../scripts/ReflectionProbe.ts';
+import VMaterial from '../scripts/material/VMaterial.ts';
 import useFilelist from '../scripts/useFilelist';
 import useStats, { StatPerSecond, VStats } from '../scripts/useStats.ts';
 import VGLTFExporter from '../scripts/VGLTFExporter.ts';
@@ -166,15 +161,14 @@ const CameraInfoSection = () => {
 
 const GeneralButtons = () => {
   const threeExports = useAtomValue(threeExportsAtom);
-  const [hasSaved, setHasSaved] = useState(false);
   const { openModal, closeModal } = useModal();
   const { openToast, closeToast } = useToast();
   const navigate = useNavigate();
-  const [probes, setProbes] = useAtom<ReflectionProbe[]>(ProbeAtom);
   const [dpcMode, setDPCMode] = useAtom(DPCModeAtom);
   const dpcModalRef = useRef(null);
   const [dp, setDP] = useAtom(DPAtom);
   const { addBenchmark } = useBenchmark();
+  const [isUploading, setUploading] = useAtom(uploadingAtom);
 
   // DPC Modal 모드에 따라 사이즈 변경
   useEffect(() => {
@@ -208,101 +202,127 @@ const GeneralButtons = () => {
     await loadSettings(); // Reload settings from IDB to update atoms
   };
 
-  useEffect(() => {
-    get('savedScene').then(val => {
-      if (val) {
-        setHasSaved(true);
-      }
-    });
-  }, []);
-
   if (!threeExports) {
     return null;
   }
 
   const { scene, gl, camera } = threeExports;
 
-  // Scene Export 전처리
-  function onBeforeSceneExport(): { beforeDpStatus: boolean } {
-    // 프로브 정보 Scene 에 담기
-    // scene.vUserData.probes = probes.map(probe => probe.toJSON());
-    const beforeDpStatus = dp.on;
-
-    setDP(prev => ({ ...prev, on: true }));
-    return {
-      beforeDpStatus,
-    };
+  // 임시 보관 (모델추가 & 업로드 버튼 로직)
+  function openModelUploadModal() {
+    openModal(() => (
+      <div
+        style={{
+          width: '80%',
+          maxHeight: '80%',
+          backgroundColor: '#ffffffcc',
+          padding: 16,
+          borderRadius: 8,
+          boxSizing: 'border-box',
+          position: 'relative',
+          overflowY: 'auto',
+        }}
+      >
+        <UploadPage></UploadPage>
+      </div>
+    ));
   }
 
-  // Scene Export 후처리
-  function onAfterSceneExport({
-    beforeDpStatus,
-  }: {
-    beforeDpStatus: boolean;
-  }): void {
-    // userData 에 들어간 probes 정보 삭제
-    // delete scene.vUserData.probes;
-    setDP(prev => ({ ...prev, on: beforeDpStatus }));
+  async function uploadLightMaps() {
+    openToast('라이트맵 업로드 중...', { autoClose: false });
+    setUploading(true);
+    await uploadExrLightmap(threeExports.scene);
+    setUploading(false);
+    closeToast();
   }
 
-  // Scene Load 전처리
-  function onBeforeSceneLoad() {}
-
-  // Scene Load 후처리
-  function onAfterSceneLoad(loadedScene: THREE.Object3D) {
-    checkProbeJson(loadedScene);
-  }
-
-  // Scene Load 시 ReflectionProbe Handle
-  function checkProbeJson(loadedScene: THREE.Object3D) {
-    const probeJsons = loadedScene.vUserData.probes;
-    if (probeJsons) {
-      probeJsons.forEach(async probeJson => {
-        const newProbe = await new ReflectionProbe(gl, scene, camera).fromJSON(
-          probeJson,
-        );
-        for (const probe of probes) {
-          // 프로브가 완전히 겹쳤을 때 => 컨트롤이 오버랩 돼서 분리가 안됨
-          const newProbeCenter = newProbe.getCenter();
-          if (probe.getCenter().equals(newProbeCenter)) {
-            newProbe.setCenter(
-              newProbe.getCenter().add(new THREE.Vector3(0.5, 0, 0.5)),
-            );
-            newProbe.updateBoxMesh();
-          }
-          // ID 겹쳤을 때 => 동일 JSON 을 여러 번 불러오는 경우
-          if (newProbe.getId() === probe.getId()) {
-            newProbe.createNewId();
+  async function uploadModels(lightMapUploaded?: boolean = false) {
+    const uploadUrl = import.meta.env.VITE_UPLOAD_URL;
+    if (!uploadUrl) {
+      alert('.env에 환경변수를 설정해주세요, uploadUrl');
+      return;
+    }
+    openToast('GLB 업로드 중...', { autoClose: false, override: true });
+    setUploading(true);
+    const scene = threeExports.scene;
+    console.log(lightMapUploaded);
+    if (!lightMapUploaded) {
+      scene.traverse(o => {
+        if (o.type === 'Mesh') {
+          const mat = (o as THREE.Mesh).material as VMaterial;
+          const lm = mat.vUserData.lightMap;
+          if (lm && lm.endsWith('.exr')) {
+            mat.vUserData.lightMap = lm.replace('.exr', '.ktx');
           }
         }
-        newProbe.addToScene();
-        newProbe.updateCameraPosition(newProbe.getCenter(), true);
-        loadedScene.traverse(child => {
-          if (
-            child.type === 'Mesh' &&
-            child.vUserData.probeId === newProbe.getId()
-          ) {
-            const m = child as THREE.Mesh;
-            const material = m.material as THREE.MeshStandardMaterial;
-            material.envMap = newProbe.getTexture();
-          }
-        });
-        setProbes(pre => {
-          return [...pre, newProbe];
-        });
       });
     }
+    new VGLTFExporter()
+      .parseAsync(threeExports.scene, { binary: true })
+      .then(glbArr => {
+        if (glbArr instanceof ArrayBuffer) {
+          console.log('before File Make');
+          const blob = new Blob([glbArr], {
+            type: 'application/octet-stream',
+          });
+          const file = new File([blob], 'latest.glb', {
+            type: 'model/gltf-binary',
+          });
+          const fd = new FormData();
+          fd.append('files', file);
+
+          // latest 캐싱을 위한 hash
+          const uploadHash = objectHash(new Date().toISOString());
+          const hashData = {
+            hash: uploadHash,
+          };
+          // convert object to File:
+          const hashFile = compressObjectToFile(hashData, 'latest-hash');
+          const hashFd = new FormData();
+          hashFd.append('files', hashFile);
+          console.log('before Upload');
+          Promise.all([
+            fetch(uploadUrl, {
+              method: 'POST',
+              body: hashFd,
+            }),
+            fetch(uploadUrl, {
+              method: 'POST',
+              body: fd,
+            }),
+          ]).then(() => {
+            alert('업로드 완료');
+            closeToast();
+            setUploading(false);
+          });
+        } else {
+          console.error(
+            'VGLTFExporter GLB 처리 안됨, "binary: true" option 확인',
+          );
+          alert('VGLTFExporter 문제 발생함, 로그 확인');
+          closeToast();
+          setUploading(false);
+        }
+      });
+  }
+
+  async function uploadScene() {
+    await uploadLightMaps();
+    await uploadModels(true);
+    alert('씬 업로드 완료');
   }
 
   return (
-    <section
-      style={{
-        width: '100%',
-        display: 'grid',
-        gap: 8,
-        gridTemplateColumns: '1fr 1fr 1fr',
-      }}
-    >
+    <section className="w-full grid gap-2 grid-cols-3">
+      <button disabled={isUploading} onClick={uploadScene}>
+        씬 업로드
+      </button>
+      <button disabled={isUploading} onClick={() => uploadModels()}>
+        GLB 만 업로드
+      </button>
+      <button disabled={isUploading} onClick={uploadLightMaps}>
+        라이트맵만 업로드
+      </button>
       <button
         onClick={() => {
           navigate('/mobile');
@@ -310,271 +330,13 @@ const GeneralButtons = () => {
       >
         모바일
       </button>
-      <button
-        style={{ fontSize: 10 }}
-        disabled={scene.children.length === 0}
-        onClick={() => {
-          const before = onBeforeSceneExport();
-          new VGLTFExporter()
-            .parseAsync(threeExports.scene, { binary: true })
-            .then(result => {
-              console.log('parse DoNE');
-              if (result instanceof ArrayBuffer) {
-                saveArrayBuffer(
-                  result,
-                  `scene-${new Date().toISOString()}.glb`,
-                );
-              } else {
-                const output = JSON.stringify(result, null, 2);
-                saveString(output, `scene-${new Date().toISOString()}.gltf`);
-              }
-              onAfterSceneExport(before);
-            })
-            .catch(err => {
-              console.log('GLTFExporter ERROR : ', err);
-              alert('GLTF 내보내기 중 오류 발생');
-            });
-        }}
-      >
-        GLB 내보내기
-      </button>
-      <button
-        style={{ fontSize: 10 }}
-        onClick={() => {
-          // navigate("/upload");
-          openModal(() => (
-            <div
-              style={{
-                width: '80%',
-                maxHeight: '80%',
-                backgroundColor: '#ffffffcc',
-                padding: 16,
-                borderRadius: 8,
-                boxSizing: 'border-box',
-                position: 'relative',
-                overflowY: 'auto',
-              }}
-            >
-              <UploadPage></UploadPage>
-            </div>
-          ));
-        }}
-      >
-        모델추가&업로드
-      </button>
-      <button
-        style={{ fontSize: 10 }}
-        onClick={() => {
-          const before = onBeforeSceneExport();
-          saveScene(scene)
-            .then(() => {
-              get('savedScene').then(val => {
-                if (val) {
-                  setHasSaved(true);
-                  // 저장 후 삭제
-                  onAfterSceneExport(before);
-                  alert('저장되었습니다.');
-                } else {
-                  setHasSaved(false);
-                  alert('크아악 저장하지 못했습니다.');
-                }
-              });
-            })
-            .catch(err => {
-              console.log('씬 저장 실패 : ', err);
-              alert('씬 저장 실패');
-            });
-        }}
-      >
-        씬 저장(Ctrl S)
-      </button>
-      <button
-        style={{ fontSize: 10 }}
-        onClick={() => {
-          onBeforeSceneLoad();
-          loadScene()
-            .then(loaded => {
-              if (loaded) {
-                // Scene 추가
-                scene.add(loaded);
-                // ReflectionProbe 로드
-                onAfterSceneLoad(loaded);
-              }
-            })
-            .catch(() => {
-              alert('씬 불러오기 실패');
-            });
-        }}
-        disabled={!hasSaved}
-      >
-        씬 불러오기 Ctrl L
-      </button>
-      <button
-        style={{ fontSize: 10 }}
-        onClick={() => {
-          saveString(
-            JSON.stringify(getModelArrangedScene(scene).toJSON(), null, 2),
-            `scene-${new Date().toISOString()}.json`,
-          );
-        }}
-      >
-        씬 json으로 내보내기
-      </button>
-      <button
-        style={{ fontSize: 10 }}
-        onClick={async () => {
-          const uploadUrl = import.meta.env.VITE_UPLOAD_URL;
-          if (!uploadUrl) {
-            alert('.env에 환경변수를 설정해주세요, uploadUrl');
-            return;
-          }
-
-          const before = onBeforeSceneExport();
-          openToast('라이트맵 업로드 중...', { autoClose: false });
-          Promise.all([
-            uploadExrLightmap(threeExports.scene),
-            uploadGainmap(threeExports.scene),
-          ]).then(() => {
-            openToast('GLB 업로드 중...', { autoClose: false, override: true });
-            new VGLTFExporter()
-              .parseAsync(threeExports.scene, { binary: true })
-              .then(glbArr => {
-                if (glbArr instanceof ArrayBuffer) {
-                  console.log('before File Make');
-                  const blob = new Blob([glbArr], {
-                    type: 'application/octet-stream',
-                  });
-                  const file = new File([blob], 'latest.glb', {
-                    type: 'model/gltf-binary',
-                  });
-                  const fd = new FormData();
-                  fd.append('files', file);
-
-                  // latest 캐싱을 위한 hash
-                  const uploadHash = objectHash(new Date().toISOString());
-                  const hashData = {
-                    hash: uploadHash,
-                  };
-                  // convert object to File:
-                  const hashFile = compressObjectToFile(
-                    hashData,
-                    'latest-hash',
-                  );
-                  const hashFd = new FormData();
-                  hashFd.append('files', hashFile);
-                  console.log('before Upload');
-                  Promise.all([
-                    fetch(uploadUrl, {
-                      method: 'POST',
-                      body: hashFd,
-                    }),
-                    fetch(uploadUrl, {
-                      method: 'POST',
-                      body: fd,
-                    }),
-                  ]).then(() => {
-                    alert('업로드 완료');
-                    onAfterSceneExport(before);
-                    closeToast();
-                  });
-                } else {
-                  console.error(
-                    'VGLTFExporter GLB 처리 안됨, "binary: true" option 확인',
-                  );
-                  alert('VGLTFExporter 문제 발생함, 로그 확인');
-                  closeToast();
-                }
-              });
-          });
-        }}
-      >
-        씬 업로드
-      </button>
-      <button
-        onClick={() => {
-          const uploadUrl = import.meta.env.VITE_UPLOAD_URL;
-          if (!uploadUrl) {
-            alert('.env에 환경변수를 설정해주세요, uploadUrl');
-            return;
-          }
-          const scene = threeExports.scene;
-          scene.traverse(o => {
-            if (o.type === 'Mesh') {
-              const mesh = o as THREE.Mesh;
-              const mat = mesh.material as VMaterial;
-              const ud = mat.vUserData;
-              if (ud.lightMap && ud.lightMap.endsWith('.exr')) {
-                ud.lightMap = ud.lightMap.replace('.exr', '.ktx');
-                ud.lightMapIntensity = mat.lightMapIntensity;
-              }
-            }
-          });
-          new VGLTFExporter()
-            .parseAsync(threeExports.scene, { binary: true })
-            .then(glbArr => {
-              if (glbArr instanceof ArrayBuffer) {
-                console.log('before File Make');
-                const blob = new Blob([glbArr], {
-                  type: 'application/octet-stream',
-                });
-                const file = new File([blob], 'latest.glb', {
-                  type: 'model/gltf-binary',
-                });
-                const fd = new FormData();
-                fd.append('files', file);
-
-                // latest 캐싱을 위한 hash
-                const uploadHash = objectHash(new Date().toISOString());
-                const hashData = {
-                  hash: uploadHash,
-                };
-                // convert object to File:
-                const hashFile = compressObjectToFile(hashData, 'latest-hash');
-                const hashFd = new FormData();
-                hashFd.append('files', hashFile);
-                console.log('before Upload');
-                Promise.all([
-                  fetch(uploadUrl, {
-                    method: 'POST',
-                    body: hashFd,
-                  }),
-                  fetch(uploadUrl, {
-                    method: 'POST',
-                    body: fd,
-                  }),
-                ]).then(() => {
-                  alert('업로드 완료');
-                  onAfterSceneExport(before);
-                  closeToast();
-                });
-              } else {
-                console.error(
-                  'VGLTFExporter GLB 처리 안됨, "binary: true" option 확인',
-                );
-                alert('VGLTFExporter 문제 발생함, 로그 확인');
-                closeToast();
-              }
-            });
-        }}
-      >
-        GLB 만 업로드
-      </button>
-      <button
-        onClick={() => {
-          uploadExrLightmap(threeExports.scene).then(res => {
-            alert('업로드 완료');
-          });
-        }}
-      >
-        라이트맵만 업로드
-      </button>
+      <button onClick={handleResetSettings}>카메라 세팅 초기화</button>
       <button
         onClick={() => {
           openToast('업로드한 씬 불러오는 중..', { autoClose: false });
           loadLatest({
             threeExports,
             addBenchmark,
-            dpOn: dp.on,
             closeToast,
           }).catch(e => {
             console.error(e);
@@ -584,20 +346,6 @@ const GeneralButtons = () => {
         }}
       >
         업로드한 씬 불러오기
-      </button>
-      <button
-        onClick={() => {
-          handleResetSettings();
-        }}
-      >
-        카메라 세팅 초기화
-      </button>
-      <button
-        onClick={() => {
-          console.log(gl);
-        }}
-      >
-        GL Debug
       </button>
     </section>
   );

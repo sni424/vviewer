@@ -85,7 +85,7 @@ const useLoad = () => {
       // })
       loadPostProcessAndSet();
     };
-    loadLatest({ threeExports, dpOn: dp.on }).finally(() => {
+    loadLatest({ threeExports }).finally(() => {
       loadProbes().then(async probes => {
         if (!ReflectionProbe.isProbeJson(probes)) {
           alert('프로브 불러오기 실패!');

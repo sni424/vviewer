@@ -22,7 +22,8 @@ import {
 } from './atoms';
 import { uploadExrToKtx } from './atomUtils.ts';
 import VGLTFLoader from './loaders/VGLTFLoader.ts';
-import { VMaterial } from './material/VMaterial.ts';
+import VMaterial from './material/VMaterial.ts';
+import VMeshStandardMaterial from './material/VMeshStandardMaterial.ts';
 import VGLTFExporter from './VGLTFExporter.ts';
 
 export const groupInfo = (
@@ -303,12 +304,10 @@ function getGLTFLoader(gl: THREE.WebGLRenderer) {
 export const loadLatest = async ({
   threeExports,
   addBenchmark: _addBenchmark,
-  dpOn = false,
   closeToast,
 }: {
   threeExports: RootState;
   addBenchmark?: (key: keyof BenchMark, value?: number) => void;
-  dpOn?: boolean;
   closeToast?: () => void;
 }) => {
   const addBenchMark = _addBenchmark ?? (() => {});
@@ -365,16 +364,10 @@ export const loadLatest = async ({
       }
     });
     console.log('after add : ', afterInfo.geometries, afterInfo.textures);
-    toggleDP(scene, dpOn);
     addBenchMark('sceneAddEnd');
   };
 
-  function disposeMaterial(
-    material:
-      | THREE.Material
-      | THREE.MeshStandardMaterial
-      | THREE.MeshPhysicalMaterial,
-  ) {
+  function disposeMaterial(material: VMaterial) {
     if (!material) return;
 
     // 사용된 모든 텍스처를 dispose
@@ -1082,22 +1075,19 @@ export const uploadGainmap = async (object: THREE.Object3D) => {
 export const uploadExrLightmap = async (object: THREE.Object3D) => {
   // 같은 라이트맵을 공유하는 material 검출
   // { hash : [mat1, mat2] }
-  const lightmapHashes: { [key in string]: THREE.MeshStandardMaterial[] } = {};
+  const lightmapHashes: { [key in string]: VMaterial[] } = {};
 
   object.traverseAll(async obj => {
     if ((obj as THREE.Mesh).isMesh) {
       const mesh = obj as THREE.Mesh;
-      const mat = mesh.material as THREE.MeshStandardMaterial;
+      const mat = mesh.material as VMaterial;
       const isEXR = (tex: THREE.Texture) =>
         tex.vUserData.isExr !== undefined && tex.vUserData.isExr;
       const isKTX = (tex: THREE.Texture) =>
         tex.vUserData.mimeType === 'image/ktx2';
 
       // Lightmap to HashMap
-      const addLightMapToHash = (
-        hashKey: string,
-        material: THREE.MeshStandardMaterial,
-      ) => {
+      const addLightMapToHash = (hashKey: string, material: VMaterial) => {
         if (!lightmapHashes[hashKey]) {
           lightmapHashes[hashKey] = [];
         }
@@ -1147,7 +1137,7 @@ export const uploadExrLightmap = async (object: THREE.Object3D) => {
   const hashes = Object.keys(lightmapHashes);
 
   const files: File[] = [];
-  const afterMats: THREE.MeshStandardMaterial[] = [];
+  const afterMats: VMaterial[] = [];
 
   await Promise.all(
     hashes.map(hash => {
@@ -1250,7 +1240,7 @@ export function createClosedConcaveSurface(
   geometry.rotateX(Math.PI / 2);
 
   // 이 때 바깥쪽을 보고 있으므로 Material에서 더블사이드로 설정
-  const material = new THREE.MeshStandardMaterial({
+  const material = new VMeshStandardMaterial({
     emissive: color ?? 0x3333cc,
     emissiveIntensity: 1.0,
     side: THREE.DoubleSide,

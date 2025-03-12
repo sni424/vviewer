@@ -9,7 +9,7 @@ import {
 import { KTX2Loader } from 'three/examples/jsm/loaders/KTX2Loader.js';
 import { ENV, Layer } from '../../Constants.ts';
 import GainmapLoader from '../GainmapLoader.ts';
-import { VMaterial } from '../material/VMaterial.ts';
+import VMaterial from '../material/VMaterial.ts';
 import VMeshBasicMaterial from '../material/VMeshBasicMaterial.ts';
 import VMeshPhysicalMaterial from '../material/VMeshPhysicalMaterial.ts';
 import VMeshStandardMaterial from '../material/VMeshStandardMaterial.ts';
@@ -257,8 +257,9 @@ function updateLightMapFromEmissive(object: THREE.Object3D) {
 function getLightmap(object: THREE.Object3D, lightMapSet: Set<string>) {
   if ((object as THREE.Mesh).isMesh) {
     const mesh = object as THREE.Mesh;
-    const mat = mesh.material as THREE.MeshStandardMaterial;
+    const mat = mesh.material as VMaterial;
     if (mat) {
+      // TODO modelType 관련 다 날리기
       // DP 는 항상 dpOnTextureFile, Base 는 dpOnTextureFile / dpOffTextureFile 둘 다 있거나 없음.
       // 텍스쳐 적용 기준 =>
       // BASE: dpOff 기준 / DP : dpOn 기준

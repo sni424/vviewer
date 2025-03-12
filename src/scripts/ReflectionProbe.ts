@@ -7,6 +7,7 @@ import { uploadPngToKtx } from './atomUtils.ts';
 import { getVKTX2Loader } from './loaders/VKTX2Loader.ts';
 import VTextureLoader from './loaders/VTextureLoader.ts';
 import { splitExtension } from './utils.ts';
+import VMeshStandardMaterial from './material/VMeshStandardMaterial.ts';
 
 const DEFAULT_RESOLUTION: ReflectionProbeResolutions = 1024;
 const DEFAULT_POSITION: THREE.Vector3 = new THREE.Vector3(0, 0, 0);
@@ -592,8 +593,6 @@ export default class ReflectionProbe {
     // Apply envMap to ReflectionProbe Sphere
     (this.reflectionProbeSphere.material as THREE.MeshStandardMaterial).envMap =
       this.renderTarget.texture;
-    // Apply Box In Box projected Meshes
-    // this.updateObjectChildrenEnv();
     // After Render => set No Render Objects Visible
     this.onAfterCubeCameraUpdate(beforeUpdateObject);
     // Canvas Update
@@ -765,15 +764,16 @@ export default class ReflectionProbe {
       format: THREE.RGBAFormat,
       generateMipmaps: false,
     });
+
     const cubeCamera = new THREE.CubeCamera(
       this.cubeCameraNear,
       this.cubeCameraFar,
       this.renderTarget,
     );
-    cubeCamera.layers.enableAll();
-    CUBE_CAMERA_FILTER_LAYERS.forEach(layer => {
-      cubeCamera.layers.disable(layer);
-    });
+    // cubeCamera.layers.enableAll();
+    // CUBE_CAMERA_FILTER_LAYERS.forEach(layer => {
+    //   cubeCamera.layers.disable(layer);
+    // });
     this.cubeCamera = cubeCamera;
 
     this.boxMesh.vUserData.probeId = json.id;
@@ -890,6 +890,10 @@ export default class ReflectionProbe {
 
   getCenter() {
     return this.center;
+  }
+
+  getSize() {
+    return this.size;
   }
 
   async setTextureFromFile(url: string | File) {
@@ -1067,7 +1071,7 @@ function getMeshSize(mesh: THREE.Object3D) {
 function createProbeSphere() {
   const geometry = new THREE.SphereGeometry(0.5, 32, 16);
 
-  const material = new THREE.MeshStandardMaterial({
+  const material = new VMeshStandardMaterial({
     color: 0xffffff,
     metalness: 1,
     roughness: 0,
@@ -1110,9 +1114,8 @@ const boxProjectDefinitions = /*glsl */ `
 
         float correction = min( min( rbminmax.x, rbminmax.y ), rbminmax.z );
         vec3 boxIntersection = vWorldPosition + nDir * correction;
-        vec3 retval = boxIntersection - cubePos;
         
-        return isCustomTexture ? vec3(-retval.x, retval.y, retval.z) : retval;
+        return boxIntersection - cubePos;
     }
 #endif
 `;

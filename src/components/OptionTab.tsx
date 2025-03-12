@@ -23,7 +23,7 @@ import {
 import { loadOption, threes, uploadJson } from '../scripts/atomUtils.ts';
 import { createLightmapCache } from '../scripts/loaders/VGLTFLoader.ts';
 import { getVKTX2Loader } from '../scripts/loaders/VKTX2Loader.ts';
-import { VMaterial } from '../scripts/material/VMaterial.ts';
+import VMaterial from '../scripts/material/VMaterial.ts';
 import { ModelOptionObject } from '../scripts/ModelOptionObject.ts';
 import ModelOption from '../scripts/options/ModelOption.ts';
 import OptionState from '../scripts/options/OptionState.ts';

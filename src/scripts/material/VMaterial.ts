@@ -1,6 +1,6 @@
 import * as THREE from '../VTHREE.ts';
 
-export interface VMaterial extends THREE.MeshStandardMaterial {
+export default interface VMaterial extends THREE.MeshStandardMaterial {
   get shader(): THREE.WebGLProgramParametersWithUniforms;
 
   set shader(shader: THREE.WebGLProgramParametersWithUniforms);
@@ -24,4 +24,10 @@ export interface VMaterial extends THREE.MeshStandardMaterial {
   set useProgressiveAlpha(use: boolean);
 
   get useProgressiveAlpha(): boolean;
+
+  set useBoxProjectedEnv(use: boolean);
+
+  get useBoxProjectedEnv(): boolean;
+
+  updateEnvUniforms(position: THREE.Vector3, size: THREE.Vector3);
 }

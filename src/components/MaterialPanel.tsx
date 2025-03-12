@@ -7,6 +7,7 @@ import {
   threeExportsAtom,
 } from '../scripts/atoms';
 import VTextureLoader from '../scripts/loaders/VTextureLoader.ts';
+import VMaterial from '../scripts/material/VMaterial.ts';
 import { loadHDRTexture, loadPNGAsENV } from '../scripts/utils';
 import { THREE } from '../scripts/VTHREE';
 import MapPreview, { MapPreviewProps } from './MapPreview';
@@ -31,11 +32,11 @@ interface MapInfoProps extends MapPreviewProps {
 }
 
 const setMap = (
-  material: THREE.MeshStandardMaterial,
+  material: VMaterial,
   mapKey: string,
   texture: THREE.Texture | null,
 ) => {
-  const dstKey = mapKey as keyof THREE.MeshStandardMaterial;
+  const dstKey = mapKey as keyof VMaterial;
   if (dstKey === 'lightMap') {
     material.lightMap = texture;
   } else if (dstKey === 'map') {
@@ -78,15 +79,12 @@ const MapInfo = (props: MapInfoProps) => {
     materialRange,
     textureRange,
   } = props;
-  const texture = material[
-    mapKey as keyof THREE.MeshStandardMaterial
-  ] as THREE.Texture;
+  const texture = material[mapKey as keyof VMaterial] as THREE.Texture;
   const [channel, setChannel] = useState(texture?.channel ?? -1);
   const setMaterialSelected = useSetAtom(materialSelectedAtom);
   const threeExports = useAtomValue(threeExportsAtom)!;
 
-  const materialRangeKey =
-    materialRange?.matKey as keyof THREE.MeshStandardMaterial;
+  const materialRangeKey = materialRange?.matKey as keyof VMaterial;
   const materialValue = materialRangeKey
     ? material[materialRangeKey]
     : undefined;
@@ -323,7 +321,7 @@ const MapInfo = (props: MapInfoProps) => {
   );
 };
 
-const UserDataSection = ({ mat }: { mat: THREE.MeshStandardMaterial }) => {
+const UserDataSection = ({ mat }: { mat: VMaterial }) => {
   const userData = mat.vUserData;
   const keys = Object.keys(userData);
 
@@ -342,11 +340,7 @@ const UserDataSection = ({ mat }: { mat: THREE.MeshStandardMaterial }) => {
   );
 };
 
-const MapSection = ({
-  mat,
-}: {
-  mat: THREE.MeshStandardMaterial | THREE.MeshPhysicalMaterial;
-}) => {
+const MapSection = ({ mat }: { mat: VMaterial }) => {
   const [opacity, setOpacity] = useState(mat.opacity);
   const [transparent, setTransparent] = useState(mat.transparent);
   const isPhysical = mat.type === 'MeshPhysicalMaterial';
@@ -591,7 +585,7 @@ function MaterialPanelContainer() {
       </div>
       {/* <MaterialPanel style={{width:"100%"}} mat={mat}></MaterialPanel> */}
 
-      <MapSection mat={mat as THREE.MeshStandardMaterial} />
+      <MapSection mat={mat as VMaterial} />
       <>
         {isStandard && (
           <div className="my-2">

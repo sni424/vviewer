@@ -2,6 +2,7 @@ import { useAtomValue } from 'jotai';
 import { useState } from 'react';
 import { selectedAtom, threeExportsAtom, useModal } from '../scripts/atoms';
 import VTextureLoader from '../scripts/loaders/VTextureLoader.ts';
+import VMaterial from '../scripts/material/VMaterial.ts';
 import { THREE } from '../scripts/VTHREE';
 
 const ApplyLightMapComponent = () => {
@@ -194,24 +195,21 @@ const ApplyLightMapComponent = () => {
           onClick={() => {
             VTextureLoader.load(imageFile!, threeExports).then(texture => {
               childrenMeshes.forEach(mesh => {
+                const mat = mesh.material as VMaterial;
                 if (dst === 'lightmap') {
-                  (mesh.material as THREE.MeshStandardMaterial).lightMap =
-                    texture;
+                  mat.lightMap = texture;
                 } else if (dst === 'ao') {
-                  (mesh.material as THREE.MeshStandardMaterial).aoMap = texture;
+                  mat.aoMap = texture;
                 } else if (dst === 'diffuse') {
-                  (mesh.material as THREE.MeshStandardMaterial).map = texture;
+                  mat.map = texture;
                 } else if (dst === 'emissive') {
-                  (mesh.material as THREE.MeshStandardMaterial).emissiveMap =
-                    texture;
+                  mat.emissiveMap = texture;
                 } else if (dst === 'normal') {
-                  (mesh.material as THREE.MeshStandardMaterial).normalMap =
-                    texture;
+                  mat.normalMap = texture;
                 } else {
                   throw new Error('Invalid dst');
                 }
-                (mesh.material as THREE.MeshStandardMaterial).needsUpdate =
-                  true;
+                mat.needsUpdate = true;
               });
               closeModal();
             });

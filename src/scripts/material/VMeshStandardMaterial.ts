@@ -1,5 +1,5 @@
-import { THREE } from '../VTHREE.ts';
-import { VMaterial } from './VMaterial.ts';
+import * as THREE from '../VTHREE.ts';
+import VMaterial from './VMaterial.ts';
 import * as VMaterialUtils from './VMaterialUtils.ts';
 
 class VMeshStandardMaterial
@@ -7,10 +7,13 @@ class VMeshStandardMaterial
   implements VMaterial
 {
   private _shader: THREE.WebGLProgramParametersWithUniforms;
+  private envMapPosition: THREE.Vector3 = new THREE.Vector3();
+  private envMapSize: THREE.Vector3 = new THREE.Vector3();
 
   constructor(parameters?: THREE.MeshStandardMaterialParameters) {
     super(parameters);
     this.useProgressiveAlpha = true;
+    // Add CustomShaders on Material
     this.onBeforeCompile = (shader, renderer) => {
       THREE.MeshStandardMaterial.prototype.onBeforeCompile(shader, renderer);
 
@@ -19,6 +22,11 @@ class VMeshStandardMaterial
       // FRAGMENT
       VMaterialUtils.addProgressiveAlpha(shader);
       VMaterialUtils.adjustLightMapFragments(shader);
+      VMaterialUtils.addBoxProjectedEnv(
+        shader,
+        this.envMapPosition,
+        this.envMapSize,
+      );
 
       this.shader = shader;
       this.needsUpdate = true;
@@ -47,7 +55,7 @@ class VMeshStandardMaterial
   setUniform(key: string, uniform: THREE.Uniform) {
     const shader = this._shader;
     if (!shader) {
-      console.warn('Material Uniform Not initialized');
+      console.warn('Material Uniform Not initialized, need to render');
       return;
     }
     const uniforms = shader.uniforms;
@@ -57,7 +65,9 @@ class VMeshStandardMaterial
     } else {
       // 새로운 유니폼
       uniforms[key] = uniform;
+      this.needsUpdate = true;
     }
+    console.log(`${key} uniform Updated : `, uniforms[key]);
   }
 
   get uniforms() {
@@ -77,10 +87,14 @@ class VMeshStandardMaterial
     delete this.defines!![key];
   }
 
-  set useLightMapContrast(use: boolean) {
-    if (use) this.addDefines('USE_LIGHTMAP_CONTRAST');
-    else this.removeDefines('USE_LIGHTMAP_CONTRAST');
+  private updateDefines(key: string, use: boolean) {
+    if (use) this.addDefines(key);
+    else this.removeDefines(key);
     this.needsUpdate = true;
+  }
+
+  set useLightMapContrast(use: boolean) {
+    this.updateDefines('USE_LIGHTMAP_CONTRAST', use);
   }
 
   get useLightMapContrast(): boolean {
@@ -88,13 +102,29 @@ class VMeshStandardMaterial
   }
 
   set useProgressiveAlpha(use: boolean) {
-    if (use) this.addDefines('USE_PROGRESSIVE_ALPHA');
-    else this.removeDefines('USE_PROGRESSIVE_ALPHA');
-    this.needsUpdate = true;
+    this.updateDefines('USE_PROGRESSIVE_ALPHA', use);
   }
 
   get useProgressiveAlpha(): boolean {
     return this.defines!!.USE_PROGRESSIVE_ALPHA !== undefined;
+  }
+
+  set useBoxProjectedEnv(use: boolean) {
+    this.updateDefines('BOX_PROJECTED_ENV_MAP', use);
+  }
+
+  get useBoxProjectedEnv(): boolean {
+    return this.defines!!.BOX_PROJECTED_ENV_MAP !== undefined;
+  }
+
+  updateEnvUniforms(position: THREE.Vector3, size: THREE.Vector3) {
+    this.envMapPosition.copy(position);
+    this.envMapSize.copy(size);
+    this.useBoxProjectedEnv = true;
+    if (!this.envMap) {
+      console.warn('VMaterial.updateEnvUniforms(): No EnvMap Found');
+    }
+    this.needsUpdate = true;
   }
 }
 

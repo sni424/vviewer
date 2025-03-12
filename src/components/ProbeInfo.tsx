@@ -29,6 +29,7 @@ import {
 } from '../scripts/utils.ts';
 import { THREE } from '../scripts/VTHREE.ts';
 import './probe.css';
+import VMaterial from '../scripts/material/VMaterial.ts';
 
 const uploadProbes = async () => {
   const probes = getAtomValue(ProbeAtom);
@@ -90,17 +91,16 @@ const ProbeInfo = () => {
       );
 
       probes.forEach(probe => {
-        probe.setAutoUpdate(true);
         probe.addToScene(true);
         // const texture = probe.getTexture(true);
         const texture = probe.getRenderTargetTexture();
         scene.traverse(node => {
           if (node instanceof THREE.Mesh) {
             const n = node as THREE.Mesh;
-            const material = n.material as THREE.MeshStandardMaterial;
+            const material = n.material as VMaterial;
             if (material.vUserData.probeId === probe.getId()) {
               material.envMap = texture;
-              material.onBeforeCompile = probe.materialOnBeforeCompileFunc();
+              material.updateEnvUniforms(probe.getCenter(), probe.getSize());
               material.needsUpdate = true;
             }
           }
