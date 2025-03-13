@@ -316,6 +316,7 @@ export const Tabs = [
   'tour',
   'hotspot',
   'option',
+  'wall',
 ] as const;
 export type Tab = (typeof Tabs)[number];
 export const panelTabAtom = atom<Tab>('scene');

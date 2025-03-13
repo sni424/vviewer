@@ -8,6 +8,7 @@ import { OptionTab } from './OptionTab.tsx';
 import ProbeInfo from './ProbeInfo';
 import RoomPanel from './RoomPanel';
 import TourPanel from './TourPanel';
+import WallTab from './WallTab.tsx';
 
 const tabMap: { [key in Tab]: React.ReactNode } = {
   scene: <SceneInfo />,
@@ -17,6 +18,7 @@ const tabMap: { [key in Tab]: React.ReactNode } = {
   hotspot: <HotSpotPanel></HotSpotPanel>,
   room: <RoomPanel></RoomPanel>,
   option: <OptionTab></OptionTab>,
+  wall: <WallTab></WallTab>,
 } as const;
 
 const ThePanel = () => {
@@ -31,18 +33,25 @@ const ThePanel = () => {
         backgroundColor: 'rgba(0, 0, 0, 0.1)',
         display: 'flex',
         flexDirection: 'column',
+        scrollBehavior: 'smooth',
       }}
     >
       <div
+        // no scrollbar
+        className="no-scrollbar"
+        onWheel={e => {
+          e.currentTarget.scrollLeft += e.deltaY * 0.1;
+        }}
         style={{
           height: 30,
-          // display: "flex",
+          display: 'flex',
           // justifyContent: "space-between",
           // alignItems: "center",
-          display: 'grid',
-          gridTemplateColumns:
-            'repeat(auto-fit, minmax(0, 1fr))' /* Equal width for each element */,
+          // display: 'grid',
+          // gridTemplateColumns:
+          //   'repeat(auto-fit, minmax(0, 1fr))'
           width: '100%',
+          overflowX: 'auto',
         }}
       >
         {Tabs.map(t => {
@@ -50,7 +59,10 @@ const ThePanel = () => {
             <button
               style={{
                 height: '100%',
+                borderRadius: 0,
                 textTransform: 'capitalize',
+                paddingLeft: 6,
+                paddingRight: 6,
                 borderBottom: tab === t ? 'none' : undefined,
                 fontWeight: tab === t ? 'bold' : undefined,
               }}
