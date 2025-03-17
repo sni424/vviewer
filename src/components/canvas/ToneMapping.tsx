@@ -164,7 +164,7 @@ const ToneMappingComponent = ({
 export const {
   Component: ToneMapping,
   Controller: ToneMappingOption,
-  atom: globalToneMappingAtom,
+  // atom: globalToneMappingAtom,
 } = OptionBuilder(
   '톤매핑',
   //@ts-ignore

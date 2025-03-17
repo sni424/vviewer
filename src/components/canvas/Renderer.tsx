@@ -29,6 +29,7 @@ import {
   treeScrollToAtom,
   useModal,
   viewGridAtom,
+  wallAtom,
 } from '../../scripts/atoms';
 import VGLTFLoader from '../../scripts/loaders/VGLTFLoader.ts';
 import VTextureLoader from '../../scripts/loaders/VTextureLoader.ts';
@@ -50,6 +51,7 @@ import PostProcess from './PostProcess';
 import Rooms from './Rooms';
 import SelectBox from './SelectBox';
 import { useSetThreeExports } from './Viewport';
+import Walls from './Walls.tsx';
 
 const MainGrid = () => {
   const on = useAtomValue(viewGridAtom);
@@ -310,6 +312,7 @@ function Renderer() {
       <SelectBox></SelectBox>
       <PostProcess></PostProcess>
       <Rooms></Rooms>
+      <Walls></Walls>
       <MainGrid></MainGrid>
       <Hotspot></Hotspot>
     </>
@@ -326,6 +329,9 @@ const useMouseHandler = () => {
   const mouseDownPosition = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   const isRoomCreating = useAtomValue(roomAtom).some(room =>
     Boolean(room.creating),
+  );
+  const isWallCreating = useAtomValue(wallAtom).some(wall =>
+    Boolean(wall.creating),
   );
   const isSettingHotspot = useAtomValue(hotspotAtom).some(hotspot =>
     Boolean(hotspot.targetSetting),
@@ -368,6 +374,30 @@ const useMouseHandler = () => {
       yGap > dragThreshold ||
       Date.now() - lastClickRef.current > 200
     ) {
+      return;
+    }
+
+    // 벽 생성
+    if (isWallCreating) {
+      const { intersects } = getIntersects(e, threeExports);
+      if (intersects.length > 0) {
+        const i = intersects[0];
+        const mat = getAtomValue(cameraMatrixAtom)!.clone();
+        const cameraY = mat.elements[13];
+        const point = i.point;
+        point.y = cameraY;
+        setAtomValue(wallAtom, prev => {
+          const copied = [...prev];
+          const index = copied.findIndex(wall => wall.creating);
+          if (!copied[index].start) {
+            copied[index].start = [point.x, point.z];
+          } else if (!copied[index].end) {
+            copied[index].end = [point.x, point.z];
+            copied[index].creating = undefined;
+          }
+          return copied;
+        });
+      }
       return;
     }
 

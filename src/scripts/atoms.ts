@@ -69,10 +69,10 @@ export const createAtomCombo = <T = any>(
   initalValue?: T,
   store?: Store,
 ): [
-  WritableAtom<T, unknown[], unknown>,
-  () => T | undefined,
-  (arg: AtomArgType<T>) => void,
-] => {
+    WritableAtom<T, unknown[], unknown>,
+    () => T | undefined,
+    (arg: AtomArgType<T>) => void,
+  ] => {
   const dstStore = store ?? defaultStore;
   // @ts-ignore
   const theAtom = atom<T>(initalValue);
@@ -113,16 +113,16 @@ export const orbitControlAtom = atom<OrbitControls>();
 export type Env = {
   select: 'none' | 'preset' | 'custom' | 'url';
   preset?:
-    | 'apartment'
-    | 'city'
-    | 'dawn'
-    | 'forest'
-    | 'lobby'
-    | 'night'
-    | 'park'
-    | 'studio'
-    | 'sunset'
-    | 'warehouse';
+  | 'apartment'
+  | 'city'
+  | 'dawn'
+  | 'forest'
+  | 'lobby'
+  | 'night'
+  | 'park'
+  | 'studio'
+  | 'sunset'
+  | 'warehouse';
   url?: string;
   intensity?: number;
   rotation?: {
@@ -176,10 +176,10 @@ export const useToast = () => {
         autoClose,
         override,
       }: { duration?: number; autoClose?: boolean; override?: boolean } = {
-        duration: 1,
-        autoClose: true,
-        override: false,
-      },
+          duration: 1,
+          autoClose: true,
+          override: false,
+        },
     ) => {
       if (toast.on && !override) {
         console.warn('Toast is Progressing, abort');
@@ -493,6 +493,19 @@ export type RoomCreateOption = Room & {
   color?: number;
 };
 export const roomAtom = atom<RoomCreateOption[]>([]);
+
+export type Wall = {
+  start: [number, number];
+  end: [number, number];
+  probeName?: string;
+}
+
+export type WallCreateOption = Wall & {
+  show?: boolean;
+  creating?: boolean; // 생성중이면 좌표값의 배열
+  color?: number;
+};
+export const wallAtom = atom<WallCreateOption[]>([]);
 
 export const insideRoomAtom = atom<Room[]>([]);
 
