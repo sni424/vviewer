@@ -8,6 +8,7 @@ import {
   treeScrollToAtom,
   useModal,
 } from '../scripts/atoms';
+import VMaterial from '../scripts/material/VMaterial.ts';
 import { groupInfo } from '../scripts/utils';
 import ApplyLightMapComponent from './ApplyLightMapComponent';
 
@@ -20,8 +21,7 @@ const MeshView = ({
 }) => {
   const info = groupInfo(object);
   const [selectedMaterial, setSelectedMaterial] = useAtom(materialSelectedAtom);
-  const currentMat = (object as THREE.Mesh)
-    ?.material as THREE.MeshStandardMaterial;
+  const currentMat = (object as THREE.Mesh)?.material as VMaterial;
   const isSelectedMaterialThisMesh =
     currentMat && selectedMaterial?.uuid === currentMat?.uuid;
   const setSelecteds = useSetAtom(selectedAtom);

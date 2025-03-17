@@ -23,7 +23,7 @@ import {
 import { loadOption, threes, uploadJson } from '../scripts/atomUtils.ts';
 import { createLightmapCache } from '../scripts/loaders/VGLTFLoader.ts';
 import { getVKTX2Loader } from '../scripts/loaders/VKTX2Loader.ts';
-import { VMaterial } from '../scripts/material/VMaterial.ts';
+import VMaterial from '../scripts/material/VMaterial.ts';
 import { ModelOptionObject } from '../scripts/ModelOptionObject.ts';
 import ModelOption from '../scripts/options/ModelOption.ts';
 import OptionState from '../scripts/options/OptionState.ts';
@@ -96,7 +96,9 @@ const OptionConfigTab = () => {
         }),
       );
 
-      const obj = await createLightmapCache(map);
+      const gl = new THREE.WebGLRenderer();
+
+      const obj = await createLightmapCache(map, gl);
 
       setLightMaps(pre => {
         return { ...pre, ...obj };
@@ -177,17 +179,53 @@ const OptionManager = () => {
 
 const OptionPreviewTab = () => {
   const mcOptions = useAtomValue(modelOptionClassAtom);
+  const [animationDuration, setAnimationDuration] = useState<number>(1);
 
   return (
     <div>
+      <div className="w-full flex gap-x-1 mb-2">
+        <span>애니메이션 시간</span>
+        <input
+          type="range"
+          value={animationDuration}
+          step={0.1}
+          min={0.2}
+          max={10}
+          onChange={e => {
+            setAnimationDuration(parseFloat(e.target.value));
+          }}
+        />
+        <input
+          className="w-[40px] text-right"
+          type="number"
+          value={animationDuration}
+          onChange={e => {
+            setAnimationDuration(parseFloat(e.target.value));
+          }}
+          step={0.1}
+          min={0.2}
+          max={10}
+        />
+        <span>초</span>
+      </div>
       {mcOptions.map((modelOption, idx) => (
-        <OptionPreview key={idx} option={modelOption} />
+        <OptionPreview
+          key={idx}
+          option={modelOption}
+          animationDuration={animationDuration}
+        />
       ))}
     </div>
   );
 };
 
-const OptionPreview = ({ option }: { option: ModelOption }) => {
+const OptionPreview = ({
+  option,
+  animationDuration,
+}: {
+  option: ModelOption;
+  animationDuration: number;
+}) => {
   const threeExports = threes();
   if (!threeExports) {
     return null;
@@ -242,7 +280,6 @@ const OptionPreview = ({ option }: { option: ModelOption }) => {
     const nowSelected = { ...optionSelected };
     nowSelected[option.id] = state.id;
     setOptionSelected(nowSelected);
-    const animationDuration = 1; // 1s
     setIsProcessing(true);
     const meshEffects = state.effects;
     let hasAnimation;
@@ -250,7 +287,7 @@ const OptionPreview = ({ option }: { option: ModelOption }) => {
     const anlayzed = analyze(nowSelected);
     const timeLines: gsap.core.Timeline[] = [];
     meshEffects.forEach(meshEffect => {
-      const timeLine = gsap.timeline();
+      const timeLine = gsap.timeline().pause();
       const object = scene
         .getObjectsByProperty('name', meshEffect.name)
         .find(o => o.type === 'Mesh');
@@ -260,17 +297,16 @@ const OptionPreview = ({ option }: { option: ModelOption }) => {
         const mat = mesh.material as VMaterial;
         // Visible Control
         if (effects.useVisible) {
-          const isThisMeshResultVisible = anlayzed[mesh.name].visible;
-          // if (mesh.visible !== isThisMeshResultVisible) {
-          //   console.log('has MeshVisible animation :', mesh.name);
-          //
-          // }
-          changeMeshVisibleWithTransition(
-            mesh,
-            animationDuration,
-            isThisMeshResultVisible,
-            timeLine,
-          );
+          const targetVisible = anlayzed[mesh.name].visible;
+          if (mesh.visible !== targetVisible) {
+            console.log('has MeshVisible animation :', mesh.name);
+            changeMeshVisibleWithTransition(
+              mesh,
+              animationDuration,
+              targetVisible,
+              timeLine,
+            );
+          }
         }
 
         console.log('setting LightMap');
@@ -879,7 +915,8 @@ const LightMapSelector = ({
         texture.vUserData.mimeType = 'image/ktx2';
         const map = new Map<string, THREE.Texture>();
         map.set(decodeURI(customURL), texture);
-        const obj = await createLightmapCache(map);
+        const gl = new THREE.WebGLRenderer();
+        const obj = await createLightmapCache(map, gl);
         setLightMaps(pre => {
           return { ...pre, ...obj };
         });
@@ -1154,6 +1191,22 @@ const MeshSelectModal = ({
     setModelSelected(meshes);
   }
 
+  function selectAll() {
+    // 현재 화면에 보일 목록 전체 선택 (키워드 필터까지)
+    const meshes: THREE.Mesh[] = [];
+    scene.traverseAll(o => {
+      if (o.type === 'Mesh') {
+        if (keyword === '') {
+          meshes.push(o);
+        } else if (keyword !== '' && o.name.includes(keyword)) {
+          meshes.push(o);
+        }
+      }
+    });
+
+    setModelSelected(meshes);
+  }
+
   return (
     <div
       className="w-[40%] bg-gray-100 rounded p-3 relative"
@@ -1186,7 +1239,9 @@ const MeshSelectModal = ({
         <div className="flex w-full justify-between items-center mb-2">
           <div className="flex gap-x-1.5 items-center">
             <span>{modelSelected.length}개 선택됨</span>
-            <button className="text-xs">전체 선택</button>
+            <button className="text-xs" onClick={selectAll}>
+              전체 선택
+            </button>
             <button className="text-xs" onClick={() => setModelSelected([])}>
               전체 해제
             </button>

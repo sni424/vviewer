@@ -22,8 +22,10 @@ import {
 } from './atoms';
 import { uploadExrToKtx } from './atomUtils.ts';
 import VGLTFLoader from './loaders/VGLTFLoader.ts';
-import { VMaterial } from './material/VMaterial.ts';
+import VMaterial from './material/VMaterial.ts';
+import VMeshStandardMaterial from './material/VMeshStandardMaterial.ts';
 import VGLTFExporter from './VGLTFExporter.ts';
+import ReflectionProbe from './ReflectionProbe.ts';
 
 export const groupInfo = (
   group: THREE.Group | { scene: THREE.Group } | THREE.Scene | THREE.Object3D,
@@ -302,21 +304,22 @@ function getGLTFLoader(gl: THREE.WebGLRenderer) {
 
 export const loadLatest = async ({
   threeExports,
+  mobile,
   addBenchmark: _addBenchmark,
-  dpOn = false,
   closeToast,
 }: {
   threeExports: RootState;
+  mobile?: boolean;
   addBenchmark?: (key: keyof BenchMark, value?: number) => void;
-  dpOn?: boolean;
   closeToast?: () => void;
 }) => {
   const addBenchMark = _addBenchmark ?? (() => {});
-  const latestUrl = ENV.latest;
-  if (!latestUrl) {
-    alert('.env에 환경변수를 설정해주세요, latestUrl');
+  const base = ENV.base;
+  if (!base) {
+    alert('.env에 환경변수를 설정해주세요, VITE_MODELS_URL');
     return;
   }
+  const latestUrl = mobile ? ENV.latestMobile : ENV.latest;
   if (!threeExports) {
     alert('threeExports 분기 문제');
     return;
@@ -365,16 +368,10 @@ export const loadLatest = async ({
       }
     });
     console.log('after add : ', afterInfo.geometries, afterInfo.textures);
-    toggleDP(scene, dpOn);
     addBenchMark('sceneAddEnd');
   };
 
-  function disposeMaterial(
-    material:
-      | THREE.Material
-      | THREE.MeshStandardMaterial
-      | THREE.MeshPhysicalMaterial,
-  ) {
+  function disposeMaterial(material: VMaterial) {
     if (!material) return;
 
     // 사용된 모든 텍스처를 dispose
@@ -1079,25 +1076,25 @@ export const uploadGainmap = async (object: THREE.Object3D) => {
   }
 };
 
-export const uploadExrLightmap = async (object: THREE.Object3D) => {
+export const uploadExrLightmap = async (
+  object: THREE.Object3D,
+  isMobile?: boolean,
+) => {
   // 같은 라이트맵을 공유하는 material 검출
   // { hash : [mat1, mat2] }
-  const lightmapHashes: { [key in string]: THREE.MeshStandardMaterial[] } = {};
+  const lightmapHashes: { [key in string]: VMaterial[] } = {};
 
   object.traverseAll(async obj => {
     if ((obj as THREE.Mesh).isMesh) {
       const mesh = obj as THREE.Mesh;
-      const mat = mesh.material as THREE.MeshStandardMaterial;
+      const mat = mesh.material as VMaterial;
       const isEXR = (tex: THREE.Texture) =>
         tex.vUserData.isExr !== undefined && tex.vUserData.isExr;
       const isKTX = (tex: THREE.Texture) =>
         tex.vUserData.mimeType === 'image/ktx2';
 
       // Lightmap to HashMap
-      const addLightMapToHash = (
-        hashKey: string,
-        material: THREE.MeshStandardMaterial,
-      ) => {
+      const addLightMapToHash = (hashKey: string, material: VMaterial) => {
         if (!lightmapHashes[hashKey]) {
           lightmapHashes[hashKey] = [];
         }
@@ -1147,7 +1144,7 @@ export const uploadExrLightmap = async (object: THREE.Object3D) => {
   const hashes = Object.keys(lightmapHashes);
 
   const files: File[] = [];
-  const afterMats: THREE.MeshStandardMaterial[] = [];
+  const afterMats: VMaterial[] = [];
 
   await Promise.all(
     hashes.map(hash => {
@@ -1166,7 +1163,7 @@ export const uploadExrLightmap = async (object: THREE.Object3D) => {
   );
 
   if (files.length > 0) {
-    return uploadExrToKtx(files).then(res => {
+    return uploadExrToKtx(files, isMobile).then(res => {
       console.log(res);
       if (res.success) {
         const data = res.data;
@@ -1176,6 +1173,9 @@ export const uploadExrLightmap = async (object: THREE.Object3D) => {
             const ktxName = exrName.replace('.exr', '.ktx');
             if (data.some(datum => datum.filename === ktxName)) {
               mat.vUserData[key] = ktxName;
+              if (isMobile) {
+                mat.vUserData.isMobile = true;
+              }
             }
           }
         };
@@ -1250,7 +1250,7 @@ export function createClosedConcaveSurface(
   geometry.rotateX(Math.PI / 2);
 
   // 이 때 바깥쪽을 보고 있으므로 Material에서 더블사이드로 설정
-  const material = new THREE.MeshStandardMaterial({
+  const material = new VMeshStandardMaterial({
     emissive: color ?? 0x3333cc,
     emissiveIntensity: 1.0,
     side: THREE.DoubleSide,
@@ -1502,14 +1502,12 @@ export function changeMeshVisibleWithTransition(
   const dissolveOrigin = new THREE.Vector3(minX, centerY, minZ);
 
   // 3D 거리 사용
-  mat.setUniformByValue('dissolveMaxDist', box.max.distanceTo(box.min));
+  mat.shader.uniforms.dissolveMaxDist.value = box.max.distanceTo(box.min);
 
   // Shader Uniform에 dissolveOrigin 전달
-  mat.setUniformByValue('dissolveOrigin', dissolveOrigin);
-  mat.setUniformByValue('dissolveDirection', targetVisible);
-  mat.setUniformByValue('progress', 0);
-  mat.useProgressiveAlpha = true;
-  mat.needsUpdate = true;
+  mat.dissolveOrigin = dissolveOrigin;
+  mat.shader.uniforms.dissolveDirection.value = targetVisible;
+  mat.shader.uniforms.dissolveProgress = 0;
 
   timeLine.to(
     {
@@ -1520,23 +1518,25 @@ export function changeMeshVisibleWithTransition(
       duration: transitionDelay,
       ease: 'none',
       onStart() {
-        console.log('started');
+        mat.shader.uniforms.dissolveProgress = 0.0001;
         mat.transparent = true;
         if (!targetVisible) {
           mesh.renderOrder = 9999;
         }
-        mesh.visible = true;
+        if (targetVisible) {
+          mesh.visible = true;
+        }
+        mat.useProgressiveAlpha = true;
       },
       onUpdate() {
-        const progress = this.targets()[0].t;
-        mat.setUniformByValue('progress', progress);
+        mat.shader.uniforms.progress.value = this.targets()[0].t;
       },
       onComplete() {
-        console.log('completed');
         mesh.visible = targetVisible;
         mesh.renderOrder = originalRenderOrder;
         mat.transparent = originalTransparent;
         mat.useProgressiveAlpha = false; // needsUpdate = true 자동
+        mat.shader.uniforms.dissolveProgress = 0.001;
       },
     },
     0,
@@ -1549,7 +1549,7 @@ export function changeMeshLightMapWithTransition(
   targetLightMap: THREE.Texture,
   timeLine: gsap.core.Timeline,
 ) {
-  const mat = mesh.material as THREE.MeshStandardMaterial;
+  const mat = mesh.material as VMaterial;
   const beforeLightMap = mat.lightMap;
   if (!beforeLightMap) {
     console.warn('No LightMap : ', mesh);
@@ -1649,6 +1649,16 @@ export function changeMeshLightMapWithTransition(
     },
     0,
   );
+}
+
+export function applyProbeOnMaterial(
+  material: VMaterial,
+  probe: ReflectionProbe,
+) {
+  material.updateEnvUniforms(probe.getCenter(), probe.getSize());
+  material.envMap = probe.getRenderTargetTexture();
+  material.vUserData.probeId = probe.getId();
+  material.needsUpdate = true;
 }
 
 function getRandomColorWithComplementary() {

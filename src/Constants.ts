@@ -65,6 +65,7 @@ const base: string = import.meta.env.VITE_MODELS_URL as string;
 export const ENV = {
   base,
   latest: base + 'latest.glb',
+  latestMobile: base + 'mobile/latest_mobile.glb',
   latestHash: base + 'latest-hash',
   fileList: base + 'uploads.json',
   baseHash: base + 'base-hash',
