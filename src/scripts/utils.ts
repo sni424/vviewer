@@ -25,6 +25,7 @@ import VGLTFLoader from './loaders/VGLTFLoader.ts';
 import VMaterial from './material/VMaterial.ts';
 import VMeshStandardMaterial from './material/VMeshStandardMaterial.ts';
 import VGLTFExporter from './VGLTFExporter.ts';
+import ReflectionProbe from './ReflectionProbe.ts';
 
 export const groupInfo = (
   group: THREE.Group | { scene: THREE.Group } | THREE.Scene | THREE.Object3D,
@@ -1492,14 +1493,12 @@ export function changeMeshVisibleWithTransition(
   const dissolveOrigin = new THREE.Vector3(minX, centerY, minZ);
 
   // 3D 거리 사용
-  mat.setUniformByValue('dissolveMaxDist', box.max.distanceTo(box.min));
+  mat.shader.uniforms.dissolveMaxDist.value = box.max.distanceTo(box.min);
 
   // Shader Uniform에 dissolveOrigin 전달
-  mat.setUniformByValue('dissolveOrigin', dissolveOrigin);
-  mat.setUniformByValue('dissolveDirection', targetVisible);
-  mat.setUniformByValue('progress', 0);
-  mat.useProgressiveAlpha = true;
-  mat.needsUpdate = true;
+  mat.dissolveOrigin = dissolveOrigin;
+  mat.shader.uniforms.dissolveDirection.value = targetVisible;
+  mat.shader.uniforms.dissolveProgress = 0;
 
   timeLine.to(
     {
@@ -1510,23 +1509,25 @@ export function changeMeshVisibleWithTransition(
       duration: transitionDelay,
       ease: 'none',
       onStart() {
-        console.log('started');
+        mat.shader.uniforms.dissolveProgress = 0.0001;
         mat.transparent = true;
         if (!targetVisible) {
           mesh.renderOrder = 9999;
         }
-        mesh.visible = true;
+        if (targetVisible) {
+          mesh.visible = true;
+        }
+        mat.useProgressiveAlpha = true;
       },
       onUpdate() {
-        const progress = this.targets()[0].t;
-        mat.setUniformByValue('progress', progress);
+        mat.shader.uniforms.progress.value = this.targets()[0].t;
       },
       onComplete() {
-        console.log('completed');
         mesh.visible = targetVisible;
         mesh.renderOrder = originalRenderOrder;
         mat.transparent = originalTransparent;
         mat.useProgressiveAlpha = false; // needsUpdate = true 자동
+        mat.shader.uniforms.dissolveProgress = 0.001;
       },
     },
     0,
@@ -1539,7 +1540,7 @@ export function changeMeshLightMapWithTransition(
   targetLightMap: THREE.Texture,
   timeLine: gsap.core.Timeline,
 ) {
-  const mat = mesh.material as THREE.MeshStandardMaterial;
+  const mat = mesh.material as VMaterial;
   const beforeLightMap = mat.lightMap;
   if (!beforeLightMap) {
     console.warn('No LightMap : ', mesh);
@@ -1639,6 +1640,16 @@ export function changeMeshLightMapWithTransition(
     },
     0,
   );
+}
+
+export function applyProbeOnMaterial(
+  material: VMaterial,
+  probe: ReflectionProbe,
+) {
+  material.updateEnvUniforms(probe.getCenter(), probe.getSize());
+  material.envMap = probe.getRenderTargetTexture();
+  material.vUserData.probeId = probe.getId();
+  material.needsUpdate = true;
 }
 
 function getRandomColorWithComplementary() {

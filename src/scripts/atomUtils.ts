@@ -137,7 +137,10 @@ export const uploadPngToKtx = async (
   return await res.json();
 };
 
-export const uploadJson = (name: string, value: Record<string, any>) => {
+export const uploadJson = (
+  name: string,
+  value: Record<string, any> | string,
+) => {
   let jsonName: string = name;
   if (!jsonName.endsWith('.json')) {
     jsonName += '.json';
@@ -172,6 +175,12 @@ export const loadTourSpot = async () => {
 
 export const loadProbes = async () => {
   return fetch(ENV.base + 'probe.json', {
+    cache: 'no-store',
+  }).then(res => res.json());
+};
+
+export const loadProbeApplyInfos = async () => {
+  return fetch(ENV.base + 'probe_apply.json', {
     cache: 'no-store',
   }).then(res => res.json());
 };

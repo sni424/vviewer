@@ -10,6 +10,11 @@ export default class VMeshPhysicalMaterial
   private envMapPosition: THREE.Vector3 = new THREE.Vector3();
   private envMapSize: THREE.Vector3 = new THREE.Vector3();
 
+  dissolveMaxDist: number = 0;
+  _dissolveOrigin: THREE.Vector3 = new THREE.Vector3();
+  dissolveDirection: boolean = false;
+  dissolveProgress: number = 0;
+
   constructor(parameters?: THREE.MeshPhysicalMaterialParameters) {
     super(parameters);
     this.useProgressiveAlpha = true;
@@ -20,7 +25,12 @@ export default class VMeshPhysicalMaterial
       VMaterialUtils.addWorldPosition(shader);
       // FRAGMENT
       VMaterialUtils.adjustLightMapFragments(shader);
-      VMaterialUtils.addProgressiveAlpha(shader);
+      VMaterialUtils.addProgressiveAlpha(shader, {
+        maxDist: this.dissolveMaxDist,
+        origin: this._dissolveOrigin,
+        dir: this.dissolveDirection,
+        progress: this.dissolveProgress,
+      });
       VMaterialUtils.addBoxProjectedEnv(
         shader,
         this.envMapPosition,
@@ -76,6 +86,10 @@ export default class VMeshPhysicalMaterial
   clone(): this {
     // TODO Clone 시 shader 안담기는 문제 해결해야함.
     return new VMeshPhysicalMaterial(this);
+  }
+
+  set dissolveOrigin(dissolveOrigin: THREE.Vector3) {
+    this._dissolveOrigin.copy(dissolveOrigin);
   }
 
   addDefines(key: string, value?: any = '') {

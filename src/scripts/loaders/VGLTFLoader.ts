@@ -16,6 +16,7 @@ import VMeshStandardMaterial from '../material/VMeshStandardMaterial.ts';
 import * as THREE from '../VTHREE.ts';
 import { getVKTX2Loader } from './VKTX2Loader.ts';
 import VTextureLoader from './VTextureLoader.ts';
+import { lightMapAtom, setAtomValue } from '../atoms.ts';
 
 export default class VGLTFLoader extends GLTFLoader {
   disposableURL: string[] = [];
@@ -79,6 +80,20 @@ export default class VGLTFLoader extends GLTFLoader {
       const isCreateLightMapCache = true;
 
       const vMaterialCache = new Map<string, VMaterial>();
+
+      // Material의 Transmission 관련 값이 Probe CubeCamera의 렌더에 버그가 있어서, 모든 transmission 관련 값 초기화
+      gltf.scene.traverseAll(o => {
+        if (o.type === 'Mesh') {
+          const mesh = o as THREE.Mesh;
+          const mat = mesh.material as THREE.MeshStandardMaterial;
+          if (mat['transmissionMap']) {
+            mat['transmissionMap'] = null;
+          }
+          if (mat['transmission']) {
+            mat['transmission'] = 0;
+          }
+        }
+      });
 
       gltf.scene.traverseAll(async (object: THREE.Object3D) => {
         object.layers.enable(Layer.Model);
@@ -154,10 +169,11 @@ export default class VGLTFLoader extends GLTFLoader {
       });
 
       // TODO 외부에서 isCreateLightMapCache 조정하기
-      // if (isCreateLightMapCache) {
-      //   const toLightMapObj = await createLightmapCache(lmMap);
-      //   setAtomValue(lightMapAtom, toLightMapObj);
-      // }
+      if (isCreateLightMapCache) {
+        const gl = new THREE.WebGLRenderer();
+        const toLightMapObj = await createLightmapCache(lmMap, gl);
+        setAtomValue(lightMapAtom, toLightMapObj);
+      }
 
       onLoad(gltf);
     }
@@ -179,10 +195,12 @@ export default class VGLTFLoader extends GLTFLoader {
   }
 }
 
-export async function createLightmapCache(lmMap: Map<string, THREE.Texture>) {
+export async function createLightmapCache(
+  lmMap: Map<string, THREE.Texture>,
+  newGL: THREE.WebGLRenderer,
+) {
   const obj = Object.fromEntries(lmMap);
 
-  const newGL = new THREE.WebGLRenderer();
   const geo = new THREE.PlaneGeometry(2, 2);
   const mat = new THREE.MeshBasicMaterial();
   const plane = new THREE.Mesh(geo, mat);

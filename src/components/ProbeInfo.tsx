@@ -16,12 +16,18 @@ import {
   useModal,
   useToast,
 } from '../scripts/atoms.ts';
-import { loadProbes, threes, uploadJson } from '../scripts/atomUtils.ts';
+import {
+  loadProbeApplyInfos,
+  loadProbes,
+  threes,
+  uploadJson,
+} from '../scripts/atomUtils.ts';
 import ReflectionProbe, {
   ReflectionProbeJSON,
   ReflectionProbeResolutions,
 } from '../scripts/ReflectionProbe.ts';
 import {
+  applyProbeOnMaterial,
   listFilesFromDrop,
   loadHDRTexture,
   loadPNGAsENV,
@@ -196,6 +202,62 @@ const ProbeInfo = () => {
     });
   }
 
+  function showProbeAppliedMaterials() {
+    const probeMap = new Map<string, string>();
+    scene.traverse(o => {
+      if (o.type === 'Mesh') {
+        const mat = (o as THREE.Mesh).material as VMaterial;
+        if (mat.vUserData.probeId) {
+          probeMap.set(mat.name, mat.vUserData.probeId);
+        }
+      }
+    });
+    const object = Object.fromEntries(probeMap);
+    uploadJson('probe_apply.json', object)
+      .then(res => res.json())
+      .then(res => {
+        if (res?.success === true) {
+          alert('업로드 완료');
+        } else {
+          throw res;
+        }
+      })
+      .catch(err => {
+        console.log(err);
+        alert('업로드 실패');
+      });
+  }
+
+  function callProbeApplyInfo() {
+    loadProbeApplyInfos()
+      .then((applyInfo: { [key: string]: string }) => {
+        const materialNames = Object.keys(applyInfo);
+        const matMap = new Map<string, VMaterial>();
+        scene.traverse(o => {
+          if (o.type === 'Mesh') {
+            const mat = (o as THREE.Mesh).material as VMaterial;
+            if (materialNames.includes(mat.name) && !matMap.has(mat.name)) {
+              mat.vUserData.probeId = applyInfo[mat.name];
+              matMap.set(mat.name, mat);
+            }
+          }
+        });
+
+        const materials = Array.from(matMap.values());
+        materials.forEach(material => {
+          const probeId = material.vUserData.probeId!!;
+          const probe = probes.find(probe => probe.getId() === probeId);
+          if (probe) {
+            applyProbeOnMaterial(material, probe);
+          }
+        });
+      })
+      .catch(err => {
+        console.error(err);
+        alert('불러오지 못했습니다.');
+      });
+  }
+
   return (
     <div
       style={{
@@ -262,6 +324,15 @@ const ProbeInfo = () => {
               }}
             >
               해상도 일괄 변경
+            </button>
+            <button
+              onClick={showProbeAppliedMaterials}
+              style={{ fontSize: 10 }}
+            >
+              프로브 적용 정보 업데이트
+            </button>
+            <button onClick={callProbeApplyInfo}>
+              프로브 적용 정보 가져오기
             </button>
           </>
         )}

@@ -1,5 +1,6 @@
 import { THREE } from '../VTHREE.ts';
 import { VShaderLib } from './VMaterialConstants.ts';
+import { Simulate } from 'react-dom/test-utils';
 
 type Shader = THREE.WebGLProgramParametersWithUniforms;
 
@@ -18,11 +19,24 @@ function adjustLightMapFragments(shader: Shader) {
   );
 }
 
-function addProgressiveAlpha(shader: Shader) {
-  shader.uniforms.progress = { value: 0.0 };
-  shader.uniforms.dissolveOrigin = { value: new THREE.Vector3() };
-  shader.uniforms.dissolveMaxDist = { value: 0.0 };
-  shader.uniforms.dissolveDirection = { value: false };
+function addProgressiveAlpha(
+  shader: Shader,
+  {
+    maxDist,
+    origin,
+    dir,
+    progress,
+  }: {
+    maxDist: number;
+    origin: THREE.Vector3;
+    dir: boolean;
+    progress: number;
+  },
+) {
+  shader.uniforms.progress = { value: progress };
+  shader.uniforms.dissolveOrigin = { value: origin };
+  shader.uniforms.dissolveMaxDist = { value: maxDist };
+  shader.uniforms.dissolveDirection = { value: dir };
 
   shader.fragmentShader =
     `

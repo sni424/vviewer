@@ -17,6 +17,14 @@ export default interface VMaterial extends THREE.MeshStandardMaterial {
 
   removeDefines(key: string): void;
 
+  set dissolveMaxDist(dist: number): void;
+
+  set dissolveOrigin(origin: THREE.Vector3): void;
+
+  set dissolveDirection(direction: boolean): void;
+
+  set dissolveProgress(progress: number): void;
+
   set useLightMapContrast(use: boolean): void;
 
   get useLightMapContrast(): boolean;

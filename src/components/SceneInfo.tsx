@@ -945,49 +945,6 @@ const GeneralMaterialControl = () => {
   const [lmIntensityValue, setlmIntensityValue] = useState(1);
   const [wireframe, setWireframe] = useState(false);
   const [materialSetting, setMaterialSetting] = useAtom(materialSettingAtom);
-  const [progress, setProgress] = useState<number>(0);
-  const [isProgress, setIsProgress] = useState<boolean>(true);
-
-  useEffect(() => {
-    scene.traverse(o => {
-      if (o.type === 'Mesh') {
-        const mesh = o as THREE.Mesh;
-        const mat = mesh.material as VMaterial;
-        const box = new THREE.Box3().setFromObject(mesh);
-
-        // dissolveOrigin 설정: x는 minX, y는 중앙, z는 minZ
-        const minX = box.min.x; // 왼쪽 X 좌표
-        const centerY = (box.min.y + box.max.y) / 2; // Y 중앙
-        const minZ = box.min.z; // 가장 앞쪽 (액자의 왼쪽 테두리)
-
-        // dissolveOrigin을 Three.js Vector3로 설정
-        const dissolveOrigin = new THREE.Vector3(minX, centerY, minZ);
-
-        // 3D 거리 사용
-        mat.setUniformByValue('dissolveMaxDist', box.max.distanceTo(box.min));
-
-        // Shader Uniform에 dissolveOrigin 전달
-        mat.setUniformByValue('dissolveOrigin', dissolveOrigin);
-        mat.setUniformByValue('dissolveDirection', false);
-        mat.setUniformByValue('progress', progress);
-        mat.needsUpdate = true;
-
-        mat.useProgressiveAlpha = isProgress;
-      }
-    });
-  }, [isProgress]);
-
-  useEffect(() => {
-    if (isProgress) {
-      scene.traverse(o => {
-        if (o.type === 'Mesh') {
-          const mesh = o as THREE.Mesh;
-          const mat = mesh.material as VMaterial;
-          mat.setUniformByValue('progress', progress);
-        }
-      });
-    }
-  }, [progress]);
 
   return (
     <section className="w-full">
@@ -1101,43 +1058,6 @@ const GeneralMaterialControl = () => {
           }}
         />
       </div>
-      <div className="flex">
-        <div className="mr-3">setProgress</div>
-        <input
-          type="checkbox"
-          checked={isProgress}
-          onChange={event => {
-            const checked = event.target.checked;
-            setIsProgress(checked);
-          }}
-        />
-      </div>
-      {isProgress && (
-        <div className="flex">
-          <div className="mr-3">progress Test</div>
-          <input
-            className="flex-1 min-w-0"
-            type="range"
-            value={progress}
-            onChange={e => {
-              setProgress(parseFloat(e.target.value));
-            }}
-            min={0}
-            max={1}
-            step={0.01}
-          ></input>
-          <input
-            type="number"
-            value={progress}
-            onChange={e => {
-              setProgress(parseFloat(e.target.value));
-            }}
-            min={0}
-            max={1}
-            step={0.01}
-          ></input>
-        </div>
-      )}
     </section>
   );
 };

@@ -86,7 +86,7 @@ const ditheringReplace = `
       glowFalloff = 1.0 - smoothstep(distToBorder-falloffRange*5.0, distToBorder+falloffRange*4.0, distance);
     }
     else {
-      glowFalloff = smoothstep(distToBorder-falloffRange, distToBorder, distance);
+      glowFalloff = max(smoothstep(distToBorder-falloffRange, distToBorder, distance), 0.0001);
     }
     gl_FragColor.a *= falloff;
     vec3 glowColor = vec3(1.0);

@@ -10,6 +10,11 @@ class VMeshStandardMaterial
   private envMapPosition: THREE.Vector3 = new THREE.Vector3();
   private envMapSize: THREE.Vector3 = new THREE.Vector3();
 
+  dissolveMaxDist: number = 0;
+  _dissolveOrigin: THREE.Vector3 = new THREE.Vector3();
+  dissolveDirection: boolean = false;
+  dissolveProgress: number = 0;
+
   constructor(parameters?: THREE.MeshStandardMaterialParameters) {
     super(parameters);
     this.useProgressiveAlpha = true;
@@ -20,8 +25,13 @@ class VMeshStandardMaterial
       // VERTEX
       VMaterialUtils.addWorldPosition(shader);
       // FRAGMENT
-      VMaterialUtils.addProgressiveAlpha(shader);
       VMaterialUtils.adjustLightMapFragments(shader);
+      VMaterialUtils.addProgressiveAlpha(shader, {
+        maxDist: this.dissolveMaxDist,
+        origin: this._dissolveOrigin,
+        dir: this.dissolveDirection,
+        progress: this.dissolveProgress,
+      });
       VMaterialUtils.addBoxProjectedEnv(
         shader,
         this.envMapPosition,
@@ -76,6 +86,10 @@ class VMeshStandardMaterial
 
   clone(): this {
     return new VMeshStandardMaterial(this);
+  }
+
+  set dissolveOrigin(dissolveOrigin: THREE.Vector3) {
+    this._dissolveOrigin.copy(dissolveOrigin);
   }
 
   addDefines(key: string, value?: any = '') {
