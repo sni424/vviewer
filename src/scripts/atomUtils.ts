@@ -99,6 +99,7 @@ export const cameraInRoom = (camera?: THREE.Matrix4): RoomCreateOption[] => {
 
 export const uploadExrToKtx = async (
   exrs: File | File[],
+  isMobile: boolean = false,
 ): Promise<KTXApiResponse> => {
   const uploadUrl = import.meta.env.VITE_KTX_URL as string;
   if (!uploadUrl) {
@@ -110,7 +111,9 @@ export const uploadExrToKtx = async (
   for (const file of files) {
     fd.append('files', file);
   }
-  const res = await fetch(uploadUrl, {
+  const params = isMobile ? '?path=mobile' : '';
+  const targetURL = `${uploadUrl}${params}`;
+  const res = await fetch(targetURL, {
     method: 'POST',
     body: fd,
   });

@@ -304,19 +304,22 @@ function getGLTFLoader(gl: THREE.WebGLRenderer) {
 
 export const loadLatest = async ({
   threeExports,
+  mobile,
   addBenchmark: _addBenchmark,
   closeToast,
 }: {
   threeExports: RootState;
+  mobile?: boolean;
   addBenchmark?: (key: keyof BenchMark, value?: number) => void;
   closeToast?: () => void;
 }) => {
   const addBenchMark = _addBenchmark ?? (() => {});
-  const latestUrl = ENV.latest;
-  if (!latestUrl) {
-    alert('.env에 환경변수를 설정해주세요, latestUrl');
+  const base = ENV.base;
+  if (!base) {
+    alert('.env에 환경변수를 설정해주세요, VITE_MODELS_URL');
     return;
   }
+  const latestUrl = mobile ? ENV.latestMobile : ENV.latest;
   if (!threeExports) {
     alert('threeExports 분기 문제');
     return;
@@ -1073,7 +1076,10 @@ export const uploadGainmap = async (object: THREE.Object3D) => {
   }
 };
 
-export const uploadExrLightmap = async (object: THREE.Object3D) => {
+export const uploadExrLightmap = async (
+  object: THREE.Object3D,
+  isMobile?: boolean,
+) => {
   // 같은 라이트맵을 공유하는 material 검출
   // { hash : [mat1, mat2] }
   const lightmapHashes: { [key in string]: VMaterial[] } = {};
@@ -1157,7 +1163,7 @@ export const uploadExrLightmap = async (object: THREE.Object3D) => {
   );
 
   if (files.length > 0) {
-    return uploadExrToKtx(files).then(res => {
+    return uploadExrToKtx(files, isMobile).then(res => {
       console.log(res);
       if (res.success) {
         const data = res.data;
@@ -1167,6 +1173,9 @@ export const uploadExrLightmap = async (object: THREE.Object3D) => {
             const ktxName = exrName.replace('.exr', '.ktx');
             if (data.some(datum => datum.filename === ktxName)) {
               mat.vUserData[key] = ktxName;
+              if (isMobile) {
+                mat.vUserData.isMobile = true;
+              }
             }
           }
         };

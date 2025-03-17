@@ -400,6 +400,7 @@ const ProbeSelector = ({ material }: { material: VMaterial }) => {
 
   function applyProbeOnMaterial(material: VMaterial, probe: ReflectionProbe) {
     material.updateEnvUniforms(probe.getCenter(), probe.getSize());
+    console.log(probe);
     material.envMap = probe.getRenderTargetTexture();
     material.vUserData.probeId = value;
     material.needsUpdate = true;
@@ -428,7 +429,7 @@ const ProbeSelector = ({ material }: { material: VMaterial }) => {
       onChange={e => setValue(e.target.value)}
       value={value}
     >
-      <option selected value="none" style={{ display: 'none' }}>
+      <option value="none" style={{ display: 'none' }}>
         프로브를 선택하세요.
       </option>
       {material.envMap && <option value="delete">ENV 삭제</option>}

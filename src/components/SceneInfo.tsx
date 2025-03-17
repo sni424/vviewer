@@ -228,10 +228,10 @@ const GeneralButtons = () => {
     ));
   }
 
-  async function uploadLightMaps() {
+  async function uploadLightMaps(isMobile?: boolean) {
     openToast('라이트맵 업로드 중...', { autoClose: false });
     setUploading(true);
-    await uploadExrLightmap(threeExports.scene);
+    await uploadExrLightmap(threeExports.scene, isMobile);
     setUploading(false);
     closeToast();
   }
@@ -306,16 +306,81 @@ const GeneralButtons = () => {
       });
   }
 
+  async function uploadMobileModels() {
+    const uploadUrl = import.meta.env.VITE_UPLOAD_URL;
+    if (!uploadUrl) {
+      alert('.env에 환경변수를 설정해주세요, uploadUrl');
+      return;
+    }
+    openToast('GLB 업로드 중...', { autoClose: false, override: true });
+    setUploading(true);
+    new VGLTFExporter()
+      .parseAsync(threeExports.scene, { binary: true })
+      .then(glbArr => {
+        if (glbArr instanceof ArrayBuffer) {
+          console.log('before File Make');
+          const blob = new Blob([glbArr], {
+            type: 'application/octet-stream',
+          });
+          const file = new File([blob], 'latest_mobile.glb', {
+            type: 'model/gltf-binary',
+          });
+          const fd = new FormData();
+          fd.append('files', file);
+
+          // latest 캐싱을 위한 hash
+          const uploadHash = objectHash(new Date().toISOString());
+          const hashData = {
+            hash: uploadHash,
+          };
+          // convert object to File:
+          const hashFile = compressObjectToFile(hashData, 'latest-hash');
+          const hashFd = new FormData();
+          hashFd.append('files', hashFile);
+          console.log('before Upload');
+          Promise.all([
+            fetch(uploadUrl, {
+              method: 'POST',
+              body: hashFd,
+            }),
+            fetch(`${uploadUrl}?path=mobile`, {
+              method: 'POST',
+              body: fd,
+            }),
+          ]).then(() => {
+            alert('업로드 완료');
+            closeToast();
+            setUploading(false);
+          });
+        } else {
+          console.error(
+            'VGLTFExporter GLB 처리 안됨, "binary: true" option 확인',
+          );
+          alert('VGLTFExporter 문제 발생함, 로그 확인');
+          closeToast();
+          setUploading(false);
+        }
+      });
+  }
+
   async function uploadScene() {
     await uploadLightMaps();
     await uploadModels(true);
     alert('씬 업로드 완료');
   }
 
+  async function mobileUpload() {
+    await uploadLightMaps(true);
+    await uploadMobileModels();
+  }
+
   return (
     <section className="w-full grid gap-2 grid-cols-3">
       <button disabled={isUploading} onClick={uploadScene}>
         씬 업로드
+      </button>
+      <button disabled={isUploading} onClick={mobileUpload}>
+        모바일용 업로드
       </button>
       <button disabled={isUploading} onClick={() => uploadModels()}>
         GLB 만 업로드
@@ -330,7 +395,6 @@ const GeneralButtons = () => {
       >
         모바일
       </button>
-      <button onClick={handleResetSettings}>카메라 세팅 초기화</button>
       <button
         onClick={() => {
           openToast('업로드한 씬 불러오는 중..', { autoClose: false });
@@ -347,6 +411,24 @@ const GeneralButtons = () => {
       >
         업로드한 씬 불러오기
       </button>
+      <button
+        onClick={() => {
+          openToast('모바일 씬 불러오는 중..', { autoClose: false });
+          loadLatest({
+            threeExports,
+            mobile: true,
+            addBenchmark,
+            closeToast,
+          }).catch(e => {
+            console.error(e);
+            alert('최신 업로드 불러오기 실패');
+            closeToast();
+          });
+        }}
+      >
+        모바일 불러오기
+      </button>
+      <button onClick={handleResetSettings}>카메라 세팅 초기화</button>
     </section>
   );
 };

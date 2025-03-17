@@ -148,7 +148,10 @@ export default class VGLTFLoader extends GLTFLoader {
           const mesh = ob as THREE.Mesh;
           const mat = mesh.material as THREE.MeshStandardMaterial;
           if (mat.vUserData.lightMap) {
-            const lmKey = getVUserDataLightMapURL(mat.vUserData.lightMap);
+            const lmKey = getVUserDataLightMapURL(
+              mat.vUserData.lightMap,
+              mat.vUserData.isMobile,
+            );
             if (lmMap.has(lmKey)) {
               const texture = lmMap.get(lmKey);
               if (texture) {
@@ -277,59 +280,21 @@ function getLightmap(object: THREE.Object3D, lightMapSet: Set<string>) {
     const mesh = object as THREE.Mesh;
     const mat = mesh.material as VMaterial;
     if (mat) {
-      // TODO modelType 관련 다 날리기
-      // DP 는 항상 dpOnTextureFile, Base 는 dpOnTextureFile / dpOffTextureFile 둘 다 있거나 없음.
-      // 텍스쳐 적용 기준 =>
-      // BASE: dpOff 기준 / DP : dpOn 기준
       const textures: string[] = [];
-      const modelType = mesh.vUserData.modelType;
-      let applyKey: string | null = null;
-      if (modelType) {
-        // DP / Base 로 업로드 했다면?
-        if (modelType === 'DP') {
-          // DP 라면
-          const target = mat.vUserData.dpOnTextureFile;
-          if (target) {
-            textures.push(getVUserDataLightMapURL(target));
-            applyKey = getVUserDataLightMapURL(target);
-          } else {
-            console.warn(
-              'getLightMap() => type DP : dpOnTextureFile 없음 ! ',
-              mat,
-            );
-          }
-        } else {
-          // Base 라면
-          const offT = mat.vUserData.dpOffTextureFile;
-          const onT = mat.vUserData.dpOnTextureFile;
-
-          if (offT && onT) {
-            applyKey = getVUserDataLightMapURL(offT);
-            textures.push(
-              getVUserDataLightMapURL(offT),
-              getVUserDataLightMapURL(onT),
-            );
-          } else {
-            console.log('No LightMap with Base Model : ', mesh);
-          }
-        }
-      } else if (mat.vUserData.lightMap) {
+      if (mat.vUserData.lightMap) {
         // EXR 을 그냥 넣어서 업로드 한 경우
-        applyKey = getVUserDataLightMapURL(mat.vUserData.lightMap);
-        textures.push(getVUserDataLightMapURL(mat.vUserData.lightMap));
+        textures.push(
+          getVUserDataLightMapURL(
+            mat.vUserData.lightMap,
+            mat.vUserData.isMobile,
+          ),
+        );
       }
 
       if (textures.length > 0) {
+        console.log(textures);
         textures.forEach(texture => lightMapSet.add(texture));
       }
-
-      /**
-       * Texture Call 분류
-       * 1. dpOnTexture / dpOffTexture
-       * 2. dpOnTexture 및 raw LightMap
-       * -> 추후
-       * 3. Option 용 라이트맵 ?
-       * **/
     }
   }
 }
@@ -373,6 +338,8 @@ async function getGainmap(object: THREE.Object3D, gl?: THREE.WebGLRenderer) {
   }
 }
 
-function getVUserDataLightMapURL(lightMap: string) {
-  return lightMap.startsWith('http') ? lightMap : ENV.base + lightMap;
+function getVUserDataLightMapURL(lightMap: string, isMobile?: boolean) {
+  return lightMap.startsWith('http')
+    ? lightMap
+    : `${ENV.base}` + ((isMobile ? 'mobile/' : '') + lightMap);
 }

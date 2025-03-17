@@ -37,6 +37,7 @@ export interface ThreeUserData {
   isCustomEnvMap?: boolean;
   originalOpacity?: number;
   shader?: WebGLProgramParametersWithUniforms;
+  isMobile?: boolean;
 }
 
 declare module 'three' {

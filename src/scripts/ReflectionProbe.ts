@@ -47,6 +47,7 @@ export type ReflectionProbeJSON = {
   textureUrls?: string[] | null;
   useCustomTexture: boolean;
   renderedTime?: number | null;
+  isActive?: boolean;
 };
 
 export interface ProbeMeshEventMap extends Object3DEventMap {
@@ -100,8 +101,8 @@ export default class ReflectionProbe {
   private useCustomTexture: boolean = false;
   private renderedTime: number | null = null;
   private customRenderedTime: number | null = null;
-  private animationFrame: number | null = null;
   private updatedFrame: number | null = null;
+  isActive: boolean = true;
 
   // TODO 추후 개발
   // private modes: Modes = 'box';
@@ -734,6 +735,7 @@ export default class ReflectionProbe {
       textureUrls: this.textureUrls,
       useCustomTexture: this.useCustomTexture,
       renderedTime: this.renderedTime,
+      isActive: this.isActive,
     };
   }
 
@@ -785,6 +787,10 @@ export default class ReflectionProbe {
 
     if (json.showControls !== undefined) {
       this.showControls = json.showControls;
+    }
+
+    if (json.isActive !== undefined) {
+      this.isActive = json.isActive;
     }
 
     this.boxMesh.visible = this.showProbe;

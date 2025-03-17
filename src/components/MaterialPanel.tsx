@@ -341,8 +341,6 @@ const UserDataSection = ({ mat }: { mat: VMaterial }) => {
 };
 
 const MapSection = ({ mat }: { mat: VMaterial }) => {
-  const [opacity, setOpacity] = useState(mat.opacity);
-  const [transparent, setTransparent] = useState(mat.transparent);
   const isPhysical = mat.type === 'MeshPhysicalMaterial';
 
   return (
@@ -450,71 +448,84 @@ const MapSection = ({ mat }: { mat: VMaterial }) => {
             }}
           ></MapInfo>
           {isPhysical && (
-            <>
-              <MaterialPhysicalPanels mat={mat as THREE.MeshPhysicalMaterial} />
-            </>
+            <MaterialPhysicalPanels mat={mat as THREE.MeshPhysicalMaterial} />
           )}
+          <OpacityPanel mat={mat} />
+        </div>
+      </div>
+    </section>
+  );
+};
 
-          <div className="w-full flex items-center gap-x-2 py-2.5">
-            <strong>투명도 설정</strong>
+const OpacityPanel = ({ mat }: { mat: VMaterial }) => {
+  const [opacity, setOpacity] = useState(mat.opacity);
+  const [transparent, setTransparent] = useState(mat.transparent);
+
+  useEffect(() => {
+    setTransparent(mat.transparent);
+    setOpacity(mat.opacity);
+  }, [mat]);
+
+  return (
+    <>
+      <div className="w-full flex items-center gap-x-2 py-2.5">
+        <strong>투명도 설정</strong>
+        <input
+          type="checkbox"
+          checked={transparent}
+          onChange={e => {
+            const value = e.target.checked;
+            setTransparent(value);
+            mat.transparent = value;
+            mat.needsUpdate = true;
+          }}
+        />
+      </div>
+      {transparent && (
+        <div>
+          <strong>Opacity</strong>
+          <div style={{ display: 'flex', width: '100%', gap: 8 }}>
+            <div
+              style={{
+                flex: 1,
+                minWidth: 0,
+              }}
+            >
+              <input
+                style={{
+                  width: '100%',
+                }}
+                type="range"
+                min={0}
+                max={1}
+                step={0.01}
+                value={mat.opacity}
+                onChange={e => {
+                  const value = parseFloat(e.target.value);
+                  mat.opacity = value;
+                  setOpacity(value);
+                  mat.needsUpdate = true;
+                }}
+              />
+            </div>
             <input
-              type="checkbox"
-              checked={transparent}
+              style={{ width: 35, borderRadius: 4 }}
+              type="number"
+              min={0}
+              max={1}
+              step={0.01}
+              value={opacity}
               onChange={e => {
-                const value = e.target.checked;
-                setTransparent(value);
-                mat.transparent = value;
+                const value = parseFloat(e.target.value);
+                mat.opacity = value;
+                setOpacity(value);
                 mat.needsUpdate = true;
               }}
             />
           </div>
-          {transparent && (
-            <div>
-              <strong>Opacity</strong>
-              <div style={{ display: 'flex', width: '100%', gap: 8 }}>
-                <div
-                  style={{
-                    flex: 1,
-                    minWidth: 0,
-                  }}
-                >
-                  <input
-                    style={{
-                      width: '100%',
-                    }}
-                    type="range"
-                    min={0}
-                    max={1}
-                    step={0.01}
-                    value={mat.opacity}
-                    onChange={e => {
-                      const value = parseFloat(e.target.value);
-                      mat.opacity = value;
-                      setOpacity(value);
-                      mat.needsUpdate = true;
-                    }}
-                  />
-                </div>
-                <input
-                  style={{ width: 35, borderRadius: 4 }}
-                  type="number"
-                  min={0}
-                  max={1}
-                  step={0.01}
-                  value={opacity}
-                  onChange={e => {
-                    const value = parseFloat(e.target.value);
-                    mat.opacity = value;
-                    setOpacity(value);
-                    mat.needsUpdate = true;
-                  }}
-                />
-              </div>
-            </div>
-          )}
         </div>
-      </div>
-    </section>
+      )}
+    </>
   );
 };
 
@@ -586,15 +597,15 @@ function MaterialPanelContainer() {
       {/* <MaterialPanel style={{width:"100%"}} mat={mat}></MaterialPanel> */}
 
       <MapSection mat={mat as VMaterial} />
-      <>
-        {isStandard && (
-          <div className="my-2">
-            <button className="w-full" onClick={standardToPhysical}>
-              MeshPhysicalMaterial 전환
-            </button>
-          </div>
-        )}
-      </>
+      {/*<>*/}
+      {/*  {isStandard && (*/}
+      {/*    <div className="my-2">*/}
+      {/*      <button className="w-full" onClick={standardToPhysical}>*/}
+      {/*        MeshPhysicalMaterial 전환*/}
+      {/*      </button>*/}
+      {/*    </div>*/}
+      {/*  )}*/}
+      {/*</>*/}
       <button
         onClick={() => {
           console.log(mat);

@@ -915,7 +915,8 @@ const LightMapSelector = ({
         texture.vUserData.mimeType = 'image/ktx2';
         const map = new Map<string, THREE.Texture>();
         map.set(decodeURI(customURL), texture);
-        const obj = await createLightmapCache(map);
+        const gl = new THREE.WebGLRenderer();
+        const obj = await createLightmapCache(map, gl);
         setLightMaps(pre => {
           return { ...pre, ...obj };
         });
@@ -1190,6 +1191,22 @@ const MeshSelectModal = ({
     setModelSelected(meshes);
   }
 
+  function selectAll() {
+    // 현재 화면에 보일 목록 전체 선택 (키워드 필터까지)
+    const meshes: THREE.Mesh[] = [];
+    scene.traverseAll(o => {
+      if (o.type === 'Mesh') {
+        if (keyword === '') {
+          meshes.push(o);
+        } else if (keyword !== '' && o.name.includes(keyword)) {
+          meshes.push(o);
+        }
+      }
+    });
+
+    setModelSelected(meshes);
+  }
+
   return (
     <div
       className="w-[40%] bg-gray-100 rounded p-3 relative"
@@ -1222,7 +1239,9 @@ const MeshSelectModal = ({
         <div className="flex w-full justify-between items-center mb-2">
           <div className="flex gap-x-1.5 items-center">
             <span>{modelSelected.length}개 선택됨</span>
-            <button className="text-xs">전체 선택</button>
+            <button className="text-xs" onClick={selectAll}>
+              전체 선택
+            </button>
             <button className="text-xs" onClick={() => setModelSelected([])}>
               전체 해제
             </button>

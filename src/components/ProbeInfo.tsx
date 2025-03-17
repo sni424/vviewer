@@ -366,6 +366,7 @@ export const ProbeComponent = ({ probe }: { probe: ReflectionProbe }) => {
   const [imageData, setImageData] = useState<ImageData | null>(null);
   const { openModal, closeModal } = useModal();
   const [isCustom, setIsCustom] = useState<boolean>(probe.isUseCustomTexture());
+  const [isActive, setIsActive] = useState<boolean>(probe.isActive);
 
   useEffect(() => {
     const nRC = nameRef.current;
@@ -588,6 +589,25 @@ export const ProbeComponent = ({ probe }: { probe: ReflectionProbe }) => {
             checked={!isCustom}
             onChange={e => {
               setIsCustom(!e.target.checked);
+            }}
+          />
+        </div>
+        <div
+          style={{
+            fontSize: 11,
+            display: 'flex',
+            alignItems: 'center',
+            marginLeft: 4,
+          }}
+        >
+          <span>프로브 활성화</span>
+          <input
+            className="on-off"
+            type="checkbox"
+            checked={isActive}
+            onChange={e => {
+              setIsActive(e.target.checked);
+              probe.isActive = e.target.checked;
             }}
           />
         </div>
