@@ -27,7 +27,7 @@ import VMaterial from '../scripts/material/VMaterial.ts';
 import { ModelOptionObject } from '../scripts/ModelOptionObject.ts';
 import ModelOption from '../scripts/options/ModelOption.ts';
 import OptionState from '../scripts/options/OptionState.ts';
-import OptionStateMesh from '../scripts/options/OptionStateMesh.ts';
+import MeshEffect from '../scripts/options/MeshEffect.ts';
 import {
   changeMeshLightMapWithTransition,
   changeMeshVisibleWithTransition,
@@ -541,7 +541,7 @@ const State = ({
   const { openModal } = useModal();
   const [name, setName] = useState<string>(state.name);
   const [nameEditMode, setNameEditMode] = useState<boolean>(false);
-  const [models, setModels] = useState<OptionStateMesh[]>(state.effects);
+  const [models, setModels] = useState<MeshEffect[]>(state.effects);
   const [open, setOpen] = useState<boolean>(state.expanded);
 
   function openMeshSelectModal() {
@@ -596,7 +596,7 @@ const State = ({
   }
 
   function closeAll() {
-    models.forEach((meshEffect: OptionStateMesh) => {
+    models.forEach((meshEffect: MeshEffect) => {
       meshEffect.expanded = false;
     });
   }
@@ -647,7 +647,7 @@ const State = ({
   );
 };
 
-const ValueModal = ({ meshEffects }: { meshEffects: OptionStateMesh[] }) => {
+const ValueModal = ({ meshEffects }: { meshEffects: MeshEffect[] }) => {
   const { closeModal } = useModal();
   const [useVisible, setUseVisible] = useState<boolean>(false);
   const [visibleValue, setVisibleValue] = useState<boolean>(false);
@@ -711,8 +711,8 @@ const MeshEffectElem = ({
   meshEffect,
   setMeshEffects,
 }: {
-  meshEffect: OptionStateMesh;
-  setMeshEffects: Dispatch<SetStateAction<OptionStateMesh[]>>;
+  meshEffect: MeshEffect;
+  setMeshEffects: Dispatch<SetStateAction<MeshEffect[]>>;
 }) => {
   const [use, setUse] = useState<{
     visible: boolean;
@@ -1113,8 +1113,8 @@ const MeshSelectModal = ({
   setModels,
 }: {
   state: OptionState;
-  models: OptionStateMesh[];
-  setModels: Dispatch<SetStateAction<OptionStateMesh[]>>;
+  models: MeshEffect[];
+  setModels: Dispatch<SetStateAction<MeshEffect[]>>;
 }) => {
   const threeExports = threes();
   if (!threeExports) {
@@ -1162,7 +1162,7 @@ const MeshSelectModal = ({
     const withouts = modelSelected
       .filter(m => !filteredNames.includes(m.name))
       .map(w => {
-        return new OptionStateMesh(
+        return new MeshEffect(
           state,
           { uuid: w.uuid, name: w.name },
           w as THREE.Mesh,
@@ -1198,7 +1198,10 @@ const MeshSelectModal = ({
       if (o.type === 'Mesh') {
         if (keyword === '') {
           meshes.push(o);
-        } else if (keyword !== '' && o.name.includes(keyword)) {
+        } else if (
+          keyword !== '' &&
+          o.name.toLocaleLowerCase().includes(keyword.toLowerCase())
+        ) {
           meshes.push(o);
         }
       }

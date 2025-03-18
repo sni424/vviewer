@@ -292,7 +292,6 @@ function getLightmap(object: THREE.Object3D, lightMapSet: Set<string>) {
       }
 
       if (textures.length > 0) {
-        console.log(textures);
         textures.forEach(texture => lightMapSet.add(texture));
       }
     }
