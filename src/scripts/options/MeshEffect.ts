@@ -1,8 +1,8 @@
-import { Effects, MeshEffect } from '../ModelOptionObject.ts';
+import { Effects, MeshEffectJSON } from '../ModelOptionObject.ts';
 import * as THREE from '../VTHREE.ts';
 import OptionState from './OptionState.ts';
 
-export default class OptionStateMesh {
+export default class MeshEffect {
   private readonly _targetMeshProperties: { name: string; uuid: string };
   private _targetMesh: THREE.Mesh | null = null;
   private _expanded: boolean = true;
@@ -103,7 +103,7 @@ export default class OptionStateMesh {
   }
 
   copy(newParent?: OptionState) {
-    const newState = new OptionStateMesh(
+    const newState = new MeshEffect(
       newParent ?? this.parent,
       this._targetMeshProperties,
       this.mesh,
@@ -112,7 +112,7 @@ export default class OptionStateMesh {
     return newState;
   }
 
-  toJSON(): MeshEffect {
+  toJSON(): MeshEffectJSON {
     return {
       targetMeshProperties: this._targetMeshProperties,
       effects: this.effect,
@@ -120,7 +120,7 @@ export default class OptionStateMesh {
     };
   }
 
-  fromJSON(effect: MeshEffect) {
+  fromJSON(effect: MeshEffectJSON) {
     this.effect = effect.effects;
     this.expanded = effect.expanded;
     return this;

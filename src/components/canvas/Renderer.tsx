@@ -571,9 +571,9 @@ const useKeyHandler = () => {
       // ctrl s
       if (e.ctrlKey && e.code === 'KeyS') {
         e.preventDefault();
-        saveScene(scene).then(() => {
-          alert('저장 완료');
-        });
+        // saveScene(scene).then(() => {
+        //   alert('저장 완료');
+        // });
         return;
       }
 
@@ -592,17 +592,17 @@ const useKeyHandler = () => {
       // ctrl l
       if (e.ctrlKey && e.code === 'KeyL') {
         e.preventDefault();
-        loadScene()
-          .then(loaded => {
-            if (loaded) {
-              scene.removeFromParent();
-              scene.add(loaded);
-              alert('로드 완료');
-            }
-          })
-          .catch(e => {
-            alert('로드 실패');
-          });
+        // loadScene()
+        //   .then(loaded => {
+        //     if (loaded) {
+        //       scene.removeFromParent();
+        //       scene.add(loaded);
+        //       alert('로드 완료');
+        //     }
+        //   })
+        //   .catch(e => {
+        //     alert('로드 실패');
+        //   });
         return;
       }
 

@@ -37,6 +37,7 @@ export interface ThreeUserData {
   isCustomEnvMap?: boolean;
   originalOpacity?: number;
   shader?: WebGLProgramParametersWithUniforms;
+  isMobile?: boolean;
 }
 
 declare module 'three' {
@@ -378,32 +379,44 @@ THREE.Object3D.prototype.setUserData = function (
   return this;
 };
 
-Object.defineProperty(THREE.Object3D.prototype, 'vUserData', {
-  get: function () {
-    return this.userData as ThreeUserData;
-  },
-  set: function (userData: Partial<ThreeUserData>) {
-    this.userData = { ...this.userData, ...userData };
-  },
-});
+if (
+  !Object.prototype.hasOwnProperty.call(THREE.Object3D.prototype, 'vUserData')
+) {
+  Object.defineProperty(THREE.Object3D.prototype, 'vUserData', {
+    get: function () {
+      return this.userData as ThreeUserData;
+    },
+    set: function (userData: Partial<ThreeUserData>) {
+      this.userData = { ...this.userData, ...userData };
+    },
+  });
+}
 
-Object.defineProperty(THREE.Texture.prototype, 'vUserData', {
-  get: function () {
-    return this.userData as ThreeUserData;
-  },
-  set: function (userData: Partial<ThreeUserData>) {
-    this.userData = { ...this.userData, ...userData };
-  },
-});
+if (
+  !Object.prototype.hasOwnProperty.call(THREE.Texture.prototype, 'vUserData')
+) {
+  Object.defineProperty(THREE.Texture.prototype, 'vUserData', {
+    get: function () {
+      return this.userData as ThreeUserData;
+    },
+    set: function (userData: Partial<ThreeUserData>) {
+      this.userData = { ...this.userData, ...userData };
+    },
+  });
+}
 
-Object.defineProperty(THREE.Material.prototype, 'vUserData', {
-  get: function () {
-    return this.userData as ThreeUserData;
-  },
-  set: function (userData: Partial<ThreeUserData>) {
-    this.userData = { ...this.userData, ...userData };
-  },
-});
+if (
+  !Object.prototype.hasOwnProperty.call(THREE.Material.prototype, 'vUserData')
+) {
+  Object.defineProperty(THREE.Material.prototype, 'vUserData', {
+    get: function () {
+      return this.userData as ThreeUserData;
+    },
+    set: function (userData: Partial<ThreeUserData>) {
+      this.userData = { ...this.userData, ...userData };
+    },
+  });
+}
 
 THREE.Matrix4.prototype.decomposed = function () {
   const position = new THREE.Vector3();
@@ -470,7 +483,7 @@ THREE.Object3D.prototype.traverse = function (
   callback: (node: THREE.Object3D) => any,
 ) {
   if (this.type !== 'Scene' && !this.layers.isEnabled(Layer.Model)) {
-    // console.warn('traverse(): this Not in Model Layer : ', this);
+    console.warn('traverse(): this Not in Model Layer : ', this);
     return;
   }
   callback(this);

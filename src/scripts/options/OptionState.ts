@@ -3,12 +3,12 @@ import { threes } from '../atomUtils.ts';
 import { Effects, ModelOptionState } from '../ModelOptionObject.ts';
 import * as THREE from '../VTHREE.ts';
 import ModelOption from './ModelOption.ts';
-import OptionStateMesh from './OptionStateMesh.ts';
+import MeshEffect from './MeshEffect.ts';
 
 export default class OptionState {
   private _id: string = v4();
   private _name: string;
-  private _effects: OptionStateMesh[] = [];
+  private _effects: MeshEffect[] = [];
   private _expanded: boolean = true;
   private readonly _parent: ModelOption;
 
@@ -41,11 +41,11 @@ export default class OptionState {
     this._expanded = value;
   }
 
-  get effects(): OptionStateMesh[] {
+  get effects(): MeshEffect[] {
     return this._effects;
   }
 
-  set effects(value: OptionStateMesh[]) {
+  set effects(value: MeshEffect[]) {
     this._effects = value;
   }
 
@@ -118,11 +118,9 @@ export default class OptionState {
           .find(m => m.type === 'Mesh');
         mesh = object as THREE.Mesh;
       }
-      return new OptionStateMesh(
-        this,
-        effect.targetMeshProperties,
-        mesh,
-      ).fromJSON(effect);
+      return new MeshEffect(this, effect.targetMeshProperties, mesh).fromJSON(
+        effect,
+      );
     });
     return this;
   }

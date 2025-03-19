@@ -99,6 +99,7 @@ export const cameraInRoom = (camera?: THREE.Matrix4): RoomCreateOption[] => {
 
 export const uploadExrToKtx = async (
   exrs: File | File[],
+  isMobile: boolean = false,
 ): Promise<KTXApiResponse> => {
   const uploadUrl = import.meta.env.VITE_KTX_URL as string;
   if (!uploadUrl) {
@@ -110,7 +111,9 @@ export const uploadExrToKtx = async (
   for (const file of files) {
     fd.append('files', file);
   }
-  const res = await fetch(uploadUrl, {
+  const params = isMobile ? '?path=mobile' : '';
+  const targetURL = `${uploadUrl}${params}`;
+  const res = await fetch(targetURL, {
     method: 'POST',
     body: fd,
   });
@@ -137,7 +140,10 @@ export const uploadPngToKtx = async (
   return await res.json();
 };
 
-export const uploadJson = (name: string, value: Record<string, any>) => {
+export const uploadJson = (
+  name: string,
+  value: Record<string, any> | string,
+) => {
   let jsonName: string = name;
   if (!jsonName.endsWith('.json')) {
     jsonName += '.json';
@@ -153,37 +159,43 @@ export const uploadJson = (name: string, value: Record<string, any>) => {
 };
 
 export const loadHotspot = async () => {
-  return fetch(ENV.base + 'hotspots.json', {
+  return fetch(ENV.s3Base + 'hotspots.json', {
     cache: 'no-store',
   }).then(res => res.json());
 };
 
 export const loadRooms = async () => {
-  return fetch(ENV.base + 'rooms.json', {
+  return fetch(ENV.s3Base + 'rooms.json', {
     cache: 'no-store',
   }).then(res => res.json());
 };
 
 export const loadTourSpot = async () => {
-  return fetch(ENV.base + 'tourSpot.json', {
+  return fetch(ENV.s3Base + 'tourSpot.json', {
     cache: 'no-store',
   }).then(res => res.json());
 };
 
 export const loadProbes = async () => {
-  return fetch(ENV.base + 'probe.json', {
+  return fetch(ENV.s3Base + 'probe.json', {
+    cache: 'no-store',
+  }).then(res => res.json());
+};
+
+export const loadProbeApplyInfos = async () => {
+  return fetch(ENV.s3Base + 'probe_apply.json', {
     cache: 'no-store',
   }).then(res => res.json());
 };
 
 export const loadPostProcess = async () => {
-  return fetch(ENV.base + 'postprocess.json', {
+  return fetch(ENV.s3Base + 'postprocess.json', {
     cache: 'no-store',
   }).then(res => res.json());
 };
 
 export const loadOption = async (filename?: string) => {
-  return fetch(ENV.base + (filename ? filename : 'options.json'), {
+  return fetch(ENV.s3Base + (filename ? filename : 'options.json'), {
     cache: 'no-store',
   }).then(res => res.json());
 };

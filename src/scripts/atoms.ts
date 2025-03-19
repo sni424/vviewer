@@ -25,6 +25,7 @@ import {
 import ReflectionProbe from './ReflectionProbe.ts';
 import { THREE } from './VTHREE';
 import ModelOption from './options/ModelOption.ts';
+import VMaterial from './material/VMaterial.ts';
 
 type AtomArgType<T> = T | ((prev: T) => T);
 export type Store = ReturnType<typeof createStore>;
@@ -535,6 +536,8 @@ export type tourInfoType = {
 };
 
 export const tourAtom = atom<tourInfoType[]>([]);
+
+export const uploadingAtom = atom<boolean>(false);
 
 export type Settings = {
   hotspotSize: number;

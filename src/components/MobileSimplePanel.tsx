@@ -11,6 +11,7 @@ import {
   threeExportsAtom,
 } from '../scripts/atoms.ts';
 import { loadProbes } from '../scripts/atomUtils.ts';
+import VMaterial from '../scripts/material/VMaterial.ts';
 import ReflectionProbe, {
   ReflectionProbeJSON,
 } from '../scripts/ReflectionProbe.ts';
@@ -73,8 +74,9 @@ const LMIntensityController = () => {
             }
           });
           allMeshes.forEach(mesh => {
-            (mesh.material as THREE.MeshStandardMaterial).lightMapIntensity =
-              parseFloat(e.target.value);
+            (mesh.material as VMaterial).lightMapIntensity = parseFloat(
+              e.target.value,
+            );
           });
           setlmIntensityValue(parseFloat(e.target.value));
         }}
@@ -89,6 +91,7 @@ const LMIntensityController = () => {
 
 const ProbeController = () => {
   const threeExports = useAtomValue(threeExportsAtom);
+
   function callProbe() {
     if (!threeExports) {
       alert('아직 준비되지 않았습니다.');

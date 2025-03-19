@@ -7,11 +7,13 @@ import {
   ProbeAtom,
   useModal,
 } from '../scripts/atoms';
+import VMaterial from '../scripts/material/VMaterial.ts';
 import ReflectionProbe from '../scripts/ReflectionProbe.ts';
 import { THREE } from '../scripts/VTHREE';
+import { threes } from '../scripts/atomUtils.ts';
 
 export interface MapPreviewProps {
-  material: THREE.MeshStandardMaterial;
+  material: VMaterial;
   matKey: MaterialSlot;
   width?: number;
   height?: number;
@@ -149,9 +151,7 @@ const MapPreview: React.FC<MapPreviewProps> = ({
   height,
   matKey: mapKey,
 }) => {
-  const texture = material[
-    mapKey as keyof THREE.MeshStandardMaterial
-  ] as THREE.Texture;
+  const texture = material[mapKey as keyof VMaterial] as THREE.Texture;
   const { openModal, closeModal } = useModal();
   const probes = useAtomValue(ProbeAtom);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -187,8 +187,6 @@ const MapPreview: React.FC<MapPreviewProps> = ({
     const h = height ?? 60;
     canvasRef.current.width = w;
     canvasRef.current.height = h;
-    // const source = texture.image || texture.source.data;
-    // console.log(texture.image);
     const renderer = new THREE.WebGLRenderer();
     const m = new THREE.MeshBasicMaterial();
     const planeGeometry = new THREE.PlaneGeometry(2, 2);
@@ -392,21 +390,18 @@ const MapPreview: React.FC<MapPreviewProps> = ({
   );
 };
 
-const ProbeSelector = ({
-  material,
-}: {
-  material: THREE.MeshStandardMaterial;
-}) => {
+const ProbeSelector = ({ material }: { material: VMaterial }) => {
   const probes = useAtomValue(ProbeAtom);
   const [value, setValue] = useState(material.vUserData.probeId ?? 'none');
 
-  function applyProbeOnMaterial(
-    material: THREE.MeshStandardMaterial,
-    probe: ReflectionProbe,
-  ) {
+  const { scene, gl, camera } = threes()!!;
+
+  function applyProbeOnMaterial(material: VMaterial, probe: ReflectionProbe) {
+    material.updateEnvUniforms(probe.getCenter(), probe.getSize());
+    console.log(probe);
     material.envMap = probe.getRenderTargetTexture();
-    material.onBeforeCompile = probe.materialOnBeforeCompileFunc();
     material.vUserData.probeId = value;
+    material.needsUpdate = true;
   }
 
   useEffect(() => {
@@ -432,7 +427,7 @@ const ProbeSelector = ({
       onChange={e => setValue(e.target.value)}
       value={value}
     >
-      <option selected value="none" style={{ display: 'none' }}>
+      <option value="none" style={{ display: 'none' }}>
         프로브를 선택하세요.
       </option>
       {material.envMap && <option value="delete">ENV 삭제</option>}
