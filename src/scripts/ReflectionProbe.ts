@@ -6,8 +6,8 @@ import * as THREE from './VTHREE.ts';
 import { uploadPngToKtx } from './atomUtils.ts';
 import { getVKTX2Loader } from './loaders/VKTX2Loader.ts';
 import VTextureLoader from './loaders/VTextureLoader.ts';
-import { splitExtension } from './utils.ts';
 import VMeshStandardMaterial from './material/VMeshStandardMaterial.ts';
+import { splitExtension } from './utils.ts';
 
 const DEFAULT_RESOLUTION: ReflectionProbeResolutions = 1024;
 const DEFAULT_POSITION: THREE.Vector3 = new THREE.Vector3(0, 0, 0);
@@ -72,7 +72,7 @@ export default class ReflectionProbe {
   // RENDER MEASURES
   private center: THREE.Vector3 = DEFAULT_POSITION;
   private size: THREE.Vector3 = DEFAULT_SIZE;
-  private readonly box: THREE.Box3;
+  private box: THREE.Box3;
   // RESULT OBJECTS
   private readonly boxMesh: THREE.Mesh<
     THREE.BufferGeometry,
@@ -404,13 +404,17 @@ export default class ReflectionProbe {
     return this.serializedId;
   }
 
+  getBox() {
+    return this.box;
+  }
+
   setFromObject(object: THREE.Object3D) {
     if (object) {
       this.setCenterAndSize(getMeshCenterPosition(object), getMeshSize(object));
     } else {
       throw new Error(
         'ReflectionProbe.setFromObject() : Object Must Be Not null or undefined : ' +
-          object,
+        object,
       );
     }
   }
@@ -745,6 +749,7 @@ export default class ReflectionProbe {
     this.serializedId = json.id;
     this.center = new THREE.Vector3().fromArray(json.center);
     this.size = new THREE.Vector3().fromArray(json.size);
+    this.box = new THREE.Box3().setFromCenterAndSize(this.center, this.size);
     this.resolution = json.resolution;
     if (json.renderedTime) {
       this.customRenderedTime = json.renderedTime;

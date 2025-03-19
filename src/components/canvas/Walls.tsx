@@ -6,8 +6,10 @@ import {
   roomAtom,
   threeExportsAtom,
   wallAtom,
+  WallCreateOption,
 } from '../../scripts/atoms';
-import { Mesh, THREE } from '../../scripts/VTHREE';
+import { getWallPoint } from '../../scripts/utils';
+import * as THREE from '../../scripts/VTHREE';
 
 interface MarkerProps {
   position: [number, number, number][];
@@ -62,9 +64,62 @@ const XZPlane: React.FC = () => {
   );
 };
 
+function WallCreating({ wallInfo }: { wallInfo: WallCreateOption }) {
+  const creating = wallInfo.creating;
+  const raycasterRef = useRef<THREE.Raycaster>(new THREE.Raycaster());
+  const XZPlaneRef = useRef<THREE.Plane>(
+    new THREE.Plane(new THREE.Vector3(0, 1, 0)),
+  );
+  const threeExports = useAtomValue(threeExportsAtom);
+
+  if (!creating || !threeExports || !creating.mouse) {
+    return null;
+  }
+
+  const { mouse: mouseEvent, cmd } = creating;
+
+  const raycaster = raycasterRef.current;
+  const XZPlane = XZPlaneRef.current;
+
+  const calcPlaneIntersection = () => {
+    const { scene, camera } = threeExports;
+    const mouse = new THREE.Vector2();
+    const rect = mouseEvent.rect;
+    const xRatio = (mouseEvent.x - rect.left) / rect.width;
+    const yRatio = (mouseEvent.y - rect.top) / rect.height;
+
+    mouse.x = xRatio * 2 - 1;
+    mouse.y = -yRatio * 2 + 1;
+    raycaster.setFromCamera(mouse, camera);
+
+    const intersection = new THREE.Vector3();
+    raycaster.ray.intersectPlane(XZPlane, intersection);
+
+    // Return ray origin and intersection point
+    return intersection;
+  };
+
+  const planeIntersection = calcPlaneIntersection();
+
+  return (
+    <>
+      <mesh position={planeIntersection}>
+        <sphereGeometry args={[0.07, 32, 32]}></sphereGeometry>
+        <meshBasicMaterial color={0xff0000}></meshBasicMaterial>
+      </mesh>
+    </>
+  );
+
+  // const sphere = new THREE.Mesh(
+  //   new THREE.SphereGeometry(0.1, 32, 32),
+  //   new THREE.MeshBasicMaterial({ color: 0xff0000 }),
+  // );
+  // sphere.position.copy(planeIntersectionPoint);
+}
+
 function Walls() {
   const threeExports = useAtomValue(threeExportsAtom);
-  const [walls, setRooms] = useAtom(wallAtom);
+  const [wallInfo, setWalls] = useAtom(wallAtom);
 
   const tab = useAtomValue(panelTabAtom);
   const isWallTab = tab === 'wall';
@@ -77,46 +132,95 @@ function Walls() {
     return;
   }
 
-  const isCreating = walls.some(wall => !Boolean(wall.end));
-  const shows = walls.filter(wall => wall.show);
+  const creating = wallInfo.creating;
 
+  // const isCreating = walls.some(wall => !Boolean(wall.end));
+  // const shows = walls.filter(wall => wall.show);
+
+  // return (
+  //   <>
+  //     {isCreating && <XZPlane></XZPlane>}
+  //     {shows.map((wall, i) => {
+  //       const index = i;
+  //       const total = shows.length;
+  //       const colorHsl = new THREE.Color();
+  //       colorHsl.setHSL(index / total, 1, 0.5);
+
+  //       const { start, end } = wall;
+
+  //       if (Boolean(start) && !Boolean(end)) {
+  //         // draw a sphere
+  //         const geometry = new THREE.SphereGeometry(0.1, 32, 32);
+  //         const material = new THREE.MeshBasicMaterial({ color: colorHsl });
+  //         const sphere = new THREE.Mesh(geometry, material);
+  //         sphere.position.copy(start);
+
+  //         return (
+  //           <primitive object={sphere} key={`canvas-wall-${i}`}></primitive>
+  //         );
+  //       }
+
+  //       if (Boolean(start) && Boolean(end)) {
+  //         // draw a line
+  //         const geometry = new THREE.BufferGeometry();
+  //         geometry.setAttribute(
+  //           'position',
+  //           new THREE.BufferAttribute(new Float32Array([...start, ...end]), 3),
+  //         );
+  //         const material = new THREE.LineBasicMaterial({ color: colorHsl });
+  //         const line = new THREE.Line(geometry, material);
+
+  //         return <primitive object={line} key={`canvas-wall-${i}`}></primitive>;
+  //       }
+  //       return null;
+  //     })}
+  //   </>
+  // );
   return (
     <>
-      {isCreating && <XZPlane></XZPlane>}
-      {shows.map((wall, i) => {
-        const index = i;
-        const total = shows.length;
-        const colorHsl = new THREE.Color();
-        colorHsl.setHSL(index / total, 1, 0.5);
-
-        const { start, end } = wall;
-
-        if (Boolean(start) && !Boolean(end)) {
-          // draw a sphere
-          const geometry = new THREE.SphereGeometry(0.1, 32, 32);
-          const material = new THREE.MeshBasicMaterial({ color: colorHsl });
-          const sphere = new THREE.Mesh(geometry, material);
-          sphere.position.copy(start);
+      {creating && <WallCreating wallInfo={wallInfo}></WallCreating>}
+      {wallInfo.points
+        .filter(p => p.show)
+        .map((pointView, i) => {
+          const { point, color, id, show } = pointView;
+          const pos = new THREE.Vector3(point.x, 0, point.y);
 
           return (
-            <primitive object={sphere} key={`canvas-wall-${i}`}></primitive>
+            <mesh key={`wall-point-view-${id}`} position={pos}>
+              <sphereGeometry args={[0.05, 32, 32]}></sphereGeometry>
+              <meshBasicMaterial color={color}></meshBasicMaterial>
+            </mesh>
           );
-        }
+        })}
+      {wallInfo.walls
+        .filter(wall => wall.show)
+        .map((wallVie, i) => {
+          const points = wallInfo.points;
+          const { start: _start, end: _end, color, id, show } = wallVie;
+          const startPoint = getWallPoint(_start, points)!;
+          const endPoint = getWallPoint(_end, points)!;
+          const start = startPoint.point;
+          const end = endPoint.point;
 
-        if (Boolean(start) && Boolean(end)) {
+          const posStart = new THREE.Vector3(start.x, 0, start.y);
+          const posEnd = new THREE.Vector3(end.x, 0, end.y);
+
           // draw a line
           const geometry = new THREE.BufferGeometry();
           geometry.setAttribute(
             'position',
-            new THREE.BufferAttribute(new Float32Array([...start, ...end]), 3),
+            new THREE.BufferAttribute(
+              new Float32Array([...posStart.toArray(), ...posEnd.toArray()]),
+              3,
+            ),
           );
-          const material = new THREE.LineBasicMaterial({ color: colorHsl });
+          const material = new THREE.LineBasicMaterial({ color });
           const line = new THREE.Line(geometry, material);
 
-          return <primitive object={line} key={`canvas-wall-${i}`}></primitive>;
-        }
-        return null;
-      })}
+          return (
+            <primitive object={line} key={`canvas-wall-${id}`}></primitive>
+          );
+        })}
     </>
   );
 }

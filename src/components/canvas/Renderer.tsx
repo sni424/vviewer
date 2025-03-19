@@ -1,6 +1,7 @@
-import { Canvas, useThree } from '@react-three/fiber';
+import { Canvas, RootState, useThree } from '@react-three/fiber';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import { useEffect, useRef } from 'react';
+import { v4 } from 'uuid';
 import { Layer } from '../../Constants';
 import { getSettings } from '../../pages/useSettings';
 import {
@@ -19,6 +20,7 @@ import {
   panelTabAtom,
   pathfindingAtom,
   pointsAtom,
+  ProbeAtom,
   roomAtom,
   selectedAtom,
   setAtomValue,
@@ -30,14 +32,14 @@ import {
   useModal,
   viewGridAtom,
   wallAtom,
+  WallPointView,
 } from '../../scripts/atoms';
 import VGLTFLoader from '../../scripts/loaders/VGLTFLoader.ts';
 import VTextureLoader from '../../scripts/loaders/VTextureLoader.ts';
 import {
+  createWallFromPoints,
   getIntersectLayer,
   getIntersects,
-  loadScene,
-  saveScene,
   zoomToSelected,
 } from '../../scripts/utils';
 import { THREE } from '../../scripts/VTHREE';
@@ -319,6 +321,29 @@ function Renderer() {
   );
 }
 
+const pointOnPlane = (
+  e: React.MouseEvent<HTMLDivElement, MouseEvent>,
+  threeExports: RootState,
+) => {
+  const xzplane = new THREE.Plane(new THREE.Vector3(0, 1, 0));
+  const raycaster = new THREE.Raycaster();
+
+  const { camera } = threeExports;
+  const mouse = new THREE.Vector2();
+  const rect = e.currentTarget.getBoundingClientRect();
+  const xRatio = (e.clientX - rect.left) / rect.width;
+  const yRatio = (e.clientY - rect.top) / rect.height;
+
+  mouse.x = xRatio * 2 - 1;
+  mouse.y = -yRatio * 2 + 1;
+  raycaster.setFromCamera(mouse, camera);
+
+  const intersection = new THREE.Vector3();
+  raycaster.ray.intersectPlane(xzplane, intersection);
+
+  return intersection;
+};
+
 const useMouseHandler = () => {
   const threeExports = useAtomValue(threeExportsAtom);
   const [selected, setSelected] = useAtom(selectedAtom);
@@ -330,9 +355,7 @@ const useMouseHandler = () => {
   const isRoomCreating = useAtomValue(roomAtom).some(room =>
     Boolean(room.creating),
   );
-  const isWallCreating = useAtomValue(wallAtom).some(wall =>
-    Boolean(wall.creating),
-  );
+  const wallCreating = useAtomValue(wallAtom).creating;
   const isSettingHotspot = useAtomValue(hotspotAtom).some(hotspot =>
     Boolean(hotspot.targetSetting),
   );
@@ -350,9 +373,69 @@ const useMouseHandler = () => {
       return;
     }
 
+    if (wallCreating) {
+      const { cmd } = wallCreating;
+      const point = pointOnPlane(e, threeExports);
+
+      const resetColor = (points: WallPointView[]) => {
+        points.forEach((point, i) => {
+          const colorHsl = new THREE.Color();
+          colorHsl.setHSL(i / points.length, 1, 0.5);
+          point.color = colorHsl.getHex();
+        });
+        return points;
+      };
+
+      if (cmd === 'end') {
+        setAtomValue(wallAtom, prev => {
+          const copied = { ...prev };
+          const points = [...copied.points];
+          const pointView: WallPointView = {
+            point: new THREE.Vector2(point.x, point.z),
+            id: v4(),
+            show: true,
+          };
+          points.push(pointView);
+
+          copied.points = resetColor(points);
+
+          if (prev.autoCreateWall) {
+            copied.walls = createWallFromPoints(
+              points,
+              getAtomValue(ProbeAtom),
+            );
+          }
+
+          return copied;
+        });
+      } else if (cmd == 'middle') {
+      } else {
+        console.error('Not implemented');
+      }
+    }
+
     lastClickRef.current = Date.now();
     // 마우스 다운 시 위치 저장
     mouseDownPosition.current = { x: e.clientX, y: e.clientY };
+  };
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
+    if (!wallCreating) {
+      return;
+    }
+    const copied = {
+      ...wallCreating,
+      mouse: {
+        x: e.clientX,
+        y: e.clientY,
+        rect: e.currentTarget.getBoundingClientRect(),
+      },
+      axisSnap: Boolean(e.shiftKey),
+    };
+    setAtomValue(wallAtom, {
+      ...getAtomValue(wallAtom),
+      creating: copied,
+    });
   };
 
   const handleMouseUp = (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
@@ -378,25 +461,25 @@ const useMouseHandler = () => {
     }
 
     // 벽 생성
-    if (isWallCreating) {
+    if (wallCreating) {
       const { intersects } = getIntersects(e, threeExports);
       if (intersects.length > 0) {
         const i = intersects[0];
-        const mat = getAtomValue(cameraMatrixAtom)!.clone();
-        const cameraY = mat.elements[13];
-        const point = i.point;
-        point.y = cameraY;
-        setAtomValue(wallAtom, prev => {
-          const copied = [...prev];
-          const index = copied.findIndex(wall => wall.creating);
-          if (!copied[index].start) {
-            copied[index].start = [point.x, point.z];
-          } else if (!copied[index].end) {
-            copied[index].end = [point.x, point.z];
-            copied[index].creating = undefined;
-          }
-          return copied;
-        });
+        // const mat = getAtomValue(cameraMatrixAtom)!.clone();
+        // const cameraY = mat.elements[13];
+        // const point = i.point;
+        // point.y = cameraY;
+        // setAtomValue(wallAtom, prev => {
+        //   const copied = [...prev];
+        //   const index = copied.findIndex(wall => wall.creating);
+        //   if (!copied[index].start) {
+        //     copied[index].start = [point.x, point.z];
+        //   } else if (!copied[index].end) {
+        //     copied[index].end = [point.x, point.z];
+        //     copied[index].creating = undefined;
+        //   }
+        //   return copied;
+        // });
       }
       return;
     }
@@ -494,6 +577,7 @@ const useMouseHandler = () => {
 
   return {
     handleMouseDown,
+    handleMouseMove,
     handleMouseUp,
   };
 };
@@ -504,6 +588,7 @@ const useKeyHandler = () => {
   const setScrollTo = useSetAtom(treeScrollToAtom);
   const setTab = useSetAtom(panelTabAtom);
   const setTreeScrollTo = useSetAtom(treeScrollToAtom);
+  const setWallCreateOption = useSetAtom(wallAtom);
 
   useEffect(() => {
     if (!threeExports) {
@@ -527,6 +612,10 @@ const useKeyHandler = () => {
         setMaterialSelected(null);
         setScrollTo(null);
         setAtomValue(modalAtom, null);
+        setWallCreateOption(prev => ({
+          ...prev,
+          creating: undefined,
+        }));
         return;
       }
 
@@ -671,6 +760,8 @@ function Points() {
     <>
       {points.map((drawablePoint, i) => {
         const { point, color } = drawablePoint;
+        type XZPoint = { x: number; z: number };
+
         if ((point as THREE.Matrix4).isMatrix4) {
           const position = new THREE.Vector3();
           position.setFromMatrixPosition(point as THREE.Matrix4);
@@ -687,9 +778,9 @@ function Points() {
               <meshBasicMaterial color={color ?? 'red'} />
             </mesh>
           );
-        } else if (point.x && point.z) {
+        } else if ((point as XZPoint).x && (point as XZPoint).z) {
           return (
-            <mesh position={[point.x, 1.0, point.z]}>
+            <mesh position={[(point as XZPoint).x, 1.0, (point as XZPoint).z]}>
               <sphereGeometry args={[0.05, 32, 32]} />
               <meshBasicMaterial color={color ?? 'red'} />
             </mesh>
@@ -723,6 +814,7 @@ function RendererContainer() {
         gl={gl}
         camera={{ layers: cameraLayer }}
         onMouseDown={mouse?.handleMouseDown}
+        onMouseMove={mouse?.handleMouseMove}
         onMouseUp={mouse?.handleMouseUp}
         id="main-canvas"
         style={{

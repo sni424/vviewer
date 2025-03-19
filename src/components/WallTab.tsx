@@ -1,90 +1,82 @@
-import { useAtom } from 'jotai';
-import { wallAtom } from '../scripts/atoms';
-
-type Point = [number, number];
+import { useAtom, useAtomValue } from 'jotai';
+import { ProbeAtom, wallAtom } from '../scripts/atoms';
+import { colorNumberToCSS, createWallFromPoints } from '../scripts/utils';
 
 function WallTab() {
-  const [walls, setWalls] = useAtom(wallAtom);
+  const [wallCreateOption, setWalls] = useAtom(wallAtom);
+  const probes = useAtomValue(ProbeAtom);
 
-  const createWall = () => {
-    setWalls(prev => {
-      return [
-        ...prev,
-        {
-          start: undefined as unknown as Point,
-          end: undefined as unknown as Point,
-          creating: true,
-        },
-      ];
-    });
-  };
+  const { points, walls, creating, autoCreateWall } = wallCreateOption;
 
   return (
     <div className="w-full h-full overflow-y-auto">
-      <div className="p-2">
-        <button
-          onClick={() => {
-            setWalls(prev => {
-              return prev.map(room => {
-                return {
-                  ...room,
-                  show: true,
-                };
-              });
-            });
-          }}
-        >
-          전체보기
-        </button>
-        <button
-          onClick={() => {
-            setWalls(prev => {
-              return prev.map(room => {
-                return {
-                  ...room,
-                  show: false,
-                };
-              });
-            });
-          }}
-        >
-          전체숨기기
-        </button>
-      </div>
-      {walls.map((wall, i) => {
-        const { start, end, probeName, creating, show } = wall;
-        !!TODO : 벽 생성 진행하기
-        return (
-          <div
-            className="mb-1 p-1 box-border"
-            key={`wall-panel-${i}`}
-            style={{
-              backgroundColor: creating ? 'yellow' : undefined,
+      {/* 상단 메뉴 */}
+      <div>
+        <div>
+          <input
+            type="checkbox"
+            checked={autoCreateWall}
+            onChange={e => {
+              setWalls(prev => ({ ...prev, autoCreateWall: e.target.checked }));
             }}
-          >
-            벽 {i + 1}.{(creating || !start || !end) && <div> 생성 중</div>}
-          </div>
-        );
-      })}
-      <div className="mt-4 flex items-center justify-center gap-4">
-        <button
-          onClick={() => {
-            setWalls([]);
-          }}
-        >
-          전체삭제
-        </button>
-        <button onClick={createWall}>방 추가</button>
-        {/* <button onClick={uploadRooms}>업로드</button> */}
-        {/* <button
+          />
+          <label>벽 자동 생성</label>
+        </div>
+        <div>
+          <button
             onClick={() => {
-              loadRooms().then(res => {
-                setRooms(res);
-              });
+              const createdWalls = createWallFromPoints(points, probes);
+
+              setWalls(prev => ({
+                ...prev,
+                walls: createdWalls,
+              }));
             }}
           >
-            불러오기
-          </button> */}
+            벽 일괄생성
+          </button>
+        </div>
+      </div>
+      <div className="w-full grid-cols-2">
+        {/* 왼쪽 메뉴 - 점 관리 */}
+        <section>
+          <ul>
+            {points.map((pointView, i) => {
+              const { id, point, color, show } = pointView;
+
+              return (
+                <li key={`panel-point-${id}`} className="flex items-center">
+                  <div>{i + 1}.</div>
+                  <div
+                    className="w-3 h-3"
+                    style={{ background: colorNumberToCSS(color!) }}
+                  ></div>
+                </li>
+              );
+            })}
+          </ul>
+
+          <div>
+            <button
+              onClick={() => {
+                setWalls(prev => ({
+                  ...prev,
+                  creating: {
+                    cmd: 'end',
+                  },
+                }));
+              }}
+              style={{
+                background: wallCreateOption.creating ? 'yellow' : undefined,
+              }}
+            >
+              {wallCreateOption.creating ? '생성 중단' : '포인트 생성'}
+            </button>
+          </div>
+        </section>
+        <div></div>
+        {/* 오른쪽 메뉴 - 선 관리 */}
+        <div></div>
       </div>
     </div>
   );

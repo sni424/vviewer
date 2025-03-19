@@ -8,7 +8,7 @@ import {
   roomAtom,
   RoomCreateOption,
   setAtomValue,
-  threeExportsAtom,
+  threeExportsAtom
 } from './atoms';
 import VGLTFLoader from './loaders/VGLTFLoader.ts';
 import { THREE } from './VTHREE';

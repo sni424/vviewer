@@ -25,7 +25,6 @@ import {
 import ReflectionProbe from './ReflectionProbe.ts';
 import { THREE } from './VTHREE';
 import ModelOption from './options/ModelOption.ts';
-import VMaterial from './material/VMaterial.ts';
 
 type AtomArgType<T> = T | ((prev: T) => T);
 export type Store = ReturnType<typeof createStore>;
@@ -495,18 +494,54 @@ export type RoomCreateOption = Room & {
 };
 export const roomAtom = atom<RoomCreateOption[]>([]);
 
+export type WallPoint = {
+  point: THREE.Vector2;
+  id: string;
+};
+export type WallPointView = WallPoint & {
+  show?: boolean;
+  color?: number;
+  highlight?: boolean;
+};
+
 export type Wall = {
-  start: [number, number];
-  end: [number, number];
+  start: number | string; // index or id
+  end: number | string; // index
+  id: string;
   probeName?: string;
+  probeId?: string;
 }
 
-export type WallCreateOption = Wall & {
-  show?: boolean;
-  creating?: boolean; // 생성중이면 좌표값의 배열
-  color?: number;
+// 최종 결과에 내보내거나 읽어올 정보
+export type WallMeta = {
+  points: WallPointView[];
+  walls: WallView[];
 };
-export const wallAtom = atom<WallCreateOption[]>([]);
+
+export type WallView = Wall & {
+  show?: boolean;
+  color?: number;
+  highlight?: boolean;
+};
+
+export type WallCreateOption = WallMeta & {
+  autoCreateWall: boolean;
+  creating?: {
+    cmd: "end"; // 새로운 점을 points가장 마지막에 추가
+    mouse?: { x: number; y: number; rect: DOMRect };
+    axisSnap?: boolean; // 시프트 누르면 xz축에 스냅
+  } | {
+    cmd: "middle";
+    mouse?: { x: number; y: number; rect: DOMRect };
+    axisSnap?: boolean;
+    index: number; // 이를테면 index=1이면 기존 1을 뒤로 한 칸 미루고 새로운 점이 1이 된다. 즉 0과 1사이에 들어간다
+  };
+};
+export const wallAtom = atom<WallCreateOption>({
+  points: [],
+  walls: [],
+  autoCreateWall: true
+});
 
 export const insideRoomAtom = atom<Room[]>([]);
 
