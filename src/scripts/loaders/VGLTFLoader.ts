@@ -172,11 +172,11 @@ export default class VGLTFLoader extends GLTFLoader {
       });
 
       // TODO 외부에서 isCreateLightMapCache 조정하기
-      if (isCreateLightMapCache) {
-        const gl = new THREE.WebGLRenderer();
-        const toLightMapObj = await createLightmapCache(lmMap, gl);
-        setAtomValue(lightMapAtom, toLightMapObj);
-      }
+      // if (isCreateLightMapCache) {
+      //   const gl = new THREE.WebGLRenderer();
+      //   const toLightMapObj = await createLightmapCache(lmMap, gl);
+      //   setAtomValue(lightMapAtom, toLightMapObj);
+      // }
 
       onLoad(gltf);
     }

@@ -299,7 +299,6 @@ const OptionPreview = ({
         if (effects.useVisible) {
           const targetVisible = anlayzed[mesh.name].visible;
           if (mesh.visible !== targetVisible) {
-            console.log('has MeshVisible animation :', mesh.name);
             changeMeshVisibleWithTransition(
               mesh,
               animationDuration,
@@ -308,8 +307,6 @@ const OptionPreview = ({
             );
           }
         }
-
-        console.log('setting LightMap');
 
         // LightMap control
         if (effects.useLightMap) {
@@ -455,8 +452,6 @@ const Option = ({ modelOption }: { modelOption: ModelOption }) => {
       t[idx].states = states;
       return t;
     });
-
-    console.log(modelOption);
   }, [states]);
 
   useEffect(() => {
@@ -603,7 +598,7 @@ const State = ({
 
   return (
     <div className="px-2 py-1 border  border-gray-600 mb-1">
-      <div className="flex gap-x-1.5 items-center">
+      <div className="flex gap-x-1.5 items-center relative">
         {nameEditMode ? (
           <TextEditor
             value={name}
@@ -617,7 +612,8 @@ const State = ({
         )}
         {!nameEditMode && (
           <div className="flex items-center ml-auto gap-x-1">
-            <button onClick={openMeshSelectModal}>메시 선택하기</button>
+            <span style={{ fontSize: 10 }}>메시 {models.length}개</span>
+            <button onClick={openMeshSelectModal}>메시 선택</button>
             <button onClick={copyState}>복사</button>
             {models.length > 0 && (
               <button onClick={() => setOpen(pre => !pre)}>
@@ -1210,6 +1206,26 @@ const MeshSelectModal = ({
     setModelSelected(meshes);
   }
 
+  function addAll() {
+    const meshes: THREE.Mesh[] = [];
+    const modelSelectedUuids = modelSelected.map(m => m.uuid);
+    scene.traverseAll(o => {
+      if (o.type === 'Mesh') {
+        if (keyword === '') {
+          if (!modelSelectedUuids.includes(o.uuid)) meshes.push(o);
+        } else if (
+          keyword !== '' &&
+          o.name.toLocaleLowerCase().includes(keyword.toLowerCase()) &&
+          !modelSelectedUuids.includes(o.uuid)
+        ) {
+          meshes.push(o);
+        }
+      }
+    });
+
+    setModelSelected(pre => [...pre, ...meshes]);
+  }
+
   return (
     <div
       className="w-[40%] bg-gray-100 rounded p-3 relative"
@@ -1243,13 +1259,13 @@ const MeshSelectModal = ({
           <div className="flex gap-x-1.5 items-center">
             <span>{modelSelected.length}개 선택됨</span>
             <button className="text-xs" onClick={selectAll}>
-              전체 선택
+              목록 전체 선택
+            </button>
+            <button className="text-xs" onClick={addAll}>
+              선택 목록 추가
             </button>
             <button className="text-xs" onClick={() => setModelSelected([])}>
               전체 해제
-            </button>
-            <button className="text-xs" onClick={syncScene}>
-              장면 선택과 동기화
             </button>
           </div>
           <div className="flex justify-end items-center">
