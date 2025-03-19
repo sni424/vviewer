@@ -99,11 +99,12 @@ export default class VGLTFLoader extends GLTFLoader {
         object.layers.enable(Layer.Model);
         if (object.type === 'Mesh') {
           const mesh = object as THREE.Mesh;
-          const mat = mesh.material as THREE.Material;
+          const mat = mesh.material as THREE.MeshBasicMaterial;
           if (object.name === '프레임') {
             mat.side = THREE.DoubleSide;
           }
           mat.vUserData.originalOpacity = mat.opacity;
+          mat.vUserData.originalColor = mat.color.getHexString();
 
           const originalMatID = mat.uuid;
 
@@ -172,11 +173,11 @@ export default class VGLTFLoader extends GLTFLoader {
       });
 
       // TODO 외부에서 isCreateLightMapCache 조정하기
-      if (isCreateLightMapCache) {
-        const gl = new THREE.WebGLRenderer();
-        const toLightMapObj = await createLightmapCache(lmMap, gl);
-        setAtomValue(lightMapAtom, toLightMapObj);
-      }
+      // if (isCreateLightMapCache) {
+      //   const gl = new THREE.WebGLRenderer();
+      //   const toLightMapObj = await createLightmapCache(lmMap, gl);
+      //   setAtomValue(lightMapAtom, toLightMapObj);
+      // }
 
       onLoad(gltf);
     }
@@ -292,7 +293,6 @@ function getLightmap(object: THREE.Object3D, lightMapSet: Set<string>) {
       }
 
       if (textures.length > 0) {
-        console.log(textures);
         textures.forEach(texture => lightMapSet.add(texture));
       }
     }

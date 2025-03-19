@@ -1165,10 +1165,6 @@ const ProbeCustomTextureUploader = ({ probe }: { probe: ReflectionProbe }) => {
   const [texture, setTexture] = useState<THREE.Texture | null>(null);
   const { closeModal } = useModal();
 
-  useEffect(() => {
-    console.log(texture);
-  }, [texture]);
-
   function getBody() {
     let component;
     switch (mode) {

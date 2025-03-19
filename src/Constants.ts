@@ -61,15 +61,17 @@ export const roomColorString = (index: number) => {
   return '#' + roomColor(index).toString(16).padStart(6, '0');
 };
 
-const base: string = import.meta.env.VITE_MODELS_URL as string;
+const base: string = import.meta.env.VITE_MODELS_CLOUDFRONT_URL as string;
+const s3Base: string = import.meta.env.VITE_MODELS_URL as string;
 export const ENV = {
   base,
+  s3Base,
   latest: base + 'latest.glb',
   latestMobile: base + 'mobile/latest_mobile.glb',
-  latestHash: base + 'latest-hash',
-  fileList: base + 'uploads.json',
-  baseHash: base + 'base-hash',
-  dpHash: base + 'dp-hash',
+  latestHash: s3Base + 'latest-hash',
+  fileList: s3Base + 'uploads.json',
+  baseHash: s3Base + 'base-hash',
+  dpHash: s3Base + 'dp-hash',
   model_base: base + 'model_base.glb',
   model_dp: base + 'model_dp.glb',
   lut: base.replace('models/', '') + 'static/lut',

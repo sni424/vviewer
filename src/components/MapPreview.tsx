@@ -187,8 +187,6 @@ const MapPreview: React.FC<MapPreviewProps> = ({
     const h = height ?? 60;
     canvasRef.current.width = w;
     canvasRef.current.height = h;
-    // const source = texture.image || texture.source.data;
-    // console.log(texture.image);
     const renderer = new THREE.WebGLRenderer();
     const m = new THREE.MeshBasicMaterial();
     const planeGeometry = new THREE.PlaneGeometry(2, 2);

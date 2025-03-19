@@ -27,7 +27,7 @@ import VMaterial from '../scripts/material/VMaterial.ts';
 import { ModelOptionObject } from '../scripts/ModelOptionObject.ts';
 import ModelOption from '../scripts/options/ModelOption.ts';
 import OptionState from '../scripts/options/OptionState.ts';
-import OptionStateMesh from '../scripts/options/OptionStateMesh.ts';
+import MeshEffect from '../scripts/options/MeshEffect.ts';
 import {
   changeMeshLightMapWithTransition,
   changeMeshVisibleWithTransition,
@@ -299,7 +299,6 @@ const OptionPreview = ({
         if (effects.useVisible) {
           const targetVisible = anlayzed[mesh.name].visible;
           if (mesh.visible !== targetVisible) {
-            console.log('has MeshVisible animation :', mesh.name);
             changeMeshVisibleWithTransition(
               mesh,
               animationDuration,
@@ -308,8 +307,6 @@ const OptionPreview = ({
             );
           }
         }
-
-        console.log('setting LightMap');
 
         // LightMap control
         if (effects.useLightMap) {
@@ -455,8 +452,6 @@ const Option = ({ modelOption }: { modelOption: ModelOption }) => {
       t[idx].states = states;
       return t;
     });
-
-    console.log(modelOption);
   }, [states]);
 
   useEffect(() => {
@@ -541,7 +536,7 @@ const State = ({
   const { openModal } = useModal();
   const [name, setName] = useState<string>(state.name);
   const [nameEditMode, setNameEditMode] = useState<boolean>(false);
-  const [models, setModels] = useState<OptionStateMesh[]>(state.effects);
+  const [models, setModels] = useState<MeshEffect[]>(state.effects);
   const [open, setOpen] = useState<boolean>(state.expanded);
 
   function openMeshSelectModal() {
@@ -596,14 +591,14 @@ const State = ({
   }
 
   function closeAll() {
-    models.forEach((meshEffect: OptionStateMesh) => {
+    models.forEach((meshEffect: MeshEffect) => {
       meshEffect.expanded = false;
     });
   }
 
   return (
     <div className="px-2 py-1 border  border-gray-600 mb-1">
-      <div className="flex gap-x-1.5 items-center">
+      <div className="flex gap-x-1.5 items-center relative">
         {nameEditMode ? (
           <TextEditor
             value={name}
@@ -617,7 +612,8 @@ const State = ({
         )}
         {!nameEditMode && (
           <div className="flex items-center ml-auto gap-x-1">
-            <button onClick={openMeshSelectModal}>메시 선택하기</button>
+            <span style={{ fontSize: 10 }}>메시 {models.length}개</span>
+            <button onClick={openMeshSelectModal}>메시 선택</button>
             <button onClick={copyState}>복사</button>
             {models.length > 0 && (
               <button onClick={() => setOpen(pre => !pre)}>
@@ -647,7 +643,7 @@ const State = ({
   );
 };
 
-const ValueModal = ({ meshEffects }: { meshEffects: OptionStateMesh[] }) => {
+const ValueModal = ({ meshEffects }: { meshEffects: MeshEffect[] }) => {
   const { closeModal } = useModal();
   const [useVisible, setUseVisible] = useState<boolean>(false);
   const [visibleValue, setVisibleValue] = useState<boolean>(false);
@@ -711,8 +707,8 @@ const MeshEffectElem = ({
   meshEffect,
   setMeshEffects,
 }: {
-  meshEffect: OptionStateMesh;
-  setMeshEffects: Dispatch<SetStateAction<OptionStateMesh[]>>;
+  meshEffect: MeshEffect;
+  setMeshEffects: Dispatch<SetStateAction<MeshEffect[]>>;
 }) => {
   const [use, setUse] = useState<{
     visible: boolean;
@@ -1113,8 +1109,8 @@ const MeshSelectModal = ({
   setModels,
 }: {
   state: OptionState;
-  models: OptionStateMesh[];
-  setModels: Dispatch<SetStateAction<OptionStateMesh[]>>;
+  models: MeshEffect[];
+  setModels: Dispatch<SetStateAction<MeshEffect[]>>;
 }) => {
   const threeExports = threes();
   if (!threeExports) {
@@ -1162,7 +1158,7 @@ const MeshSelectModal = ({
     const withouts = modelSelected
       .filter(m => !filteredNames.includes(m.name))
       .map(w => {
-        return new OptionStateMesh(
+        return new MeshEffect(
           state,
           { uuid: w.uuid, name: w.name },
           w as THREE.Mesh,
@@ -1198,13 +1194,36 @@ const MeshSelectModal = ({
       if (o.type === 'Mesh') {
         if (keyword === '') {
           meshes.push(o);
-        } else if (keyword !== '' && o.name.includes(keyword)) {
+        } else if (
+          keyword !== '' &&
+          o.name.toLocaleLowerCase().includes(keyword.toLowerCase())
+        ) {
           meshes.push(o);
         }
       }
     });
 
     setModelSelected(meshes);
+  }
+
+  function addAll() {
+    const meshes: THREE.Mesh[] = [];
+    const modelSelectedUuids = modelSelected.map(m => m.uuid);
+    scene.traverseAll(o => {
+      if (o.type === 'Mesh') {
+        if (keyword === '') {
+          if (!modelSelectedUuids.includes(o.uuid)) meshes.push(o);
+        } else if (
+          keyword !== '' &&
+          o.name.toLocaleLowerCase().includes(keyword.toLowerCase()) &&
+          !modelSelectedUuids.includes(o.uuid)
+        ) {
+          meshes.push(o);
+        }
+      }
+    });
+
+    setModelSelected(pre => [...pre, ...meshes]);
   }
 
   return (
@@ -1240,13 +1259,13 @@ const MeshSelectModal = ({
           <div className="flex gap-x-1.5 items-center">
             <span>{modelSelected.length}개 선택됨</span>
             <button className="text-xs" onClick={selectAll}>
-              전체 선택
+              목록 전체 선택
+            </button>
+            <button className="text-xs" onClick={addAll}>
+              선택 목록 추가
             </button>
             <button className="text-xs" onClick={() => setModelSelected([])}>
               전체 해제
-            </button>
-            <button className="text-xs" onClick={syncScene}>
-              장면 선택과 동기화
             </button>
           </div>
           <div className="flex justify-end items-center">
