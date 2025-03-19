@@ -373,47 +373,6 @@ const useMouseHandler = () => {
       return;
     }
 
-    if (wallCreating) {
-      const { cmd } = wallCreating;
-      const point = pointOnPlane(e, threeExports);
-
-      const resetColor = (points: WallPointView[]) => {
-        points.forEach((point, i) => {
-          const colorHsl = new THREE.Color();
-          colorHsl.setHSL(i / points.length, 1, 0.5);
-          point.color = colorHsl.getHex();
-        });
-        return points;
-      };
-
-      if (cmd === 'end') {
-        setAtomValue(wallAtom, prev => {
-          const copied = { ...prev };
-          const points = [...copied.points];
-          const pointView: WallPointView = {
-            point: new THREE.Vector2(point.x, point.z),
-            id: v4(),
-            show: true,
-          };
-          points.push(pointView);
-
-          copied.points = resetColor(points);
-
-          if (prev.autoCreateWall) {
-            copied.walls = createWallFromPoints(
-              points,
-              getAtomValue(ProbeAtom),
-            );
-          }
-
-          return copied;
-        });
-      } else if (cmd == 'middle') {
-      } else {
-        console.error('Not implemented');
-      }
-    }
-
     lastClickRef.current = Date.now();
     // 마우스 다운 시 위치 저장
     mouseDownPosition.current = { x: e.clientX, y: e.clientY };
@@ -462,26 +421,44 @@ const useMouseHandler = () => {
 
     // 벽 생성
     if (wallCreating) {
-      const { intersects } = getIntersects(e, threeExports);
-      if (intersects.length > 0) {
-        const i = intersects[0];
-        // const mat = getAtomValue(cameraMatrixAtom)!.clone();
-        // const cameraY = mat.elements[13];
-        // const point = i.point;
-        // point.y = cameraY;
-        // setAtomValue(wallAtom, prev => {
-        //   const copied = [...prev];
-        //   const index = copied.findIndex(wall => wall.creating);
-        //   if (!copied[index].start) {
-        //     copied[index].start = [point.x, point.z];
-        //   } else if (!copied[index].end) {
-        //     copied[index].end = [point.x, point.z];
-        //     copied[index].creating = undefined;
-        //   }
-        //   return copied;
-        // });
+      const { cmd } = wallCreating;
+      const point = pointOnPlane(e, threeExports);
+
+      const resetColor = (points: WallPointView[]) => {
+        points.forEach((point, i) => {
+          const colorHsl = new THREE.Color();
+          colorHsl.setHSL(i / points.length, 1, 0.5);
+          point.color = colorHsl.getHex();
+        });
+        return points;
+      };
+
+      if (cmd === 'end') {
+        setAtomValue(wallAtom, prev => {
+          const copied = { ...prev };
+          const points = [...copied.points];
+          const pointView: WallPointView = {
+            point: new THREE.Vector2(point.x, point.z),
+            id: v4(),
+            show: true,
+          };
+          points.push(pointView);
+
+          copied.points = resetColor(points);
+
+          if (prev.autoCreateWall) {
+            copied.walls = createWallFromPoints(
+              points,
+              getAtomValue(ProbeAtom),
+            );
+          }
+
+          return copied;
+        });
+      } else if (cmd == 'middle') {
+      } else {
+        console.error('Not implemented');
       }
-      return;
     }
 
     // 지점 찍어서 이동하는지 확인

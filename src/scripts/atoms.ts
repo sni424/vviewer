@@ -501,7 +501,6 @@ export type WallPoint = {
 export type WallPointView = WallPoint & {
   show?: boolean;
   color?: number;
-  highlight?: boolean;
 };
 
 export type Wall = {
@@ -521,7 +520,6 @@ export type WallMeta = {
 export type WallView = Wall & {
   show?: boolean;
   color?: number;
-  highlight?: boolean;
 };
 
 export type WallCreateOption = WallMeta & {
@@ -537,10 +535,23 @@ export type WallCreateOption = WallMeta & {
     index: number; // 이를테면 index=1이면 기존 1을 뒤로 한 칸 미루고 새로운 점이 1이 된다. 즉 0과 1사이에 들어간다
   };
 };
-export const wallAtom = atom<WallCreateOption>({
+export const [wallAtom,
+  getWallAtom,
+  setWallAtom
+] = createAtomCombo<WallCreateOption>({
   points: [],
   walls: [],
   autoCreateWall: true
+});
+export const [wallHighlightAtom,
+  getWallHighlightAtom,
+  setWallHighlightAtom
+] = createAtomCombo<{
+  pointHighlights: string[];
+  wallHighlights: string[];
+}>({
+  pointHighlights: [],
+  wallHighlights: []
 });
 
 export const insideRoomAtom = atom<Room[]>([]);

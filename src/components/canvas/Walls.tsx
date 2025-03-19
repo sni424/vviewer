@@ -2,11 +2,17 @@ import { useThree } from '@react-three/fiber';
 import { useAtom, useAtomValue } from 'jotai';
 import { useRef } from 'react';
 import {
+  Line2,
+  LineGeometry,
+  LineMaterial,
+} from 'three/examples/jsm/Addons.js';
+import {
   panelTabAtom,
   roomAtom,
   threeExportsAtom,
   wallAtom,
   WallCreateOption,
+  wallHighlightAtom,
 } from '../../scripts/atoms';
 import { getWallPoint } from '../../scripts/utils';
 import * as THREE from '../../scripts/VTHREE';
@@ -103,9 +109,12 @@ function WallCreating({ wallInfo }: { wallInfo: WallCreateOption }) {
 
   return (
     <>
-      <mesh position={planeIntersection}>
+      <mesh position={planeIntersection} renderOrder={999}>
         <sphereGeometry args={[0.07, 32, 32]}></sphereGeometry>
-        <meshBasicMaterial color={0xff0000}></meshBasicMaterial>
+        <meshBasicMaterial
+          color={0xff0000}
+          depthTest={false}
+        ></meshBasicMaterial>
       </mesh>
     </>
   );
@@ -120,6 +129,7 @@ function WallCreating({ wallInfo }: { wallInfo: WallCreateOption }) {
 function Walls() {
   const threeExports = useAtomValue(threeExportsAtom);
   const [wallInfo, setWalls] = useAtom(wallAtom);
+  const { wallHighlights, pointHighlights } = useAtomValue(wallHighlightAtom);
 
   const tab = useAtomValue(panelTabAtom);
   const isWallTab = tab === 'wall';
@@ -134,48 +144,6 @@ function Walls() {
 
   const creating = wallInfo.creating;
 
-  // const isCreating = walls.some(wall => !Boolean(wall.end));
-  // const shows = walls.filter(wall => wall.show);
-
-  // return (
-  //   <>
-  //     {isCreating && <XZPlane></XZPlane>}
-  //     {shows.map((wall, i) => {
-  //       const index = i;
-  //       const total = shows.length;
-  //       const colorHsl = new THREE.Color();
-  //       colorHsl.setHSL(index / total, 1, 0.5);
-
-  //       const { start, end } = wall;
-
-  //       if (Boolean(start) && !Boolean(end)) {
-  //         // draw a sphere
-  //         const geometry = new THREE.SphereGeometry(0.1, 32, 32);
-  //         const material = new THREE.MeshBasicMaterial({ color: colorHsl });
-  //         const sphere = new THREE.Mesh(geometry, material);
-  //         sphere.position.copy(start);
-
-  //         return (
-  //           <primitive object={sphere} key={`canvas-wall-${i}`}></primitive>
-  //         );
-  //       }
-
-  //       if (Boolean(start) && Boolean(end)) {
-  //         // draw a line
-  //         const geometry = new THREE.BufferGeometry();
-  //         geometry.setAttribute(
-  //           'position',
-  //           new THREE.BufferAttribute(new Float32Array([...start, ...end]), 3),
-  //         );
-  //         const material = new THREE.LineBasicMaterial({ color: colorHsl });
-  //         const line = new THREE.Line(geometry, material);
-
-  //         return <primitive object={line} key={`canvas-wall-${i}`}></primitive>;
-  //       }
-  //       return null;
-  //     })}
-  //   </>
-  // );
   return (
     <>
       {creating && <WallCreating wallInfo={wallInfo}></WallCreating>}
@@ -185,18 +153,27 @@ function Walls() {
           const { point, color, id, show } = pointView;
           const pos = new THREE.Vector3(point.x, 0, point.y);
 
+          const size = pointHighlights.includes(id) ? 0.08 : 0.05;
+
           return (
-            <mesh key={`wall-point-view-${id}`} position={pos}>
-              <sphereGeometry args={[0.05, 32, 32]}></sphereGeometry>
-              <meshBasicMaterial color={color}></meshBasicMaterial>
+            <mesh
+              key={`wall-point-view-${id}`}
+              position={pos}
+              renderOrder={999}
+            >
+              <sphereGeometry args={[size, 32, 32]}></sphereGeometry>
+              <meshBasicMaterial
+                depthTest={false}
+                color={color}
+              ></meshBasicMaterial>
             </mesh>
           );
         })}
       {wallInfo.walls
         .filter(wall => wall.show)
-        .map((wallVie, i) => {
+        .map((wallView, i, walls) => {
           const points = wallInfo.points;
-          const { start: _start, end: _end, color, id, show } = wallVie;
+          const { start: _start, end: _end, color, id, show } = wallView;
           const startPoint = getWallPoint(_start, points)!;
           const endPoint = getWallPoint(_end, points)!;
           const start = startPoint.point;
@@ -206,17 +183,41 @@ function Walls() {
           const posEnd = new THREE.Vector3(end.x, 0, end.y);
 
           // draw a line
-          const geometry = new THREE.BufferGeometry();
-          geometry.setAttribute(
-            'position',
-            new THREE.BufferAttribute(
-              new Float32Array([...posStart.toArray(), ...posEnd.toArray()]),
-              3,
+          const geometry = new LineGeometry();
+          // geometry.setAttribute(
+          //   'position',
+          //   new THREE.BufferAttribute(
+          //     new Float32Array([...posStart.toArray(), ...posEnd.toArray()]),
+          //     3,
+          //   ),
+          // );
+          geometry.setPositions([...posStart.toArray(), ...posEnd.toArray()]);
+
+          const pointHighlight = points
+            .filter(p => p.show)
+            .filter(p => pointHighlights.includes(p.id));
+          const highlightedPointNeighbouringWalls = walls.filter(w =>
+            pointHighlight.some(
+              point => point.id === w.start || point.id === w.end,
             ),
           );
-          const material = new THREE.LineBasicMaterial({ color });
-          const line = new THREE.Line(geometry, material);
+          pointHighlight;
 
+          const thisHighlight =
+            wallHighlights.includes(id) ||
+            highlightedPointNeighbouringWalls.some(w => w.id === id);
+
+          const material = new LineMaterial({
+            color,
+            linewidth: thisHighlight ? 4.0 : 1.0,
+          });
+          material.depthTest = false;
+
+          const line = new Line2(geometry, material);
+          // line stroke
+          line.computeLineDistances();
+          line.scale.set(1, 1, 1);
+          line.renderOrder = 99999;
           return (
             <primitive object={line} key={`canvas-wall-${id}`}></primitive>
           );
