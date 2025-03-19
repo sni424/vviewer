@@ -38,6 +38,7 @@ export interface ThreeUserData {
   originalOpacity?: number;
   shader?: WebGLProgramParametersWithUniforms;
   isMobile?: boolean;
+  originalColor?: string;
 }
 
 declare module 'three' {

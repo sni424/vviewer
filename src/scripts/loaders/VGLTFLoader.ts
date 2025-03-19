@@ -99,11 +99,12 @@ export default class VGLTFLoader extends GLTFLoader {
         object.layers.enable(Layer.Model);
         if (object.type === 'Mesh') {
           const mesh = object as THREE.Mesh;
-          const mat = mesh.material as THREE.Material;
+          const mat = mesh.material as THREE.MeshBasicMaterial;
           if (object.name === '프레임') {
             mat.side = THREE.DoubleSide;
           }
           mat.vUserData.originalOpacity = mat.opacity;
+          mat.vUserData.originalColor = mat.color.getHexString();
 
           const originalMatID = mat.uuid;
 

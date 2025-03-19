@@ -11,6 +11,9 @@ import VMaterial from '../scripts/material/VMaterial.ts';
 import { loadHDRTexture, loadPNGAsENV } from '../scripts/utils';
 import { THREE } from '../scripts/VTHREE';
 import MapPreview, { MapPreviewProps } from './MapPreview';
+import { HexColorPicker } from 'react-colorful';
+import { ColorPicker, ColorService, useColor } from 'react-color-palette';
+import 'react-color-palette/css';
 
 interface MapInfoProps extends MapPreviewProps {
   materialRange?: {
@@ -345,6 +348,7 @@ const MapSection = ({ mat }: { mat: VMaterial }) => {
 
   return (
     <section
+      className="relative"
       style={{ display: 'flex', flexDirection: 'column', width: '100%' }}
     >
       <div
@@ -381,7 +385,6 @@ const MapSection = ({ mat }: { mat: VMaterial }) => {
               max: LIGHTMAP_INTENSITY_MAX,
             }}
           ></MapInfo>
-
           <MapInfo label="Diffuse" material={mat} matKey="map"></MapInfo>
           <MapInfo label="Normal" material={mat} matKey="normalMap"></MapInfo>
           <MapInfo
@@ -450,10 +453,64 @@ const MapSection = ({ mat }: { mat: VMaterial }) => {
           {isPhysical && (
             <MaterialPhysicalPanels mat={mat as THREE.MeshPhysicalMaterial} />
           )}
+          <ColorInfo mat={mat} />
           <OpacityPanel mat={mat} />
         </div>
       </div>
     </section>
+  );
+};
+
+const ColorInfo = ({ mat }: { mat: VMaterial }) => {
+  const [diffuseColor, setDiffuseColor] = useColor(
+    `#${mat.color.getHexString()}`,
+  );
+  const originalColor = mat.vUserData.originalColor;
+
+  return (
+    <div
+      key={`colorInfo-${mat.uuid}`}
+      style={{
+        fontSize: 11,
+        width: '100%',
+        boxSizing: 'border-box',
+      }}
+    >
+      <div className="flex gap-8">
+        <strong>색상</strong>
+        <button
+          style={{ fontSize: 10 }}
+          onClick={() => {
+            const hex = `#${originalColor}`;
+            mat.color.set(hex);
+            setDiffuseColor({
+              hex: `#${originalColor}`,
+              rgb: ColorService.toRgb(hex),
+              hsv: ColorService.toHsv(hex),
+            });
+          }}
+        >
+          원래대로
+        </button>
+      </div>
+      <div className="flex gap-2">
+        <div
+          className="w-[60px] h-[60px] mt-2 cursor-pointer"
+          style={{ backgroundColor: diffuseColor.hex }}
+        ></div>
+        <div className="w-[120px] mt-2">
+          <ColorPicker
+            height={50} // 높이 px단위로 설정 (디폴트: 200)
+            hideAlpha={true} // 투명도 조절바 숨김 (디폴트: 안숨김)
+            color={diffuseColor} // 현재 지정된 컬러
+            onChange={color => {
+              mat.color.set(color.hex);
+              setDiffuseColor(color);
+            }} // 컬러 변경될 때마다 실행할 이벤트
+          />
+        </div>
+      </div>
+    </div>
   );
 };
 
@@ -467,8 +524,8 @@ const OpacityPanel = ({ mat }: { mat: VMaterial }) => {
   }, [mat]);
 
   return (
-    <>
-      <div className="w-full flex items-center gap-x-2 py-2.5">
+    <div className="w-full text-[11px]">
+      <div className="flex items-center gap-x-2">
         <strong>투명도 설정</strong>
         <input
           type="checkbox"
@@ -482,7 +539,7 @@ const OpacityPanel = ({ mat }: { mat: VMaterial }) => {
         />
       </div>
       {transparent && (
-        <div>
+        <div className="mt-3">
           <strong>Opacity</strong>
           <div style={{ display: 'flex', width: '100%', gap: 8 }}>
             <div
@@ -525,7 +582,7 @@ const OpacityPanel = ({ mat }: { mat: VMaterial }) => {
           </div>
         </div>
       )}
-    </>
+    </div>
   );
 };
 
@@ -572,7 +629,7 @@ function MaterialPanelContainer() {
         top: 10,
         maxHeight:
           selecteds.length > 0 ? 'calc(50% - 20px)' : 'calc(100% - 20px)',
-        width: 300,
+        width: 400,
         backgroundColor: '#bbbbbb99',
         padding: 8,
         borderRadius: 8,
