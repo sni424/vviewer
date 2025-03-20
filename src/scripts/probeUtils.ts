@@ -450,20 +450,19 @@ function useMultiProbe(shader:
   Shader, args: {
     uniforms: Record<string, any>,
     defines: Record<string, any>,
-    namehash: string,
   }) {
 
   shader.cleanup?.();
 
-  const { uniforms, defines, namehash } = args;
+  const { uniforms, defines } = args;
 
   shader.defines = shader.defines ?? {};
   delete shader.defines["BOX_PROJECTED_ENV_MAP"];
-  shader.defines = {
-    ...shader.defines,
-    ...defines,
-    V_ENV_MAP: 1
-  }
+  // shader.defines = {
+  //   ...shader.defines,
+  //   ...defines,
+  //   V_ENV_MAP: 1
+  // }
 
   shader.uniforms = shader.uniforms ?? {};
   shader.uniforms = {
@@ -546,12 +545,12 @@ function useMultiProbe(shader:
             vec3 end;
             int index; // 프로브 인덱스, 0부터 PROBE_COUNT-1까지
         };
-        uniform Probe _uProbe${namehash}[PROBE_COUNT];
-        uniform samplerCube _uProbeTextures${namehash}[PROBE_COUNT];
-        uniform float _uProbeIntensity${namehash};
+        uniform Probe uProbe[PROBE_COUNT];
+        uniform samplerCube uProbeTextures[PROBE_COUNT];
+        uniform float uProbeIntensity;
         
         #ifdef V_ENV_MAP_FLOOR
-        uniform Wall _uWall${namehash}[WALL_COUNT];
+        uniform Wall uWall[WALL_COUNT];
         uniform float uProbeBlendDist;
         #endif
 
@@ -694,40 +693,6 @@ void main()
   // downloadShader()
 }
 
-const wallFileName = "walls.json"
-let __wals: null | any = null;
-export const getWalls = async (scene?: THREE.Scene, probes?: ReflectionProbe[]): Promise<{
-  start: THREE.Vector3;
-  end: THREE.Vector3;
-  normal: THREE.Vector3;
-  name: string;
-}[]> => {
-  if (!__wals) {
-    __wals = fetch("/" + wallFileName).then(res => res.json()).then(deserializeArray).catch(e => {
-      console.error(e);
-      debugger;
-      if (!scene || !probes) {
-        throw new Error("벽감지를 위해 scene, probes를 넣거나 walls.json 필요")
-      }
-
-      const walls = detectWallOnScene(scene, probes, 0.05);
-
-      const jsonobj = serializeArray(walls);
-
-      // save it
-      const filanme = wallFileName;
-      const a = document.createElement("a");
-      const file = new Blob([jsonobj], { type: "application/json" });
-      a.href = URL.createObjectURL(file);
-      a.download = filanme;
-      a.click();
-
-      return walls;
-    })
-  }
-  return __wals;
-}
-
 function hashStringArray(arr: string[]) {
   let hash = 0;
   const prime = 31; // 작은 소수를 사용하여 충돌을 줄임
@@ -786,7 +751,7 @@ const createMultiProbeShader = (mat: THREE.MeshStandardMaterial, probes: Reflect
 
   // !중요 : 이름을 넣어주지 않으면 캐싱된 셰이더와 헷갈려함
   const SHADER_NAME = removeTrailingThreeDigitNumber(mat.name) + namehash;
-  mat.defines.SHADER_NAME = SHADER_NAME
+  // mat.defines.SHADER_NAME = SHADER_NAME
 
   const metaUniform = probes.map((p, index) => ({
     center: p.getBox().getCenter(new THREE.Vector3()),
@@ -815,7 +780,7 @@ const createMultiProbeShader = (mat: THREE.MeshStandardMaterial, probes: Reflect
     uProbe,
     uProbeTextures,
     uProbeIntensity,
-    SHADER_NAME: mat.name
+    // SHADER_NAME: mat.name
     // SHADER_NAME
   }
 
@@ -823,7 +788,6 @@ const createMultiProbeShader = (mat: THREE.MeshStandardMaterial, probes: Reflect
     useMultiProbe(shader, {
       uniforms,
       defines,
-      namehash,
     });
   }
 }
@@ -842,7 +806,7 @@ const createFloorShader = (mat: THREE.MeshStandardMaterial, probes: ReflectionPr
 
   // !중요 : 이름을 넣어주지 않으면 캐싱된 셰이더와 헷갈려함
   const SHADER_NAME = removeTrailingThreeDigitNumber(mat.name) + namehash;
-  mat.defines.SHADER_NAME = SHADER_NAME
+  // mat.defines.SHADER_NAME = SHADER_NAME
 
   // const targetWalls = walls.filter(w => targetNames.includes(w.name)).map((wall) => ({
   //   start: wall.start,
@@ -860,22 +824,17 @@ const createFloorShader = (mat: THREE.MeshStandardMaterial, probes: ReflectionPr
   }))
   const textures = probes.map(p => p.getRenderTargetTexture());
 
-  const uProbe = `_uProbe${namehash}`;
-  const uProbeTextures = `_uProbeTextures${namehash}`;
-  const uProbeIntensity = `_uProbeIntensity${namehash}`;
-  const uWall = `_uWall${namehash}`;
-
   const uniforms = {
-    [uProbe]: {
+    uProbe: {
       value: metaUniform
     },
-    [uProbeTextures]: {
+    uProbeTextures: {
       value: textures
     },
-    [uProbeIntensity]: {
-      value: 5.0
+    uProbeIntensity: {
+      value: 1.0
     },
-    [uWall]: {
+    uWall: {
       value: targetWalls
     },
     uProbeBlendDist: {
@@ -886,20 +845,19 @@ const createFloorShader = (mat: THREE.MeshStandardMaterial, probes: ReflectionPr
   const defines = {
     PROBE_COUNT: probes.length,
     WALL_COUNT: targetWalls.length,
-    uProbe,
-    uProbeTextures,
-    uProbeIntensity,
-    uWall,
-    SHADER_NAME: mat.name,
-    V_ENV_MAP_FLOOR: 1
-    // SHADER_NAME
+    V_ENV_MAP_FLOOR: 1,
+    V_ENV_MAP: 1,
+  }
+
+  mat.defines = {
+    ...mat.defines,
+    ...defines
   }
 
   return (shader: Shader) => {
     useMultiProbe(shader, {
       uniforms,
       defines,
-      namehash,
     });
   }
 }
@@ -911,8 +869,7 @@ export async function applyFloorProbe(material: VMaterial, probes: ReflectionPro
   end: THREE.Vector3;
   name: string;
 }[]) {
-  material.addDefines('V_ENV_MAP');
-  material.addDefines('V_ENV_MAP_FLOOR');
+
   material.onBeforeCompile = createFloorShader(material, probes, walls);
 
   material.needsUpdate = true;
