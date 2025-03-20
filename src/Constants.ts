@@ -1,4 +1,5 @@
 import { ToneMappingMode } from 'postprocessing';
+import { View } from './types';
 
 export const EnvirontmentPresets = [
   'apartment',
@@ -103,3 +104,70 @@ export const hotspotImages = {
   oven: hotspotImage('oven')!,
   ventilator: hotspotImage('ventilator')!,
 };
+
+export const CameraDistance = 300 as const;
+export const DefaultCameraPositions: {
+  [key in View]: {
+    position: [number, number, number];
+    zoom: number;
+    up: [number, number, number];
+  };
+} = {
+  [View.Shared]: {
+    position: [CameraDistance, CameraDistance, CameraDistance],
+    zoom: 10,
+    up: [0, 1, 0],
+  },
+  [View.Main]: {
+    position: [CameraDistance, CameraDistance, CameraDistance],
+    zoom: 10,
+    up: [0, 1, 0],
+  },
+  [View.Top]: {
+    position: [0, CameraDistance, 0],
+    zoom: 10,
+    up: [0, 0, -1],
+  },
+
+  [View.Front]: {
+    position: [0, 0, CameraDistance],
+    zoom: 10,
+    up: [0, 1, 0],
+  },
+
+  [View.Right]: {
+    position: [CameraDistance, 0, 0],
+    zoom: 10,
+    up: [0, 1, 0],
+  },
+
+  [View.Left]: {
+    position: [-CameraDistance, 0, 0],
+    zoom: 10,
+    up: [0, 1, 0],
+  },
+
+  [View.Back]: {
+    position: [0, 0, -CameraDistance],
+    zoom: 10,
+    up: [0, 1, 0],
+  },
+
+  [View.Bottom]: {
+    position: [0, -CameraDistance, 0],
+    zoom: 10,
+    up: [0, 0, 1],
+  },
+} as const;
+
+
+export const ViewName: { [key in View]: string } = {
+  [View.Shared]: 'Shared',
+  [View.Main]: 'Main',
+  [View.Top]: 'Top',
+  [View.Front]: 'Front',
+  [View.Right]: 'Right',
+  [View.Back]: 'Back',
+  [View.Left]: 'Left',
+  [View.Bottom]: 'Bottom',
+} as const;

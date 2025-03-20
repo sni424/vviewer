@@ -1,6 +1,6 @@
 import { useAtomValue, useSetAtom } from 'jotai';
 import React, { useState } from 'react';
-import { __UNDEFINED__ } from '../Constants';
+import { Walls } from '../types';
 import {
   MapDst,
   ModelSource,
@@ -8,8 +8,7 @@ import {
   sourceAtom,
   threeExportsAtom,
   wallOptionAtom,
-} from '../scripts/atoms';
-import { Walls } from '../types';
+} from './atoms';
 import { fileToJson, verifyWalls, wallsToWallOption } from './atomUtils';
 import { readDirectory, splitExtension } from './utils';
 
@@ -41,93 +40,6 @@ const parse = (models: File[], maps: File[], mapDst: MapDst) => {
     return retval;
   });
   return fileUrls;
-};
-
-const MapSelectorModal = ({
-  closeModal,
-  models,
-  maps,
-}: {
-  closeModal?: Function;
-  models: File[];
-  maps: File[];
-}) => {
-  const setSourceUrls = useSetAtom(sourceAtom);
-  const [target, setTarget] = useState<MapDst | typeof __UNDEFINED__>(
-    '__UNDEFINED__',
-  );
-
-  const uniqueMaps = () => {
-    // 같은 이름의 exr, png, jpg가 존재할 때 우선순위 : exr > png > jpg
-    const exrs = maps.filter(file => file.name.toLowerCase().endsWith('.exr'));
-    const pngs = maps
-      .filter(file => file.name.toLowerCase().endsWith('.png'))
-      .filter(png => {
-        return !exrs.some(
-          exr =>
-            splitExtension(exr.name).name === splitExtension(png.name).name ||
-            splitExtension(exr.name).name.split('_Bake')[0] ===
-              splitExtension(png.name).name ||
-            splitExtension(exr.name).name ===
-              splitExtension(png.name).name.split('_Bake')[0],
-        );
-      });
-    const jpgs = maps
-      .filter(file => file.name.toLowerCase().endsWith('.jpg'))
-      .filter(jpg => {
-        return (
-          !exrs.some(
-            exr =>
-              splitExtension(exr.name).name === splitExtension(jpg.name).name ||
-              splitExtension(exr.name).name.split('_Bake')[0] ===
-                splitExtension(jpg.name).name ||
-              splitExtension(exr.name).name ===
-                splitExtension(jpg.name).name.split('_Bake')[0],
-          ) ||
-          !pngs.some(
-            png =>
-              splitExtension(png.name).name === splitExtension(jpg.name).name ||
-              splitExtension(png.name).name.split('_Bake')[0] ===
-                splitExtension(jpg.name).name ||
-              splitExtension(png.name).name ===
-                splitExtension(jpg.name).name.split('_Bake')[0],
-          )
-        );
-      });
-
-    return [...exrs, ...pngs, ...jpgs];
-  };
-  maps = uniqueMaps();
-
-  return (
-    <div
-      className="w-80 h-80 bg-white rounded-md flex flex-col items-center justify-center gap-3"
-      onClick={e => {
-        e.stopPropagation();
-      }}
-    >
-      <button
-        className="text-lg p-2"
-        onClick={() => {
-          const sources = parse(models, maps, 'gainmap');
-          setSourceUrls(sources);
-          closeModal?.();
-        }}
-      >
-        게인맵
-      </button>
-      <button
-        className="text-lg p-2"
-        onClick={() => {
-          const sources = parse(models, maps, 'lightmap');
-          setSourceUrls(sources);
-          closeModal?.();
-        }}
-      >
-        라이트맵
-      </button>
-    </div>
-  );
 };
 
 const parseDroppedFiles = async (

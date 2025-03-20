@@ -79,7 +79,7 @@ const ColorTemperatureEffect = ({ value }: { value: number }) => {
 export const {
   Component: ColorTemperature,
   Controller: ColorTemperatureOption,
-  atom: globalColorTemperatureAtom,
+  // atom: globalColorTemperatureAtom,
 } = OptionBuilder(
   '색온도',
   //@ts-ignore

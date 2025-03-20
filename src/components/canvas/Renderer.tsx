@@ -35,6 +35,7 @@ import {
 } from '../../scripts/atoms';
 import VGLTFLoader from '../../scripts/loaders/VGLTFLoader.ts';
 import VTextureLoader from '../../scripts/loaders/VTextureLoader.ts';
+import { useSetThreeExports } from '../../scripts/useGetThreeExports.ts';
 import {
   createWallFromPoints,
   getIntersectLayer,
@@ -52,7 +53,6 @@ import Hotspot from './Hotspot';
 import PostProcess from './PostProcess';
 import Rooms from './Rooms';
 import SelectBox from './SelectBox';
-import { useSetThreeExports } from './Viewport';
 import Walls from './Walls.tsx';
 
 const MainGrid = () => {
