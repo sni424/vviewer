@@ -7,10 +7,16 @@ import {
   ProbeAtom,
   setWallAtom,
   setWallHighlightAtom,
-  wallAtom,
+  setWallOptionAtom,
   wallHighlightAtom,
+  wallOptionAtom,
 } from '../scripts/atoms';
-import { wallOptionToWalls } from '../scripts/atomUtils';
+import {
+  loadJson,
+  uploadJson,
+  wallOptionToWalls,
+  wallsToWallOption,
+} from '../scripts/atomUtils';
 import {
   colorNumberToCSS,
   createWallFromPoints,
@@ -18,7 +24,7 @@ import {
   resetColor,
 } from '../scripts/utils';
 import { THREE } from '../scripts/VTHREE';
-import { WallCreateOption, WallPointView, WallView } from '../types';
+import { WallCreateOption, WallPointView, Walls, WallView } from '../types';
 
 function WallDetail({
   wallView,
@@ -73,7 +79,7 @@ function WallDetail({
       <select
         value={probeId ?? __UNDEFINED__}
         onChange={e => {
-          setWallAtom(prev => {
+          setWallOptionAtom(prev => {
             const copied = { ...prev };
             const copiedWalls = [...copied.walls];
             copiedWalls[i].probeId =
@@ -98,7 +104,7 @@ function WallDetail({
       </select>
       <button
         onClick={() => {
-          setWallAtom(prev => {
+          setWallOptionAtom(prev => {
             const copied = { ...prev };
             copied.walls = copied.walls.filter(w => w.id !== id);
             // resetColor(copied.walls);
@@ -164,7 +170,7 @@ function WallPointDetail({
           <button
             onClick={() => {
               if (connectWallOnPointDelete) {
-                setWallAtom(prev => {
+                setWallOptionAtom(prev => {
                   const copied = { ...prev };
                   copied.points = copied.points.filter(p => p.id !== id);
                   copied.walls = createWallFromPoints(
@@ -174,7 +180,7 @@ function WallPointDetail({
                   return copied;
                 });
               } else {
-                setWallAtom(prev => {
+                setWallOptionAtom(prev => {
                   const copied = { ...prev };
 
                   copied.points = copied.points.filter(p => p.id !== id);
@@ -204,7 +210,7 @@ function WallPointDetail({
                   ),
                   show: true,
                 };
-                setWallAtom(prev => {
+                setWallOptionAtom(prev => {
                   const copied = { ...prev };
                   const copiedPoints = [...copied.points];
                   copiedPoints.splice(myIndex, 0, newPoint);
@@ -218,7 +224,7 @@ function WallPointDetail({
                   return copied;
                 });
               } else {
-                setWallAtom(prev => {
+                setWallOptionAtom(prev => {
                   const copied = { ...prev };
                   const newPoint: WallPointView = {
                     id: v4(),
@@ -243,7 +249,7 @@ function WallPointDetail({
           </button>
           <button
             onClick={() => {
-              setWallAtom(prev => ({
+              setWallOptionAtom(prev => ({
                 ...prev,
                 creating: {
                   cmd: 'adjust',
@@ -265,7 +271,7 @@ function WallPointDetail({
             value={point.x.toFixed(3)}
             step={0.01}
             onChange={e => {
-              setWallAtom(prev => {
+              setWallOptionAtom(prev => {
                 const copied = { ...prev };
                 const copiedPoints = [...copied.points];
                 copiedPoints[i].point.x = parseFloat(e.target.value);
@@ -287,7 +293,7 @@ function WallPointDetail({
             value={point.y.toFixed(3)}
             step={0.01}
             onChange={e => {
-              setWallAtom(prev => {
+              setWallOptionAtom(prev => {
                 const copied = { ...prev };
                 const copiedPoints = [...copied.points];
                 copiedPoints[i].point.y = parseFloat(e.target.value);
@@ -307,12 +313,25 @@ function WallPointDetail({
 }
 
 function WallTab() {
-  const [wallInfo, setWalls] = useAtom(wallAtom);
+  const [wallOption, setWalls] = useAtom(wallOptionAtom);
   const probes = useAtomValue(ProbeAtom);
   const [connectWallOnPointDelete, setConnectWallOnPointDelete] =
     useState(true);
+  const [wallJsonName, setWallJsonName] = useState('walls.json');
 
-  const { points, walls, creating, autoCreateWall } = wallInfo;
+  const { points, walls, creating, autoCreateWall } = wallOption;
+
+  const onWallJsonLoad: React.FormEventHandler<HTMLFormElement> = e => {
+    e.preventDefault();
+    const proceed = confirm(`"${wallJsonName}"에  업로드하시겠습니까?`);
+    if (!proceed) {
+      return;
+    }
+
+    uploadJson(wallJsonName, wallOptionToWalls(wallOption)).then(() => {
+      alert('업로드 완료');
+    });
+  };
 
   return (
     <div className="w-full h-full overflow-y-auto">
@@ -350,7 +369,7 @@ function WallTab() {
           <div>
             <button
               onClick={() => {
-                const walls = wallOptionToWalls(wallInfo);
+                const walls = wallOptionToWalls(wallOption);
 
                 // walls.json으로 저장
                 const a = document.createElement('a');
@@ -362,9 +381,41 @@ function WallTab() {
                 a.click();
               }}
             >
-              저장하기
+              PC에 저장하기
             </button>
           </div>
+          <div>
+            <button
+              onClick={() => {
+                setWallAtom(wallOptionToWalls(wallOption));
+              }}
+            >
+              프로브에 적용하기
+            </button>
+          </div>
+        </div>
+        <div className="flex items-center gap-3 mb-2">
+          <form onSubmit={onWallJsonLoad}>
+            <input
+              type="text"
+              value={wallJsonName}
+              onChange={e => {
+                setWallJsonName(e.target.value.trim());
+              }}
+            ></input>
+            <button type="submit">업로드</button>
+            <button
+              type="button"
+              onClick={() => {
+                loadJson<Walls>(wallJsonName).then(walls => {
+                  setWallAtom(walls);
+                  setWallOptionAtom(wallsToWallOption(walls));
+                });
+              }}
+            >
+              불러오기
+            </button>
+          </form>
         </div>
         <h2>포인트 관련</h2>
         <div className="flex flex-col justify-center">
@@ -406,7 +457,7 @@ function WallTab() {
                   points={points}
                   key={`panel-point-${id}`}
                   connectWallOnPointDelete={connectWallOnPointDelete}
-                  wallInfo={wallInfo}
+                  wallInfo={wallOption}
                 />
               );
             })}
@@ -417,7 +468,7 @@ function WallTab() {
               onClick={() => {
                 setWalls((prev: WallCreateOption) => ({
                   ...prev,
-                  creating: wallInfo.creating
+                  creating: wallOption.creating
                     ? undefined
                     : {
                         cmd: 'end',
@@ -425,10 +476,10 @@ function WallTab() {
                 }));
               }}
               style={{
-                background: wallInfo.creating ? 'yellow' : undefined,
+                background: wallOption.creating ? 'yellow' : undefined,
               }}
             >
-              {wallInfo.creating ? '생성 중단' : '포인트 생성'}
+              {wallOption.creating ? '생성 중단' : '포인트 생성'}
             </button>
             <button
               onClick={() => {

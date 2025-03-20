@@ -31,7 +31,7 @@ import {
   treeScrollToAtom,
   useModal,
   viewGridAtom,
-  wallAtom,
+  wallOptionAtom,
 } from '../../scripts/atoms';
 import VGLTFLoader from '../../scripts/loaders/VGLTFLoader.ts';
 import VTextureLoader from '../../scripts/loaders/VTextureLoader.ts';
@@ -355,7 +355,7 @@ const useMouseHandler = () => {
   const isRoomCreating = useAtomValue(roomAtom).some(room =>
     Boolean(room.creating),
   );
-  const wallCreating = useAtomValue(wallAtom).creating;
+  const wallCreating = useAtomValue(wallOptionAtom).creating;
   const isSettingHotspot = useAtomValue(hotspotAtom).some(hotspot =>
     Boolean(hotspot.targetSetting),
   );
@@ -391,8 +391,8 @@ const useMouseHandler = () => {
       },
       axisSnap: Boolean(e.shiftKey),
     };
-    setAtomValue(wallAtom, {
-      ...getAtomValue(wallAtom),
+    setAtomValue(wallOptionAtom, {
+      ...getAtomValue(wallOptionAtom),
       creating: copied,
     });
   };
@@ -425,7 +425,7 @@ const useMouseHandler = () => {
       const point = pointOnPlane(e, threeExports);
 
       if (cmd === 'end') {
-        setAtomValue(wallAtom, prev => {
+        setAtomValue(wallOptionAtom, prev => {
           const copied = { ...prev };
           const points = [...copied.points];
           const pointView: WallPointView = {
@@ -449,7 +449,7 @@ const useMouseHandler = () => {
       } else if (cmd == 'middle') {
         console.warn('Not implemented');
       } else if (cmd == 'adjust') {
-        setAtomValue(wallAtom, prev => {
+        setAtomValue(wallOptionAtom, prev => {
           const copied = { ...prev };
           const points = [...copied.points];
           const idx = points.findIndex(p => p.id === wallCreating.id);
@@ -573,7 +573,7 @@ const useKeyHandler = () => {
   const setScrollTo = useSetAtom(treeScrollToAtom);
   const setTab = useSetAtom(panelTabAtom);
   const setTreeScrollTo = useSetAtom(treeScrollToAtom);
-  const setWallCreateOption = useSetAtom(wallAtom);
+  const setWallCreateOption = useSetAtom(wallOptionAtom);
 
   useEffect(() => {
     if (!threeExports) {

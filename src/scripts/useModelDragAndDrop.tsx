@@ -7,7 +7,7 @@ import {
   setAtomValue,
   sourceAtom,
   threeExportsAtom,
-  wallAtom,
+  wallOptionAtom,
 } from '../scripts/atoms';
 import { Walls } from '../types';
 import { fileToJson, verifyWalls, wallsToWallOption } from './atomUtils';
@@ -209,7 +209,7 @@ const useModelDragAndDrop = () => {
             const walls = (await fileToJson(wallFile)) as Walls;
             if (verifyWalls(walls)) {
               const wallCreateOption = wallsToWallOption(walls);
-              setAtomValue(wallAtom, wallCreateOption);
+              setAtomValue(wallOptionAtom, wallCreateOption);
             } else {
               alert('walls.json 파일이 잘못되었습니다.');
             }

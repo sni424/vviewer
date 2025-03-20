@@ -10,8 +10,8 @@ import {
   panelTabAtom,
   setWallHighlightAtom,
   threeExportsAtom,
-  wallAtom,
   wallHighlightAtom,
+  wallOptionAtom,
 } from '../../scripts/atoms';
 import { getWallPoint } from '../../scripts/utils';
 import * as THREE from '../../scripts/VTHREE';
@@ -79,7 +79,7 @@ function WallCreating({ wallInfo }: { wallInfo: WallCreateOption }) {
 
 function Walls() {
   const threeExports = useAtomValue(threeExportsAtom);
-  const [wallInfo, setWalls] = useAtom(wallAtom);
+  const [wallInfo, setWalls] = useAtom(wallOptionAtom);
   const { wallHighlights, pointHighlights } = useAtomValue(wallHighlightAtom);
 
   const tab = useAtomValue(panelTabAtom);

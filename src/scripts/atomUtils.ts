@@ -12,7 +12,7 @@ import {
   RoomCreateOption,
   setAtomValue,
   threeExportsAtom,
-  wallAtom,
+  wallOptionAtom,
 } from './atoms';
 import VGLTFLoader from './loaders/VGLTFLoader.ts';
 import type ReflectionProbe from './ReflectionProbe.ts';
@@ -163,6 +163,12 @@ export const uploadJson = (
     body: fd,
   });
 };
+
+export const loadJson = async <T>(name: string): Promise<T> => {
+  return fetch(ENV.s3Base + name, {
+    cache: 'no-store',
+  }).then(res => res.json());
+}
 
 export const loadHotspot = async () => {
   return fetch(ENV.s3Base + 'hotspots.json', {
@@ -420,7 +426,7 @@ export const wallsToWallOption = (walls: Walls, probes?: ReflectionProbe[]): Wal
 
 // WallCreateOption으로부터 Walls를 만드는 함수
 export const wallOptionToWalls = (option?: WallCreateOption, probes?: ReflectionProbe[]): Walls => {
-  const targetOption = option ?? getAtomValue(wallAtom);
+  const targetOption = option ?? getAtomValue(wallOptionAtom);
   const targetProbes = probes ?? getAtomValue(ProbeAtom);
 
   // 벽체들에서 사용된 프로브 아이디들
