@@ -9,6 +9,7 @@ import {
 import {
   panelTabAtom,
   roomAtom,
+  setWallHighlightAtom,
   threeExportsAtom,
   wallAtom,
   WallCreateOption,
@@ -160,6 +161,18 @@ function Walls() {
               key={`wall-point-view-${id}`}
               position={pos}
               renderOrder={999}
+              onPointerOver={() => {
+                setWallHighlightAtom(prev => ({
+                  ...prev,
+                  pointHighlights: [id],
+                }));
+              }}
+              onPointerOut={() => {
+                setWallHighlightAtom(prev => ({
+                  ...prev,
+                  pointHighlights: [],
+                }));
+              }}
             >
               <sphereGeometry args={[size, 32, 32]}></sphereGeometry>
               <meshBasicMaterial
@@ -176,6 +189,9 @@ function Walls() {
           const { start: _start, end: _end, color, id, show } = wallView;
           const startPoint = getWallPoint(_start, points)!;
           const endPoint = getWallPoint(_end, points)!;
+          if (!startPoint || !endPoint) {
+            debugger;
+          }
           const start = startPoint.point;
           const end = endPoint.point;
 
@@ -219,7 +235,22 @@ function Walls() {
           line.scale.set(1, 1, 1);
           line.renderOrder = 99999;
           return (
-            <primitive object={line} key={`canvas-wall-${id}`}></primitive>
+            <primitive
+              object={line}
+              key={`canvas-wall-${id}`}
+              // onPointerOver={() => {
+              //   setWallHighlightAtom(prev => ({
+              //     ...prev,
+              //     wallHighlights: [id],
+              //   }));
+              // }}
+              // onPointerOut={() => {
+              //   setWallHighlightAtom(prev => ({
+              //     ...prev,
+              //     wallHighlights: [],
+              //   }));
+              // }}
+            ></primitive>
           );
         })}
     </>

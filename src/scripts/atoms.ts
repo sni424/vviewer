@@ -533,7 +533,12 @@ export type WallCreateOption = WallMeta & {
     mouse?: { x: number; y: number; rect: DOMRect };
     axisSnap?: boolean;
     index: number; // 이를테면 index=1이면 기존 1을 뒤로 한 칸 미루고 새로운 점이 1이 된다. 즉 0과 1사이에 들어간다
-  };
+  } | {
+    cmd: "adjust"; // 기존 점 위치조정
+    id: string;
+    mouse?: { x: number; y: number; rect: DOMRect };
+    axisSnap?: boolean;
+  }
 };
 export const [wallAtom,
   getWallAtom,

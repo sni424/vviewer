@@ -40,6 +40,7 @@ import {
   createWallFromPoints,
   getIntersectLayer,
   getIntersects,
+  resetColor,
   zoomToSelected,
 } from '../../scripts/utils';
 import { THREE } from '../../scripts/VTHREE';
@@ -424,15 +425,6 @@ const useMouseHandler = () => {
       const { cmd } = wallCreating;
       const point = pointOnPlane(e, threeExports);
 
-      const resetColor = (points: WallPointView[]) => {
-        points.forEach((point, i) => {
-          const colorHsl = new THREE.Color();
-          colorHsl.setHSL(i / points.length, 1, 0.5);
-          point.color = colorHsl.getHex();
-        });
-        return points;
-      };
-
       if (cmd === 'end') {
         setAtomValue(wallAtom, prev => {
           const copied = { ...prev };
@@ -456,9 +448,24 @@ const useMouseHandler = () => {
           return copied;
         });
       } else if (cmd == 'middle') {
+        console.warn('Not implemented');
+      } else if (cmd == 'adjust') {
+        setAtomValue(wallAtom, prev => {
+          const copied = { ...prev };
+          const points = [...copied.points];
+          const idx = points.findIndex(p => p.id === wallCreating.id);
+          if (idx === -1) {
+            return prev;
+          }
+          points[idx].point = new THREE.Vector2(point.x, point.z);
+          copied.points = resetColor(points);
+          copied.walls = createWallFromPoints(points, getAtomValue(ProbeAtom));
+          return copied;
+        });
       } else {
         console.error('Not implemented');
       }
+      return;
     }
 
     // 지점 찍어서 이동하는지 확인

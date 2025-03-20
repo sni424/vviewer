@@ -1834,15 +1834,7 @@ export function createWallFromPoints(points: WallPointView[], probes: Reflection
     walls.push(wall);
   }
 
-  // auto fill color
-  {
-    const total = walls.length;
-    walls.forEach((wall, i) => {
-      const colorHsl = new THREE.Color();
-      colorHsl.setHSL(i / total, 1, 0.5);
-      wall.color = colorHsl.getHex();
-    });
-  }
+  resetColor(walls);
 
   return walls;
 }
@@ -1864,3 +1856,12 @@ export function colorNumberToCSS(color: number, format = 'hex') {
     throw new Error("Unsupported format. Use 'hex' or 'rgb'.");
   }
 }
+
+export const resetColor = <T extends { color?: number }>(coloredArray: T[]): T[] => {
+  coloredArray.forEach((el, i) => {
+    const colorHsl = new THREE.Color();
+    colorHsl.setHSL(i / coloredArray.length, 1, 0.5);
+    el.color = colorHsl.getHex();
+  });
+  return coloredArray;
+};
