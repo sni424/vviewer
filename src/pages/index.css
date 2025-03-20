@@ -91,3 +91,42 @@ button:active {
   -ms-overflow-style: none; /* IE and Edge */
   scrollbar-width: none; /* Firefox */
 }
+
+.rcp-field-input {
+    font-size: 11px;
+    padding: 2px 4px;
+}
+
+.rcp-field-label {
+    font-size: 10px;
+}
+
+.rcp-fields-floor {
+    grid-template-columns:repeat(auto-fit, minmax(100px, 1fr));
+}
+
+.rcp-hue {
+    height: 8px;
+}
+
+.rcp-hue-cursor {
+    width: 16px;
+    height: 16px;
+}
+
+.rcp-saturation-cursor {
+    width: 16px;
+    height: 16px;
+    transform: translate(-5px, -5px)
+}
+
+.rcp {
+    display: flex;
+    flex-direction: column;
+}
+
+.rcp-body {
+    padding: 10px 10px;
+    gap: 10px;
+}
+
