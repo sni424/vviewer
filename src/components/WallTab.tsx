@@ -1,17 +1,16 @@
 import { useAtom, useAtomValue } from 'jotai';
 import { useState } from 'react';
 import { v4 } from 'uuid';
+import { __UNDEFINED__ } from '../Constants';
 import {
   getAtomValue,
   ProbeAtom,
   setWallAtom,
   setWallHighlightAtom,
   wallAtom,
-  WallCreateOption,
   wallHighlightAtom,
-  WallPointView,
-  WallView,
 } from '../scripts/atoms';
+import { wallOptionToWalls } from '../scripts/atomUtils';
 import {
   colorNumberToCSS,
   createWallFromPoints,
@@ -19,6 +18,7 @@ import {
   resetColor,
 } from '../scripts/utils';
 import { THREE } from '../scripts/VTHREE';
+import { WallCreateOption, WallPointView, WallView } from '../types';
 
 function WallDetail({
   wallView,
@@ -42,6 +42,7 @@ function WallDetail({
   } = wallView;
   const highlighted =
     useAtomValue(wallHighlightAtom).wallHighlights.includes(id);
+  const probes = useAtomValue(ProbeAtom);
 
   return (
     <li
@@ -69,7 +70,44 @@ function WallDetail({
         className="w-3 h-3"
         style={{ background: colorNumberToCSS(color!) }}
       ></div>
-      {probeName && <div>프로브 :{probeName}</div>}
+      <select
+        value={probeId ?? __UNDEFINED__}
+        onChange={e => {
+          setWallAtom(prev => {
+            const copied = { ...prev };
+            const copiedWalls = [...copied.walls];
+            copiedWalls[i].probeId =
+              e.target.value === __UNDEFINED__ ? undefined : e.target.value;
+            copiedWalls[i].probeName = probes
+              .find(p => p.getId() === e.target.value)
+              ?.getName();
+            copied.walls = copiedWalls;
+            return copied;
+          });
+        }}
+      >
+        <option value={__UNDEFINED__}>프로브없음</option>
+        {probes.map(probe => (
+          <option
+            key={`wall-probe-select-${id}-${probe.getId()}`}
+            value={probe.getId()}
+          >
+            {probe.getName()}
+          </option>
+        ))}
+      </select>
+      <button
+        onClick={() => {
+          setWallAtom(prev => {
+            const copied = { ...prev };
+            copied.walls = copied.walls.filter(w => w.id !== id);
+            // resetColor(copied.walls);
+            return copied;
+          });
+        }}
+      >
+        삭제
+      </button>
     </li>
   );
 }
@@ -287,7 +325,7 @@ function WallTab() {
               type="checkbox"
               checked={autoCreateWall}
               onChange={e => {
-                setWalls(prev => ({
+                setWalls((prev: WallCreateOption) => ({
                   ...prev,
                   autoCreateWall: e.target.checked,
                 }));
@@ -300,13 +338,31 @@ function WallTab() {
               onClick={() => {
                 const createdWalls = createWallFromPoints(points, probes);
 
-                setWalls(prev => ({
+                setWalls((prev: WallCreateOption) => ({
                   ...prev,
                   walls: createdWalls,
                 }));
               }}
             >
               벽 일괄생성
+            </button>
+          </div>
+          <div>
+            <button
+              onClick={() => {
+                const walls = wallOptionToWalls(wallInfo);
+
+                // walls.json으로 저장
+                const a = document.createElement('a');
+                const file = new Blob([JSON.stringify(walls)], {
+                  type: 'application/json',
+                }); // Blob 생성
+                a.href = URL.createObjectURL(file);
+                a.download = 'walls.json'; // 다운로드할 파일명
+                a.click();
+              }}
+            >
+              저장하기
             </button>
           </div>
         </div>
@@ -356,10 +412,10 @@ function WallTab() {
             })}
           </ul>
 
-          <div>
+          <div className="w-full flex gap-2">
             <button
               onClick={() => {
-                setWalls(prev => ({
+                setWalls((prev: WallCreateOption) => ({
                   ...prev,
                   creating: wallInfo.creating
                     ? undefined
@@ -373,6 +429,21 @@ function WallTab() {
               }}
             >
               {wallInfo.creating ? '생성 중단' : '포인트 생성'}
+            </button>
+            <button
+              onClick={() => {
+                setWalls(
+                  (prev: WallCreateOption) =>
+                    ({
+                      ...prev,
+                      points: [],
+                      walls: [],
+                      creating: undefined,
+                    }) as WallCreateOption,
+                );
+              }}
+            >
+              전체 삭제
             </button>
           </div>
         </section>

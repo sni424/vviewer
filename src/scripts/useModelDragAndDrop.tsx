@@ -4,10 +4,13 @@ import { __UNDEFINED__ } from '../Constants';
 import {
   MapDst,
   ModelSource,
+  setAtomValue,
   sourceAtom,
   threeExportsAtom,
-  useModal,
+  wallAtom,
 } from '../scripts/atoms';
+import { Walls } from '../types';
+import { fileToJson, verifyWalls, wallsToWallOption } from './atomUtils';
 import { readDirectory, splitExtension } from './utils';
 
 const parse = (models: File[], maps: File[], mapDst: MapDst) => {
@@ -168,7 +171,6 @@ const useModelDragAndDrop = () => {
   const [isDragging, setIsDragging] = useState(false);
   const setSourceUrls = useSetAtom(sourceAtom);
   const threeExports = useAtomValue(threeExportsAtom);
-  const { openModal, closeModal } = useModal();
 
   const handleDragOver = (event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault();
@@ -184,11 +186,33 @@ const useModelDragAndDrop = () => {
     setIsDragging(false);
 
     if (event.dataTransfer.items && event.dataTransfer.items.length > 0) {
-      const extensions = ['.gltf', '.glb', '.png', '.jpg', '.exr', '.ktx'];
+      const extensions = [
+        '.gltf',
+        '.glb',
+        '.png',
+        '.jpg',
+        '.exr',
+        '.ktx',
+        '.json',
+      ];
       parseDroppedFiles(event, extensions)
-        .then(filteredFiles => {
+        .then(async filteredFiles => {
           if (filteredFiles.length === 0) {
             alert(`다음 파일들만 가능 : ${extensions.join(', ')}`);
+            return;
+          }
+
+          const wallFile = filteredFiles.find(
+            file => file.name === 'walls.json',
+          );
+          if (wallFile) {
+            const walls = (await fileToJson(wallFile)) as Walls;
+            if (verifyWalls(walls)) {
+              const wallCreateOption = wallsToWallOption(walls);
+              setAtomValue(wallAtom, wallCreateOption);
+            } else {
+              alert('walls.json 파일이 잘못되었습니다.');
+            }
             return;
           }
 

@@ -1,4 +1,3 @@
-import { useThree } from '@react-three/fiber';
 import { useAtom, useAtomValue } from 'jotai';
 import { useRef } from 'react';
 import {
@@ -6,70 +5,21 @@ import {
   LineGeometry,
   LineMaterial,
 } from 'three/examples/jsm/Addons.js';
+import { Layer } from '../../Constants';
 import {
   panelTabAtom,
-  roomAtom,
   setWallHighlightAtom,
   threeExportsAtom,
   wallAtom,
-  WallCreateOption,
   wallHighlightAtom,
 } from '../../scripts/atoms';
 import { getWallPoint } from '../../scripts/utils';
 import * as THREE from '../../scripts/VTHREE';
+import { WallCreateOption } from '../../types';
 
-interface MarkerProps {
-  position: [number, number, number][];
-}
-
-const XZPlane: React.FC = () => {
-  const [rooms, setRooms] = useAtom(roomAtom);
-  const meshRef = useRef<Mesh>(null);
-  const { camera, raycaster } = useThree();
-
-  const isCreating = rooms.some(room => Boolean(room.creating));
-  if (!isCreating) {
-    return null;
-  }
-
-  const handlePointerDown = (event: any) => {
-    event.stopPropagation();
-
-    if (!meshRef.current) return;
-
-    const intersects = raycaster.intersectObject(meshRef.current);
-    console.log('here');
-    if (intersects.length > 0) {
-      const { point } = intersects[0];
-      setRooms(prev => {
-        const newRooms = [...prev];
-        newRooms
-          .find(room => Boolean(room.creating))!
-          .border!.push([point.x, point.z]);
-        return newRooms;
-      });
-    }
-  };
-
-  return (
-    <>
-      <mesh
-        ref={meshRef}
-        rotation={[-Math.PI / 2, 0, 0]} // Rotates plane to XZ
-        onPointerDown={handlePointerDown}
-      >
-        <planeGeometry args={[10000, 10000]} />
-        <meshStandardMaterial
-          color="lightblue"
-          side={0}
-          opacity={0.0}
-          transparent={true}
-        />
-      </mesh>
-      {/* {markerPosition && <Marker position={markerPosition} />} */}
-    </>
-  );
-};
+const WALL_LAYER = new THREE.Layers();
+WALL_LAYER.disableAll();
+WALL_LAYER.enable(Layer.Wall);
 
 function WallCreating({ wallInfo }: { wallInfo: WallCreateOption }) {
   const creating = wallInfo.creating;
@@ -110,8 +60,8 @@ function WallCreating({ wallInfo }: { wallInfo: WallCreateOption }) {
 
   return (
     <>
-      <mesh position={planeIntersection} renderOrder={999}>
-        <sphereGeometry args={[0.07, 32, 32]}></sphereGeometry>
+      <mesh position={planeIntersection} renderOrder={999} layers={WALL_LAYER}>
+        <sphereGeometry args={[0.03, 32, 32]}></sphereGeometry>
         <meshBasicMaterial
           color={0xff0000}
           depthTest={false}
@@ -154,10 +104,11 @@ function Walls() {
           const { point, color, id, show } = pointView;
           const pos = new THREE.Vector3(point.x, 0, point.y);
 
-          const size = pointHighlights.includes(id) ? 0.08 : 0.05;
+          const size = pointHighlights.includes(id) ? 0.05 : 0.02;
 
           return (
             <mesh
+              layers={WALL_LAYER}
               key={`wall-point-view-${id}`}
               position={pos}
               renderOrder={999}
@@ -236,6 +187,7 @@ function Walls() {
           line.renderOrder = 99999;
           return (
             <primitive
+              layer={WALL_LAYER}
               object={line}
               key={`canvas-wall-${id}`}
               // onPointerOver={() => {

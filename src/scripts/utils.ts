@@ -10,7 +10,7 @@ import { EXRLoader, OrbitControls } from 'three/examples/jsm/Addons.js';
 import { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { v4 } from 'uuid';
 import { ENV, Layer } from '../Constants';
-import { FileInfo, MoveActionOptions, View } from '../types.ts';
+import { FileInfo, MoveActionOptions, View, Wall, WallPoint, WallPointView, WallView } from '../types.ts';
 import {
   addPoints,
   BenchMark,
@@ -20,10 +20,6 @@ import {
   pathfindingAtom,
   selectedAtom,
   threeExportsAtom,
-  Wall,
-  WallPoint,
-  WallPointView,
-  WallView,
 } from './atoms';
 import { uploadExrToKtx } from './atomUtils.ts';
 import VGLTFLoader from './loaders/VGLTFLoader.ts';
@@ -369,7 +365,7 @@ export const loadLatest = async ({
         const m = t as THREE.Mesh;
         m.geometry.dispose();
         const mat = m.material as THREE.Material;
-        disposeMaterial(mat);
+        disposeMaterial(mat as VMaterial);
       }
     });
     console.log('after add : ', afterInfo.geometries, afterInfo.textures);
@@ -401,11 +397,11 @@ export const loadLatest = async ({
       'specularColorMap',
       'transmissionMap',
       'thicknessMap',
-    ];
+    ] as (keyof VMaterial)[];
 
     textureKeys.forEach(key => {
       if (material[key]) {
-        material[key].dispose(); // 텍스처 메모리 해제
+        (material[key] as { dispose: () => void }).dispose(); // 텍스처 메모리 해제
         // material[key] = null;     // 참조 제거
       }
     });
@@ -1512,7 +1508,7 @@ export function changeMeshVisibleWithTransition(
   // Shader Uniform에 dissolveOrigin 전달
   mat.dissolveOrigin = dissolveOrigin;
   mat.shader.uniforms.dissolveDirection.value = targetVisible;
-  mat.shader.uniforms.dissolveProgress = 0;
+  mat.shader.uniforms.dissolveProgress.value = 0;
 
   timeLine.to(
     {
@@ -1523,7 +1519,7 @@ export function changeMeshVisibleWithTransition(
       duration: transitionDelay,
       ease: 'none',
       onStart() {
-        mat.shader.uniforms.dissolveProgress = 0.0001;
+        mat.shader.uniforms.dissolveProgress.value = 0.0001;
         mat.transparent = true;
         if (!targetVisible) {
           mesh.renderOrder = 9999;
@@ -1541,7 +1537,7 @@ export function changeMeshVisibleWithTransition(
         mesh.renderOrder = originalRenderOrder;
         mat.transparent = originalTransparent;
         mat.useProgressiveAlpha = false; // needsUpdate = true 자동
-        mat.shader.uniforms.dissolveProgress = 0.001;
+        mat.shader.uniforms.dissolveProgress.value = 0.001;
       },
     },
     0,

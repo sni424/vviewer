@@ -32,7 +32,6 @@ import {
   useModal,
   viewGridAtom,
   wallAtom,
-  WallPointView,
 } from '../../scripts/atoms';
 import VGLTFLoader from '../../scripts/loaders/VGLTFLoader.ts';
 import VTextureLoader from '../../scripts/loaders/VTextureLoader.ts';
@@ -44,7 +43,7 @@ import {
   zoomToSelected,
 } from '../../scripts/utils';
 import { THREE } from '../../scripts/VTHREE';
-import { View } from '../../types';
+import { View, WallCreateOption, WallPointView } from '../../types';
 import UnifiedCameraControls from '../camera/UnifiedCameraControls';
 import HotspotDialog from '../HotspotDialog';
 import MyEnvironment from './EnvironmentMap';
@@ -460,6 +459,8 @@ const useMouseHandler = () => {
           points[idx].point = new THREE.Vector2(point.x, point.z);
           copied.points = resetColor(points);
           copied.walls = createWallFromPoints(points, getAtomValue(ProbeAtom));
+          copied.creating = undefined;
+
           return copied;
         });
       } else {
@@ -596,7 +597,7 @@ const useKeyHandler = () => {
         setMaterialSelected(null);
         setScrollTo(null);
         setAtomValue(modalAtom, null);
-        setWallCreateOption(prev => ({
+        setWallCreateOption((prev: WallCreateOption) => ({
           ...prev,
           creating: undefined,
         }));
