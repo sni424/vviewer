@@ -484,7 +484,7 @@ THREE.Object3D.prototype.traverse = function (
   callback: (node: THREE.Object3D) => any,
 ) {
   if (this.type !== 'Scene' && !this.layers.isEnabled(Layer.Model)) {
-    console.warn('traverse(): this Not in Model Layer : ', this);
+    // console.warn('traverse(): this Not in Model Layer : ', this);
     return;
   }
   callback(this);
@@ -526,3 +526,4 @@ window.getThree = (view: View = View.Shared) => {
 import { WebGLProgramParametersWithUniforms } from 'three';
 import '../scripts/postprocess/MaterialShader';
 import { PlaneControlDirections } from './CubePlaneControls.ts';
+

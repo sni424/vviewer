@@ -2,11 +2,12 @@ import * as THREE from '../VTHREE.ts';
 import VMaterial from './VMaterial.ts';
 import * as VMaterialUtils from './VMaterialUtils.ts';
 
+type ShaderPatch = THREE.MeshStandardMaterial['onBeforeCompile'];
+
 class VMeshStandardMaterial
   extends THREE.MeshStandardMaterial
-  implements VMaterial
-{
-  private _shader: THREE.WebGLProgramParametersWithUniforms;
+  implements VMaterial {
+  private _shader!: THREE.WebGLProgramParametersWithUniforms;
   private envMapPosition: THREE.Vector3 = new THREE.Vector3();
   private envMapSize: THREE.Vector3 = new THREE.Vector3();
 
@@ -15,11 +16,13 @@ class VMeshStandardMaterial
   dissolveDirection: boolean = false;
   dissolveProgress: number = 0;
 
+  defaultOnBeforeCompile: ShaderPatch;
+
   constructor(parameters?: THREE.MeshStandardMaterialParameters) {
     super(parameters);
     this.useProgressiveAlpha = true;
     // Add CustomShaders on Material
-    this.onBeforeCompile = (shader, renderer) => {
+    const defaultCompilePatch = (shader: THREE.THREE.WebGLProgramParametersWithUniforms, renderer: THREE.WebGLRenderer) => {
       THREE.MeshStandardMaterial.prototype.onBeforeCompile(shader, renderer);
 
       // VERTEX
@@ -38,15 +41,23 @@ class VMeshStandardMaterial
         this.envMapSize,
       );
 
-      this.shader = shader;
+      this._shader = shader;
       this.needsUpdate = true;
+    };
+
+    this.defaultOnBeforeCompile = (shader, renderer) => {
+      defaultCompilePatch(shader, renderer);
+    };
+
+    this.onBeforeCompile = (shader, renderer) => {
+      defaultCompilePatch(shader, renderer);
     };
   }
 
   static fromThree(
     material: THREE.MeshStandardMaterial,
   ): VMeshStandardMaterial {
-    return new VMeshStandardMaterial(material);
+    return new VMeshStandardMaterial(material as any);
   }
 
   get shader() {
@@ -85,14 +96,14 @@ class VMeshStandardMaterial
   }
 
   clone(): this {
-    return new VMeshStandardMaterial(this);
+    return new VMeshStandardMaterial(this as any) as this;
   }
 
   set dissolveOrigin(dissolveOrigin: THREE.Vector3) {
     this._dissolveOrigin.copy(dissolveOrigin);
   }
 
-  addDefines(key: string, value?: any = '') {
+  addDefines(key: string, value: any = '') {
     const defines = this.defines!!;
     defines[key] = value;
   }
