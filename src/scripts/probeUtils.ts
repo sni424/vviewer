@@ -1,3 +1,4 @@
+import VMaterial from "./material/VMaterial";
 import type ReflectionProbe from "./ReflectionProbe";
 import { THREE } from "./VTHREE";
 
@@ -628,6 +629,9 @@ void main()
             vec2 start = uWall[i].start.xz;
             vec2 end = uWall[i].end.xz;
             int probeIndex = uWall[i].index;
+            if(probeIndex == -1){
+              continue;
+            }
 
             vec2 origin = _vWorldPosition.xz;
             vec2 ray = worldReflectVec.xz;
@@ -635,18 +639,20 @@ void main()
 
             if(intersectRaySegment(start, end, origin, ray, intersection)){
                 
-            float dist = lengthSquared(intersection - origin);
+              float dist = lengthSquared(intersection - origin);
 
-                if(dist < closestWallDist){
-                    closestWallDist = dist;
-                    closestWallIndex = i;
-                    closestProbeIndex = probeIndex;
-                }
+              if(dist < closestWallDist){
+                  closestWallDist = dist;
+                  closestWallIndex = i;
+                  closestProbeIndex = probeIndex;
+              }
             }
         }    
         #pragma unroll_loop_end
 
         envMapColor = probeColor(worldReflectVec, closestProbeIndex, roughness);
+        // float floorColor = float(closestProbeIndex) / float(WALL_COUNT);
+        // envMapColor = vec4(floorColor, 0.0, 0.0, 1.0);
 
         #endif
 
@@ -825,7 +831,6 @@ const createMultiProbeShader = (mat: THREE.MeshStandardMaterial, probes: Reflect
 const createFloorShader = (mat: THREE.MeshStandardMaterial, probes: ReflectionProbe[], walls: {
   start: THREE.Vector3;
   end: THREE.Vector3;
-  normal: THREE.Vector3;
   name: string;
 }[]) => {
 
@@ -839,12 +844,16 @@ const createFloorShader = (mat: THREE.MeshStandardMaterial, probes: ReflectionPr
   const SHADER_NAME = removeTrailingThreeDigitNumber(mat.name) + namehash;
   mat.defines.SHADER_NAME = SHADER_NAME
 
-  const targetWalls = walls.filter(w => targetNames.includes(w.name)).map((wall) => ({
+  // const targetWalls = walls.filter(w => targetNames.includes(w.name)).map((wall) => ({
+  //   start: wall.start,
+  //   end: wall.end,
+  //   index: targetNames.indexOf(wall.name)
+  // }));
+  const targetWalls = walls.map((wall) => ({
     start: wall.start,
     end: wall.end,
     index: targetNames.indexOf(wall.name)
   }));
-
   const metaUniform = probes.map((p, index) => ({
     center: p.getBox().getCenter(new THREE.Vector3()),
     size: p.getBox().getSize(new THREE.Vector3()),
@@ -897,13 +906,15 @@ const createFloorShader = (mat: THREE.MeshStandardMaterial, probes: ReflectionPr
 
 
 
-export async function applyFloorProbe(material: THREE.MeshStandardMaterial, probes: ReflectionProbe[], walls: {
+export async function applyFloorProbe(material: VMaterial, probes: ReflectionProbe[], walls: {
   start: THREE.Vector3;
   end: THREE.Vector3;
-  normal: THREE.Vector3;
   name: string;
 }[]) {
+  material.addDefines('V_ENV_MAP');
+  material.addDefines('V_ENV_MAP_FLOOR');
   material.onBeforeCompile = createFloorShader(material, probes, walls);
+
   material.needsUpdate = true;
 }
 

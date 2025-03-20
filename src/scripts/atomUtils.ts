@@ -434,6 +434,12 @@ export const wallOptionToWalls = (option?: WallCreateOption, probes?: Reflection
 
   if (usedProbes.some(probeId => !targetProbes.find(probe => probe.getId() === probeId))) {
     // 벽에서 사용한 프로브가 프로브목록에서 발견되지 않음
+    const probeNames = probes?.map(p => ({
+      id: p.getId(),
+      name: p.getName(),
+    }))
+    console.log({ probeNames, usedProbes });
+
     console.warn("벽에서 사용한 프로브가 프로브목록에서 발견되지 않음");
   }
 

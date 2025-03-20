@@ -387,7 +387,7 @@ function WallTab() {
           <div>
             <button
               onClick={() => {
-                setWallAtom(wallOptionToWalls(wallOption));
+                setWallAtom(wallOptionToWalls(wallOption, probes));
               }}
             >
               프로브에 적용하기

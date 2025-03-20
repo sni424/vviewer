@@ -19,6 +19,8 @@ export interface ThreeUserData {
   isTransformControls?: boolean;
   isProbeMesh?: boolean;
   probeId?: string;
+  probeIds?: string[];
+  envMap?: THREE.MeshStandardMaterial["envMap"];
   isEmissiveLightMap?: boolean;
   probeMeshType?: 'box' | 'controls' | 'sphere' | 'helper' | 'plane-controls';
   probeControlDirection?: PlaneControlDirections;
@@ -84,6 +86,10 @@ declare module 'three' {
     get vUserData(): ThreeUserData;
 
     set vUserData(userData: Partial<ThreeUserData>);
+  }
+
+  interface WebGLProgramParametersWithUniforms {
+    cleanup?: () => void;
   }
 
   interface Texture {

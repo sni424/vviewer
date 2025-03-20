@@ -1508,7 +1508,7 @@ export function changeMeshVisibleWithTransition(
   // Shader Uniform에 dissolveOrigin 전달
   mat.dissolveOrigin = dissolveOrigin;
   mat.shader.uniforms.dissolveDirection.value = targetVisible;
-  mat.shader.uniforms.dissolveProgress.value = 0;
+  mat.shader.uniforms.progress.value = 0;
 
   timeLine.to(
     {
@@ -1519,7 +1519,7 @@ export function changeMeshVisibleWithTransition(
       duration: transitionDelay,
       ease: 'none',
       onStart() {
-        mat.shader.uniforms.dissolveProgress.value = 0.0001;
+        mat.shader.uniforms.progress.value = 0.0001;
         mat.transparent = true;
         if (!targetVisible) {
           mesh.renderOrder = 9999;
@@ -1537,7 +1537,7 @@ export function changeMeshVisibleWithTransition(
         mesh.renderOrder = originalRenderOrder;
         mat.transparent = originalTransparent;
         mat.useProgressiveAlpha = false; // needsUpdate = true 자동
-        mat.shader.uniforms.dissolveProgress.value = 0.001;
+        mat.shader.uniforms.progress.value = 0.001;
       },
     },
     0,
