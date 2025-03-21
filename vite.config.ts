@@ -8,6 +8,6 @@ export default defineConfig({
     exclude: ['@monogrid/gainmap-js'], // wasm mimetype 관련 에러 해결
   },
   server: {
-    allowedHosts: ['opmay-react.ngrok.app'],
+    allowedHosts: ['opmay-react.ngrok.app', "stan.ngrok.pizza"],
   },
 });
