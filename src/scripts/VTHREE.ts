@@ -2,7 +2,7 @@ import { RootState } from '@react-three/fiber';
 import * as THREE from 'three';
 import { TransformControlsPlane } from 'three/examples/jsm/Addons.js';
 import { Layer } from '../Constants';
-import { Matrix4Array, MoveActionOptions, View } from '../types';
+import { Matrix4Array, MoveActionOptions, ProbeTypes, View } from '../types';
 import type ReflectionProbe from './ReflectionProbe';
 import type { ReflectionProbeJSON } from './ReflectionProbe';
 import { moveTo, resetGL } from './utils';
@@ -20,6 +20,7 @@ export interface ThreeUserData {
   isProbeMesh?: boolean;
   probeId?: string;
   probeIds?: string[];
+  probeType?: ProbeTypes;
   envMap?: THREE.MeshStandardMaterial["envMap"];
   isEmissiveLightMap?: boolean;
   probeMeshType?: 'box' | 'controls' | 'sphere' | 'helper' | 'plane-controls';
@@ -86,6 +87,8 @@ declare module 'three' {
     get vUserData(): ThreeUserData;
 
     set vUserData(userData: Partial<ThreeUserData>);
+
+
   }
 
   interface WebGLProgramParametersWithUniforms {

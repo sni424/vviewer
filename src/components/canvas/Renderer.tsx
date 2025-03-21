@@ -20,7 +20,6 @@ import {
   panelTabAtom,
   pathfindingAtom,
   pointsAtom,
-  ProbeAtom,
   roomAtom,
   selectedAtom,
   setAtomValue,
@@ -438,10 +437,7 @@ const useMouseHandler = () => {
           copied.points = resetColor(points);
 
           if (prev.autoCreateWall) {
-            copied.walls = createWallFromPoints(
-              points,
-              getAtomValue(ProbeAtom),
-            );
+            copied.walls = createWallFromPoints(points);
           }
 
           return copied;
@@ -458,7 +454,7 @@ const useMouseHandler = () => {
           }
           points[idx].point = new THREE.Vector2(point.x, point.z);
           copied.points = resetColor(points);
-          copied.walls = createWallFromPoints(points, getAtomValue(ProbeAtom));
+          copied.walls = createWallFromPoints(points);
           copied.creating = undefined;
 
           return copied;

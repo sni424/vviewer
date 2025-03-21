@@ -3,9 +3,8 @@ import { useState } from 'react';
 import { v4 } from 'uuid';
 import { __UNDEFINED__ } from '../Constants';
 import {
-  getAtomValue,
+  getWallOptionAtom,
   ProbeAtom,
-  setWallAtom,
   setWallHighlightAtom,
   setWallOptionAtom,
   wallHighlightAtom,
@@ -18,6 +17,7 @@ import {
   wallsToWallOption,
 } from '../scripts/atomUtils';
 import {
+  assignClosestProbeToWall,
   colorNumberToCSS,
   createWallFromPoints,
   getWallPoint,
@@ -173,10 +173,7 @@ function WallPointDetail({
                 setWallOptionAtom(prev => {
                   const copied = { ...prev };
                   copied.points = copied.points.filter(p => p.id !== id);
-                  copied.walls = createWallFromPoints(
-                    copied.points,
-                    getAtomValue(ProbeAtom),
-                  );
+                  copied.walls = createWallFromPoints(copied.points);
                   return copied;
                 });
               } else {
@@ -196,6 +193,38 @@ function WallPointDetail({
             삭제
           </button>
           <button
+            onMouseEnter={() => {
+              setWallHighlightAtom(prev => {
+                const wallInfo = getWallOptionAtom();
+                if (!wallInfo) {
+                  return prev;
+                }
+
+                const copied = { ...prev };
+
+                const highlights = new Set();
+                highlights.add(id);
+                // find prev index
+                const myIndex = wallInfo.points.findIndex(p => p.id === id);
+                if (typeof myIndex === 'undefined' || myIndex === -1) {
+                  return copied;
+                }
+
+                const prevIndex =
+                  myIndex - 1 < 0 ? points.length - 1 : myIndex - 1;
+                highlights.add(points[prevIndex].id);
+                copied.pointHighlights = Array.from(highlights) as string[];
+
+                const wallCandidate = wallInfo.walls.find(
+                  w => w.start === id && w.end === points[prevIndex].id,
+                );
+                if (wallCandidate) {
+                  copied.wallHighlights = [wallCandidate.id];
+                }
+
+                return copied;
+              });
+            }}
             onClick={() => {
               const myIndex = points.findIndex(p => p.id === id);
               const wallCandidate = wallInfo.walls.find(w => w.end === id);
@@ -217,10 +246,7 @@ function WallPointDetail({
                   copied.points = copiedPoints;
                   resetColor(copied.points);
 
-                  copied.walls = createWallFromPoints(
-                    copied.points,
-                    getAtomValue(ProbeAtom),
-                  );
+                  copied.walls = createWallFromPoints(copied.points);
                   return copied;
                 });
               } else {
@@ -235,17 +261,14 @@ function WallPointDetail({
                   copied.points = copiedPoints;
                   resetColor(copied.points);
 
-                  copied.walls = createWallFromPoints(
-                    copied.points,
-                    getAtomValue(ProbeAtom),
-                  );
+                  copied.walls = createWallFromPoints(copied.points);
 
                   return copied;
                 });
               }
             }}
           >
-            위에 추가
+            사이에 추가
           </button>
           <button
             onClick={() => {
@@ -276,10 +299,7 @@ function WallPointDetail({
                 const copiedPoints = [...copied.points];
                 copiedPoints[i].point.x = parseFloat(e.target.value);
                 copied.points = copiedPoints;
-                copied.walls = createWallFromPoints(
-                  copied.points,
-                  getAtomValue(ProbeAtom),
-                );
+                copied.walls = createWallFromPoints(copied.points);
                 return copied;
               });
             }}
@@ -298,10 +318,7 @@ function WallPointDetail({
                 const copiedPoints = [...copied.points];
                 copiedPoints[i].point.y = parseFloat(e.target.value);
                 copied.points = copiedPoints;
-                copied.walls = createWallFromPoints(
-                  copied.points,
-                  getAtomValue(ProbeAtom),
-                );
+                copied.walls = createWallFromPoints(copied.points);
                 return copied;
               });
             }}
@@ -355,7 +372,7 @@ function WallTab() {
           <div>
             <button
               onClick={() => {
-                const createdWalls = createWallFromPoints(points, probes);
+                const createdWalls = createWallFromPoints(points);
 
                 setWalls((prev: WallCreateOption) => ({
                   ...prev,
@@ -364,6 +381,24 @@ function WallTab() {
               }}
             >
               벽 일괄생성
+            </button>
+          </div>
+          <div>
+            <button
+              onClick={() => {
+                setWalls((prev: WallCreateOption) => {
+                  const copied = { ...prev };
+                  const copiedWalls = [...copied.walls];
+                  copied.walls = assignClosestProbeToWall(
+                    copied.points,
+                    copiedWalls,
+                    probes,
+                  );
+                  return copied;
+                });
+              }}
+            >
+              프로브 자동할당
             </button>
           </div>
           <div>
@@ -384,7 +419,7 @@ function WallTab() {
               PC에 저장하기
             </button>
           </div>
-          <div>
+          {/* <div>
             <button
               onClick={() => {
                 setWallAtom(wallOptionToWalls(wallOption, probes));
@@ -392,7 +427,7 @@ function WallTab() {
             >
               프로브에 적용하기
             </button>
-          </div>
+          </div> */}
         </div>
         <div className="flex items-center gap-3 mb-2">
           <form onSubmit={onWallJsonLoad}>
@@ -408,7 +443,7 @@ function WallTab() {
               type="button"
               onClick={() => {
                 loadJson<Walls>(wallJsonName).then(walls => {
-                  setWallAtom(walls);
+                  // setWallAtom(walls);
                   setWallOptionAtom(wallsToWallOption(walls));
                 });
               }}

@@ -10,12 +10,13 @@ import { EXRLoader, OrbitControls } from 'three/examples/jsm/Addons.js';
 import { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { v4 } from 'uuid';
 import { ENV, Layer } from '../Constants';
-import { FileInfo, MoveActionOptions, View, Wall, WallPoint, WallPointView, WallView } from '../types.ts';
+import { FileInfo, MoveActionOptions, View, WallPoint, WallPointView, WallView } from '../types.ts';
 import {
   addPoints,
   BenchMark,
   cameraSettingAtom,
   getAtomValue,
+  getWallOptionAtom,
   lastCameraInfoAtom,
   pathfindingAtom,
   selectedAtom,
@@ -1800,7 +1801,7 @@ export const findClosestProbe = (points: WallPoint[], probes: ReflectionProbe[],
   return closest.prev;
 };
 
-export function createWallFromPoints(points: WallPointView[], probes: ReflectionProbe[]): Wall[] {
+export function createWallFromPoints(points: WallPointView[]): WallView[] {
 
   const pointLength = points.length;
   if (pointLength < 2) {
@@ -1808,30 +1809,41 @@ export function createWallFromPoints(points: WallPointView[], probes: Reflection
   }
 
   const walls: WallView[] = [];
+  const prevWalls = getWallOptionAtom()?.walls ?? [];
+
 
   for (let i = 0; i < pointLength; i++) {
     const startPoint = points[i];
     const endIndex = i + 1 === pointLength ? 0 : i + 1; // 끝점의 경우 시작과 잇는다
-
     const endPoint = points[endIndex];
+
+    const prevWall = prevWalls.find(w => w.start === startPoint.id && w.end === endPoint.id);
+
     const wall: WallView = {
       start: startPoint.id,
       end: endPoint.id,
       show: true,
-      id: v4(),
+      id: prevWall?.id ?? v4(),
+      probeId: prevWall?.probeId ?? undefined,
+      probeName: prevWall?.probeName ?? undefined,
     };
-
-    const closestProbe = findClosestProbe(points, probes, wall);
-    if (closestProbe) {
-      wall.probeId = closestProbe.getId();
-      wall.probeName = closestProbe.getName();
-    }
 
     walls.push(wall);
   }
 
   resetColor(walls);
 
+  return walls;
+}
+
+export function assignClosestProbeToWall(points: WallPointView[], walls: WallView[], probes: ReflectionProbe[]) {
+  walls.forEach(wall => {
+    const closestProbe = findClosestProbe(points, probes, wall);
+    if (closestProbe) {
+      wall.probeId = closestProbe.getId();
+      wall.probeName = closestProbe.getName();
+    }
+  })
   return walls;
 }
 

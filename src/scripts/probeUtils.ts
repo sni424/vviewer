@@ -421,7 +421,7 @@ const boxProjectDefinitions = /*glsl */`
         return envMapColor;
     }
 
-    #ifdef V_ENV_MAP_FLOOR
+    #ifdef V_ENV_MAP_WALL
     bool intersectRaySegment(vec2 p1, vec2 p2, vec2 ro, vec2 rd, out vec2 intersection) {
       vec2 v1 = ro - p1;
       vec2 v2 = p2 - p1;
@@ -489,6 +489,7 @@ function useMultiProbe(shader:
         delete shader.uniforms![key];
       })
     }
+    shader.customProgramCacheKey = undefined;
   }
 
   // vertex shader
@@ -549,7 +550,7 @@ function useMultiProbe(shader:
         uniform samplerCube uProbeTextures[PROBE_COUNT];
         uniform float uProbeIntensity;
         
-        #ifdef V_ENV_MAP_FLOOR
+        #ifdef V_ENV_MAP_WALL
         uniform Wall uWall[WALL_COUNT];
         uniform float uProbeBlendDist;
         #endif
@@ -614,7 +615,7 @@ void main()
 
         ////////////////////////////////////////////////
         // case 1. 바닥
-        #ifdef V_ENV_MAP_FLOOR
+        #ifdef V_ENV_MAP_WALL
         vec3 localReflectVec = parallaxCorrectNormal( worldReflectVec, uProbe[minIndex].size, uProbe[minIndex].center );
 
         int closestWallIndex = -1;
@@ -655,7 +656,7 @@ void main()
 
         #endif
 
-        #ifndef V_ENV_MAP_FLOOR
+        #ifndef V_ENV_MAP_WALL
 
         ////////////////////////////////////////////////
         // case2. 바닥이 아닌 여러 개의 프로브가 적용되는 경우
@@ -742,89 +743,24 @@ export const drawWalls = (walls: {
   })
 }
 
-const createMultiProbeShader = (mat: THREE.MeshStandardMaterial, probes: ReflectionProbe[]) => {
-  const targetNames = probes.map(p => p.getName());
-  // targetNames.sort();
-  const namehash = hashStringArray(targetNames);
 
-  mat.defines = mat.defines ?? {};
-
-  // !중요 : 이름을 넣어주지 않으면 캐싱된 셰이더와 헷갈려함
-  const SHADER_NAME = removeTrailingThreeDigitNumber(mat.name) + namehash;
-  // mat.defines.SHADER_NAME = SHADER_NAME
-
-  const metaUniform = probes.map((p, index) => ({
-    center: p.getBox().getCenter(new THREE.Vector3()),
-    size: p.getBox().getSize(new THREE.Vector3()),
-  }))
-  const textures = probes.map(p => p.getRenderTargetTexture());
-
-  const uProbe = `_uProbe${namehash}`;
-  const uProbeTextures = `_uProbeTextures${namehash}`;
-  const uProbeIntensity = `_uProbeIntensity${namehash}`;
-
-  const uniforms = {
-    [uProbe]: {
-      value: metaUniform
-    },
-    [uProbeTextures]: {
-      value: textures
-    },
-    [uProbeIntensity]: {
-      value: 1.0
-    },
-  };
-
-  const defines = {
-    PROBE_COUNT: probes.length,
-    uProbe,
-    uProbeTextures,
-    uProbeIntensity,
-    // SHADER_NAME: mat.name
-    // SHADER_NAME
-  }
-
-  return (shader: Shader) => {
-    useMultiProbe(shader, {
-      uniforms,
-      defines,
-    });
-  }
-}
-
-const createFloorShader = (mat: THREE.MeshStandardMaterial, probes: ReflectionProbe[], walls: {
+export async function applyMultiProbe(mat: VMaterial, probes: ReflectionProbe[], walls?: {
   start: THREE.Vector3;
   end: THREE.Vector3;
-  name: string;
-}[]) => {
+  probeId: string;
+}[]) {
 
-  const targetNames = probes.map(p => p.getName());
-  // targetNames.sort();
-  const namehash = hashStringArray(targetNames);
 
   mat.defines = mat.defines ?? {};
 
-  // !중요 : 이름을 넣어주지 않으면 캐싱된 셰이더와 헷갈려함
-  const SHADER_NAME = removeTrailingThreeDigitNumber(mat.name) + namehash;
-  // mat.defines.SHADER_NAME = SHADER_NAME
 
-  // const targetWalls = walls.filter(w => targetNames.includes(w.name)).map((wall) => ({
-  //   start: wall.start,
-  //   end: wall.end,
-  //   index: targetNames.indexOf(wall.name)
-  // }));
-  const targetWalls = walls.map((wall) => ({
-    start: wall.start,
-    end: wall.end,
-    index: targetNames.indexOf(wall.name)
-  }));
-  const metaUniform = probes.map((p, index) => ({
+  const metaUniform = probes.map((p) => ({
     center: p.getBox().getCenter(new THREE.Vector3()),
     size: p.getBox().getSize(new THREE.Vector3()),
   }))
   const textures = probes.map(p => p.getRenderTargetTexture());
 
-  const uniforms = {
+  const uniforms: { [key: string]: { value: any } } = {
     uProbe: {
       value: metaUniform
     },
@@ -834,19 +770,31 @@ const createFloorShader = (mat: THREE.MeshStandardMaterial, probes: ReflectionPr
     uProbeIntensity: {
       value: 1.0
     },
-    uWall: {
-      value: targetWalls
-    },
-    uProbeBlendDist: {
-      value: 20.0
-    }
+
   };
 
-  const defines = {
+  const defines: { [key: string]: any } = {
     PROBE_COUNT: probes.length,
-    WALL_COUNT: targetWalls.length,
-    V_ENV_MAP_FLOOR: 1,
     V_ENV_MAP: 1,
+  }
+
+  if (walls) {
+    const targetProbeIds = probes.map(p => p.getId());
+    const targetWalls = walls.map((wall) => ({
+      start: wall.start,
+      end: wall.end,
+      index: targetProbeIds.indexOf(wall.probeId)
+    }));
+
+    uniforms.uWall = {
+      value: targetWalls
+    }
+    uniforms.uProbeBlendDist = {
+      value: 20.0
+    }
+
+    defines.WALL_COUNT = targetWalls.length;
+    defines.V_ENV_MAP_WALL = 1;
   }
 
   mat.defines = {
@@ -854,7 +802,18 @@ const createFloorShader = (mat: THREE.MeshStandardMaterial, probes: ReflectionPr
     ...defines
   }
 
-  return (shader: Shader) => {
+  const createCacheKey = (mat: VMaterial, defines: any, uniforms: any): string => {
+    let retval: string = "";
+    retval += mat.name;
+    retval += probes.map(p => p.getName()).join(",");
+    retval += defines.WALL_COUNT ?? -1;
+
+    return retval;
+  }
+
+  mat.onBeforeCompile = (shader: Shader) => {
+    // mat.defaultOnbeforCompile?.(shader);
+    shader.customProgramCacheKey = createCacheKey(mat, defines, uniforms);
     useMultiProbe(shader, {
       uniforms,
       defines,
@@ -862,21 +821,8 @@ const createFloorShader = (mat: THREE.MeshStandardMaterial, probes: ReflectionPr
   }
 }
 
-
-
-export async function applyFloorProbe(material: VMaterial, probes: ReflectionProbe[], walls: {
-  start: THREE.Vector3;
-  end: THREE.Vector3;
-  name: string;
-}[]) {
-
-  material.onBeforeCompile = createFloorShader(material, probes, walls);
-
-  material.needsUpdate = true;
-}
-
 // 입력된 프로브들 중 가장 가까운 프로브를 반사
-export async function applyMultiProbe(material: THREE.MeshStandardMaterial, probes: ReflectionProbe[]) {
-  material.onBeforeCompile = createMultiProbeShader(material, probes);
-  material.needsUpdate = true;
-}
+// export async function applyMultiProbe(material: THREE.MeshStandardMaterial, probes: ReflectionProbe[]) {
+//   material.onBeforeCompile = createMultiProbeShader(material, probes);
+//   material.needsUpdate = true;
+// }

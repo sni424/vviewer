@@ -448,3 +448,5 @@ export type WallCreateOption = WallMeta & {
     axisSnap?: boolean;
   }
 };
+
+export type ProbeTypes = "single" | "multi" | "multiWall";
