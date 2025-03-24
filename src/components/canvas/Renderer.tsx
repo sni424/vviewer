@@ -77,7 +77,7 @@ const applyTexture = (
       if (!material) {
         (obj as THREE.Mesh).material = new THREE.MeshPhysicalMaterial();
       }
-      if (mapDst === 'gainmap' || mapDst === 'lightmap' || !mapDst) {
+      if ( mapDst === 'lightmap' || !mapDst) {
         material.lightMap = texture;
         if (map) {
           material.vUserData.lightMap = map.name;
@@ -226,17 +226,12 @@ const useLoadModel = ({
           const detectFlipY = () => {
             const exrLightmap =
               mapDst === 'lightmap' && map.name.endsWith('.exr');
-            const gainmap = mapDst === 'gainmap';
             const pngLightmap =
               mapDst === 'lightmap' && map.name.endsWith('.png');
             const ktxLightmap =
               mapDst === 'lightmap' && map.name.endsWith('.ktx');
 
             if (exrLightmap) {
-              return true;
-            }
-
-            if (gainmap) {
               return true;
             }
 
@@ -255,7 +250,7 @@ const useLoadModel = ({
           const flipY = detectFlipY();
           const texture = await VTextureLoader.loadAsync(map, {
             gl,
-            as: mapDst === 'gainmap' ? 'gainmap' : 'texture',
+            as: 'texture',
             flipY,
           });
 

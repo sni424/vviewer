@@ -87,7 +87,7 @@ export const createAtomCombo = <T = any>(
 };
 
 // export type MapDst = 'lightmap' | 'emissivemap' | 'envmap'; // hdr적용은 추후 필요하면 추가
-export type MapDst = 'lightmap' | 'gainmap' | 'exr2sdr'; // exr2sdr = exr * 0.2한 이미지를 만든 후 렌더 시 * 5를 해서 렌더링
+export type MapDst = 'lightmap' | 'exr2sdr'; // exr2sdr = exr * 0.2한 이미지를 만든 후 렌더 시 * 5를 해서 렌더링
 export type ModelSource = {
   name: string;
   file: File;

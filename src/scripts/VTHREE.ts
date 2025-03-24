@@ -11,8 +11,6 @@ export { LightmapImageContrast } from '../scripts/postprocess/MaterialShader';
 
 export interface ThreeUserData {
   ignoreRaycast?: boolean;
-  gainMap?: string; // filename
-  gainMapIntensity?: number;
   lightMap?: string; // filename
   lightMapIntensity?: number;
   probe?: ReflectionProbe;

@@ -39,10 +39,6 @@ export default class VTextureLoader {
     const inputOption = { ...defaultOption, ...option } as VTextureLoaderOption;
     const isFile = typeof fileOrUrl !== 'string';
     const url = isFile ? URL.createObjectURL(fileOrUrl) : fileOrUrl;
-    let gainMap = isFile ? fileOrUrl.name : fileOrUrl;
-    if (option?.forceExrToJpg) {
-      gainMap = gainMap.replace('.exr', '.jpg');
-    }
 
     if (isFile) {
       dispoableUrls.push(url);

@@ -156,15 +156,13 @@ const MapPreview: React.FC<MapPreviewProps> = ({
   const { openModal, closeModal } = useModal();
   const probes = useAtomValue(ProbeAtom);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const isGainmap = Boolean(texture?.vUserData?.gainMap);
   const isKtx = texture?.vUserData?.mimeType === 'image/ktx2';
-  const hasImage = texture && texture.image && !isGainmap;
+  const hasImage = texture && texture.image;
   const [materialPreviewCache, setMaterialPreviewCache] = useAtom(
     ktxTexturePreviewCachedAtom,
   );
   const cannotDraw =
     mapKey === 'envMap' ||
-    isGainmap ||
     texture?.vUserData?.isExr ||
     (isKtx && texture?.mipmaps?.length === 0);
 

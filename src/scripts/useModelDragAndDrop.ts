@@ -128,7 +128,7 @@ const useModelDragAndDrop = () => {
             return;
           }
 
-          // 1. gainmap부터 확인 - 같은 이름의 glb, json, jpg(jgpeg) 확인
+          // 1. 같은 이름의 glb, json, jpg(jgpeg) 확인
           const gltfs = filteredFiles.filter(
             file =>
               file.name.toLowerCase().endsWith('.gltf') ||
