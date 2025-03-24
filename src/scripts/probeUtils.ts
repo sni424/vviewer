@@ -776,7 +776,8 @@ export async function applyMultiProbe(mat: VMaterial, probes: ReflectionProbe[],
 
   const usePmrem = true;
 
-  const textures = probes.map(p => usePmrem ? p.getTexture() : p.getRenderTargetTexture());
+  const getTextures = () => probes.map(p => usePmrem ? p.getTexture() : p.getRenderTargetTexture());
+  const textures = getTextures();
 
 
   let pmremDefines = {};
@@ -889,10 +890,8 @@ export async function applyMultiProbe(mat: VMaterial, probes: ReflectionProbe[],
       defines,
     });
   }
-}
 
-// 입력된 프로브들 중 가장 가까운 프로브를 반사
-// export async function applyMultiProbe(material: THREE.MeshStandardMaterial, probes: ReflectionProbe[]) {
-//   material.onBeforeCompile = createMultiProbeShader(material, probes);
-//   material.needsUpdate = true;
-// }
+  mat.updateMultiProbeTexture = () => {
+    uniforms.uProbeTextures.value = getTextures();
+  }
+}

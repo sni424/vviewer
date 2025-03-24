@@ -359,6 +359,7 @@ const applyMultiProbeOnMaterial = async (
 ) => {
   const filtered = probes.filter(p => probeIds.includes(p.getId()));
 
+  // 기존 싱글 프로브 제거
   if (material.envMap) {
     material.vUserData.envMap = material.envMap;
   }
@@ -438,7 +439,6 @@ const MultiProbeSelector = ({
           </div>
         );
       })}
-
     </>
   );
 };

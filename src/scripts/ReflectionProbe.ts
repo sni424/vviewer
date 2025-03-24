@@ -605,6 +605,10 @@ export default class ReflectionProbe {
     document.dispatchEvent(new CustomEvent('probe-rendered', { detail: {} }));
     // console.log('probe Rendered : ' + this.serializedId);
     this.renderedTime = new Date().getTime();
+
+    this.scene.traverse(o => {
+      ((o as THREE.Mesh).material as THREE.MeshStandardMaterial)?.updateMultiProbeTexture?.();
+    })
   }
 
   updateCameraPosition(

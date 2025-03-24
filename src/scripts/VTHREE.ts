@@ -86,7 +86,7 @@ declare module 'three' {
 
     set vUserData(userData: Partial<ThreeUserData>);
 
-
+    updateMultiProbeTexture?(): void;
   }
 
   interface WebGLProgramParametersWithUniforms {
