@@ -612,6 +612,7 @@ export default class ReflectionProbe {
     renderCamera?: boolean,
   ) {
     this.cubeCamera.position.copy(position);
+    this.updateBox(true);
     if (this.autoUpdate || renderCamera) {
       this.renderCamera(true);
     }

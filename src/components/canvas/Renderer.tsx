@@ -672,12 +672,6 @@ const useKeyHandler = () => {
       }
 
       // ctrl + 숫자
-      const numberKey = parseInt(e.key);
-      if (e.ctrlKey && !isNaN(numberKey)) {
-        e.preventDefault();
-        setAtomValue(panelTabAtom, Tabs[numberKey - 1]);
-        return;
-      }
 
       if (e.code === 'KeyZ') {
         zoomToSelected();

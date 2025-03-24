@@ -1,8 +1,10 @@
+import cube_uv from "./cube_uv";
 import VMaterial from "./material/VMaterial";
 import type ReflectionProbe from "./ReflectionProbe";
 import { THREE } from "./VTHREE";
 
-let _probeVersion = 0;
+// key : material.uuid
+const probeVersions = new Map<string, { cacheKey: string; version: number; }>();
 
 type Shader = THREE.WebGLProgramParametersWithUniforms;
 
@@ -298,118 +300,118 @@ const boxProjectDefinitions = /*glsl */`
 
         if(i == 0){
 
-            envMapColor += textureCube( uProbeTextures[0], localReflectVec, roughness );
+            envMapColor += textureCubeUV( uProbeTextures[0], localReflectVec, roughness );
 
         }
         #if PROBE_COUNT > 1
         else if( i == 1){
 
-            envMapColor += textureCube( uProbeTextures[1], localReflectVec, roughness );
+            envMapColor += textureCubeUV( uProbeTextures[1], localReflectVec, roughness );
 
         }
         #endif
         #if PROBE_COUNT > 2
         else if( i == 2){
 
-            envMapColor += textureCube( uProbeTextures[2], localReflectVec, roughness );
+            envMapColor += textureCubeUV( uProbeTextures[2], localReflectVec, roughness );
 
         }
         #endif
         #if PROBE_COUNT > 3
         else if( i == 3){
 
-            envMapColor += textureCube( uProbeTextures[3], localReflectVec, roughness );
+            envMapColor += textureCubeUV( uProbeTextures[3], localReflectVec, roughness );
 
         }
         #endif
         #if PROBE_COUNT > 4
         else if( i == 4){
 
-            envMapColor += textureCube( uProbeTextures[4], localReflectVec, roughness );
+            envMapColor += textureCubeUV( uProbeTextures[4], localReflectVec, roughness );
 
         }
         #endif
         #if PROBE_COUNT > 5
         else if( i == 5){
 
-            envMapColor += textureCube( uProbeTextures[5], localReflectVec, roughness );
+            envMapColor += textureCubeUV( uProbeTextures[5], localReflectVec, roughness );
 
         }
         #endif
         #if PROBE_COUNT > 6
         else if( i == 6){
 
-            envMapColor += textureCube( uProbeTextures[6], localReflectVec, roughness );
+            envMapColor += textureCubeUV( uProbeTextures[6], localReflectVec, roughness );
 
         }
         #endif
         #if PROBE_COUNT > 7
         else if( i == 7){
 
-            envMapColor += textureCube( uProbeTextures[7], localReflectVec, roughness );
+            envMapColor += textureCubeUV( uProbeTextures[7], localReflectVec, roughness );
 
         }
         #endif
         #if PROBE_COUNT > 8
         else if( i == 8){
 
-            envMapColor += textureCube( uProbeTextures[8], localReflectVec, roughness );
+            envMapColor += textureCubeUV( uProbeTextures[8], localReflectVec, roughness );
 
         }
         #endif
         #if PROBE_COUNT > 9
         else if( i == 9){
 
-            envMapColor += textureCube( uProbeTextures[9], localReflectVec, roughness );
+            envMapColor += textureCubeUV( uProbeTextures[9], localReflectVec, roughness );
 
         }
         #endif
         #if PROBE_COUNT > 10
         else if( i == 10){
 
-            envMapColor += textureCube( uProbeTextures[10], localReflectVec, roughness );
+            envMapColor += textureCubeUV( uProbeTextures[10], localReflectVec, roughness );
 
         }
         #endif
         #if PROBE_COUNT > 11
         else if( i == 11){
 
-            envMapColor += textureCube( uProbeTextures[11], localReflectVec, roughness );
+            envMapColor += textureCubeUV( uProbeTextures[11], localReflectVec, roughness );
 
         }
         #endif
         #if PROBE_COUNT > 12
         else if( i == 12){
 
-            envMapColor += textureCube( uProbeTextures[12], localReflectVec, roughness );
+            envMapColor += textureCubeUV( uProbeTextures[12], localReflectVec, roughness );
 
         }
         #endif
         #if PROBE_COUNT > 13
         else if( i == 13){
 
-            envMapColor += textureCube( uProbeTextures[13], localReflectVec, roughness );
+            envMapColor += textureCubeUV( uProbeTextures[13], localReflectVec, roughness );
 
         }
         #endif
         #if PROBE_COUNT > 14
         else if( i == 14){
 
-            envMapColor += textureCube( uProbeTextures[14], localReflectVec, roughness );
+            envMapColor += textureCubeUV( uProbeTextures[14], localReflectVec, roughness );
 
         }
         #endif
         #if PROBE_COUNT > 15
         else if( i == 15){
 
-            envMapColor += textureCube( uProbeTextures[15], localReflectVec, roughness );
+            envMapColor += textureCubeUV( uProbeTextures[15], localReflectVec, roughness );
 
         }
         #endif
         #if PROBE_COUNT > 16
         else if( i == 16){
 
-            envMapColor += textureCube( uProbeTextures[16], localReflectVec, roughness );
+            envMapColor += textureCubeUV( uProbeTextures[16], localReflectVec, roughness );
 
         }
         #endif
@@ -533,7 +535,7 @@ function useMultiProbe(shader:
     );
 
   shader.fragmentShader = shader.fragmentShader.replace("void main()",
-    `
+    /*glsl */`
         #ifdef V_ENV_MAP
         struct Probe {
             vec3 center;
@@ -547,7 +549,8 @@ function useMultiProbe(shader:
             int index; // 프로브 인덱스, 0부터 PROBE_COUNT-1까지
         };
         uniform Probe uProbe[PROBE_COUNT];
-        uniform samplerCube uProbeTextures[PROBE_COUNT];
+        uniform sampler2D uProbeTextures[PROBE_COUNT];
+        // uniform samplerCube uProbeTextures[PROBE_COUNT];
         uniform float uProbeIntensity;
         
         #ifdef V_ENV_MAP_WALL
@@ -557,6 +560,7 @@ function useMultiProbe(shader:
 
         #endif
 
+${cube_uv}
 ${boxProjectDefinitions}
 void main()
         `
@@ -743,6 +747,17 @@ export const drawWalls = (walls: {
   })
 }
 
+function generateCubeUVSize(imageHeight: number) {
+
+  const maxMip = Math.log2(imageHeight) - 2;
+
+  const texelHeight = 1.0 / imageHeight;
+
+  const texelWidth = 1.0 / (3 * Math.max(Math.pow(2, maxMip), 7 * 16));
+
+  return { texelWidth, texelHeight, maxMip };
+
+}
 
 export async function applyMultiProbe(mat: VMaterial, probes: ReflectionProbe[], walls?: {
   start: THREE.Vector3;
@@ -758,7 +773,31 @@ export async function applyMultiProbe(mat: VMaterial, probes: ReflectionProbe[],
     center: p.getBox().getCenter(new THREE.Vector3()),
     size: p.getBox().getSize(new THREE.Vector3()),
   }))
-  const textures = probes.map(p => p.getRenderTargetTexture());
+
+  const usePmrem = true;
+
+  const textures = probes.map(p => usePmrem ? p.getTexture() : p.getRenderTargetTexture());
+
+
+  let pmremDefines = {};
+
+  if (usePmrem) {
+    const pmremParams = generateCubeUVSize(probes[0]?.getResolution());
+    const { texelWidth, texelHeight, maxMip } = pmremParams;;
+
+    pmremDefines = {
+      V_ENVMAP_TYPE_CUBE_UV: 1, // pmrem
+      V_CUBEUV_MAX_MIP: `${maxMip}.0`, // float으로 glsl까지 전달되어야 함
+      V_CUBEUV_TEXEL_WIDTH: texelWidth,
+      V_CUBEUV_TEXEL_HEIGHT: texelHeight,
+    }
+  }
+
+  const defines: { [key: string]: any } = {
+    PROBE_COUNT: probes.length,
+    V_ENV_MAP: 1,
+    ...pmremDefines
+  }
 
   const uniforms: { [key: string]: { value: any } } = {
     uProbe: {
@@ -772,11 +811,6 @@ export async function applyMultiProbe(mat: VMaterial, probes: ReflectionProbe[],
     },
 
   };
-
-  const defines: { [key: string]: any } = {
-    PROBE_COUNT: probes.length,
-    V_ENV_MAP: 1,
-  }
 
   if (walls) {
     const targetProbeIds = probes.map(p => p.getId());
@@ -797,21 +831,12 @@ export async function applyMultiProbe(mat: VMaterial, probes: ReflectionProbe[],
     defines.V_ENV_MAP_WALL = 1;
   }
 
-  const probeVersionKey = "PROBE_VERSION" + ++_probeVersion;
 
 
   mat.defines = {
     ...mat.defines,
     ...defines
   }
-
-  for (const key in Object.keys(mat.defines)) {
-    if (key.includes("PROBE_VERSION")) {
-      delete mat.defines[key];
-      break;
-    }
-  }
-  mat.defines[probeVersionKey] = "";
 
   const createCacheKey = (mat: VMaterial, defines: any, uniforms: any): string => {
     let retval: string[] = [];
@@ -822,6 +847,34 @@ export async function applyMultiProbe(mat: VMaterial, probes: ReflectionProbe[],
 
     return retval.join(",");
   }
+
+  // 캐시키가 바뀌어도 onBeforeCompile이 불리지 않아 별도로 define을 추가해서 강제 리렌더 촉발
+  const handleProbeVersion = () => {
+    for (const key in Object.keys(mat.defines)) {
+      if (key.includes("PROBE_VERSION")) {
+        delete mat.defines[key];
+        break;
+      }
+    }
+    const prevVersion = probeVersions.get(mat.uuid);
+    const customCacheKey = createCacheKey(mat, defines, uniforms);
+    if (prevVersion?.cacheKey === customCacheKey) {
+      return;
+    }
+
+    const probeVersion = (prevVersion?.version ?? 0) + 1;
+    probeVersions.set(mat.uuid, {
+      cacheKey: customCacheKey,
+      version: probeVersion
+    })
+
+    const probeVersionKey = "PROBE_VERSION" + probeVersion;
+    mat.defines[probeVersionKey] = "";
+  }
+  handleProbeVersion();
+
+
+
 
   const customCacheKey = createCacheKey(mat, defines, uniforms);
   mat.customProgramCacheKey = () => {
