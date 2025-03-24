@@ -1,22 +1,18 @@
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
 // @ts-ignore
-import { get } from 'idb-keyval';
 import {
   type GLTF,
   GLTFLoader,
 } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { KTX2Loader } from 'three/examples/jsm/loaders/KTX2Loader.js';
 import { ENV, Layer } from '../../Constants.ts';
-import GainmapLoader from '../GainmapLoader.ts';
 import VMaterial from '../material/VMaterial.ts';
 import VMeshBasicMaterial from '../material/VMeshBasicMaterial.ts';
 import VMeshPhysicalMaterial from '../material/VMeshPhysicalMaterial.ts';
 import VMeshStandardMaterial from '../material/VMeshStandardMaterial.ts';
 import * as THREE from '../VTHREE.ts';
 import { getVKTX2Loader } from './VKTX2Loader.ts';
-import VTextureLoader from './VTextureLoader.ts';
-import { lightMapAtom, setAtomValue } from '../atoms.ts';
 
 export default class VGLTFLoader extends GLTFLoader {
   disposableURL: string[] = [];
@@ -25,7 +21,6 @@ export default class VGLTFLoader extends GLTFLoader {
     for (const url of this.disposableURL) {
       URL.revokeObjectURL(url);
     }
-    GainmapLoader.dispose();
   }
 
   static gl: THREE.WebGLRenderer;
@@ -294,45 +289,6 @@ function getLightmap(object: THREE.Object3D, lightMapSet: Set<string>) {
 
       if (textures.length > 0) {
         textures.forEach(texture => lightMapSet.add(texture));
-      }
-    }
-  }
-}
-
-async function getGainmap(object: THREE.Object3D, gl?: THREE.WebGLRenderer) {
-  if ((object as THREE.Mesh).isMesh) {
-    const mesh = object as THREE.Mesh;
-    const mat = mesh.material as THREE.MeshStandardMaterial;
-    if (mat) {
-      const cacheKey = (mat.vUserData.gainMap as string | undefined)?.replace(
-        '.exr',
-        '.jpg',
-      );
-      if (cacheKey) {
-        const jpg = (
-          await Promise.all([
-            get(cacheKey),
-            get(cacheKey.replace('.exr', '.jpg')),
-          ])
-        ).filter(Boolean);
-
-        const imageUrl =
-          jpg.length > 0
-            ? (jpg[0] as File)
-            : cacheKey.startsWith('http')
-              ? cacheKey
-              : encodeURI(ENV.base + cacheKey);
-
-        return VTextureLoader.load(imageUrl, { gl, flipY: true }).then(
-          texture => {
-            mat.lightMap = texture;
-
-            if (mat.vUserData.gainMapIntensity !== undefined) {
-              mat.lightMapIntensity = mat.vUserData.gainMapIntensity;
-            }
-            mat.needsUpdate = true;
-          },
-        );
       }
     }
   }

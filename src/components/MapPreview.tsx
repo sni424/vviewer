@@ -441,15 +441,6 @@ const MultiProbeSelector = ({
         );
       })}
 
-      <div className="w-full">
-        <button
-          onClick={() => {
-            setProbeSelections([...probeSelections, SELECTING_PROBE]);
-          }}
-        >
-          + 추가
-        </button>
-      </div>
     </>
   );
 };

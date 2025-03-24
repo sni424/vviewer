@@ -493,3 +493,23 @@ export async function fileToJson<T>(file: File): Promise<T> {
     reader.readAsText(file);
   });
 }
+
+export const recompile = () => {
+  const t = threes();
+  if (!t) {
+    return;
+  }
+
+  const { gl, scene, camera } = t;
+  return gl.compile(scene, camera,);
+};
+
+export const recompileAsync = async () => {
+  const t = threes();
+  if (!t) {
+    return;
+  }
+
+  const { gl, scene, camera } = t;
+  return gl.compileAsync(scene, camera);
+}
