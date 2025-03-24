@@ -2,7 +2,7 @@ import VMaterial from "./material/VMaterial";
 import type ReflectionProbe from "./ReflectionProbe";
 import { THREE } from "./VTHREE";
 
-// credits for the box-projecting shader code go to codercat (https://codercat.tk)
+let _probeVersion = 0;
 
 type Shader = THREE.WebGLProgramParametersWithUniforms;
 
@@ -489,7 +489,7 @@ function useMultiProbe(shader:
         delete shader.uniforms![key];
       })
     }
-    shader.customProgramCacheKey = undefined;
+    // shader.customProgramCacheKey = shader.onBeforeCompile;
   }
 
   // vertex shader
@@ -797,23 +797,40 @@ export async function applyMultiProbe(mat: VMaterial, probes: ReflectionProbe[],
     defines.V_ENV_MAP_WALL = 1;
   }
 
+  const probeVersionKey = "PROBE_VERSION" + ++_probeVersion;
+
+
   mat.defines = {
     ...mat.defines,
     ...defines
   }
 
-  const createCacheKey = (mat: VMaterial, defines: any, uniforms: any): string => {
-    let retval: string = "";
-    retval += mat.name;
-    retval += probes.map(p => p.getName()).join(",");
-    retval += defines.WALL_COUNT ?? -1;
+  for (const key in Object.keys(mat.defines)) {
+    if (key.includes("PROBE_VERSION")) {
+      delete mat.defines[key];
+      break;
+    }
+  }
+  mat.defines[probeVersionKey] = "";
 
-    return retval;
+  const createCacheKey = (mat: VMaterial, defines: any, uniforms: any): string => {
+    let retval: string[] = [];
+    retval.push(mat.name);
+    retval.push(probes.map(p => p.getName()).join(","));
+    retval.push("" + (defines.PROBE_COUNT ?? -1));
+    retval.push("" + (defines.WALL_COUNT ?? -1));
+
+    return retval.join(",");
   }
 
+  const customCacheKey = createCacheKey(mat, defines, uniforms);
+  mat.customProgramCacheKey = () => {
+    return customCacheKey;
+  };
   mat.onBeforeCompile = (shader: Shader) => {
     // mat.defaultOnbeforCompile?.(shader);
-    shader.customProgramCacheKey = createCacheKey(mat, defines, uniforms);
+    shader.customProgramCacheKey = customCacheKey;
+
     useMultiProbe(shader, {
       uniforms,
       defines,
