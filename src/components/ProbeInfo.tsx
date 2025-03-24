@@ -22,6 +22,7 @@ import {
   threes,
   uploadJson,
 } from '../scripts/atomUtils.ts';
+import VMaterial from '../scripts/material/VMaterial.ts';
 import ReflectionProbe, {
   ReflectionProbeJSON,
   ReflectionProbeResolutions,
@@ -35,7 +36,6 @@ import {
 } from '../scripts/utils.ts';
 import { THREE } from '../scripts/VTHREE.ts';
 import './probe.css';
-import VMaterial from '../scripts/material/VMaterial.ts';
 
 const uploadProbes = async () => {
   const probes = getAtomValue(ProbeAtom);
@@ -905,7 +905,7 @@ const DocumentElementContainer = ({ probe }: { probe: ReflectionProbe }) => {
       if (canvasRef.current) {
         canvasRef.current
           .getContext('2d')
-          ?.drawImage(probe.getCanvas(), 0, 0, 60, 60);
+          ?.drawImage(probe.getCanvas()!, 0, 0, 60, 60);
       }
     });
 
@@ -920,7 +920,7 @@ const DocumentElementContainer = ({ probe }: { probe: ReflectionProbe }) => {
       canvasRef.current.height = 60;
       canvasRef.current
         .getContext('2d')
-        ?.drawImage(probe.getCanvas(), 0, 0, 60, 60);
+        ?.drawImage(probe.getCanvas()!, 0, 0, 60, 60);
     }
   }, [probe]);
 
@@ -952,7 +952,7 @@ const ModalCanvasContainer = ({ probe }: { probe: ReflectionProbe }) => {
       canvasRef.current.height = maxHeight;
       canvasRef.current
         .getContext('2d')
-        ?.drawImage(probe.getCanvas(), 0, 0, maxWidth, maxHeight);
+        ?.drawImage(probe.getCanvas()!, 0, 0, maxWidth, maxHeight);
     }
   }, [probe]);
 

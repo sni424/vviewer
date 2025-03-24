@@ -1,5 +1,7 @@
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import React, { useEffect, useState } from 'react';
+import { ColorPicker, ColorService, useColor } from 'react-color-palette';
+import 'react-color-palette/css';
 import { AOMAP_INTENSITY_MAX, LIGHTMAP_INTENSITY_MAX } from '../Constants';
 import {
   materialSelectedAtom,
@@ -11,9 +13,6 @@ import VMaterial from '../scripts/material/VMaterial.ts';
 import { loadHDRTexture, loadPNGAsENV } from '../scripts/utils';
 import { THREE } from '../scripts/VTHREE';
 import MapPreview, { MapPreviewProps } from './MapPreview';
-import { HexColorPicker } from 'react-colorful';
-import { ColorPicker, ColorService, useColor } from 'react-color-palette';
-import 'react-color-palette/css';
 
 interface MapInfoProps extends MapPreviewProps {
   materialRange?: {

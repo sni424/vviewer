@@ -624,10 +624,10 @@ const TextureMappingChanger = ({ texture }: { texture: THREE.Texture }) => {
     <>
       <select
         value={mapping}
-        onChange={e => setMapping(Number(e.target.value))}
+        onChange={e => setMapping(Number(e.target.value) as any)}
       >
         {Object.keys(mappings).map(m => (
-          <option value={mappings[m]}>{m}</option>
+          <option value={(mappings as any)[m]}>{m}</option>
         ))}
       </select>
       <input

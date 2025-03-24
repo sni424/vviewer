@@ -343,7 +343,7 @@ const CameraPanel = () => {
 
                     // 카메라의 회전값 적용
                     camera.quaternion.copy(quaternion);
-                    camera.fov = 75;
+                    (camera as THREE.PerspectiveCamera).fov = 75;
                     camera.near = 0.1;
                   } else {
                     threeExports.set(state => {
