@@ -103,7 +103,7 @@ class VMeshStandardMaterial
     const ctor = this.constructor as new (
       params?: THREE.MeshStandardMaterialParameters,
     ) => this;
-    return new ctor(this);
+    return new ctor(this as THREE.MeshStandardMaterialParameters);
   }
 
   set dissolveOrigin(dissolveOrigin: THREE.Vector3) {

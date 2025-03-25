@@ -3,9 +3,9 @@ import VMaterial from './VMaterial.ts';
 import * as VMaterialUtils from './VMaterialUtils.ts';
 
 class VMeshBasicMaterial extends THREE.MeshBasicMaterial implements VMaterial {
-  private _shader: THREE.WebGLProgramParametersWithUniforms;
-  private envMapPosition: THREE.Vector3 = new THREE.Vector3();
-  private envMapSize: THREE.Vector3 = new THREE.Vector3();
+  _shader: THREE.WebGLProgramParametersWithUniforms;
+  envMapPosition: THREE.Vector3 = new THREE.Vector3();
+  envMapSize: THREE.Vector3 = new THREE.Vector3();
   dissolveMaxDist: number = 0;
   _dissolveOrigin: THREE.Vector3 = new THREE.Vector3();
   dissolveDirection: boolean = false;
@@ -87,8 +87,10 @@ class VMeshBasicMaterial extends THREE.MeshBasicMaterial implements VMaterial {
   }
 
   clone(): this {
-    // TODO Clone 시 shader 안담기는 문제 해결해야함.
-    return new VMeshBasicMaterial(this);
+    const ctor = this.constructor as new (
+      params?: THREE.MeshBasicMaterialParameters,
+    ) => this;
+    return new ctor(this as THREE.MeshBasicMaterialParameters);
   }
 
   set dissolveOrigin(dissolveOrigin: THREE.Vector3) {

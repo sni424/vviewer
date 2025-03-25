@@ -6,9 +6,9 @@ export default class VMeshPhysicalMaterial
   extends THREE.MeshPhysicalMaterial
   implements VMaterial
 {
-  private _shader: THREE.WebGLProgramParametersWithUniforms;
-  private envMapPosition: THREE.Vector3 = new THREE.Vector3();
-  private envMapSize: THREE.Vector3 = new THREE.Vector3();
+  _shader: THREE.WebGLProgramParametersWithUniforms;
+  envMapPosition: THREE.Vector3 = new THREE.Vector3();
+  envMapSize: THREE.Vector3 = new THREE.Vector3();
 
   dissolveMaxDist: number = 0;
   _dissolveOrigin: THREE.Vector3 = new THREE.Vector3();
@@ -84,8 +84,10 @@ export default class VMeshPhysicalMaterial
   }
 
   clone(): this {
-    // TODO Clone 시 shader 안담기는 문제 해결해야함.
-    return new VMeshPhysicalMaterial(this);
+    const ctor = this.constructor as new (
+      params?: THREE.MeshPhysicalMaterialParameters,
+    ) => this;
+    return new ctor(this as THREE.MeshPhysicalMaterialParameters);
   }
 
   set dissolveOrigin(dissolveOrigin: THREE.Vector3) {
