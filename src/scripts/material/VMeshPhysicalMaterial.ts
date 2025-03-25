@@ -15,6 +15,8 @@ export default class VMeshPhysicalMaterial
   dissolveDirection: boolean = false;
   dissolveProgress: number = 0;
 
+  lightMapToChange: THREE.Texture | null = null;
+
   constructor(parameters?: THREE.MeshPhysicalMaterialParameters) {
     super(parameters);
     this.useProgressiveAlpha = true;
@@ -36,6 +38,10 @@ export default class VMeshPhysicalMaterial
         this.envMapPosition,
         this.envMapSize,
       );
+      VMaterialUtils.addLightMapChangeTransition(
+        shader,
+        this.lightMapToChange
+      )
 
       this.shader = shader;
       this.needsUpdate = true;

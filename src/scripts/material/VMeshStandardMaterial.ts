@@ -17,6 +17,8 @@ class VMeshStandardMaterial
   dissolveDirection: boolean = false;
   dissolveProgress: number = 0;
 
+  lightMapToChange: THREE.Texture | null = null;
+
   defaultOnBeforeCompile: ShaderPatch;
 
   constructor(parameters?: THREE.MeshStandardMaterialParameters) {
@@ -44,6 +46,11 @@ class VMeshStandardMaterial
         this.envMapPosition,
         this.envMapSize,
       );
+
+      VMaterialUtils.addLightMapChangeTransition(
+        shader,
+        this.lightMapToChange
+      )
 
       this._shader = shader;
       this.needsUpdate = true;

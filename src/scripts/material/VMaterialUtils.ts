@@ -1,6 +1,10 @@
 import { THREE } from '../VTHREE.ts';
 import { VShaderLib } from './VMaterialConstants.ts';
-import { Simulate } from 'react-dom/test-utils';
+
+function addLightMapChangeTransition(shader: Shader, lightMapToChange: THREE.Texture | null) {
+  // TODO LightMap Switch transition
+}
+
 
 type Shader = THREE.WebGLProgramParametersWithUniforms;
 
@@ -118,4 +122,5 @@ export {
   adjustLightMapFragments,
   adjustProjectedEnv,
   addBoxProjectedEnv,
+  addLightMapChangeTransition
 };

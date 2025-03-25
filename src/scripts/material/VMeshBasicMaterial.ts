@@ -11,6 +11,8 @@ class VMeshBasicMaterial extends THREE.MeshBasicMaterial implements VMaterial {
   dissolveDirection: boolean = false;
   dissolveProgress: number = 0;
 
+  lightMapToChange: THREE.Texture | null = null;
+
   constructor(parameters?: THREE.MeshBasicMaterialParameters) {
     super(parameters);
 
@@ -41,6 +43,10 @@ class VMeshBasicMaterial extends THREE.MeshBasicMaterial implements VMaterial {
         this.envMapPosition,
         this.envMapSize,
       );
+      VMaterialUtils.addLightMapChangeTransition(
+        shader,
+        this.lightMapToChange
+      )
 
       this.shader = shader;
       this.needsUpdate = true;
