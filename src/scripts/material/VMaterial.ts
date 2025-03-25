@@ -9,6 +9,8 @@ export default interface VMaterial extends THREE.MeshStandardMaterial {
 
   clone(): this;
 
+  copy(source: VMaterial): this;
+
   setUniformByValue(key: string, value: any): void;
 
   setUniform(key: string, uniform: THREE.Uniform): void;

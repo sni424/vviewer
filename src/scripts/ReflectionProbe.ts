@@ -103,6 +103,7 @@ export default class ReflectionProbe {
   private customRenderedTime: number | null = null;
   private updatedFrame: number | null = null;
   isActive: boolean = true;
+  renderedTexture: THREE.Texture | null = null;
 
   // TODO 추후 개발
   // private modes: Modes = 'box';
@@ -159,7 +160,7 @@ export default class ReflectionProbe {
     // Create Sphere Mesh
     const sphereMesh = createProbeSphere();
     sphereMesh.scale.set(1 / this.size.x, 1 / this.size.y, 1 / this.size.z);
-    sphereMesh.material.envMap = this.getTexture();
+    sphereMesh.material.envMap = this.renderTarget.texture;
     sphereMesh.vUserData.probe = this;
 
     const boxMesh = createMeshFromBox(this.box, this.serializedId);
@@ -605,7 +606,7 @@ export default class ReflectionProbe {
     document.dispatchEvent(new CustomEvent('probe-rendered', { detail: {} }));
     // console.log('probe Rendered : ' + this.serializedId);
     this.renderedTime = new Date().getTime();
-
+    this.renderedTexture = this.generateTexture();
     this.scene.traverse(o => {
       ((o as THREE.Mesh).material as THREE.MeshStandardMaterial)?.updateMultiProbeTexture?.();
     })
@@ -628,6 +629,18 @@ export default class ReflectionProbe {
       console.log('giving CustomTexture');
       return this.customTexture;
     }
+    if (!this.renderedTexture) {
+      this.renderCamera(true);
+    }
+
+    if (!this.renderedTexture) {
+      throw new Error('renderedTexture from PMREMGenerator is null');
+    }
+
+    return this.renderedTexture;
+  }
+
+  generateTexture() {
     const cubeTexture = this.renderTarget.texture;
     const texture = this.pmremGenerator.fromCubemap(cubeTexture).texture;
     texture.vUserData.mimeType = 'probe-captured-image';

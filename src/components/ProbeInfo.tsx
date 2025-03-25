@@ -36,6 +36,8 @@ import {
 } from '../scripts/utils.ts';
 import { THREE } from '../scripts/VTHREE.ts';
 import './probe.css';
+import { ProbeTypes } from '../types.ts';
+import { applyMultiProbe } from '../scripts/probeUtils.ts';
 
 const uploadProbes = async () => {
   const probes = getAtomValue(ProbeAtom);
@@ -98,19 +100,20 @@ const ProbeInfo = () => {
 
       probes.forEach(probe => {
         probe.addToScene(true);
+        // 250325 프로브 적용 정보 불러오기로 적용 시키기 위해 아래 코드 주석 처리 - 지우 => 적용하는 방식 변경
         // const texture = probe.getTexture(true);
-        const texture = probe.getRenderTargetTexture();
-        scene.traverse(node => {
-          if (node instanceof THREE.Mesh) {
-            const n = node as THREE.Mesh;
-            const material = n.material as VMaterial;
-            if (material.vUserData.probeId === probe.getId()) {
-              material.envMap = texture;
-              material.updateEnvUniforms(probe.getCenter(), probe.getSize());
-              material.needsUpdate = true;
-            }
-          }
-        });
+        // const texture = probe.getRenderTargetTexture();
+        // scene.traverse(node => {
+        //   if (node instanceof THREE.Mesh) {
+        //     const n = node as THREE.Mesh;
+        //     const material = n.material as VMaterial;
+        //     if (material.vUserData.probeId === probe.getId()) {
+        //       material.envMap = texture;
+        //       material.updateEnvUniforms(probe.getCenter(), probe.getSize());
+        //       material.needsUpdate = true;
+        //     }
+        //   }
+        // });
       });
 
       setAtomValue(ProbeAtom, probes);
@@ -203,16 +206,42 @@ const ProbeInfo = () => {
   }
 
   function showProbeAppliedMaterials() {
-    const probeMap = new Map<string, string>();
+    const probeMap = new Map<
+      string,
+      {
+        probeIds?: string[];
+        probeType?: ProbeTypes;
+      }
+    >();
     scene.traverse(o => {
       if (o.type === 'Mesh') {
         const mat = (o as THREE.Mesh).material as VMaterial;
-        if (mat.vUserData.probeId) {
-          probeMap.set(mat.name, mat.vUserData.probeId);
+        const probeType = mat.vUserData.probeType;
+        let obj: {
+          probeIds?: string[];
+          probeType?: ProbeTypes;
+        } | null = null;
+        if (probeType) {
+          obj = { probeType };
+          if (probeType === 'single') {
+            obj.probeIds = [mat.vUserData.probeId].filter(s => s !== undefined);
+          } else {
+            obj.probeIds = mat.vUserData.probeIds;
+          }
+        } else if (mat.vUserData.probeId) {
+          obj = {
+            probeType: 'single',
+            probeIds: [mat.vUserData.probeId],
+          };
+        }
+
+        if (obj) {
+          probeMap.set(mat.name, obj);
         }
       }
     });
     const object = Object.fromEntries(probeMap);
+    console.log(object);
     uploadJson('probe_apply.json', object)
       .then(res => res.json())
       .then(res => {
@@ -230,27 +259,50 @@ const ProbeInfo = () => {
 
   function callProbeApplyInfo() {
     loadProbeApplyInfos()
-      .then((applyInfo: { [key: string]: string }) => {
-        const materialNames = Object.keys(applyInfo);
-        const matMap = new Map<string, VMaterial>();
-        scene.traverse(o => {
-          if (o.type === 'Mesh') {
-            const mat = (o as THREE.Mesh).material as VMaterial;
-            if (materialNames.includes(mat.name) && !matMap.has(mat.name)) {
-              mat.vUserData.probeId = applyInfo[mat.name];
-              matMap.set(mat.name, mat);
+      .then(
+        (applyInfo: {
+          [key: string]: {
+            probeIds: string[];
+            probeType: ProbeTypes;
+          };
+        }) => {
+          const materialNames = Object.keys(applyInfo);
+          const matMap = new Map<string, VMaterial>();
+          scene.traverse(o => {
+            if (o.type === 'Mesh') {
+              const mat = (o as THREE.Mesh).material as VMaterial;
+              if (materialNames.includes(mat.name) && !matMap.has(mat.name)) {
+                const info = applyInfo[mat.name];
+                mat.vUserData.probeType = info.probeType;
+                mat.vUserData.probeIds = info.probeIds;
+                matMap.set(mat.name, mat);
+              }
             }
-          }
-        });
+          });
 
-        const materials = Array.from(matMap.values());
-        materials.forEach(material => {
-          const probeId = material.vUserData.probeId!!;
-          const probe = probes.find(probe => probe.getId() === probeId);
-          if (probe) {
-            applyProbeOnMaterial(material, probe);
-          }
-        });
+          const materials = Array.from(matMap.values());
+          materials.forEach(material => {
+            const probeIds = material.vUserData.probeIds!!;
+            const probeType = material.vUserData.probeType!!;
+            const probesToApply = probes.filter(probe =>
+              probeIds.includes(probe.getId()),
+            );
+            if (probesToApply.length > 0) {
+              if (probeType === 'single') {
+                applyProbeOnMaterial(material, probesToApply[0]);
+              } else {
+                applyMultiProbe(material, probesToApply);
+              }
+            }
+          });
+        },
+      )
+      .then(() => {
+        for (let i = 0; i < 3; i++) {
+          probes.forEach(probe => {
+            probe.renderCamera(true);
+          });
+        }
       })
       .catch(err => {
         console.error(err);

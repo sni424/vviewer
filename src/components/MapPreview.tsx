@@ -351,7 +351,7 @@ const prepareWalls = (wallInfo: WallCreateOption) => {
   return retval;
 };
 
-const applyMultiProbeOnMaterial = async (
+const applyMultiProbeOnMaterial = (
   material: VMaterial,
   probes: ReflectionProbe[],
   probeIds: string[],

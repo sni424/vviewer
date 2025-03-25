@@ -368,7 +368,9 @@ const OptionPreview = ({
         timeLine.play(0);
       });
 
-      processAfter();
+      setTimeout(() => {
+        processAfter();
+      }, animationDuration)
     }
   }
 

@@ -759,7 +759,7 @@ function generateCubeUVSize(imageHeight: number) {
 
 }
 
-export async function applyMultiProbe(mat: VMaterial, probes: ReflectionProbe[], walls?: {
+export function applyMultiProbe(mat: VMaterial, probes: ReflectionProbe[], walls?: {
   start: THREE.Vector3;
   end: THREE.Vector3;
   probeId: string;

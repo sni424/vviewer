@@ -1564,7 +1564,7 @@ export function changeMeshLightMapWithTransition(
       },
       onUpdate() {
         const progress = this.targets()[0].t;
-        const shader = cloned.vUserData.shader;
+        const shader = cloned.shader;
         if (shader) {
           shader.uniforms.progress.value = progress;
           cloned.needsUpdate = true;
@@ -1585,8 +1585,8 @@ export function applyProbeOnMaterial(
   material: VMaterial,
   probe: ReflectionProbe,
 ) {
-  material.updateEnvUniforms(probe.getCenter(), probe.getSize());
   material.envMap = probe.getRenderTargetTexture();
+  material.updateEnvUniforms(probe.getCenter(), probe.getSize());
   material.vUserData.probeId = probe.getId();
   material.needsUpdate = true;
 }

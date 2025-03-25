@@ -6,10 +6,11 @@ type ShaderPatch = THREE.MeshStandardMaterial['onBeforeCompile'];
 
 class VMeshStandardMaterial
   extends THREE.MeshStandardMaterial
-  implements VMaterial {
-  private _shader!: THREE.WebGLProgramParametersWithUniforms;
-  private envMapPosition: THREE.Vector3 = new THREE.Vector3();
-  private envMapSize: THREE.Vector3 = new THREE.Vector3();
+  implements VMaterial
+{
+  _shader!: THREE.WebGLProgramParametersWithUniforms;
+  envMapPosition: THREE.Vector3 = new THREE.Vector3();
+  envMapSize: THREE.Vector3 = new THREE.Vector3();
 
   dissolveMaxDist: number = 0;
   _dissolveOrigin: THREE.Vector3 = new THREE.Vector3();
@@ -22,7 +23,10 @@ class VMeshStandardMaterial
     super(parameters);
     this.useProgressiveAlpha = true;
     // Add CustomShaders on Material
-    const defaultCompilePatch = (shader: THREE.THREE.WebGLProgramParametersWithUniforms, renderer: THREE.WebGLRenderer) => {
+    const defaultCompilePatch = (
+      shader: THREE.THREE.WebGLProgramParametersWithUniforms,
+      renderer: THREE.WebGLRenderer,
+    ) => {
       THREE.MeshStandardMaterial.prototype.onBeforeCompile(shader, renderer);
 
       // VERTEX
@@ -96,7 +100,10 @@ class VMeshStandardMaterial
   }
 
   clone(): this {
-    return new VMeshStandardMaterial(this as any) as this;
+    const ctor = this.constructor as new (
+      params?: THREE.MeshStandardMaterialParameters,
+    ) => this;
+    return new ctor(this);
   }
 
   set dissolveOrigin(dissolveOrigin: THREE.Vector3) {

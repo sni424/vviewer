@@ -581,7 +581,7 @@ export const moveToPointAtom = atom<{
 export const lightMapAtom = atom<{
   [key: string]: {
     texture: THREE.Texture;
-    image: Blob;
+    image?: Blob;
   };
 }>({});
 

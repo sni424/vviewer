@@ -200,50 +200,50 @@ export async function createLightmapCache(
 ) {
   const obj = Object.fromEntries(lmMap);
 
-  const geo = new THREE.PlaneGeometry(2, 2);
-  const mat = new THREE.MeshBasicMaterial();
-  const plane = new THREE.Mesh(geo, mat);
-  const scene = new THREE.Scene();
-  const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 10);
-  camera.position.z = 1;
-  scene.add(plane);
+  // const geo = new THREE.PlaneGeometry(2, 2);
+  // const mat = new THREE.MeshBasicMaterial();
+  // const plane = new THREE.Mesh(geo, mat);
+  // const scene = new THREE.Scene();
+  // const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 10);
+  // camera.position.z = 1;
+  // scene.add(plane);
 
   const toLightMapObj: {
     [key: string]: {
-      image: Blob;
+      image?: Blob;
       texture: THREE.Texture;
     };
   } = {};
 
-  const ps = Object.keys(obj).map(async (key: string) => {
+  const ps = Object.keys(obj).map((key: string) => {
+    // const ps = Object.keys(obj).map(async (key: string) => {
     const t = obj[key] as THREE.CompressedTexture;
-
-    // before Render
-    t.channel = 0;
-    mat.map = t;
-    newGL.setSize(t.image.width, t.image.height);
-    newGL.render(scene, camera);
-
-    // after Render
-    t.channel = 1;
-    const glCanvas = newGL.domElement;
-    const blob = (await new Promise(resolve =>
-      // @ts-ignore
-      glCanvas.toBlob(resolve),
-    )) as Blob;
+    //
+    // // before Render
+    // t.channel = 0;
+    // mat.map = t;
+    // newGL.setSize(t.image.width, t.image.height);
+    // newGL.render(scene, camera);
+    //
+    // // after Render
+    // t.channel = 1;
+    // const glCanvas = newGL.domElement;
+    // const blob = (await new Promise(resolve =>
+    //   // @ts-ignore
+    //   glCanvas.toBlob(resolve),
+    // )) as Blob;
 
     toLightMapObj[key] = {
-      image: blob,
       texture: t,
     };
   });
 
-  await Promise.all(ps);
+  // await Promise.all(ps);
   console.log(ps.length + '개의 라이트맵 캐시 생성 완료');
-
-  newGL.dispose();
-  mat.dispose();
-  geo.dispose();
+  //
+  // newGL.dispose();
+  // mat.dispose();
+  // geo.dispose();
 
   return toLightMapObj;
 }
