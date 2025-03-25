@@ -215,7 +215,8 @@ const ProbeInfo = () => {
     >();
     scene.traverse(o => {
       if (o.type === 'Mesh') {
-        const mat = (o as THREE.Mesh).material as VMaterial;
+        const mesh = o as THREE.Mesh;
+        const mat = mesh.material as VMaterial;
         const probeType = mat.vUserData.probeType;
         let obj: {
           probeIds?: string[];
@@ -236,7 +237,7 @@ const ProbeInfo = () => {
         }
 
         if (obj) {
-          probeMap.set(mat.name, obj);
+          probeMap.set(mesh.name, obj);
         }
       }
     });
@@ -266,21 +267,22 @@ const ProbeInfo = () => {
             probeType: ProbeTypes;
           };
         }) => {
-          const materialNames = Object.keys(applyInfo);
-          const matMap = new Map<string, VMaterial>();
+          console.log(applyInfo);
+          const meshNames = Object.keys(applyInfo);
+          const materials: VMaterial[] = [];
           scene.traverse(o => {
             if (o.type === 'Mesh') {
-              const mat = (o as THREE.Mesh).material as VMaterial;
-              if (materialNames.includes(mat.name) && !matMap.has(mat.name)) {
-                const info = applyInfo[mat.name];
+              const mesh = o as THREE.Mesh;
+              const mat = mesh.material as VMaterial;
+              if (meshNames.includes(mesh.name)) {
+                const info = applyInfo[mesh.name];
                 mat.vUserData.probeType = info.probeType;
                 mat.vUserData.probeIds = info.probeIds;
-                matMap.set(mat.name, mat);
+                materials.push(mat);
               }
             }
           });
 
-          const materials = Array.from(matMap.values());
           materials.forEach(material => {
             const probeIds = material.vUserData.probeIds!!;
             const probeType = material.vUserData.probeType!!;
