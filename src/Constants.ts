@@ -1,4 +1,5 @@
 import { ToneMappingMode } from 'postprocessing';
+import { View } from './types';
 
 export const EnvirontmentPresets = [
   'apartment',
@@ -43,6 +44,7 @@ export enum Layer {
   ReflectionBox = 13,
   Room = 14,
   Hotspot = 15,
+  Wall = 16,
 }
 
 export const AOMAP_INTENSITY_MAX = 2 as const;
@@ -61,14 +63,17 @@ export const roomColorString = (index: number) => {
   return '#' + roomColor(index).toString(16).padStart(6, '0');
 };
 
-const base: string = import.meta.env.VITE_MODELS_URL as string;
+const base: string = import.meta.env.VITE_MODELS_CLOUDFRONT_URL as string;
+const s3Base: string = import.meta.env.VITE_MODELS_URL as string;
 export const ENV = {
   base,
+  s3Base,
   latest: base + 'latest.glb',
-  latestHash: base + 'latest-hash',
-  fileList: base + 'uploads.json',
-  baseHash: base + 'base-hash',
-  dpHash: base + 'dp-hash',
+  latestMobile: base + 'mobile/latest_mobile.glb',
+  latestHash: s3Base + 'latest-hash',
+  fileList: s3Base + 'uploads.json',
+  baseHash: s3Base + 'base-hash',
+  dpHash: s3Base + 'dp-hash',
   model_base: base + 'model_base.glb',
   model_dp: base + 'model_dp.glb',
   lut: base.replace('models/', '') + 'static/lut',
@@ -99,3 +104,70 @@ export const hotspotImages = {
   oven: hotspotImage('oven')!,
   ventilator: hotspotImage('ventilator')!,
 };
+
+export const CameraDistance = 300 as const;
+export const DefaultCameraPositions: {
+  [key in View]: {
+    position: [number, number, number];
+    zoom: number;
+    up: [number, number, number];
+  };
+} = {
+  [View.Shared]: {
+    position: [CameraDistance, CameraDistance, CameraDistance],
+    zoom: 10,
+    up: [0, 1, 0],
+  },
+  [View.Main]: {
+    position: [CameraDistance, CameraDistance, CameraDistance],
+    zoom: 10,
+    up: [0, 1, 0],
+  },
+  [View.Top]: {
+    position: [0, CameraDistance, 0],
+    zoom: 10,
+    up: [0, 0, -1],
+  },
+
+  [View.Front]: {
+    position: [0, 0, CameraDistance],
+    zoom: 10,
+    up: [0, 1, 0],
+  },
+
+  [View.Right]: {
+    position: [CameraDistance, 0, 0],
+    zoom: 10,
+    up: [0, 1, 0],
+  },
+
+  [View.Left]: {
+    position: [-CameraDistance, 0, 0],
+    zoom: 10,
+    up: [0, 1, 0],
+  },
+
+  [View.Back]: {
+    position: [0, 0, -CameraDistance],
+    zoom: 10,
+    up: [0, 1, 0],
+  },
+
+  [View.Bottom]: {
+    position: [0, -CameraDistance, 0],
+    zoom: 10,
+    up: [0, 0, 1],
+  },
+} as const;
+
+
+export const ViewName: { [key in View]: string } = {
+  [View.Shared]: 'Shared',
+  [View.Main]: 'Main',
+  [View.Top]: 'Top',
+  [View.Front]: 'Front',
+  [View.Right]: 'Right',
+  [View.Back]: 'Back',
+  [View.Left]: 'Left',
+  [View.Bottom]: 'Bottom',
+} as const;

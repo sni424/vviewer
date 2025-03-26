@@ -1,13 +1,15 @@
 import { useAtomValue, useSetAtom } from 'jotai';
 import React, { useState } from 'react';
-import { __UNDEFINED__ } from '../Constants';
+import { Walls } from '../types';
 import {
   MapDst,
   ModelSource,
+  setAtomValue,
   sourceAtom,
   threeExportsAtom,
-  useModal,
-} from '../scripts/atoms';
+  wallOptionAtom,
+} from './atoms';
+import { fileToJson, verifyWalls, wallsToWallOption } from './atomUtils';
 import { readDirectory, splitExtension } from './utils';
 
 const parse = (models: File[], maps: File[], mapDst: MapDst) => {
@@ -38,93 +40,6 @@ const parse = (models: File[], maps: File[], mapDst: MapDst) => {
     return retval;
   });
   return fileUrls;
-};
-
-const MapSelectorModal = ({
-  closeModal,
-  models,
-  maps,
-}: {
-  closeModal?: Function;
-  models: File[];
-  maps: File[];
-}) => {
-  const setSourceUrls = useSetAtom(sourceAtom);
-  const [target, setTarget] = useState<MapDst | typeof __UNDEFINED__>(
-    '__UNDEFINED__',
-  );
-
-  const uniqueMaps = () => {
-    // 같은 이름의 exr, png, jpg가 존재할 때 우선순위 : exr > png > jpg
-    const exrs = maps.filter(file => file.name.toLowerCase().endsWith('.exr'));
-    const pngs = maps
-      .filter(file => file.name.toLowerCase().endsWith('.png'))
-      .filter(png => {
-        return !exrs.some(
-          exr =>
-            splitExtension(exr.name).name === splitExtension(png.name).name ||
-            splitExtension(exr.name).name.split('_Bake')[0] ===
-              splitExtension(png.name).name ||
-            splitExtension(exr.name).name ===
-              splitExtension(png.name).name.split('_Bake')[0],
-        );
-      });
-    const jpgs = maps
-      .filter(file => file.name.toLowerCase().endsWith('.jpg'))
-      .filter(jpg => {
-        return (
-          !exrs.some(
-            exr =>
-              splitExtension(exr.name).name === splitExtension(jpg.name).name ||
-              splitExtension(exr.name).name.split('_Bake')[0] ===
-                splitExtension(jpg.name).name ||
-              splitExtension(exr.name).name ===
-                splitExtension(jpg.name).name.split('_Bake')[0],
-          ) ||
-          !pngs.some(
-            png =>
-              splitExtension(png.name).name === splitExtension(jpg.name).name ||
-              splitExtension(png.name).name.split('_Bake')[0] ===
-                splitExtension(jpg.name).name ||
-              splitExtension(png.name).name ===
-                splitExtension(jpg.name).name.split('_Bake')[0],
-          )
-        );
-      });
-
-    return [...exrs, ...pngs, ...jpgs];
-  };
-  maps = uniqueMaps();
-
-  return (
-    <div
-      className="w-80 h-80 bg-white rounded-md flex flex-col items-center justify-center gap-3"
-      onClick={e => {
-        e.stopPropagation();
-      }}
-    >
-      <button
-        className="text-lg p-2"
-        onClick={() => {
-          const sources = parse(models, maps, 'gainmap');
-          setSourceUrls(sources);
-          closeModal?.();
-        }}
-      >
-        게인맵
-      </button>
-      <button
-        className="text-lg p-2"
-        onClick={() => {
-          const sources = parse(models, maps, 'lightmap');
-          setSourceUrls(sources);
-          closeModal?.();
-        }}
-      >
-        라이트맵
-      </button>
-    </div>
-  );
 };
 
 const parseDroppedFiles = async (
@@ -168,7 +83,6 @@ const useModelDragAndDrop = () => {
   const [isDragging, setIsDragging] = useState(false);
   const setSourceUrls = useSetAtom(sourceAtom);
   const threeExports = useAtomValue(threeExportsAtom);
-  const { openModal, closeModal } = useModal();
 
   const handleDragOver = (event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault();
@@ -184,15 +98,37 @@ const useModelDragAndDrop = () => {
     setIsDragging(false);
 
     if (event.dataTransfer.items && event.dataTransfer.items.length > 0) {
-      const extensions = ['.gltf', '.glb', '.png', '.jpg', '.exr', '.ktx'];
+      const extensions = [
+        '.gltf',
+        '.glb',
+        '.png',
+        '.jpg',
+        '.exr',
+        '.ktx',
+        '.json',
+      ];
       parseDroppedFiles(event, extensions)
-        .then(filteredFiles => {
+        .then(async filteredFiles => {
           if (filteredFiles.length === 0) {
             alert(`다음 파일들만 가능 : ${extensions.join(', ')}`);
             return;
           }
 
-          // 1. gainmap부터 확인 - 같은 이름의 glb, json, jpg(jgpeg) 확인
+          const wallFile = filteredFiles.find(
+            file => file.name === 'walls.json',
+          );
+          if (wallFile) {
+            const walls = (await fileToJson(wallFile)) as Walls;
+            if (verifyWalls(walls)) {
+              const wallCreateOption = wallsToWallOption(walls);
+              setAtomValue(wallOptionAtom, wallCreateOption);
+            } else {
+              alert('walls.json 파일이 잘못되었습니다.');
+            }
+            return;
+          }
+
+          // 1. 같은 이름의 glb, json, jpg(jgpeg) 확인
           const gltfs = filteredFiles.filter(
             file =>
               file.name.toLowerCase().endsWith('.gltf') ||

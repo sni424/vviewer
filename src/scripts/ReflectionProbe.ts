@@ -6,6 +6,7 @@ import * as THREE from './VTHREE.ts';
 import { uploadPngToKtx } from './atomUtils.ts';
 import { getVKTX2Loader } from './loaders/VKTX2Loader.ts';
 import VTextureLoader from './loaders/VTextureLoader.ts';
+import VMeshStandardMaterial from './material/VMeshStandardMaterial.ts';
 import { splitExtension } from './utils.ts';
 
 const DEFAULT_RESOLUTION: ReflectionProbeResolutions = 1024;
@@ -46,6 +47,7 @@ export type ReflectionProbeJSON = {
   textureUrls?: string[] | null;
   useCustomTexture: boolean;
   renderedTime?: number | null;
+  isActive?: boolean;
 };
 
 export interface ProbeMeshEventMap extends Object3DEventMap {
@@ -70,7 +72,7 @@ export default class ReflectionProbe {
   // RENDER MEASURES
   private center: THREE.Vector3 = DEFAULT_POSITION;
   private size: THREE.Vector3 = DEFAULT_SIZE;
-  private readonly box: THREE.Box3;
+  private box: THREE.Box3;
   // RESULT OBJECTS
   private readonly boxMesh: THREE.Mesh<
     THREE.BufferGeometry,
@@ -99,8 +101,9 @@ export default class ReflectionProbe {
   private useCustomTexture: boolean = false;
   private renderedTime: number | null = null;
   private customRenderedTime: number | null = null;
-  private animationFrame: number | null = null;
   private updatedFrame: number | null = null;
+  isActive: boolean = true;
+  renderedTexture: THREE.Texture | null = null;
 
   // TODO 추후 개발
   // private modes: Modes = 'box';
@@ -157,7 +160,7 @@ export default class ReflectionProbe {
     // Create Sphere Mesh
     const sphereMesh = createProbeSphere();
     sphereMesh.scale.set(1 / this.size.x, 1 / this.size.y, 1 / this.size.z);
-    sphereMesh.material.envMap = this.getTexture();
+    sphereMesh.material.envMap = this.renderTarget.texture;
     sphereMesh.vUserData.probe = this;
 
     const boxMesh = createMeshFromBox(this.box, this.serializedId);
@@ -402,13 +405,17 @@ export default class ReflectionProbe {
     return this.serializedId;
   }
 
+  getBox() {
+    return this.box;
+  }
+
   setFromObject(object: THREE.Object3D) {
     if (object) {
       this.setCenterAndSize(getMeshCenterPosition(object), getMeshSize(object));
     } else {
       throw new Error(
         'ReflectionProbe.setFromObject() : Object Must Be Not null or undefined : ' +
-          object,
+        object,
       );
     }
   }
@@ -592,8 +599,6 @@ export default class ReflectionProbe {
     // Apply envMap to ReflectionProbe Sphere
     (this.reflectionProbeSphere.material as THREE.MeshStandardMaterial).envMap =
       this.renderTarget.texture;
-    // Apply Box In Box projected Meshes
-    // this.updateObjectChildrenEnv();
     // After Render => set No Render Objects Visible
     this.onAfterCubeCameraUpdate(beforeUpdateObject);
     // Canvas Update
@@ -601,6 +606,10 @@ export default class ReflectionProbe {
     document.dispatchEvent(new CustomEvent('probe-rendered', { detail: {} }));
     // console.log('probe Rendered : ' + this.serializedId);
     this.renderedTime = new Date().getTime();
+    this.renderedTexture = this.generateTexture();
+    this.scene.traverse(o => {
+      ((o as THREE.Mesh).material as THREE.MeshStandardMaterial)?.updateMultiProbeTexture?.();
+    })
   }
 
   updateCameraPosition(
@@ -608,6 +617,7 @@ export default class ReflectionProbe {
     renderCamera?: boolean,
   ) {
     this.cubeCamera.position.copy(position);
+    this.updateBox(true);
     if (this.autoUpdate || renderCamera) {
       this.renderCamera(true);
     }
@@ -619,6 +629,18 @@ export default class ReflectionProbe {
       console.log('giving CustomTexture');
       return this.customTexture;
     }
+    if (!this.renderedTexture) {
+      this.renderCamera(true);
+    }
+
+    if (!this.renderedTexture) {
+      throw new Error('renderedTexture from PMREMGenerator is null');
+    }
+
+    return this.renderedTexture;
+  }
+
+  generateTexture() {
     const cubeTexture = this.renderTarget.texture;
     const texture = this.pmremGenerator.fromCubemap(cubeTexture).texture;
     texture.vUserData.mimeType = 'probe-captured-image';
@@ -735,6 +757,7 @@ export default class ReflectionProbe {
       textureUrls: this.textureUrls,
       useCustomTexture: this.useCustomTexture,
       renderedTime: this.renderedTime,
+      isActive: this.isActive,
     };
   }
 
@@ -744,6 +767,7 @@ export default class ReflectionProbe {
     this.serializedId = json.id;
     this.center = new THREE.Vector3().fromArray(json.center);
     this.size = new THREE.Vector3().fromArray(json.size);
+    this.box = new THREE.Box3().setFromCenterAndSize(this.center, this.size);
     this.resolution = json.resolution;
     if (json.renderedTime) {
       this.customRenderedTime = json.renderedTime;
@@ -765,15 +789,16 @@ export default class ReflectionProbe {
       format: THREE.RGBAFormat,
       generateMipmaps: false,
     });
+
     const cubeCamera = new THREE.CubeCamera(
       this.cubeCameraNear,
       this.cubeCameraFar,
       this.renderTarget,
     );
-    cubeCamera.layers.enableAll();
-    CUBE_CAMERA_FILTER_LAYERS.forEach(layer => {
-      cubeCamera.layers.disable(layer);
-    });
+    // cubeCamera.layers.enableAll();
+    // CUBE_CAMERA_FILTER_LAYERS.forEach(layer => {
+    //   cubeCamera.layers.disable(layer);
+    // });
     this.cubeCamera = cubeCamera;
 
     this.boxMesh.vUserData.probeId = json.id;
@@ -785,6 +810,10 @@ export default class ReflectionProbe {
 
     if (json.showControls !== undefined) {
       this.showControls = json.showControls;
+    }
+
+    if (json.isActive !== undefined) {
+      this.isActive = json.isActive;
     }
 
     this.boxMesh.visible = this.showProbe;
@@ -890,6 +919,10 @@ export default class ReflectionProbe {
 
   getCenter() {
     return this.center;
+  }
+
+  getSize() {
+    return this.size;
   }
 
   async setTextureFromFile(url: string | File) {
@@ -1067,7 +1100,7 @@ function getMeshSize(mesh: THREE.Object3D) {
 function createProbeSphere() {
   const geometry = new THREE.SphereGeometry(0.5, 32, 16);
 
-  const material = new THREE.MeshStandardMaterial({
+  const material = new VMeshStandardMaterial({
     color: 0xffffff,
     metalness: 1,
     roughness: 0,
@@ -1110,9 +1143,8 @@ const boxProjectDefinitions = /*glsl */ `
 
         float correction = min( min( rbminmax.x, rbminmax.y ), rbminmax.z );
         vec3 boxIntersection = vWorldPosition + nDir * correction;
-        vec3 retval = boxIntersection - cubePos;
         
-        return isCustomTexture ? vec3(-retval.x, retval.y, retval.z) : retval;
+        return boxIntersection - cubePos;
     }
 #endif
 `;

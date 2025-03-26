@@ -74,9 +74,83 @@ float progressiveAlpha(float progress, float x, float xMin, float xMax) {
 void main()
 `;
 
+const ditheringReplace = `
+  #ifdef USE_PROGRESSIVE_ALPHA
+    float distance = distance(wp.xyz, dissolveOrigin );
+    float falloffRange = dissolveMaxDist * 0.01;
+    float distToBorder = (dissolveMaxDist + falloffRange) * abs(progress);
+    float falloff = step( distToBorder-falloffRange, distance );
+    float glowFalloff;
+    if ( dissolveDirection ) {
+      falloff = 1.0 - falloff;
+      glowFalloff = 1.0 - smoothstep(distToBorder-falloffRange*5.0, distToBorder+falloffRange*4.0, distance);
+    }
+    else {
+      glowFalloff = max(smoothstep(distToBorder-falloffRange, distToBorder, distance), 0.0001);
+    }
+    gl_FragColor.a *= falloff;
+    vec3 glowColor = vec3(1.0);
+    gl_FragColor.rgb = mix(glowColor, gl_FragColor.rgb, glowFalloff);
+  #endif
+`;
+
+const worldPosReplace = /* glsl */ `
+#if defined( USE_ENVMAP ) || defined( DISTANCE ) || defined ( USE_SHADOWMAP )
+    vec4 worldPosition = modelMatrix * vec4( transformed, 1.0 );
+
+    #ifdef BOX_PROJECTED_ENV_MAP
+        vWorldPosition = worldPosition.xyz;
+    #endif
+#endif
+`;
+
+const boxProjectDefinitions = /*glsl */ `
+#ifdef BOX_PROJECTED_ENV_MAP
+    uniform vec3 envMapSize;
+    uniform vec3 envMapPosition;
+    
+    vec3 parallaxCorrectNormal( vec3 v, vec3 cubeSize, vec3 cubePos ) {
+        vec3 nDir = normalize( v );
+
+        vec3 rbmax = ( .5 * cubeSize + cubePos - wp ) / nDir;
+        vec3 rbmin = ( -.5 * cubeSize + cubePos - wp ) / nDir;
+
+        vec3 rbminmax;
+
+        rbminmax.x = ( nDir.x > 0. ) ? rbmax.x : rbmin.x;
+        rbminmax.y = ( nDir.y > 0. ) ? rbmax.y : rbmin.y;
+        rbminmax.z = ( nDir.z > 0. ) ? rbmax.z : rbmin.z;
+
+        float correction = min( min( rbminmax.x, rbminmax.y ), rbminmax.z );
+        vec3 boxIntersection = wp + nDir * correction;
+        
+        return boxIntersection - cubePos;
+    }
+#endif
+`;
+
+// will be inserted after "vec3 worldNormal = inverseTransformDirection( normal, viewMatrix );"
+const getIBLIrradiance_patch = /* glsl */ `
+#ifdef BOX_PROJECTED_ENV_MAP
+    worldNormal = parallaxCorrectNormal( worldNormal, envMapSize, envMapPosition );
+#endif
+`;
+
+// will be inserted after "reflectVec = inverseTransformDirection( reflectVec, viewMatrix );"
+const getIBLRadiance_patch = /* glsl */ `
+#ifdef BOX_PROJECTED_ENV_MAP
+    reflectVec = parallaxCorrectNormal( reflectVec, envMapSize, envMapPosition );
+#endif
+`;
+
 export const VShaderLib = {
   V_LIGHTS_FRAGMENT_MAPS: V_LIGHTS_FRAGMENT_MAPS,
   V_LIGHTMAP_PARS_FRAGMENT: V_LIGHTMAP_PARS_FRAGMENT,
   V_VERTEX_WORLD_POSITION: VERTEX_WORLD_POSITION,
   V_ALPHA_MIX_FUNC: addAlphaMixFunc,
+  V_USE_PROGRESSIVE_ALPHA: ditheringReplace,
+  V_WORLD_POS_REPLACE: worldPosReplace,
+  V_BOX_PROJECTED_ENV: boxProjectDefinitions,
+  getIBLIrradiance_patch,
+  getIBLRadiance_patch,
 };

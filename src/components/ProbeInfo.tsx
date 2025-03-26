@@ -16,12 +16,19 @@ import {
   useModal,
   useToast,
 } from '../scripts/atoms.ts';
-import { loadProbes, threes, uploadJson } from '../scripts/atomUtils.ts';
+import {
+  loadProbeApplyInfos,
+  loadProbes,
+  threes,
+  uploadJson,
+} from '../scripts/atomUtils.ts';
+import VMaterial from '../scripts/material/VMaterial.ts';
 import ReflectionProbe, {
   ReflectionProbeJSON,
   ReflectionProbeResolutions,
 } from '../scripts/ReflectionProbe.ts';
 import {
+  applyProbeOnMaterial,
   listFilesFromDrop,
   loadHDRTexture,
   loadPNGAsENV,
@@ -29,6 +36,8 @@ import {
 } from '../scripts/utils.ts';
 import { THREE } from '../scripts/VTHREE.ts';
 import './probe.css';
+import { ProbeTypes } from '../types.ts';
+import { applyMultiProbe } from '../scripts/probeUtils.ts';
 
 const uploadProbes = async () => {
   const probes = getAtomValue(ProbeAtom);
@@ -90,21 +99,21 @@ const ProbeInfo = () => {
       );
 
       probes.forEach(probe => {
-        probe.setAutoUpdate(true);
         probe.addToScene(true);
+        // 250325 프로브 적용 정보 불러오기로 적용 시키기 위해 아래 코드 주석 처리 - 지우 => 적용하는 방식 변경
         // const texture = probe.getTexture(true);
-        const texture = probe.getRenderTargetTexture();
-        scene.traverse(node => {
-          if (node instanceof THREE.Mesh) {
-            const n = node as THREE.Mesh;
-            const material = n.material as THREE.MeshStandardMaterial;
-            if (material.vUserData.probeId === probe.getId()) {
-              material.envMap = texture;
-              material.onBeforeCompile = probe.materialOnBeforeCompileFunc();
-              material.needsUpdate = true;
-            }
-          }
-        });
+        // const texture = probe.getRenderTargetTexture();
+        // scene.traverse(node => {
+        //   if (node instanceof THREE.Mesh) {
+        //     const n = node as THREE.Mesh;
+        //     const material = n.material as VMaterial;
+        //     if (material.vUserData.probeId === probe.getId()) {
+        //       material.envMap = texture;
+        //       material.updateEnvUniforms(probe.getCenter(), probe.getSize());
+        //       material.needsUpdate = true;
+        //     }
+        //   }
+        // });
       });
 
       setAtomValue(ProbeAtom, probes);
@@ -196,6 +205,113 @@ const ProbeInfo = () => {
     });
   }
 
+  function showProbeAppliedMaterials() {
+    const probeMap = new Map<
+      string,
+      {
+        probeIds?: string[];
+        probeType?: ProbeTypes;
+      }
+    >();
+    scene.traverse(o => {
+      if (o.type === 'Mesh') {
+        const mesh = o as THREE.Mesh;
+        const mat = mesh.material as VMaterial;
+        const probeType = mat.vUserData.probeType;
+        let obj: {
+          probeIds?: string[];
+          probeType?: ProbeTypes;
+        } | null = null;
+        if (probeType) {
+          obj = { probeType };
+          if (probeType === 'single') {
+            obj.probeIds = [mat.vUserData.probeId].filter(s => s !== undefined);
+          } else {
+            obj.probeIds = mat.vUserData.probeIds;
+          }
+        } else if (mat.vUserData.probeId) {
+          obj = {
+            probeType: 'single',
+            probeIds: [mat.vUserData.probeId],
+          };
+        }
+
+        if (obj) {
+          probeMap.set(mesh.name, obj);
+        }
+      }
+    });
+    const object = Object.fromEntries(probeMap);
+    console.log(object);
+    uploadJson('probe_apply.json', object)
+      .then(res => res.json())
+      .then(res => {
+        if (res?.success === true) {
+          alert('업로드 완료');
+        } else {
+          throw res;
+        }
+      })
+      .catch(err => {
+        console.log(err);
+        alert('업로드 실패');
+      });
+  }
+
+  function callProbeApplyInfo() {
+    loadProbeApplyInfos()
+      .then(
+        (applyInfo: {
+          [key: string]: {
+            probeIds: string[];
+            probeType: ProbeTypes;
+          };
+        }) => {
+          console.log(applyInfo);
+          const meshNames = Object.keys(applyInfo);
+          const materials: VMaterial[] = [];
+          scene.traverse(o => {
+            if (o.type === 'Mesh') {
+              const mesh = o as THREE.Mesh;
+              const mat = mesh.material as VMaterial;
+              if (meshNames.includes(mesh.name)) {
+                const info = applyInfo[mesh.name];
+                mat.vUserData.probeType = info.probeType;
+                mat.vUserData.probeIds = info.probeIds;
+                materials.push(mat);
+              }
+            }
+          });
+
+          materials.forEach(material => {
+            const probeIds = material.vUserData.probeIds!!;
+            const probeType = material.vUserData.probeType!!;
+            const probesToApply = probes.filter(probe =>
+              probeIds.includes(probe.getId()),
+            );
+            if (probesToApply.length > 0) {
+              if (probeType === 'single') {
+                applyProbeOnMaterial(material, probesToApply[0]);
+              } else {
+                applyMultiProbe(material, probesToApply);
+              }
+            }
+          });
+        },
+      )
+      .then(() => {
+        for (let i = 0; i < 3; i++) {
+          probes.forEach(probe => {
+            probe.renderCamera(true);
+          });
+        }
+      })
+      .catch(err => {
+        console.error(err);
+        alert('불러오지 못했습니다.');
+      });
+  }
+
   return (
     <div
       style={{
@@ -263,6 +379,15 @@ const ProbeInfo = () => {
             >
               해상도 일괄 변경
             </button>
+            <button
+              onClick={showProbeAppliedMaterials}
+              style={{ fontSize: 10 }}
+            >
+              프로브 적용 정보 업데이트
+            </button>
+            <button onClick={callProbeApplyInfo}>
+              프로브 적용 정보 가져오기
+            </button>
           </>
         )}
       </section>
@@ -295,6 +420,7 @@ export const ProbeComponent = ({ probe }: { probe: ReflectionProbe }) => {
   const [imageData, setImageData] = useState<ImageData | null>(null);
   const { openModal, closeModal } = useModal();
   const [isCustom, setIsCustom] = useState<boolean>(probe.isUseCustomTexture());
+  const [isActive, setIsActive] = useState<boolean>(probe.isActive);
 
   useEffect(() => {
     const nRC = nameRef.current;
@@ -517,6 +643,25 @@ export const ProbeComponent = ({ probe }: { probe: ReflectionProbe }) => {
             checked={!isCustom}
             onChange={e => {
               setIsCustom(!e.target.checked);
+            }}
+          />
+        </div>
+        <div
+          style={{
+            fontSize: 11,
+            display: 'flex',
+            alignItems: 'center',
+            marginLeft: 4,
+          }}
+        >
+          <span>프로브 활성화</span>
+          <input
+            className="on-off"
+            type="checkbox"
+            checked={isActive}
+            onChange={e => {
+              setIsActive(e.target.checked);
+              probe.isActive = e.target.checked;
             }}
           />
         </div>
@@ -814,7 +959,7 @@ const DocumentElementContainer = ({ probe }: { probe: ReflectionProbe }) => {
       if (canvasRef.current) {
         canvasRef.current
           .getContext('2d')
-          ?.drawImage(probe.getCanvas(), 0, 0, 60, 60);
+          ?.drawImage(probe.getCanvas()!, 0, 0, 60, 60);
       }
     });
 
@@ -829,7 +974,7 @@ const DocumentElementContainer = ({ probe }: { probe: ReflectionProbe }) => {
       canvasRef.current.height = 60;
       canvasRef.current
         .getContext('2d')
-        ?.drawImage(probe.getCanvas(), 0, 0, 60, 60);
+        ?.drawImage(probe.getCanvas()!, 0, 0, 60, 60);
     }
   }, [probe]);
 
@@ -861,7 +1006,7 @@ const ModalCanvasContainer = ({ probe }: { probe: ReflectionProbe }) => {
       canvasRef.current.height = maxHeight;
       canvasRef.current
         .getContext('2d')
-        ?.drawImage(probe.getCanvas(), 0, 0, maxWidth, maxHeight);
+        ?.drawImage(probe.getCanvas()!, 0, 0, maxWidth, maxHeight);
     }
   }, [probe]);
 
@@ -1073,10 +1218,6 @@ const ProbeCustomTextureUploader = ({ probe }: { probe: ReflectionProbe }) => {
   );
   const [texture, setTexture] = useState<THREE.Texture | null>(null);
   const { closeModal } = useModal();
-
-  useEffect(() => {
-    console.log(texture);
-  }, [texture]);
 
   function getBody() {
     let component;

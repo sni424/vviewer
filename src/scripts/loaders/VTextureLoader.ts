@@ -1,6 +1,5 @@
 import { set } from 'idb-keyval';
 import { EXRLoader } from 'three/examples/jsm/Addons.js';
-import GainmapLoader from '../GainmapLoader.ts';
 import { THREE } from '../VTHREE.ts';
 import { getVKTX2Loader } from './VKTX2Loader.ts';
 
@@ -12,7 +11,7 @@ export type VTextureLoaderOption = {
   channel: number;
   forceExrToJpg?: boolean; // exr로 입력되어도 jpg로 변환해서 처리
   gl?: THREE.WebGLRenderer;
-  as?: 'gainmap' | 'texture';
+  as?: 'texture';
   saveAs?: string;
 };
 
@@ -30,7 +29,6 @@ export default class VTextureLoader {
     for (const disposable of disposables) {
       disposable.dispose?.();
     }
-    GainmapLoader.dispose();
   }
 
   static load = VTextureLoader.loadAsync;
@@ -41,10 +39,6 @@ export default class VTextureLoader {
     const inputOption = { ...defaultOption, ...option } as VTextureLoaderOption;
     const isFile = typeof fileOrUrl !== 'string';
     const url = isFile ? URL.createObjectURL(fileOrUrl) : fileOrUrl;
-    let gainMap = isFile ? fileOrUrl.name : fileOrUrl;
-    if (option?.forceExrToJpg) {
-      gainMap = gainMap.replace('.exr', '.jpg');
-    }
 
     if (isFile) {
       dispoableUrls.push(url);
@@ -52,21 +46,7 @@ export default class VTextureLoader {
 
     // 1. 옵션이 강제된 경우
     if (inputOption.as) {
-      if (inputOption.as === 'gainmap') {
-        if (!inputOption.gl) {
-          console.error('게인맵의 경우 옵션에 gl 필요');
-          throw new Error('게인맵의 경우 옵션에 gl 필요');
-        }
-        return GainmapLoader.load(fileOrUrl, { gl: inputOption.gl }).then(
-          texture => {
-            texture.vUserData.gainMap = gainMap;
-            texture.flipY = inputOption.flipY;
-            texture.channel = inputOption.channel;
-            texture.needsUpdate = true;
-            return texture;
-          },
-        );
-      } else if (inputOption.as === 'texture') {
+      if (inputOption.as === 'texture') {
         let loader: THREE.Loader;
         const isExr =
           (isFile && fileOrUrl.name.toLowerCase().endsWith('.exr')) ||
@@ -135,7 +115,6 @@ export default class VTextureLoader {
     const isJpg = isFile
       ? fileOrUrl.type === 'image/jpeg'
       : fork.endsWith('.jpg') || fork.endsWith('.jpeg');
-    const isGainmap = isHdr || isJpg;
     const isPng = fork.endsWith('.png');
 
     const detectFlipY = option?.flipY === undefined;
@@ -144,24 +123,7 @@ export default class VTextureLoader {
       flipY = isHdr ? true : isJpg ? false : isPng ? false : true;
     }
 
-    // console.log(flipY);
-
-    if (isGainmap) {
-      if (!inputOption.gl) {
-        // jpg인 경우 게인맵으로 강제
-        console.error('게인맵의 경우 옵션에 gl 필요');
-        throw new Error('게인맵의 경우 옵션에 gl 필요');
-      }
-      return GainmapLoader.load(fileOrUrl, {
-        gl: inputOption.gl,
-      }).then(texture => {
-        texture.vUserData.gainMap = gainMap;
-        texture.flipY = flipY;
-        texture.channel = inputOption.channel;
-        texture.needsUpdate = true;
-        return texture;
-      });
-    } else if (isPng) {
+    if (isPng) {
       return new THREE.TextureLoader().loadAsync(url).then(texture => {
         texture.flipY = flipY;
         texture.channel = inputOption.channel;

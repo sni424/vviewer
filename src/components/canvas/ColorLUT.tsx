@@ -64,6 +64,5 @@ const ColorLUTEffect = ({
 export const {
   Component: ColorLUT,
   Controller: ColorLUTOption,
-  atom: globalColorLUTAtom,
   // @ts-ignore
 } = OptionBuilder('색상 LUT', <ColorLUTEffect />, defaultColorLUTOption);

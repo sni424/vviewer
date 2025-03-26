@@ -2,7 +2,7 @@ import { RootState } from '@react-three/fiber';
 import * as THREE from 'three';
 import { TransformControlsPlane } from 'three/examples/jsm/Addons.js';
 import { Layer } from '../Constants';
-import { Matrix4Array, MoveActionOptions, View } from '../types';
+import { Matrix4Array, MoveActionOptions, ProbeTypes, View } from '../types';
 import type ReflectionProbe from './ReflectionProbe';
 import type { ReflectionProbeJSON } from './ReflectionProbe';
 import { moveTo, resetGL } from './utils';
@@ -11,14 +11,15 @@ export { LightmapImageContrast } from '../scripts/postprocess/MaterialShader';
 
 export interface ThreeUserData {
   ignoreRaycast?: boolean;
-  gainMap?: string; // filename
-  gainMapIntensity?: number;
   lightMap?: string; // filename
   lightMapIntensity?: number;
   probe?: ReflectionProbe;
   isTransformControls?: boolean;
   isProbeMesh?: boolean;
   probeId?: string;
+  probeIds?: string[];
+  probeType?: ProbeTypes;
+  envMap?: THREE.MeshStandardMaterial["envMap"];
   isEmissiveLightMap?: boolean;
   probeMeshType?: 'box' | 'controls' | 'sphere' | 'helper' | 'plane-controls';
   probeControlDirection?: PlaneControlDirections;
@@ -37,6 +38,8 @@ export interface ThreeUserData {
   isCustomEnvMap?: boolean;
   originalOpacity?: number;
   shader?: WebGLProgramParametersWithUniforms;
+  isMobile?: boolean;
+  originalColor?: string;
 }
 
 declare module 'three' {
@@ -82,6 +85,12 @@ declare module 'three' {
     get vUserData(): ThreeUserData;
 
     set vUserData(userData: Partial<ThreeUserData>);
+
+    updateMultiProbeTexture?(): void;
+  }
+
+  interface WebGLProgramParametersWithUniforms {
+    cleanup?: () => void;
   }
 
   interface Texture {
@@ -378,32 +387,44 @@ THREE.Object3D.prototype.setUserData = function (
   return this;
 };
 
-Object.defineProperty(THREE.Object3D.prototype, 'vUserData', {
-  get: function () {
-    return this.userData as ThreeUserData;
-  },
-  set: function (userData: Partial<ThreeUserData>) {
-    this.userData = { ...this.userData, ...userData };
-  },
-});
+if (
+  !Object.prototype.hasOwnProperty.call(THREE.Object3D.prototype, 'vUserData')
+) {
+  Object.defineProperty(THREE.Object3D.prototype, 'vUserData', {
+    get: function () {
+      return this.userData as ThreeUserData;
+    },
+    set: function (userData: Partial<ThreeUserData>) {
+      this.userData = { ...this.userData, ...userData };
+    },
+  });
+}
 
-Object.defineProperty(THREE.Texture.prototype, 'vUserData', {
-  get: function () {
-    return this.userData as ThreeUserData;
-  },
-  set: function (userData: Partial<ThreeUserData>) {
-    this.userData = { ...this.userData, ...userData };
-  },
-});
+if (
+  !Object.prototype.hasOwnProperty.call(THREE.Texture.prototype, 'vUserData')
+) {
+  Object.defineProperty(THREE.Texture.prototype, 'vUserData', {
+    get: function () {
+      return this.userData as ThreeUserData;
+    },
+    set: function (userData: Partial<ThreeUserData>) {
+      this.userData = { ...this.userData, ...userData };
+    },
+  });
+}
 
-Object.defineProperty(THREE.Material.prototype, 'vUserData', {
-  get: function () {
-    return this.userData as ThreeUserData;
-  },
-  set: function (userData: Partial<ThreeUserData>) {
-    this.userData = { ...this.userData, ...userData };
-  },
-});
+if (
+  !Object.prototype.hasOwnProperty.call(THREE.Material.prototype, 'vUserData')
+) {
+  Object.defineProperty(THREE.Material.prototype, 'vUserData', {
+    get: function () {
+      return this.userData as ThreeUserData;
+    },
+    set: function (userData: Partial<ThreeUserData>) {
+      this.userData = { ...this.userData, ...userData };
+    },
+  });
+}
 
 THREE.Matrix4.prototype.decomposed = function () {
   const position = new THREE.Vector3();
@@ -512,3 +533,4 @@ window.getThree = (view: View = View.Shared) => {
 import { WebGLProgramParametersWithUniforms } from 'three';
 import '../scripts/postprocess/MaterialShader';
 import { PlaneControlDirections } from './CubePlaneControls.ts';
+

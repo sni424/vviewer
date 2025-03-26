@@ -122,38 +122,11 @@ export default class VGLTFExporter extends GLTFExporter {
       });
     }
 
-    function lightMapToGainmap(obj: THREE.Object3D) {
-      const mesh = obj as THREE.Mesh;
-      if (mesh.material) {
-        console.log(mesh.name, mesh.material);
-        const mat = mesh.material as THREE.MeshStandardMaterial;
-        const clonedMat = mat.clone();
-        const lm = clonedMat.lightMap;
-        if (lm) {
-          if (lm.vUserData.gainMap) {
-            console.log('has GainMap');
-            // 기존 Material 날라가는 것 방지로 clonedMat 이용
-            clonedMat.vUserData.gainMap = lm.vUserData.gainMap;
-            clonedMat.vUserData.gainMapIntensity = mat.lightMapIntensity;
-            clonedMat.lightMap = null;
-            mesh.material = clonedMat;
-          } else if (lm.vUserData.mimeType === 'image/ktx2') {
-            // Remove Light map from ktx2
-            console.log('has KTX2 LightMap');
-            clonedMat.lightMap = null;
-            clonedMat.vUserData.lightMapIntensity = clonedMat.lightMapIntensity;
-            mesh.material = clonedMat;
-          }
-        }
-      }
-    }
-
     // TODO Traverse 합치기
     if (Array.isArray(input)) {
       const clonedArr = input.map(i => i.clone());
       for (const obj of clonedArr) {
         filterNotModelObjects(obj);
-        obj.traverseAll(lightMapToGainmap);
         // obj.traverse(lightMapToEmissive);
       }
       return clonedArr;
@@ -161,7 +134,6 @@ export default class VGLTFExporter extends GLTFExporter {
       const cloned = input.clone();
       console.log(cloned);
       filterNotModelObjects(cloned);
-      cloned.traverseAll(lightMapToGainmap);
       // cloned.traverse(lightMapToEmissive);
       return cloned;
     }

@@ -12,10 +12,10 @@ export type ModelOptionState = {
   id: string;
   stateName: string;
   expanded: boolean;
-  meshEffects: MeshEffect[];
+  meshEffects: MeshEffectJSON[];
 };
 
-export type MeshEffect = {
+export type MeshEffectJSON = {
   targetMeshProperties: {
     uuid: string;
     name: string;

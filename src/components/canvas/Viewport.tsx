@@ -1,66 +1,15 @@
 import { OrthographicCamera } from '@react-three/drei';
-import { Canvas, CanvasProps, RootState, useThree } from '@react-three/fiber';
-import React, { useEffect, useState } from 'react';
+import { Canvas, CanvasProps, useThree } from '@react-three/fiber';
+import React, { useEffect } from 'react';
 import { OrbitControls as OrbitControlsImpl } from 'three/examples/jsm/Addons.js';
+import { DefaultCameraPositions, ViewName } from '../../Constants';
 import { useViewportOption } from '../../scripts/atoms';
+import useGetThreeExports, {
+  useSetThreeExports,
+} from '../../scripts/useGetThreeExports';
 import { THREE } from '../../scripts/VTHREE';
 import { View } from '../../types';
 import Grid from './Grid';
-
-const CameraDistance = 300;
-export const DefaultCameraPositions: {
-  [key in View]: {
-    position: [number, number, number];
-    zoom: number;
-    up: [number, number, number];
-  };
-} = {
-  [View.Shared]: {
-    position: [CameraDistance, CameraDistance, CameraDistance],
-    zoom: 10,
-    up: [0, 1, 0],
-  },
-  [View.Main]: {
-    position: [CameraDistance, CameraDistance, CameraDistance],
-    zoom: 10,
-    up: [0, 1, 0],
-  },
-  [View.Top]: {
-    position: [0, CameraDistance, 0],
-    zoom: 10,
-    up: [0, 0, -1],
-  },
-
-  [View.Front]: {
-    position: [0, 0, CameraDistance],
-    zoom: 10,
-    up: [0, 1, 0],
-  },
-
-  [View.Right]: {
-    position: [CameraDistance, 0, 0],
-    zoom: 10,
-    up: [0, 1, 0],
-  },
-
-  [View.Left]: {
-    position: [-CameraDistance, 0, 0],
-    zoom: 10,
-    up: [0, 1, 0],
-  },
-
-  [View.Back]: {
-    position: [0, 0, -CameraDistance],
-    zoom: 10,
-    up: [0, 1, 0],
-  },
-
-  [View.Bottom]: {
-    position: [0, -CameraDistance, 0],
-    zoom: 10,
-    up: [0, 0, 1],
-  },
-} as const;
 
 const GridAxisMap: { [key in View]: 'xz' | 'xy' | 'yz' } = {
   [View.Top]: 'xz',
@@ -145,45 +94,6 @@ export const Viewport =
       </Canvas>
     );
   };
-
-export const useSetThreeExports = (view: View = View.Shared) => {
-  return (state: RootState) => window.setThree(view, state);
-};
-
-export const useGetThreeExports = (view: View = View.Shared) => {
-  const exists = window.getThree(view);
-  const [threeExports, setThreeExports] = useState<RootState | undefined>(
-    exists,
-  );
-
-  useEffect(() => {
-    // 없으면 있을 때까지 기다린다
-    const int = setInterval(() => {
-      const found = window.getThree(view);
-      if (found) {
-        setThreeExports(found);
-        clearInterval(int);
-      }
-    }, 50);
-
-    return () => {
-      clearInterval(int);
-    };
-  }, []);
-
-  return threeExports;
-};
-
-export const ViewName: { [key in View]: string } = {
-  [View.Shared]: 'Shared',
-  [View.Main]: 'Main',
-  [View.Top]: 'Top',
-  [View.Front]: 'Front',
-  [View.Right]: 'Right',
-  [View.Back]: 'Back',
-  [View.Left]: 'Left',
-  [View.Bottom]: 'Bottom',
-} as const;
 
 export const ViewportController =
   (view: View) =>

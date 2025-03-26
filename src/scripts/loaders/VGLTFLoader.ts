@@ -1,22 +1,18 @@
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
 // @ts-ignore
-import { get } from 'idb-keyval';
 import {
   type GLTF,
   GLTFLoader,
 } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { KTX2Loader } from 'three/examples/jsm/loaders/KTX2Loader.js';
 import { ENV, Layer } from '../../Constants.ts';
-import { lightMapAtom, setAtomValue } from '../atoms.ts';
-import GainmapLoader from '../GainmapLoader.ts';
-import { VMaterial } from '../material/VMaterial.ts';
+import VMaterial from '../material/VMaterial.ts';
 import VMeshBasicMaterial from '../material/VMeshBasicMaterial.ts';
 import VMeshPhysicalMaterial from '../material/VMeshPhysicalMaterial.ts';
 import VMeshStandardMaterial from '../material/VMeshStandardMaterial.ts';
 import * as THREE from '../VTHREE.ts';
 import { getVKTX2Loader } from './VKTX2Loader.ts';
-import VTextureLoader from './VTextureLoader.ts';
 
 export default class VGLTFLoader extends GLTFLoader {
   disposableURL: string[] = [];
@@ -25,7 +21,6 @@ export default class VGLTFLoader extends GLTFLoader {
     for (const url of this.disposableURL) {
       URL.revokeObjectURL(url);
     }
-    GainmapLoader.dispose();
   }
 
   static gl: THREE.WebGLRenderer;
@@ -81,15 +76,30 @@ export default class VGLTFLoader extends GLTFLoader {
 
       const vMaterialCache = new Map<string, VMaterial>();
 
+      // Material의 Transmission 관련 값이 Probe CubeCamera의 렌더에 버그가 있어서, 모든 transmission 관련 값 초기화
+      gltf.scene.traverseAll(o => {
+        if (o.type === 'Mesh') {
+          const mesh = o as THREE.Mesh;
+          const mat = mesh.material as THREE.MeshStandardMaterial;
+          if (mat['transmissionMap']) {
+            mat['transmissionMap'] = null;
+          }
+          if (mat['transmission']) {
+            mat['transmission'] = 0;
+          }
+        }
+      });
+
       gltf.scene.traverseAll(async (object: THREE.Object3D) => {
         object.layers.enable(Layer.Model);
         if (object.type === 'Mesh') {
           const mesh = object as THREE.Mesh;
-          const mat = mesh.material as THREE.Material;
+          const mat = mesh.material as THREE.MeshBasicMaterial;
           if (object.name === '프레임') {
             mat.side = THREE.DoubleSide;
           }
           mat.vUserData.originalOpacity = mat.opacity;
+          mat.vUserData.originalColor = mat.color.getHexString();
 
           const originalMatID = mat.uuid;
 
@@ -134,12 +144,20 @@ export default class VGLTFLoader extends GLTFLoader {
           const mesh = ob as THREE.Mesh;
           const mat = mesh.material as THREE.MeshStandardMaterial;
           if (mat.vUserData.lightMap) {
-            const lmKey = getVUserDataLightMapURL(mat.vUserData.lightMap);
+            const lmKey = getVUserDataLightMapURL(
+              mat.vUserData.lightMap,
+              mat.vUserData.isMobile,
+            );
             if (lmMap.has(lmKey)) {
               const texture = lmMap.get(lmKey);
               if (texture) {
                 mat.lightMap = texture;
-                mat.lightMapIntensity = mat.userData.lightMapIntensity;
+                const lightMapIntensity = mat.vUserData.lightMapIntensity;
+                if (lightMapIntensity && lightMapIntensity > 0) {
+                  mat.lightMapIntensity = lightMapIntensity;
+                } else {
+                  mat.lightMapIntensity = 1;
+                }
                 mat.needsUpdate = true;
               } else {
                 console.warn('No Texture Found : ', lmKey);
@@ -150,10 +168,11 @@ export default class VGLTFLoader extends GLTFLoader {
       });
 
       // TODO 외부에서 isCreateLightMapCache 조정하기
-      if (isCreateLightMapCache) {
-        const toLightMapObj = await createLightmapCache(lmMap);
-        setAtomValue(lightMapAtom, toLightMapObj);
-      }
+      // if (isCreateLightMapCache) {
+      //   const gl = new THREE.WebGLRenderer();
+      //   const toLightMapObj = await createLightmapCache(lmMap, gl);
+      //   setAtomValue(lightMapAtom, toLightMapObj);
+      // }
 
       onLoad(gltf);
     }
@@ -175,54 +194,56 @@ export default class VGLTFLoader extends GLTFLoader {
   }
 }
 
-export async function createLightmapCache(lmMap: Map<string, THREE.Texture>) {
+export async function createLightmapCache(
+  lmMap: Map<string, THREE.Texture>,
+  newGL: THREE.WebGLRenderer,
+) {
   const obj = Object.fromEntries(lmMap);
 
-  const newGL = new THREE.WebGLRenderer();
-  const geo = new THREE.PlaneGeometry(2, 2);
-  const mat = new THREE.MeshBasicMaterial();
-  const plane = new THREE.Mesh(geo, mat);
-  const scene = new THREE.Scene();
-  const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 10);
-  camera.position.z = 1;
-  scene.add(plane);
+  // const geo = new THREE.PlaneGeometry(2, 2);
+  // const mat = new THREE.MeshBasicMaterial();
+  // const plane = new THREE.Mesh(geo, mat);
+  // const scene = new THREE.Scene();
+  // const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 10);
+  // camera.position.z = 1;
+  // scene.add(plane);
 
   const toLightMapObj: {
     [key: string]: {
-      image: Blob;
+      image?: Blob;
       texture: THREE.Texture;
     };
   } = {};
 
-  const ps = Object.keys(obj).map(async (key: string) => {
+  const ps = Object.keys(obj).map((key: string) => {
+    // const ps = Object.keys(obj).map(async (key: string) => {
     const t = obj[key] as THREE.CompressedTexture;
-
-    // before Render
-    t.channel = 0;
-    mat.map = t;
-    newGL.setSize(t.image.width, t.image.height);
-    newGL.render(scene, camera);
-
-    // after Render
-    t.channel = 1;
-    const glCanvas = newGL.domElement;
-    const blob = (await new Promise(resolve =>
-      // @ts-ignore
-      glCanvas.toBlob(resolve),
-    )) as Blob;
+    //
+    // // before Render
+    // t.channel = 0;
+    // mat.map = t;
+    // newGL.setSize(t.image.width, t.image.height);
+    // newGL.render(scene, camera);
+    //
+    // // after Render
+    // t.channel = 1;
+    // const glCanvas = newGL.domElement;
+    // const blob = (await new Promise(resolve =>
+    //   // @ts-ignore
+    //   glCanvas.toBlob(resolve),
+    // )) as Blob;
 
     toLightMapObj[key] = {
-      image: blob,
       texture: t,
     };
   });
 
-  await Promise.all(ps);
+  // await Promise.all(ps);
   console.log(ps.length + '개의 라이트맵 캐시 생성 완료');
-
-  newGL.dispose();
-  mat.dispose();
-  geo.dispose();
+  //
+  // newGL.dispose();
+  // mat.dispose();
+  // geo.dispose();
 
   return toLightMapObj;
 }
@@ -253,103 +274,28 @@ function updateLightMapFromEmissive(object: THREE.Object3D) {
 function getLightmap(object: THREE.Object3D, lightMapSet: Set<string>) {
   if ((object as THREE.Mesh).isMesh) {
     const mesh = object as THREE.Mesh;
-    const mat = mesh.material as THREE.MeshStandardMaterial;
+    const mat = mesh.material as VMaterial;
     if (mat) {
-      // DP 는 항상 dpOnTextureFile, Base 는 dpOnTextureFile / dpOffTextureFile 둘 다 있거나 없음.
-      // 텍스쳐 적용 기준 =>
-      // BASE: dpOff 기준 / DP : dpOn 기준
       const textures: string[] = [];
-      const modelType = mesh.vUserData.modelType;
-      let applyKey: string | null = null;
-      if (modelType) {
-        // DP / Base 로 업로드 했다면?
-        if (modelType === 'DP') {
-          // DP 라면
-          const target = mat.vUserData.dpOnTextureFile;
-          if (target) {
-            textures.push(getVUserDataLightMapURL(target));
-            applyKey = getVUserDataLightMapURL(target);
-          } else {
-            console.warn(
-              'getLightMap() => type DP : dpOnTextureFile 없음 ! ',
-              mat,
-            );
-          }
-        } else {
-          // Base 라면
-          const offT = mat.vUserData.dpOffTextureFile;
-          const onT = mat.vUserData.dpOnTextureFile;
-
-          if (offT && onT) {
-            applyKey = getVUserDataLightMapURL(offT);
-            textures.push(
-              getVUserDataLightMapURL(offT),
-              getVUserDataLightMapURL(onT),
-            );
-          } else {
-            console.log('No LightMap with Base Model : ', mesh);
-          }
-        }
-      } else if (mat.vUserData.lightMap) {
+      if (mat.vUserData.lightMap) {
         // EXR 을 그냥 넣어서 업로드 한 경우
-        applyKey = getVUserDataLightMapURL(mat.vUserData.lightMap);
-        textures.push(getVUserDataLightMapURL(mat.vUserData.lightMap));
+        textures.push(
+          getVUserDataLightMapURL(
+            mat.vUserData.lightMap,
+            mat.vUserData.isMobile,
+          ),
+        );
       }
 
       if (textures.length > 0) {
         textures.forEach(texture => lightMapSet.add(texture));
       }
-
-      /**
-       * Texture Call 분류
-       * 1. dpOnTexture / dpOffTexture
-       * 2. dpOnTexture 및 raw LightMap
-       * -> 추후
-       * 3. Option 용 라이트맵 ?
-       * **/
     }
   }
 }
 
-async function getGainmap(object: THREE.Object3D, gl?: THREE.WebGLRenderer) {
-  if ((object as THREE.Mesh).isMesh) {
-    const mesh = object as THREE.Mesh;
-    const mat = mesh.material as THREE.MeshStandardMaterial;
-    if (mat) {
-      const cacheKey = (mat.vUserData.gainMap as string | undefined)?.replace(
-        '.exr',
-        '.jpg',
-      );
-      if (cacheKey) {
-        const jpg = (
-          await Promise.all([
-            get(cacheKey),
-            get(cacheKey.replace('.exr', '.jpg')),
-          ])
-        ).filter(Boolean);
-
-        const imageUrl =
-          jpg.length > 0
-            ? (jpg[0] as File)
-            : cacheKey.startsWith('http')
-              ? cacheKey
-              : encodeURI(ENV.base + cacheKey);
-
-        return VTextureLoader.load(imageUrl, { gl, flipY: true }).then(
-          texture => {
-            mat.lightMap = texture;
-
-            if (mat.vUserData.gainMapIntensity !== undefined) {
-              mat.lightMapIntensity = mat.vUserData.gainMapIntensity;
-            }
-            mat.needsUpdate = true;
-          },
-        );
-      }
-    }
-  }
-}
-
-function getVUserDataLightMapURL(lightMap: string) {
-  return lightMap.startsWith('http') ? lightMap : ENV.base + lightMap;
+function getVUserDataLightMapURL(lightMap: string, isMobile?: boolean) {
+  return lightMap.startsWith('http')
+    ? lightMap
+    : `${ENV.base}` + ((isMobile ? 'mobile/' : '') + lightMap);
 }

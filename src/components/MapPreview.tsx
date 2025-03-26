@@ -1,17 +1,21 @@
-import { get } from 'idb-keyval';
 import { useAtom, useAtomValue } from 'jotai';
-import React, { ChangeEvent, useEffect, useRef, useState } from 'react';
+import React, { Fragment, useEffect, useRef, useState } from 'react';
 import {
   ktxTexturePreviewCachedAtom,
   MaterialSlot,
   ProbeAtom,
   useModal,
+  wallOptionAtom,
 } from '../scripts/atoms';
+import { threes, wallOptionToWalls } from '../scripts/atomUtils.ts';
+import VMaterial from '../scripts/material/VMaterial.ts';
+import { applyMultiProbe } from '../scripts/probeUtils.ts';
 import ReflectionProbe from '../scripts/ReflectionProbe.ts';
 import { THREE } from '../scripts/VTHREE';
+import { ProbeTypes, WallCreateOption } from '../types.ts';
 
 export interface MapPreviewProps {
-  material: THREE.MeshStandardMaterial;
+  material: VMaterial;
   matKey: MaterialSlot;
   width?: number;
   height?: number;
@@ -142,28 +146,23 @@ export const FullscreenCanvas = ({ texture }: { texture: THREE.Texture }) => {
   );
 };
 
-// TODO : 이미지를 캔버스에 그린 후 <img>에 박고 있는데, img태그를 그냥 canvas로 바꾸면 바로 그릴 수 있다
 const MapPreview: React.FC<MapPreviewProps> = ({
   material,
   width,
   height,
   matKey: mapKey,
 }) => {
-  const texture = material[
-    mapKey as keyof THREE.MeshStandardMaterial
-  ] as THREE.Texture;
+  const texture = material[mapKey as keyof VMaterial] as THREE.Texture;
   const { openModal, closeModal } = useModal();
   const probes = useAtomValue(ProbeAtom);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const isGainmap = Boolean(texture?.vUserData?.gainMap);
   const isKtx = texture?.vUserData?.mimeType === 'image/ktx2';
-  const hasImage = texture && texture.image && !isGainmap;
+  const hasImage = texture && texture.image;
   const [materialPreviewCache, setMaterialPreviewCache] = useAtom(
     ktxTexturePreviewCachedAtom,
   );
   const cannotDraw =
     mapKey === 'envMap' ||
-    isGainmap ||
     texture?.vUserData?.isExr ||
     (isKtx && texture?.mipmaps?.length === 0);
 
@@ -274,24 +273,6 @@ const MapPreview: React.FC<MapPreviewProps> = ({
     };
   }, [texture]);
 
-  function onEnvMapSelectChange(event: ChangeEvent<HTMLSelectElement>) {
-    const value = event.target.value;
-    console.log(value);
-    if (value === 'none') {
-      // Unreachable
-      return;
-    }
-    if (value === 'delete') {
-      material.envMap = null;
-      material.needsUpdate = true;
-    } else {
-      const probe = probes.find(probe => probe.getId() === value);
-      if (probe) {
-        material.envMap = probe.getTexture();
-      }
-    }
-  }
-
   if (cannotDraw) {
     if (mapKey === 'envMap') {
       if (material.envMap && material.envMap.vUserData.isCustomEnvMap) {
@@ -300,7 +281,7 @@ const MapPreview: React.FC<MapPreviewProps> = ({
         return (
           <div className="my-1">
             {probes.length > 0 ? (
-              <ProbeSelector material={material} />
+              <ProbeSelector material={material}></ProbeSelector>
             ) : (
               <span>생성된 프로브가 없습니다.</span>
             )}
@@ -311,51 +292,6 @@ const MapPreview: React.FC<MapPreviewProps> = ({
       return (
         <div style={{ fontSize: 11, color: '#555' }}>
           표시불가 {isKtx ? '(KTX)' : '(HDR)'}
-          {isGainmap && texture.vUserData.gainMap ? (
-            <>
-              <br></br>
-              <div>
-                <button
-                  onClick={() => {
-                    const a = document.createElement('a');
-                    const urlOrName = texture.vUserData.gainMap as string;
-
-                    if (urlOrName.startsWith('http')) {
-                      a.href = urlOrName as string;
-                      const name = urlOrName.split('/').pop()!;
-                      a.download = name;
-                      a.click();
-                    } else {
-                      console.log(urlOrName);
-                      get(urlOrName).then((jpg: File) => {
-                        if (jpg) {
-                          const url = URL.createObjectURL(jpg);
-                          a.href = url;
-                          a.download = jpg.name;
-                          a.click();
-                        } else {
-                          const jpgCandidate = urlOrName.replace(
-                            '.exr',
-                            '.jpg',
-                          );
-                          get(jpgCandidate).then((jpg: File) => {
-                            if (jpg) {
-                              const url = URL.createObjectURL(jpg);
-                              a.href = url;
-                              a.download = jpg.name;
-                              a.click();
-                            }
-                          });
-                        }
-                      });
-                    }
-                  }}
-                >
-                  게인맵다운로드
-                </button>
-              </div>
-            </>
-          ) : null}
         </div>
       );
     } else {
@@ -392,22 +328,237 @@ const MapPreview: React.FC<MapPreviewProps> = ({
   );
 };
 
-const ProbeSelector = ({
+const prepareWalls = (wallInfo: WallCreateOption) => {
+  const retval = [] as {
+    start: THREE.Vector3;
+    end: THREE.Vector3;
+    probeId: string;
+  }[];
+  const WALLS = wallOptionToWalls(wallInfo);
+  const points = WALLS.points;
+  const targetProbes = WALLS.probes;
+  WALLS.walls.forEach(wall => {
+    const startNumber = points[wall[0]];
+    const endNumber = points[wall[1]];
+    const start = new THREE.Vector3(startNumber[0], 0, startNumber[1]);
+    const end = new THREE.Vector3(endNumber[0], 0, endNumber[1]);
+
+    const probeId = targetProbes[wall[2]];
+
+    retval.push({ start, end, probeId });
+  });
+
+  return retval;
+};
+
+const applyMultiProbeOnMaterial = (
+  material: VMaterial,
+  probes: ReflectionProbe[],
+  probeIds: string[],
+  walls?: { start: THREE.Vector3; end: THREE.Vector3; probeId: string }[],
+) => {
+  const filtered = probes.filter(p => probeIds.includes(p.getId()));
+
+  // 기존 싱글 프로브 제거
+  if (material.envMap) {
+    material.vUserData.envMap = material.envMap;
+  }
+  material.envMap = null;
+
+  applyMultiProbe(material, filtered, walls);
+  const { gl } = threes()!;
+  // console.log(gl.info.programs?.map(p => p.cacheKey));
+  material.needsUpdate = true;
+};
+
+function applySingleProbeOnMaterial(
+  material: VMaterial,
+  probe: ReflectionProbe,
+) {
+  material.envMap = probe.getRenderTargetTexture();
+  material.updateEnvUniforms(probe.getCenter(), probe.getSize());
+  material.vUserData.probeId = probe.getId();
+  material.needsUpdate = true;
+
+  const prev = material.onBeforeCompile;
+  material.onBeforeCompile = (shader, gl) => {
+    prev(shader, gl);
+    delete shader.defines!['V_ENV_MAP'];
+    shader.defines!['BOX_PROJECTED_ENV_MAP'] = 1;
+  };
+}
+
+const SELECTING_PROBE = '__SELECTING_PROBE__';
+const MultiProbeSelector = ({
   material,
+  useWall,
 }: {
-  material: THREE.MeshStandardMaterial;
+  material: VMaterial;
+  useWall: boolean;
 }) => {
+  const wallInfo = useAtomValue(wallOptionAtom); // 벽 정보가 바뀔때마다 리렌더
+
+  const probes = useAtomValue(ProbeAtom);
+  const initialProbeIds = material.vUserData.probeIds;
+  if (!initialProbeIds) {
+    throw new Error('MultiProbeSelector must have probeIds');
+  }
+
+  const [probeSelections, setProbeSelections] =
+    useState<string[]>(initialProbeIds);
+
+  useEffect(() => {
+    material.vUserData.probeIds = [...probeSelections];
+
+    if (probeSelections.length > 0) {
+      const walls = useWall ? prepareWalls(wallInfo) : undefined;
+      // console.log('applyMultiProbeOnMaterial:', walls);
+      applyMultiProbeOnMaterial(material, probes, probeSelections, walls);
+    }
+  }, [probeSelections, useWall]);
+
+  return (
+    <>
+      {probes.map(p => {
+        // checkbox
+        const checked = probeSelections.includes(p.getId());
+        const toggle = () => {
+          if (checked) {
+            setProbeSelections(probeSelections.filter(id => id !== p.getId()));
+          } else {
+            setProbeSelections([...probeSelections, p.getId()]);
+          }
+        };
+        return (
+          <div
+            className="flex items-center"
+            key={`probe-selector-${material.uuid}-${p.getId()}}`}
+          >
+            <input type="checkbox" checked={checked} onChange={toggle}></input>
+            <label onClick={toggle}>{p.getName()}</label>
+          </div>
+        );
+      })}
+    </>
+  );
+};
+
+const ProbeSelector = ({ material }: { material: VMaterial }) => {
+  const probes = useAtomValue(ProbeAtom);
+  const isMulti = Boolean(material?.vUserData.probeIds);
+  const [multiprobe, setMultiprobe] = useState<ProbeTypes>(
+    material.vUserData.probeType ?? 'single',
+  );
+  const [_, forceRerender] = useState(0);
+
+  useEffect(() => {
+    material.vUserData.probeType = multiprobe;
+
+    // 싱글프로브에서 멀티로 전환된 경우
+    if (
+      (multiprobe === 'multi' || multiprobe === 'multiWall') &&
+      typeof material.vUserData.probeId === 'string'
+    ) {
+      material.vUserData.probeIds = [material.vUserData.probeId];
+      material.vUserData.probeId = undefined;
+      // applyMultiProbeOnMaterial(material, probes, material.vUserData.probeIds);
+      forceRerender(p => p + 1);
+
+      return;
+    }
+
+    // 멀티프로브에서 싱글로 전환된 경우
+    if (
+      !multiprobe &&
+      Array.isArray(material.vUserData.probeIds) &&
+      material.vUserData.probeIds.length > 0
+    ) {
+      const probeId = material.vUserData.probeIds[0];
+      console.log('멀티프로브에서 싱글로 전환된 경우, probeId:', probeId);
+      material.vUserData.probeId = probeId;
+      material.vUserData.probeIds = undefined;
+      applySingleProbeOnMaterial(
+        material,
+        probes.find(p => p.getId() === probeId)!,
+      );
+      forceRerender(p => p + 1);
+      return;
+    }
+
+    // 싱글이 없지만 멀티를 초기화하는 경우
+    if (
+      multiprobe &&
+      !material.vUserData.probeIds &&
+      !Boolean(material.vUserData.probeId)
+    ) {
+      material.vUserData.probeIds = [];
+      forceRerender(p => p + 1);
+      return;
+    }
+  }, [multiprobe]);
+
+  if (!material) {
+    return null;
+  }
+
+  return (
+    <Fragment>
+      <input
+        type="radio"
+        name="probeType"
+        checked={multiprobe === 'single'}
+        onChange={() => setMultiprobe('single')}
+      ></input>
+      <label
+        onClick={() => {
+          setMultiprobe('single');
+        }}
+      >
+        단일
+      </label>
+      <input
+        type="radio"
+        name="probeType"
+        checked={multiprobe === 'multi'}
+        onChange={() => setMultiprobe('multi')}
+      ></input>
+      <label
+        onClick={() => {
+          setMultiprobe('multi');
+        }}
+      >
+        멀티
+      </label>
+      <input
+        type="radio"
+        name="probeType"
+        checked={multiprobe === 'multiWall'}
+        onChange={() => setMultiprobe('multiWall')}
+      ></input>
+      <label
+        onClick={() => {
+          setMultiprobe('multiWall');
+        }}
+      >
+        멀티+벽
+      </label>
+
+      {(multiprobe === 'multi' || multiprobe === 'multiWall') &&
+      Array.isArray(material?.vUserData.probeIds) ? (
+        <MultiProbeSelector
+          material={material}
+          useWall={multiprobe === 'multiWall'}
+        />
+      ) : (
+        <SingleProbeSelector material={material} />
+      )}
+    </Fragment>
+  );
+};
+
+const SingleProbeSelector = ({ material }: { material: VMaterial }) => {
   const probes = useAtomValue(ProbeAtom);
   const [value, setValue] = useState(material.vUserData.probeId ?? 'none');
-
-  function applyProbeOnMaterial(
-    material: THREE.MeshStandardMaterial,
-    probe: ReflectionProbe,
-  ) {
-    material.envMap = probe.getRenderTargetTexture();
-    material.onBeforeCompile = probe.materialOnBeforeCompileFunc();
-    material.vUserData.probeId = value;
-  }
 
   useEffect(() => {
     if (value === 'none') {
@@ -415,13 +566,15 @@ const ProbeSelector = ({
       return;
     }
     if (value === 'delete') {
-      material.envMap = null;
+      if (material.vUserData.envMap) {
+        material.envMap = material.vUserData.envMap;
+      }
       delete material.vUserData.probeId;
       material.needsUpdate = true;
     } else {
       const probe = probes.find(probe => probe.getId() === value);
       if (probe) {
-        applyProbeOnMaterial(material, probe);
+        applySingleProbeOnMaterial(material, probe);
       }
     }
   }, [value]);
@@ -432,7 +585,7 @@ const ProbeSelector = ({
       onChange={e => setValue(e.target.value)}
       value={value}
     >
-      <option selected value="none" style={{ display: 'none' }}>
+      <option defaultValue={value} value="none" style={{ display: 'none' }}>
         프로브를 선택하세요.
       </option>
       {material.envMap && <option value="delete">ENV 삭제</option>}
@@ -471,10 +624,10 @@ const TextureMappingChanger = ({ texture }: { texture: THREE.Texture }) => {
     <>
       <select
         value={mapping}
-        onChange={e => setMapping(Number(e.target.value))}
+        onChange={e => setMapping(Number(e.target.value) as any)}
       >
         {Object.keys(mappings).map(m => (
-          <option value={mappings[m]}>{m}</option>
+          <option value={(mappings as any)[m]}>{m}</option>
         ))}
       </select>
       <input

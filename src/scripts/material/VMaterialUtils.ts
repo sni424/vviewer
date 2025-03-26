@@ -1,6 +1,11 @@
 import { THREE } from '../VTHREE.ts';
 import { VShaderLib } from './VMaterialConstants.ts';
 
+function addLightMapChangeTransition(shader: Shader, lightMapToChange: THREE.Texture | null) {
+  // TODO LightMap Switch transition
+}
+
+
 type Shader = THREE.WebGLProgramParametersWithUniforms;
 
 function adjustLightMapFragments(shader: Shader) {
@@ -18,32 +23,24 @@ function adjustLightMapFragments(shader: Shader) {
   );
 }
 
-function addAlphaFunction(shader: Shader) {
-  const ditheringReplace = `
-  #include <dithering_fragment>
-  #ifdef USE_PROGRESSIVE_ALPHA
-    float distance = distance(wp.xyz, dissolveOrigin );
-    float falloffRange = dissolveMaxDist * 0.01;
-    float distToBorder = (dissolveMaxDist + falloffRange) * abs(progress);
-    float falloff = step( distToBorder-falloffRange, distance );
-    float glowFalloff;
-    if ( dissolveDirection ) {
-        falloff = 1.0 - falloff;
-        glowFalloff = 1.0 - smoothstep(distToBorder-falloffRange*5.0, distToBorder+falloffRange*4.0, distance);
-  
-    }
-    else {
-        glowFalloff = smoothstep(distToBorder-falloffRange, distToBorder, distance);
-    }
-    gl_FragColor.a *= falloff;
-    vec3 glowColor = vec3(0.31, 0.53, 0.88);
-    gl_FragColor.rgb = mix(glowColor, gl_FragColor.rgb, glowFalloff);
-  #endif
-`;
-  shader.uniforms.progress = { value: 0.0 };
-  shader.uniforms.dissolveOrigin = { value: new THREE.Vector3() };
-  shader.uniforms.dissolveMaxDist = { value: 0.0 };
-  shader.uniforms.dissolveDirection = { value: false };
+function addProgressiveAlpha(
+  shader: Shader,
+  {
+    maxDist,
+    origin,
+    dir,
+    progress,
+  }: {
+    maxDist: number;
+    origin: THREE.Vector3;
+    dir: boolean;
+    progress: number;
+  },
+) {
+  shader.uniforms.progress = { value: progress };
+  shader.uniforms.dissolveOrigin = { value: origin };
+  shader.uniforms.dissolveMaxDist = { value: maxDist };
+  shader.uniforms.dissolveDirection = { value: dir };
 
   shader.fragmentShader =
     `
@@ -54,19 +51,9 @@ function addAlphaFunction(shader: Shader) {
   ` + shader.fragmentShader;
 
   shader.fragmentShader = shader.fragmentShader.replace(
-    'void main()',
-    VShaderLib.V_ALPHA_MIX_FUNC,
-  );
-
-  shader.fragmentShader = shader.fragmentShader.replace(
     '#include <dithering_fragment>',
-    ditheringReplace,
-  );
-
-  // shader.fragmentShader = shader.fragmentShader.replace(
-  //   '#include <premultiplied_alpha_fragment>',
-  //   '',
-  // );
+    '#include <dithering_fragment>\n' + VShaderLib.V_USE_PROGRESSIVE_ALPHA,
+  ); // 마지막에 처리하도록 dithering_fragment 다음에 추가
 }
 
 function adjustProjectedEnv(shader: Shader) {
@@ -87,14 +74,53 @@ function addWorldPosition(shader: Shader) {
       wp = temp.xyz;
     `,
     );
+  }
 
+  if (shader.fragmentShader.indexOf('varying vec3 wp;') === -1) {
     shader.fragmentShader = 'varying vec3 wp;\n' + shader.fragmentShader;
   }
 }
 
+function addBoxProjectedEnv(
+  shader: Shader,
+  position: THREE.Vector3,
+  size: THREE.Vector3,
+) {
+  shader.uniforms.envMapPosition = { value: position };
+  shader.uniforms.envMapSize = { value: size };
+
+  shader.fragmentShader = shader.fragmentShader
+    .replace(
+      '#include <envmap_physical_pars_fragment>',
+      `
+      ${VShaderLib.V_BOX_PROJECTED_ENV}
+      #include <envmap_physical_pars_fragment>`,
+    )
+    .replace(
+      '#include <envmap_physical_pars_fragment>',
+      THREE.ShaderChunk.envmap_physical_pars_fragment,
+    )
+    .replace(
+      'vec3 worldNormal = inverseTransformDirection( normal, viewMatrix );',
+      `
+            vec3 worldNormal = inverseTransformDirection( normal, viewMatrix );
+            ${VShaderLib.getIBLIrradiance_patch}
+            `,
+    )
+    .replace(
+      'reflectVec = inverseTransformDirection( reflectVec, viewMatrix );',
+      `
+            reflectVec = inverseTransformDirection( reflectVec, viewMatrix );
+            ${VShaderLib.getIBLRadiance_patch}
+            `,
+    );
+}
+
 export {
-  addAlphaFunction,
+  addProgressiveAlpha,
   addWorldPosition,
   adjustLightMapFragments,
   adjustProjectedEnv,
+  addBoxProjectedEnv,
+  addLightMapChangeTransition
 };

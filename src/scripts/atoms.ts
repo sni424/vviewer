@@ -21,6 +21,7 @@ import {
   Matrix4Array,
   View,
   ViewportOption,
+  WallCreateOption
 } from '../types';
 import ReflectionProbe from './ReflectionProbe.ts';
 import { THREE } from './VTHREE';
@@ -69,10 +70,10 @@ export const createAtomCombo = <T = any>(
   initalValue?: T,
   store?: Store,
 ): [
-  WritableAtom<T, unknown[], unknown>,
-  () => T | undefined,
-  (arg: AtomArgType<T>) => void,
-] => {
+    WritableAtom<T, unknown[], unknown>,
+    () => T | undefined,
+    (arg: AtomArgType<T>) => void,
+  ] => {
   const dstStore = store ?? defaultStore;
   // @ts-ignore
   const theAtom = atom<T>(initalValue);
@@ -86,7 +87,7 @@ export const createAtomCombo = <T = any>(
 };
 
 // export type MapDst = 'lightmap' | 'emissivemap' | 'envmap'; // hdr적용은 추후 필요하면 추가
-export type MapDst = 'lightmap' | 'gainmap' | 'exr2sdr'; // exr2sdr = exr * 0.2한 이미지를 만든 후 렌더 시 * 5를 해서 렌더링
+export type MapDst = 'lightmap' | 'exr2sdr'; // exr2sdr = exr * 0.2한 이미지를 만든 후 렌더 시 * 5를 해서 렌더링
 export type ModelSource = {
   name: string;
   file: File;
@@ -113,16 +114,16 @@ export const orbitControlAtom = atom<OrbitControls>();
 export type Env = {
   select: 'none' | 'preset' | 'custom' | 'url';
   preset?:
-    | 'apartment'
-    | 'city'
-    | 'dawn'
-    | 'forest'
-    | 'lobby'
-    | 'night'
-    | 'park'
-    | 'studio'
-    | 'sunset'
-    | 'warehouse';
+  | 'apartment'
+  | 'city'
+  | 'dawn'
+  | 'forest'
+  | 'lobby'
+  | 'night'
+  | 'park'
+  | 'studio'
+  | 'sunset'
+  | 'warehouse';
   url?: string;
   intensity?: number;
   rotation?: {
@@ -176,10 +177,10 @@ export const useToast = () => {
         autoClose,
         override,
       }: { duration?: number; autoClose?: boolean; override?: boolean } = {
-        duration: 1,
-        autoClose: true,
-        override: false,
-      },
+          duration: 1,
+          autoClose: true,
+          override: false,
+        },
     ) => {
       if (toast.on && !override) {
         console.warn('Toast is Progressing, abort');
@@ -303,6 +304,10 @@ export const globalGlAtom = atom<GLProps>({
 // REFLECTION PROBES
 export const ProbeAtom = atom<ReflectionProbe[]>([]);
 export const treeScrollToAtom = atom<string | null>(null);
+export const lightMapContrastAtom = atom<{ use: boolean; value: number }>({
+  use: false,
+  value: 1,
+});
 
 export const Tabs = [
   'scene',
@@ -312,6 +317,7 @@ export const Tabs = [
   'tour',
   'hotspot',
   'option',
+  'wall',
 ] as const;
 export type Tab = (typeof Tabs)[number];
 export const panelTabAtom = atom<Tab>('scene');
@@ -489,6 +495,28 @@ export type RoomCreateOption = Room & {
 };
 export const roomAtom = atom<RoomCreateOption[]>([]);
 
+export const [wallOptionAtom,
+  getWallOptionAtom,
+  setWallOptionAtom
+] = createAtomCombo<WallCreateOption>({
+  points: [],
+  walls: [],
+  autoCreateWall: true
+});
+
+export const [wallHighlightAtom,
+  getWallHighlightAtom,
+  setWallHighlightAtom
+] = createAtomCombo<{
+  pointHighlights: string[];
+  wallHighlights: string[];
+}>({
+  pointHighlights: [],
+  wallHighlights: []
+});
+
+// export const [wallAtom, getWallAtom, setWallAtom] = createAtomCombo<Walls>();
+
 export const insideRoomAtom = atom<Room[]>([]);
 
 export type Hotspot = {
@@ -517,6 +545,8 @@ export type tourInfoType = {
 };
 
 export const tourAtom = atom<tourInfoType[]>([]);
+
+export const uploadingAtom = atom<boolean>(false);
 
 export type Settings = {
   hotspotSize: number;
@@ -551,7 +581,7 @@ export const moveToPointAtom = atom<{
 export const lightMapAtom = atom<{
   [key: string]: {
     texture: THREE.Texture;
-    image: Blob;
+    image?: Blob;
   };
 }>({});
 
