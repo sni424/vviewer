@@ -318,6 +318,7 @@ export const Tabs = [
   'hotspot',
   'option',
   'wall',
+  'skyBox',
 ] as const;
 export type Tab = (typeof Tabs)[number];
 export const panelTabAtom = atom<Tab>('scene');
@@ -584,6 +585,50 @@ export const lightMapAtom = atom<{
     image?: Blob;
   };
 }>({});
+
+export const skyBoxAtom = atom<{
+  isSkyBox: boolean, type: string, texture?: THREE.Texture, mesh: {
+    intensity: number
+    rotation: {
+      x: number,
+      y: number,
+      z: number,
+    }
+    position: {
+      x: number,
+      y: number,
+      z: number,
+    }
+    scale: {
+      x: number,
+      y: number,
+      z: number,
+    }
+  }
+}>(
+  {
+    isSkyBox: false,
+    type: "mesh",
+    mesh: {
+      intensity: 1,
+      rotation: {
+        x: 0,
+        y: 0,
+        z: 0
+      },
+      position: {
+        x: 0,
+        y: 0,
+        z: 0
+      },
+      scale: {
+        x: 1,
+        y: 1,
+        z: 1
+      }
+    }
+  }
+)
 
 export type DrawablePoint = {
   point: THREE.Matrix4 | THREE.Vector3 | { x: number; z: number };
