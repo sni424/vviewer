@@ -23,7 +23,7 @@ import {
   ViewportOption,
   WallCreateOption
 } from '../types';
-import ReflectionProbe from './ReflectionProbe.ts';
+import type ReflectionProbe from './ReflectionProbe.ts';
 import { THREE } from './VTHREE';
 import ModelOption from './options/ModelOption.ts';
 
@@ -597,3 +597,10 @@ export const addPoints = (...points: DrawablePoint[]) => {
     return [...uniquePrev, ...points];
   });
 };
+
+
+export const [probeMinMaxAtom, getProbeMinMaxAtom, setProbeMinMaxAtom] = createAtomCombo<{
+  cmd: "min" | "max",
+  probe: ReflectionProbe;
+  point?: THREE.Vector3;
+}>();

@@ -20,11 +20,12 @@ import {
   panelTabAtom,
   pathfindingAtom,
   pointsAtom,
+  probeMinMaxAtom,
   roomAtom,
   selectedAtom,
   setAtomValue,
+  setProbeMinMaxAtom,
   sourceAtom,
-  Tabs,
   threeExportsAtom,
   toggleGrid,
   treeScrollToAtom,
@@ -34,6 +35,7 @@ import {
 } from '../../scripts/atoms';
 import VGLTFLoader from '../../scripts/loaders/VGLTFLoader.ts';
 import VTextureLoader from '../../scripts/loaders/VTextureLoader.ts';
+import type ReflectionProbe from '../../scripts/ReflectionProbe.ts';
 import { useSetThreeExports } from '../../scripts/useGetThreeExports.ts';
 import {
   createWallFromPoints,
@@ -52,6 +54,7 @@ import Hotspot from './Hotspot';
 import PostProcess from './PostProcess';
 import Rooms from './Rooms';
 import SelectBox from './SelectBox';
+import SettingProbeMinMax from './SettingProbeMinMax.tsx';
 import Walls from './Walls.tsx';
 
 const MainGrid = () => {
@@ -77,7 +80,7 @@ const applyTexture = (
       if (!material) {
         (obj as THREE.Mesh).material = new THREE.MeshPhysicalMaterial();
       }
-      if ( mapDst === 'lightmap' || !mapDst) {
+      if (mapDst === 'lightmap' || !mapDst) {
         material.lightMap = texture;
         if (map) {
           material.vUserData.lightMap = map.name;
@@ -309,6 +312,7 @@ function Renderer() {
       <PostProcess></PostProcess>
       <Rooms></Rooms>
       <Walls></Walls>
+      <SettingProbeMinMax></SettingProbeMinMax>
       <MainGrid></MainGrid>
       <Hotspot></Hotspot>
     </>
@@ -350,6 +354,7 @@ const useMouseHandler = () => {
     Boolean(room.creating),
   );
   const wallCreating = useAtomValue(wallOptionAtom).creating;
+  const settingProbeMinMax = useAtomValue(probeMinMaxAtom);
   const isSettingHotspot = useAtomValue(hotspotAtom).some(hotspot =>
     Boolean(hotspot.targetSetting),
   );
@@ -373,22 +378,40 @@ const useMouseHandler = () => {
   };
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
-    if (!wallCreating) {
+    const ignore = !(wallCreating || settingProbeMinMax);
+    if (ignore) {
       return;
     }
-    const copied = {
-      ...wallCreating,
-      mouse: {
-        x: e.clientX,
-        y: e.clientY,
-        rect: e.currentTarget.getBoundingClientRect(),
-      },
-      axisSnap: Boolean(e.shiftKey),
-    };
-    setAtomValue(wallOptionAtom, {
-      ...getAtomValue(wallOptionAtom),
-      creating: copied,
-    });
+
+    if (wallCreating) {
+      const copied = {
+        ...wallCreating,
+        mouse: {
+          x: e.clientX,
+          y: e.clientY,
+          rect: e.currentTarget.getBoundingClientRect(),
+        },
+        axisSnap: Boolean(e.shiftKey),
+      };
+      setAtomValue(wallOptionAtom, {
+        ...getAtomValue(wallOptionAtom),
+        creating: copied,
+      });
+    }
+
+    if (settingProbeMinMax) {
+      const point = pointOnPlane(e, threeExports);
+      setProbeMinMaxAtom(
+        (prev: {
+          cmd: 'min' | 'max';
+          probe: ReflectionProbe;
+          point?: THREE.Vector3;
+        }) => ({
+          ...prev,
+          point,
+        }),
+      );
+    }
   };
 
   const handleMouseUp = (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
@@ -456,6 +479,43 @@ const useMouseHandler = () => {
         });
       } else {
         console.error('Not implemented');
+      }
+      return;
+    }
+
+    if (settingProbeMinMax) {
+      const point = pointOnPlane(e, threeExports);
+      const { cmd, probe } = settingProbeMinMax;
+      const maxY = 2.34;
+      !! TODO : 프로브 위치 업데이트
+      if (cmd === 'min') {
+        const prevBox = probe.getBox().clone();
+        const min = new THREE.Vector3(point.x, 0, point.z);
+        const max = new THREE.Vector3(prevBox.max.x, maxY, prevBox.max.z);
+        const box = new THREE.Box3(min, max);
+        console.log(box);
+
+        probe.setCenterAndSize(
+          box.getCenter(new THREE.Vector3()),
+          box.getSize(new THREE.Vector3()),
+        );
+        probe.renderCamera();
+        setProbeMinMaxAtom(undefined as any);
+      } else if (cmd === 'max') {
+        const prevBox = probe.getBox().clone();
+        const min = new THREE.Vector3(prevBox.min.x, 0, prevBox.min.z);
+        const max = new THREE.Vector3(point.x, maxY, point.z);
+        const box = new THREE.Box3(min, max);
+        console.log(box);
+
+        probe.setCenterAndSize(
+          box.getCenter(new THREE.Vector3()),
+          box.getSize(new THREE.Vector3()),
+        );
+        probe.renderCamera();
+        setProbeMinMaxAtom(undefined as any);
+      } else {
+        throw new Error('Invalid cmd');
       }
       return;
     }
@@ -592,6 +652,7 @@ const useKeyHandler = () => {
           ...prev,
           creating: undefined,
         }));
+        setProbeMinMaxAtom(undefined as any);
         return;
       }
 

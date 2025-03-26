@@ -454,8 +454,6 @@ function useMultiProbe(shader:
     defines: Record<string, any>,
   }) {
 
-  shader.cleanup?.();
-
   const { uniforms, defines } = args;
 
   shader.defines = shader.defines ?? {};
@@ -470,28 +468,6 @@ function useMultiProbe(shader:
   shader.uniforms = {
     ...shader.uniforms,
     ...uniforms,
-  }
-
-  shader.cleanup = () => {
-    if (shader.defines) {
-      const defineKeys = [
-        ...Object.keys(defines),
-        "V_ENV_MAP"
-      ];
-      defineKeys.forEach(key => {
-        delete shader.defines![key];
-      })
-    }
-
-    if (shader.uniforms) {
-      const uniformKeys = [
-        ...Object.keys(uniforms)
-      ]
-      uniformKeys.forEach(key => {
-        delete shader.uniforms![key];
-      })
-    }
-    // shader.customProgramCacheKey = shader.onBeforeCompile;
   }
 
   // vertex shader

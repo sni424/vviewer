@@ -7,7 +7,7 @@ import {
   useModal,
   wallOptionAtom,
 } from '../scripts/atoms';
-import { threes, wallOptionToWalls } from '../scripts/atomUtils.ts';
+import { wallOptionToWalls } from '../scripts/atomUtils.ts';
 import VMaterial from '../scripts/material/VMaterial.ts';
 import { applyMultiProbe } from '../scripts/probeUtils.ts';
 import ReflectionProbe from '../scripts/ReflectionProbe.ts';
@@ -357,7 +357,18 @@ const applyMultiProbeOnMaterial = async (
   probeIds: string[],
   walls?: { start: THREE.Vector3; end: THREE.Vector3; probeId: string }[],
 ) => {
-  const filtered = probes.filter(p => probeIds.includes(p.getId()));
+  if (walls?.length === 0) {
+    alert('벽 정보가 없습니다.');
+    return;
+  }
+
+  if (probeIds.length === 0) {
+    alert('프로브를 선택해주세요.');
+    return;
+  }
+
+  material.cleanUpProbe();
+  const applyingProbes = probes.filter(p => probeIds.includes(p.getId()));
 
   // 기존 싱글 프로브 제거
   if (material.envMap) {
@@ -365,9 +376,8 @@ const applyMultiProbeOnMaterial = async (
   }
   material.envMap = null;
 
-  applyMultiProbe(material, filtered, walls);
-  const { gl } = threes()!;
-  // console.log(gl.info.programs?.map(p => p.cacheKey));
+  applyMultiProbe(material, applyingProbes, walls);
+
   material.needsUpdate = true;
 };
 
@@ -375,6 +385,8 @@ function applySingleProbeOnMaterial(
   material: VMaterial,
   probe: ReflectionProbe,
 ) {
+  material.cleanUpProbe();
+
   material.envMap = probe.getRenderTargetTexture();
   material.updateEnvUniforms(probe.getCenter(), probe.getSize());
   material.vUserData.probeId = probe.getId();
@@ -388,7 +400,6 @@ function applySingleProbeOnMaterial(
   };
 }
 
-const SELECTING_PROBE = '__SELECTING_PROBE__';
 const MultiProbeSelector = ({
   material,
   useWall,
@@ -450,6 +461,7 @@ const ProbeSelector = ({ material }: { material: VMaterial }) => {
     material.vUserData.probeType ?? 'single',
   );
   const [_, forceRerender] = useState(0);
+  const wallInfo = useAtomValue(wallOptionAtom);
 
   useEffect(() => {
     material.vUserData.probeType = multiprobe;
@@ -521,6 +533,7 @@ const ProbeSelector = ({ material }: { material: VMaterial }) => {
         name="probeType"
         checked={multiprobe === 'multi'}
         onChange={() => setMultiprobe('multi')}
+        disabled={probes.length === 0}
       ></input>
       <label
         onClick={() => {
@@ -533,11 +546,24 @@ const ProbeSelector = ({ material }: { material: VMaterial }) => {
         type="radio"
         name="probeType"
         checked={multiprobe === 'multiWall'}
-        onChange={() => setMultiprobe('multiWall')}
+        onChange={() => {
+          const disabled =
+            probes.length === 0 || !wallInfo || wallInfo.walls.length === 0;
+          if (!disabled) {
+            setMultiprobe('multiWall');
+          }
+        }}
+        disabled={
+          probes.length === 0 || !wallInfo || wallInfo.walls.length === 0
+        }
       ></input>
       <label
         onClick={() => {
-          setMultiprobe('multiWall');
+          const disabled =
+            probes.length === 0 || !wallInfo || wallInfo.walls.length === 0;
+          if (!disabled) {
+            setMultiprobe('multiWall');
+          }
         }}
       >
         멀티+벽

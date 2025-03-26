@@ -87,10 +87,8 @@ declare module 'three' {
     set vUserData(userData: Partial<ThreeUserData>);
 
     updateMultiProbeTexture?(): void;
-  }
 
-  interface WebGLProgramParametersWithUniforms {
-    cleanup?: () => void;
+    cleanUpProbe(): void;
   }
 
   interface Texture {
@@ -529,8 +527,79 @@ window.getThree = (view: View = View.Shared) => {
   return window.threeStore[view];
 };
 
+THREE.Material.prototype.cleanUpProbe = function () {
+  const t = this.vUserData.probeType;
+  if (!t) {
+    return;
+  }
+
+  const vmat = this as VMaterial;
+  switch (t) {
+    case "single":
+      this.vUserData.probe = undefined;
+      if (this.defines && typeof this.defines === 'object') {
+        delete this.defines.BOX_PROJECTED_ENV_MAP;
+      }
+
+      if (vmat.shader) {
+        if (vmat.shader.defines) {
+          delete vmat.shader.defines.BOX_PROJECTED_ENV_MAP;
+        }
+        const u = vmat.shader.uniforms;
+        if (u) {
+          delete u.envMapPosition;
+          delete u.envMapSize;
+          delete u.isCustomTexture;
+        }
+      }
+      // this.onBeforeCompile = () => { };
+      break;
+    case "multi":
+    case "multiWall":
+      this.vUserData.probes = undefined;
+      if (this.defines && typeof this.defines === 'object') {
+        const deleteKeys = [
+          "PROBE_COUNT",
+          "V_ENV_MAP",
+          "WALL_COUNT",
+          "V_ENV_MAP_WALL",
+          "V_ENVMAP_TYPE_CUBE_UV",
+          "V_CUBEUV_MAX_MIP",
+          "V_CUBEUV_TEXEL_WIDTH",
+          "V_CUBEUV_TEXEL_HEIGHT"
+        ];
+        deleteKeys.forEach(key => {
+          delete (this.defines as any)[key];
+        });
+
+        const keys = Object.keys(this.defines);
+        for (const key in keys) {
+          if (key.includes("PROBE_VERSION")) {
+            delete (this.defines as any)[key];
+          }
+        }
+      }
+
+      if (vmat.shader) {
+        const u = vmat.shader.uniforms;
+        if (u) {
+          delete u.uProbe;
+          delete u.uProbeTextures;
+          delete u.uProbeIntensity;
+          delete u.uWall;
+          delete u.uProbeBlendDist;
+        }
+      }
+      // this.onBeforeCompile = () => { };
+      break;
+    default:
+      break;
+  }
+}
+
 // THREE.Material.prototype.onBeforeCompile 오버라이딩
 import { WebGLProgramParametersWithUniforms } from 'three';
 import '../scripts/postprocess/MaterialShader';
 import { PlaneControlDirections } from './CubePlaneControls.ts';
+import VMaterial from './material/VMaterial.ts';
 

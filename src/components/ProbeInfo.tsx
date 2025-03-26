@@ -12,6 +12,7 @@ import {
   ProbeAtom,
   selectedAtom,
   setAtomValue,
+  setProbeMinMaxAtom,
   threeExportsAtom,
   useModal,
   useToast,
@@ -661,6 +662,36 @@ export const ProbeComponent = ({ probe }: { probe: ReflectionProbe }) => {
           onClick={changeResolution}
         >
           해상도 변경
+        </button>
+        <button
+          style={{
+            fontSize: 12,
+            padding: '4px 8px',
+            cursor: 'pointer',
+          }}
+          onClick={() => {
+            setProbeMinMaxAtom({
+              cmd: 'min',
+              probe,
+            });
+          }}
+        >
+          min찍기
+        </button>
+        <button
+          style={{
+            fontSize: 12,
+            padding: '4px 8px',
+            cursor: 'pointer',
+          }}
+          onClick={() => {
+            setProbeMinMaxAtom({
+              cmd: 'max',
+              probe,
+            });
+          }}
+        >
+          max찍기
         </button>
       </div>
       <div className="probe-detail">
