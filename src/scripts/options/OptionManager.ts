@@ -1,7 +1,5 @@
-export default class OptionManager {
-  static instance: OptionManager;
+const useOptionManager = () => {
 
-  constructor() {
-    OptionManager.instance = this;
-  }
 }
+
+export default useOptionManager;
