@@ -24,7 +24,6 @@ import {
   selectedAtom,
   setAtomValue,
   sourceAtom,
-  Tabs,
   threeExportsAtom,
   toggleGrid,
   treeScrollToAtom,
@@ -52,6 +51,7 @@ import Hotspot from './Hotspot';
 import PostProcess from './PostProcess';
 import Rooms from './Rooms';
 import SelectBox from './SelectBox';
+import SkyBoxMesh from './SkyBox.tsx';
 import Walls from './Walls.tsx';
 
 const MainGrid = () => {
@@ -77,7 +77,7 @@ const applyTexture = (
       if (!material) {
         (obj as THREE.Mesh).material = new THREE.MeshPhysicalMaterial();
       }
-      if ( mapDst === 'lightmap' || !mapDst) {
+      if (mapDst === 'lightmap' || !mapDst) {
         material.lightMap = texture;
         if (map) {
           material.vUserData.lightMap = map.name;
@@ -311,6 +311,7 @@ function Renderer() {
       <Walls></Walls>
       <MainGrid></MainGrid>
       <Hotspot></Hotspot>
+      <SkyBoxMesh></SkyBoxMesh>
     </>
   );
 }
