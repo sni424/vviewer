@@ -36,6 +36,7 @@ import {
 } from '../scripts/utils.ts';
 import * as THREE from '../scripts/VTHREE.ts';
 import { SelectableNodes } from './DPC/DPCModelSelector.tsx';
+import FileUploader from './util/FileUploader.tsx';
 
 const OptionConfigTab = () => {
   const [mcOptions, setMcOptions] = useAtom(modelOptionClassAtom);
@@ -128,6 +129,7 @@ const OptionConfigTab = () => {
         </button>
         <button onClick={uploadOptionJSON}>업로드</button>
         <button onClick={loadOptions}>불러오기</button>
+        <button onClick={() => openModal(<FileUploader/>)}>파일업로더 열기</button>
       </div>
       <div className="pt-2">
         {mcOptions.map((modelOption, idx) => (
@@ -179,7 +181,12 @@ const OptionManager = () => {
 
 const OptionPreviewTab = () => {
   const mcOptions = useAtomValue(modelOptionClassAtom);
-  const [animationDuration, setAnimationDuration] = useState<number>(1);
+  const [animationDuration, setAnimationDuration] = useState<number>(1.5);
+  const animationTimeInputConfig = {
+    min: 0.2,
+    max: 5,
+    step: 0.1,
+  };
 
   return (
     <div>
@@ -188,9 +195,9 @@ const OptionPreviewTab = () => {
         <input
           type="range"
           value={animationDuration}
-          step={0.1}
-          min={0.2}
-          max={10}
+          step={animationTimeInputConfig.step}
+          min={animationTimeInputConfig.min}
+          max={animationTimeInputConfig.max}
           onChange={e => {
             setAnimationDuration(parseFloat(e.target.value));
           }}
@@ -202,15 +209,15 @@ const OptionPreviewTab = () => {
           onChange={e => {
             setAnimationDuration(parseFloat(e.target.value));
           }}
-          step={0.1}
-          min={0.2}
-          max={10}
+          step={animationTimeInputConfig.step}
+          min={animationTimeInputConfig.min}
+          max={animationTimeInputConfig.max}
         />
         <span>초</span>
       </div>
-      {mcOptions.map((modelOption, idx) => (
+      {mcOptions.map(modelOption => (
         <OptionPreview
-          key={idx}
+          key={'option_preview_' + Math.random().toString()}
           option={modelOption}
           animationDuration={animationDuration}
         />
@@ -370,7 +377,7 @@ const OptionPreview = ({
 
       setTimeout(() => {
         processAfter();
-      }, animationDuration)
+      }, animationDuration);
     }
   }
 
