@@ -1,6 +1,6 @@
 import { Object3D } from 'three';
 import { Layer } from '../../Constants.ts';
-import * as THREE from '../VTHREE.ts';
+import * as THREE from '../vthree/VTHREE.ts';
 
 export default class VObjectLoader extends THREE.ObjectLoader {
   constructor() {

@@ -1,4 +1,4 @@
-import { THREE } from '../VTHREE.ts';
+import { THREE } from '../vthree/VTHREE.ts';
 import VMaterial from './VMaterial.ts';
 import * as VMaterialUtils from './VMaterialUtils.ts';
 

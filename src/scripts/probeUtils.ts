@@ -1,7 +1,7 @@
 import cube_uv from "./cube_uv";
 import VMaterial from "./material/VMaterial";
 import type ReflectionProbe from "./ReflectionProbe";
-import { THREE } from "./VTHREE";
+import { THREE } from "./vthree/VTHREE";
 
 // key : material.uuid
 const probeVersions = new Map<string, { cacheKey: string; version: number; }>();

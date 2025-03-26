@@ -7,7 +7,7 @@ import { useViewportOption } from '../../scripts/atoms';
 import useGetThreeExports, {
   useSetThreeExports,
 } from '../../scripts/useGetThreeExports';
-import { THREE } from '../../scripts/VTHREE';
+import { THREE } from '../../scripts/vthree/VTHREE';
 import { View } from '../../types';
 import Grid from './Grid';
 

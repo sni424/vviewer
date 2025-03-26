@@ -23,6 +23,7 @@ import {
   uploadJson,
 } from '../scripts/atomUtils.ts';
 import VMaterial from '../scripts/material/VMaterial.ts';
+import { applyMultiProbe } from '../scripts/probeUtils.ts';
 import ReflectionProbe, {
   ReflectionProbeJSON,
   ReflectionProbeResolutions,
@@ -34,10 +35,9 @@ import {
   loadPNGAsENV,
   splitExtension,
 } from '../scripts/utils.ts';
-import { THREE } from '../scripts/VTHREE.ts';
-import './probe.css';
+import { THREE } from '../scripts/vthree/VTHREE.ts';
 import { ProbeTypes } from '../types.ts';
-import { applyMultiProbe } from '../scripts/probeUtils.ts';
+import './probe.css';
 
 const uploadProbes = async () => {
   const probes = getAtomValue(ProbeAtom);

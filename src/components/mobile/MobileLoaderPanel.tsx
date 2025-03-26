@@ -10,7 +10,7 @@ import {
 import VGLTFLoader from '../../scripts/loaders/VGLTFLoader.ts';
 import useFilelist from '../../scripts/useFilelist';
 import { loadFile, loadLatest } from '../../scripts/utils';
-import { THREE } from '../../scripts/VTHREE';
+import { THREE } from '../../scripts/vthree/VTHREE.ts';
 import { FileInfo } from '../../types';
 import FileInfoList from '../FileInfoList';
 

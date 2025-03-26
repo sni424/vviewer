@@ -17,7 +17,7 @@ import {
 import VGLTFLoader from './loaders/VGLTFLoader.ts';
 import type ReflectionProbe from './ReflectionProbe.ts';
 import { resetColor } from './utils.ts';
-import { THREE } from './VTHREE';
+import { THREE } from './vthree/VTHREE.ts';
 
 interface PointXZ {
   x: number;

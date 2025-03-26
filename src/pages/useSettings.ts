@@ -28,15 +28,6 @@ export const getSettings = () => {
   const settings = getAtomValue(settingsAtom);
   const materialSetting = getAtomValue(materialSettingAtom);
 
-  // 라이트맵 이미지 대비는 임시제외
-  // const lmContrast = Object.getOwnPropertyNames(LightmapImageContrast).reduce((acc, key) => {
-  //   if (["prototype", "name"].includes(key)) {
-  //     return acc;
-  //   }
-  //   acc[key] = LightmapImageContrast[key];
-  //   return acc;
-  // }, {});
-
   const postProcessOptions: Record<string, any> = {};
   const postProcessAtoms = Object.entries(getAtomValue(postprocessAtoms));
   postProcessAtoms.forEach(

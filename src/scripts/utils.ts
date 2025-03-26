@@ -1,7 +1,7 @@
 import { RootState } from '@react-three/fiber';
 import gsap from 'gsap';
 import { get, set } from 'idb-keyval';
-import * as THREE from './VTHREE';
+import * as THREE from './vthree/VTHREE.ts';
 
 import objectHash from 'object-hash';
 import pako from 'pako';
@@ -28,6 +28,7 @@ import VMaterial from './material/VMaterial.ts';
 import VMeshStandardMaterial from './material/VMeshStandardMaterial.ts';
 import ReflectionProbe from './ReflectionProbe.ts';
 import VGLTFExporter from './VGLTFExporter.ts';
+import { ThreeUserData } from './vthree/types.ts';
 
 export const groupInfo = (
   group: THREE.Group | { scene: THREE.Group } | THREE.Scene | THREE.Object3D,
@@ -1097,7 +1098,7 @@ export const uploadExrLightmap = async (
       console.log(res);
       if (res.success) {
         const data = res.data;
-        const updateKtxName = (key: keyof THREE.ThreeUserData, mat: any) => {
+        const updateKtxName = (key: keyof ThreeUserData, mat: any) => {
           const exrName = mat.vUserData[key];
           if (exrName) {
             const ktxName = exrName.replace('.exr', '.ktx');

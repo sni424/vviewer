@@ -24,7 +24,6 @@ import {
   selectedAtom,
   setAtomValue,
   sourceAtom,
-  Tabs,
   threeExportsAtom,
   toggleGrid,
   treeScrollToAtom,
@@ -42,7 +41,7 @@ import {
   resetColor,
   zoomToSelected,
 } from '../../scripts/utils';
-import { THREE } from '../../scripts/VTHREE';
+import { THREE } from '../../scripts/vthree/VTHREE.ts';
 import { View, WallCreateOption, WallPointView } from '../../types';
 import UnifiedCameraControls from '../camera/UnifiedCameraControls';
 import HotspotDialog from '../HotspotDialog';
@@ -77,7 +76,7 @@ const applyTexture = (
       if (!material) {
         (obj as THREE.Mesh).material = new THREE.MeshPhysicalMaterial();
       }
-      if ( mapDst === 'lightmap' || !mapDst) {
+      if (mapDst === 'lightmap' || !mapDst) {
         material.lightMap = texture;
         if (map) {
           material.vUserData.lightMap = map.name;

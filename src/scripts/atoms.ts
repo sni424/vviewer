@@ -23,9 +23,9 @@ import {
   ViewportOption,
   WallCreateOption
 } from '../types';
-import ReflectionProbe from './ReflectionProbe.ts';
-import { THREE } from './VTHREE';
 import ModelOption from './options/ModelOption.ts';
+import ReflectionProbe from './ReflectionProbe.ts';
+import { THREE } from './vthree/VTHREE.ts';
 
 type AtomArgType<T> = T | ((prev: T) => T);
 export type Store = ReturnType<typeof createStore>;

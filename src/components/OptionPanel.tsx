@@ -7,7 +7,7 @@ import {
   threeExportsAtom,
   useModal,
 } from '../scripts/atoms';
-import { THREE } from '../scripts/VTHREE';
+import { THREE } from '../scripts/vthree/VTHREE';
 import HotspotDialog from './HotspotDialog';
 
 const OptionPanel = () => {

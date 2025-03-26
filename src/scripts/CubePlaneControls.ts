@@ -1,7 +1,7 @@
 import { Layer } from '../Constants.ts';
-import { ProbeMeshEventMap } from './ReflectionProbe.ts';
-import { THREE } from './VTHREE.ts';
 import VMaterial from './material/VMaterial.ts';
+import { ProbeMeshEventMap } from './ReflectionProbe.ts';
+import { THREE } from './vthree/VTHREE.ts';
 
 export type PlaneControlDirections = 'x+' | 'x-' | 'y+' | 'y-' | 'z+' | 'z-';
 
@@ -269,7 +269,7 @@ export default class CubePlaneControls {
       Object.values(this.centerMeshes).forEach(child => {
         child.removeFromParent();
       });
-      this.mesh!!.removeEventListener('updated', () => {});
+      this.mesh!!.removeEventListener('updated', () => { });
       this.mesh = null;
     } else {
       console.warn('CubePlaneControls.detach() occurred After detached');

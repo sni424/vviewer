@@ -12,7 +12,7 @@ import {
 } from '../../scripts/atoms';
 import { cameraInRoom } from '../../scripts/atomUtils';
 import { calculateTargetPosition } from '../../scripts/utils';
-import { THREE } from '../../scripts/VTHREE';
+import { THREE } from '../../scripts/vthree/VTHREE';
 
 const OrbitManager: React.FC = () => {
   const orbitRef = useRef<any>(null);

@@ -1,7 +1,7 @@
 import { LookupTexture, LUT3dlLoader, LUTCubeLoader } from 'postprocessing';
 import { Simulate } from 'react-dom/test-utils';
 import { ENV } from '../../Constants.ts';
-import * as THREE from '../../scripts/VTHREE.ts';
+import * as THREE from '../vthree/VTHREE.ts';
 import load = Simulate.load;
 
 const luts = new Map([

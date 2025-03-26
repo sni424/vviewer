@@ -16,7 +16,7 @@ import ReflectionProbe, {
   ReflectionProbeJSON,
 } from '../scripts/ReflectionProbe.ts';
 import { toggleDP } from '../scripts/utils.ts';
-import { THREE } from '../scripts/VTHREE.ts';
+import { THREE } from '../scripts/vthree/VTHREE.ts';
 
 const DPController = () => {
   const threeExports = useAtomValue(threeExportsAtom);

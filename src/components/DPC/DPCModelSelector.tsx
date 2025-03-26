@@ -15,7 +15,7 @@ import {
   isTransformControlOrChild,
 } from '../../scripts/utils.ts';
 import VGLTFExporter from '../../scripts/VGLTFExporter.ts';
-import * as THREE from '../../scripts/VTHREE.ts';
+import * as THREE from '../../scripts/vthree/VTHREE.ts';
 
 export const SelectableNodes = ({
   data,

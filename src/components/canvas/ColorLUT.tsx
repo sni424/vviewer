@@ -7,7 +7,7 @@ import {
   getLUTTexture,
   LUTPresets,
 } from '../../scripts/postprocess/PostProcessUtils';
-import { THREE } from '../../scripts/VTHREE';
+import { THREE } from '../../scripts/vthree/VTHREE';
 
 const defaultColorLUTOption: { [key in string]: OptionTransformer } = {
   preset: {

@@ -14,7 +14,7 @@ import {
   wallOptionAtom,
 } from '../../scripts/atoms';
 import { getWallPoint } from '../../scripts/utils';
-import * as THREE from '../../scripts/VTHREE';
+import * as THREE from '../../scripts/vthree/VTHREE';
 import { WallCreateOption } from '../../types';
 
 const WALL_LAYER = new THREE.Layers();

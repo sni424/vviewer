@@ -1,11 +1,10 @@
-import { THREE } from '../VTHREE.ts';
+import { THREE } from '../vthree/VTHREE.ts';
 import VMaterial from './VMaterial.ts';
 import * as VMaterialUtils from './VMaterialUtils.ts';
 
 export default class VMeshPhysicalMaterial
   extends THREE.MeshPhysicalMaterial
-  implements VMaterial
-{
+  implements VMaterial {
   _shader: THREE.WebGLProgramParametersWithUniforms;
   envMapPosition: THREE.Vector3 = new THREE.Vector3();
   envMapSize: THREE.Vector3 = new THREE.Vector3();

@@ -26,7 +26,7 @@ import ReflectionProbe, {
   ReflectionProbeJSON,
 } from '../scripts/ReflectionProbe.ts';
 import { loadLatest } from '../scripts/utils';
-import { THREE } from '../scripts/VTHREE';
+import { THREE } from '../scripts/vthree/VTHREE.ts';
 
 const createGeometry = (points: [number, number][]) => {
   if (points.length < 3) {

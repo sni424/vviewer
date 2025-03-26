@@ -23,7 +23,7 @@ import {
   getWallPoint,
   resetColor,
 } from '../scripts/utils';
-import { THREE } from '../scripts/VTHREE';
+import { THREE } from '../scripts/vthree/VTHREE';
 import { WallCreateOption, WallPointView, Walls, WallView } from '../types';
 
 function WallDetail({

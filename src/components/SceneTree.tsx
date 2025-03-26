@@ -9,7 +9,7 @@ import {
   treeSearchAtom,
 } from '../scripts/atoms';
 import { isProbeMesh, isTransformControlOrChild } from '../scripts/utils.ts';
-import { THREE } from '../scripts/VTHREE';
+import { THREE } from '../scripts/vthree/VTHREE.ts';
 
 const MeshChildren = ({ data }: { data: THREE.Mesh }) => {
   const material = data.material as THREE.Material;

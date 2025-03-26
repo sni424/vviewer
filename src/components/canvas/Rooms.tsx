@@ -4,7 +4,7 @@ import { Fragment, useRef } from 'react';
 import { roomColor } from '../../Constants';
 import { panelTabAtom, roomAtom, threeExportsAtom } from '../../scripts/atoms';
 import { createClosedConcaveSurface, PointXZ } from '../../scripts/utils';
-import { Mesh, Vector3 } from '../../scripts/VTHREE';
+import { Mesh, Vector3 } from '../../scripts/vthree/VTHREE';
 
 interface MarkerProps {
   position: [number, number, number][];

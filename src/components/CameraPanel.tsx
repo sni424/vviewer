@@ -13,7 +13,7 @@ import {
   setAtomValue,
   threeExportsAtom,
 } from '../scripts/atoms';
-import { Quaternion, THREE, Vector3 } from '../scripts/VTHREE';
+import { Quaternion, THREE, Vector3 } from '../scripts/vthree/VTHREE';
 import Clipping from './clipping/Clipping';
 
 const CameraPanel = () => {

@@ -44,7 +44,7 @@ import VMaterial from '../scripts/material/VMaterial.ts';
 import useFilelist from '../scripts/useFilelist';
 import useStats, { StatPerSecond, VStats } from '../scripts/useStats.ts';
 import VGLTFExporter from '../scripts/VGLTFExporter.ts';
-import { Quaternion, THREE, Vector3 } from '../scripts/VTHREE';
+import { Quaternion, THREE, Vector3 } from '../scripts/vthree/VTHREE.ts';
 import { BloomOption } from './canvas/Bloom.tsx';
 import { BrightnessContrastOption } from './canvas/BrightnessContrast.tsx';
 import { ColorLUTOption } from './canvas/ColorLUT.tsx';

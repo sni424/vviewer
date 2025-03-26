@@ -1,9 +1,9 @@
 import { v4 } from 'uuid';
 import { threes } from '../atomUtils.ts';
 import { Effects, ModelOptionState } from '../ModelOptionObject.ts';
-import * as THREE from '../VTHREE.ts';
-import ModelOption from './ModelOption.ts';
+import * as THREE from '../vthree/VTHREE.ts';
 import MeshEffect from './MeshEffect.ts';
+import ModelOption from './ModelOption.ts';
 
 export default class OptionState {
   private _id: string = v4();

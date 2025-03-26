@@ -25,16 +25,16 @@ import { createLightmapCache } from '../scripts/loaders/VGLTFLoader.ts';
 import { getVKTX2Loader } from '../scripts/loaders/VKTX2Loader.ts';
 import VMaterial from '../scripts/material/VMaterial.ts';
 import { ModelOptionObject } from '../scripts/ModelOptionObject.ts';
+import MeshEffect from '../scripts/options/MeshEffect.ts';
 import ModelOption from '../scripts/options/ModelOption.ts';
 import OptionState from '../scripts/options/OptionState.ts';
-import MeshEffect from '../scripts/options/MeshEffect.ts';
 import {
   changeMeshLightMapWithTransition,
   changeMeshVisibleWithTransition,
   loadLatest,
   splitExtension,
 } from '../scripts/utils.ts';
-import * as THREE from '../scripts/VTHREE.ts';
+import * as THREE from '../scripts/vthree/VTHREE.ts';
 import { SelectableNodes } from './DPC/DPCModelSelector.tsx';
 
 const OptionConfigTab = () => {
@@ -370,7 +370,7 @@ const OptionPreview = ({
 
       setTimeout(() => {
         processAfter();
-      }, animationDuration)
+      }, animationDuration);
     }
   }
 

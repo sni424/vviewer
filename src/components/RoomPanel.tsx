@@ -9,7 +9,7 @@ import {
   threeExportsAtom,
 } from '../scripts/atoms';
 import { loadRooms, uploadJson } from '../scripts/atomUtils';
-import { THREE } from '../scripts/VTHREE';
+import { THREE } from '../scripts/vthree/VTHREE';
 
 const uploadRooms = async () => {
   const hotspots = getAtomValue(roomAtom);

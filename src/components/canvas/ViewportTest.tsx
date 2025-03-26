@@ -1,7 +1,7 @@
 import { Box, Environment, OrbitControls } from '@react-three/drei';
 import { Canvas, useThree } from '@react-three/fiber';
 import { useEffect } from 'react';
-import { THREE } from '../../scripts/VTHREE';
+import { THREE } from '../../scripts/vthree/VTHREE';
 import { useGetThreeExports, useSetThreeExports } from './Viewport';
 
 const MainRender = () => {

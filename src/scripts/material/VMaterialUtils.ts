@@ -1,4 +1,4 @@
-import { THREE } from '../VTHREE.ts';
+import { THREE } from '../vthree/VTHREE.ts';
 import { VShaderLib } from './VMaterialConstants.ts';
 
 function addLightMapChangeTransition(shader: Shader, lightMapToChange: THREE.Texture | null) {
@@ -117,10 +117,10 @@ function addBoxProjectedEnv(
 }
 
 export {
-  addProgressiveAlpha,
+  addBoxProjectedEnv,
+  addLightMapChangeTransition, addProgressiveAlpha,
   addWorldPosition,
   adjustLightMapFragments,
-  adjustProjectedEnv,
-  addBoxProjectedEnv,
-  addLightMapChangeTransition
+  adjustProjectedEnv
 };
+

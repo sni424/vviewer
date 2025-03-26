@@ -11,7 +11,7 @@ import {
 import VTextureLoader from '../scripts/loaders/VTextureLoader.ts';
 import VMaterial from '../scripts/material/VMaterial.ts';
 import { loadHDRTexture, loadPNGAsENV } from '../scripts/utils';
-import { THREE } from '../scripts/VTHREE';
+import { THREE } from '../scripts/vthree/VTHREE.ts';
 import MapPreview, { MapPreviewProps } from './MapPreview';
 
 interface MapInfoProps extends MapPreviewProps {

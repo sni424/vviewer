@@ -4,7 +4,7 @@ import { Fragment, useRef } from 'react';
 import { TextureLoader } from 'three';
 import { HotspotIcon, Layer } from '../../Constants';
 import { hotspotAtom, settingsAtom } from '../../scripts/atoms';
-import { THREE } from '../../scripts/VTHREE';
+import { THREE } from '../../scripts/vthree/VTHREE';
 
 function SingleHotspot({
   texture,

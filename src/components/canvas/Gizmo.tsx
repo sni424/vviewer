@@ -3,7 +3,7 @@ import { useThree } from '@react-three/fiber';
 import { useAtomValue } from 'jotai';
 import { useMemo, useRef } from 'react';
 import { selectedAtom } from '../../scripts/atoms';
-import { THREE } from '../../scripts/VTHREE';
+import { THREE } from '../../scripts/vthree/VTHREE';
 
 function Gizmo() {
   const selecteds = useAtomValue(selectedAtom);

@@ -1,6 +1,6 @@
 import { v4 } from 'uuid';
 import { Effects, ModelOptionObject } from '../ModelOptionObject.ts';
-import * as THREE from '../VTHREE.ts';
+import * as THREE from '../vthree/VTHREE.ts';
 import OptionState from './OptionState.ts';
 
 class ModelOption {

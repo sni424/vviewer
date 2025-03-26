@@ -10,7 +10,7 @@ import {
   setAtomValue,
 } from '../../scripts/atoms';
 import { cameraInRoom } from '../../scripts/atomUtils';
-import { THREE } from '../../scripts/VTHREE';
+import { THREE } from '../../scripts/vthree/VTHREE';
 
 interface UnifiedCameraControlsProps {
   //회전 속도

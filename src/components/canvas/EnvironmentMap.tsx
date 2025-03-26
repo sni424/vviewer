@@ -2,7 +2,7 @@ import { Environment } from '@react-three/drei';
 import { useAtomValue } from 'jotai';
 import { __UNDEFINED__ } from '../../Constants';
 import { envAtom } from '../../scripts/atoms';
-import { THREE } from '../../scripts/VTHREE';
+import { THREE } from '../../scripts/vthree/VTHREE';
 
 function MyEnvironment() {
   const env = useAtomValue(envAtom);

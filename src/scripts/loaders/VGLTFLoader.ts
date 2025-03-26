@@ -11,7 +11,7 @@ import VMaterial from '../material/VMaterial.ts';
 import VMeshBasicMaterial from '../material/VMeshBasicMaterial.ts';
 import VMeshPhysicalMaterial from '../material/VMeshPhysicalMaterial.ts';
 import VMeshStandardMaterial from '../material/VMeshStandardMaterial.ts';
-import * as THREE from '../VTHREE.ts';
+import * as THREE from '../vthree/VTHREE.ts';
 import { getVKTX2Loader } from './VKTX2Loader.ts';
 
 export default class VGLTFLoader extends GLTFLoader {
@@ -246,29 +246,6 @@ export async function createLightmapCache(
   // geo.dispose();
 
   return toLightMapObj;
-}
-
-function updateLightMapFromEmissive(object: THREE.Object3D) {
-  if ('isMesh' in object) {
-    const mesh = object as THREE.Mesh;
-    const material = mesh.material as THREE.MeshStandardMaterial;
-    if (material.vUserData.isEmissiveLightMap) {
-      const emissiveMap = material.emissiveMap;
-      if (emissiveMap) {
-        if (emissiveMap.channel !== 1) {
-          emissiveMap.channel = 1;
-        }
-        emissiveMap.colorSpace = '';
-        material.lightMap = emissiveMap.clone();
-        material.lightMapIntensity = material.vUserData.lightMapIntensity ?? 1;
-        material.emissiveMap = null;
-        material.needsUpdate = true;
-      }
-      // vUserData 초기화
-      delete material.vUserData.isEmissiveLightMap;
-      delete material.vUserData.lightMapIntensity;
-    }
-  }
 }
 
 function getLightmap(object: THREE.Object3D, lightMapSet: Set<string>) {

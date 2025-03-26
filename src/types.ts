@@ -247,7 +247,7 @@ export type ModelFile = {
 
 import { Properties } from '@react-three/fiber';
 import { Pathfinding } from 'three-pathfinding';
-import { THREE } from './scripts/VTHREE';
+import { THREE } from './scripts/vthree/VTHREE';
 export declare type GLProps = Partial<Properties<THREE.WebGLRenderer>> &
   Partial<THREE.WebGLRendererParameters> & {
     toneMapping?: THREE.ToneMapping;

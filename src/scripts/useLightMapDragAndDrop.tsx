@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { THREE } from './VTHREE';
 import VTextureLoader from './loaders/VTextureLoader.ts';
+import { THREE } from './vthree/VTHREE.ts';
 
 const useLightMapDragAndDrop = (
   mat: THREE.MeshStandardMaterial | THREE.MeshStandardMaterial[],

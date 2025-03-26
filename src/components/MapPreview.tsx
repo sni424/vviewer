@@ -11,7 +11,7 @@ import { threes, wallOptionToWalls } from '../scripts/atomUtils.ts';
 import VMaterial from '../scripts/material/VMaterial.ts';
 import { applyMultiProbe } from '../scripts/probeUtils.ts';
 import ReflectionProbe from '../scripts/ReflectionProbe.ts';
-import { THREE } from '../scripts/VTHREE';
+import { THREE } from '../scripts/vthree/VTHREE.ts';
 import { ProbeTypes, WallCreateOption } from '../types.ts';
 
 export interface MapPreviewProps {
@@ -360,9 +360,9 @@ const applyMultiProbeOnMaterial = (
   const filtered = probes.filter(p => probeIds.includes(p.getId()));
 
   // 기존 싱글 프로브 제거
-  if (material.envMap) {
-    material.vUserData.envMap = material.envMap;
-  }
+  // if (material.envMap) {
+  //   material.vUserData.envMap = material.envMap;
+  // }
   material.envMap = null;
 
   applyMultiProbe(material, filtered, walls);
@@ -566,9 +566,9 @@ const SingleProbeSelector = ({ material }: { material: VMaterial }) => {
       return;
     }
     if (value === 'delete') {
-      if (material.vUserData.envMap) {
-        material.envMap = material.vUserData.envMap;
-      }
+      // if (material.vUserData.envMap) {
+      //   material.envMap = material.vUserData.envMap;
+      // }
       delete material.vUserData.probeId;
       material.needsUpdate = true;
     } else {

@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { selectedAtom, threeExportsAtom, useModal } from '../scripts/atoms';
 import VTextureLoader from '../scripts/loaders/VTextureLoader.ts';
 import VMaterial from '../scripts/material/VMaterial.ts';
-import { THREE } from '../scripts/VTHREE';
+import { THREE } from '../scripts/vthree/VTHREE.ts';
 
 const ApplyLightMapComponent = () => {
   const { closeModal } = useModal();
