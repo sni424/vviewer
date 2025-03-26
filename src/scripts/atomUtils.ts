@@ -24,7 +24,7 @@ interface PointXZ {
   z: number;
 }
 
-type KTXApiResponse = {
+export type KTXApiResponse = {
   success: boolean;
   responseType: 'success';
   data: {
