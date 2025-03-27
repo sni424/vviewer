@@ -45,7 +45,7 @@ const OptionConfigTab = () => {
   const [lightMaps, setLightMaps] = useAtom(lightMapAtom);
   const { openModal } = useModal();
   const { openToast, closeToast } = useToast();
-  const [fileName, setFileName] = useState<string>('options.json');
+  const [fileName, setFileName] = useState<string>('options_test.json');
 
   function uploadOptionJSON() {
     uploadJson(
