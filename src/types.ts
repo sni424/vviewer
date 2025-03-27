@@ -450,3 +450,30 @@ export type WallCreateOption = WallMeta & {
 };
 
 export type ProbeTypes = "single" | "multi" | "multiWall";
+
+
+export interface Vector3 {
+  x: number;
+  y: number;
+  z: number;
+}
+
+export interface SceneSkyBox {
+  intensity: number;
+  rotation: Vector3;
+}
+
+export interface MeshSkyBox {
+  intensity: number;
+  rotation: Vector3;
+  position: Vector3;
+  scale: Vector3;
+}
+
+export interface SkyBoxState {
+  isSkyBox: boolean;
+  type: 'scene' | 'mesh';
+  texture?: THREE.Texture;
+  scene: SceneSkyBox;
+  mesh: MeshSkyBox;
+}

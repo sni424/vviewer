@@ -18,12 +18,23 @@ const SkyBoxMesh = () => {
       skyBoxInfo.texture
     ) {
       scene.background = skyBoxInfo.texture;
-      scene.backgroundRotation.set(0, 56, 0);
-      scene.backgroundIntensity = 2;
+      scene.backgroundRotation.set(
+        skyBoxInfo.scene.rotation.x,
+        skyBoxInfo.scene.rotation.y,
+        skyBoxInfo.scene.rotation.z,
+      );
+
+      scene.backgroundIntensity = skyBoxInfo.scene.intensity;
     } else {
       scene.background = null;
     }
-  }, [skyBoxInfo.type, skyBoxInfo.isSkyBox, skyBoxInfo.texture]);
+  }, [
+    skyBoxInfo.type,
+    skyBoxInfo.isSkyBox,
+    skyBoxInfo.texture,
+    JSON.stringify(skyBoxInfo.scene.rotation),
+    skyBoxInfo.scene.intensity,
+  ]);
 
   useEffect(() => {
     if (meshRef.current && skyBoxInfo.texture) {
