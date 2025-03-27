@@ -20,11 +20,10 @@ import {
   useModal,
   useToast,
 } from '../scripts/atoms.ts';
-import { loadOption, threes, uploadJson } from '../scripts/atomUtils.ts';
+import { threes } from '../scripts/atomUtils.ts';
 import { createLightmapCache } from '../scripts/loaders/VGLTFLoader.ts';
 import { getVKTX2Loader } from '../scripts/loaders/VKTX2Loader.ts';
 import VMaterial from '../scripts/material/VMaterial.ts';
-import { ModelOptionObject } from '../scripts/ModelOptionObject.ts';
 import ModelOption from '../scripts/options/ModelOption.ts';
 import OptionState from '../scripts/options/OptionState.ts';
 import MeshEffect from '../scripts/options/MeshEffect.ts';
@@ -37,102 +36,12 @@ import {
 import * as THREE from '../scripts/VTHREE.ts';
 import { SelectableNodes } from './DPC/DPCModelSelector.tsx';
 import FileUploader from './util/FileUploader.tsx';
-import modelOption from '../scripts/options/ModelOption.ts';
+import useOptionManager from '../scripts/options/OptionManager.ts';
 
 const OptionConfigTab = () => {
-  const [mcOptions, setMcOptions] = useAtom(modelOptionClassAtom);
-  const setOptionSelected = useSetAtom(optionSelectedAtom);
-  const [lightMaps, setLightMaps] = useAtom(lightMapAtom);
   const { openModal } = useModal();
-  const { openToast, closeToast } = useToast();
   const [fileName, setFileName] = useState<string>('options_test.json');
-
-  function uploadOptionJSON() {
-    uploadJson(
-      fileName,
-      mcOptions.map(o => o.toJSON()),
-    )
-      .then(res => res.json())
-      .then(res => {
-        if (res?.success === true) {
-          alert('업로드 완료');
-        } else {
-          throw res;
-        }
-      })
-      .catch(err => {
-        console.log(err);
-        alert('업로드 실패');
-      });
-  }
-
-  async function loadOptions() {
-    openToast('옵션 불러오는 중..', { autoClose: false });
-    setMcOptions([]);
-    const options = (await loadOption(fileName)) as ModelOptionObject[];
-    const keys = Object.keys(lightMaps);
-    const keysToLoad: string[] = [];
-    options.forEach(option => {
-      const states = option.states;
-      states.forEach(state => {
-        const meshEffects = state.meshEffects;
-        meshEffects.forEach(effect => {
-          const lm = effect.effects.lightMapValues;
-          if (lm) {
-            const optionValues = Object.values(lm);
-            optionValues.forEach(value => {
-              const lms = Object.values(value);
-              lms.forEach(lm => {
-                if (!keys.includes(lm) && !keysToLoad.includes(lm)) {
-                  keysToLoad.push(lm);
-                }
-              })
-            })
-          }
-        });
-      });
-    });
-
-    if (keysToLoad.length > 0) {
-      openToast('옵션 라이트맵 불러오는 중..', {
-        autoClose: false,
-        override: true,
-      });
-      const loader = getVKTX2Loader();
-      const map = new Map<string, THREE.Texture>();
-      await Promise.all(
-        keysToLoad.map(async key => {
-          const texture = await loader.loadAsync(key);
-          texture.minFilter = THREE.LinearMipmapLinearFilter;
-          texture.magFilter = THREE.LinearFilter;
-          texture.channel = 1;
-          texture.vUserData.mimeType = 'image/ktx2';
-          map.set(decodeURI(key), texture);
-        }),
-      );
-
-      const gl = new THREE.WebGLRenderer();
-
-      const obj = await createLightmapCache(map, gl);
-
-      setLightMaps(pre => {
-        return { ...pre, ...obj };
-      });
-    }
-    const classes = options.map(option => {
-      return new ModelOption().fromJSON(option);
-    });
-
-    setMcOptions(classes);
-
-    const optionSelected = {};
-    classes.forEach(option => {
-      optionSelected[option.id] = option.defaultSelected;
-    });
-
-    setOptionSelected(optionSelected);
-    closeToast();
-  }
+  const { loadOptions, uploadOptionJSON, options } = useOptionManager();
 
   return (
     <div className="flex flex-col gap-y-2">
@@ -152,13 +61,13 @@ const OptionConfigTab = () => {
           value={fileName}
           onChange={e => setFileName(e.target.value)}
         />
-        <button onClick={uploadOptionJSON}>업로드</button>
-        <button onClick={loadOptions}>불러오기</button>
+        <button onClick={() => uploadOptionJSON(fileName)}>업로드</button>
+        <button onClick={() => loadOptions(fileName)}>불러오기</button>
         <button onClick={() => setFileName('options.json')}>기본</button>
         <button onClick={() => setFileName('options_test.json')}>Test</button>
       </div>
       <div className="flex flex-col gap-y-1">
-        {mcOptions.map((modelOption, idx) => (
+        {options.map((modelOption, idx) => (
           <Option key={idx} modelOption={modelOption} />
         ))}
       </div>
@@ -167,9 +76,7 @@ const OptionConfigTab = () => {
 };
 
 const OptionManager = () => {
-  const mcOptions = useAtomValue(modelOptionClassAtom);
-  const selected = useAtomValue(optionSelectedAtom);
-
+  const {analyze} = useOptionManager();
   /**
    * 1. 하나의 옵션을 토글할 때 다른 옵션들의 상태를 체크
    * 2. 다른 옵션들의 토글 여부에 있는 겹쳐지는 메시를 체크
@@ -177,50 +84,12 @@ const OptionManager = () => {
    *    1) Visible 의 경우 모든 옵션에 대해 모두 visible On 일 때 최종 Visible = true / 그게 아니라면 Off
    *    2) LightMap 의 경우 현재 적용될 옵션에 맞춰서 LightMap On ? // TODO check 필요
    * **/
-  function analyze() {
-    const effects = mcOptions.map(modelOption => {
-      return {
-        id: modelOption.id,
-        effect: modelOption.arrangeEffects(),
-        option: modelOption
-      };
-    });
-
-    const result: { [key: string]: { visible?: boolean;lightMap?:string } } = {};
-
-    effects.forEach(effectObject => {
-      const selectedId = selected[effectObject.id];
-      const targetEffect = effectObject.effect[selectedId];
-      Object.entries(targetEffect).forEach(([key, value]) => {
-        const originalValue: { visible?: boolean, lightMap?: string, } | undefined = result[key];
-        if (originalValue) {
-          originalValue.visible =
-            originalValue.visible && value.effects.visibleValue;
-        } else {
-          result[key] = { visible: value.effects.visibleValue };
-        }
-
-        console.log(key, value, effectObject);
-        const optionId = Object.keys(selected);
-        const lmValues = value.effects.lightMapValues;
-        const lmValuesKeys = Object.keys(lmValues!!);
-        const targetIds = optionId.filter(k => lmValuesKeys.includes(k));
-        const targetId = targetIds[0];
-        result[key].lightMap = lmValues!![targetId][selected[targetId]];
-      });
-    });
-
-
-    // 라이트맵 비교
-
-    console.log(result);
-  }
 
   return <button onClick={analyze}>분석 사항 로그</button>;
 };
 
 const OptionPreviewTab = () => {
-  const mcOptions = useAtomValue(modelOptionClassAtom);
+  const {options} = useOptionManager();
   const [animationDuration, setAnimationDuration] = useState<number>(1.5);
   const animationTimeInputConfig = {
     min: 0.2,
@@ -255,7 +124,7 @@ const OptionPreviewTab = () => {
         />
         <span>초</span>
       </div>
-      {mcOptions.map(modelOption => (
+      {options.map(modelOption => (
         <OptionPreview
           key={'option_preview_' + Math.random().toString()}
           option={modelOption}
@@ -277,7 +146,6 @@ const OptionPreview = ({
   if (!threeExports) {
     return null;
   }
-  const mcOptions = useAtomValue(modelOptionClassAtom);
   const [isProcessing, setIsProcessing] = useState(false);
   const [optionSelected, setOptionSelected] = useAtom(optionSelectedAtom);
   const { openToast } = useToast();
@@ -285,46 +153,11 @@ const OptionPreview = ({
   const { scene } = threeExports;
   const probes = useAtomValue(ProbeAtom);
   const setSelecteds = useSetAtom(selectedAtom);
+  const {analyze} = useOptionManager();
 
   useEffect(() => {
     console.log('optionChanged : ', optionSelected);
   }, [optionSelected]);
-
-  function analyze(nowSelected: { [key: string]: string }) {
-    const effects = mcOptions.map(modelOption => {
-      return {
-        id: modelOption.id,
-        effect: modelOption.arrangeEffects(),
-      };
-    });
-
-    const result: { [key: string]: { visible?: boolean; lightMap?: string; } } = {};
-
-    // Visible 비교
-    effects.forEach(effectObject => {
-      const selectedId = nowSelected[effectObject.id];
-      const targetEffect = effectObject.effect[selectedId];
-      Object.entries(targetEffect).forEach(([key, value]) => {
-        const originalValue: { visible?: boolean, lightMap?: string, } | undefined = result[key];
-        if (originalValue) {
-          originalValue.visible =
-            originalValue.visible && value.effects.visibleValue;
-        } else {
-          result[key] = { visible: value.effects.visibleValue };
-        }
-
-        console.log(key, value, effectObject);
-        const optionId = Object.keys(nowSelected);
-        const lmValues = value.effects.lightMapValues;
-        const lmValuesKeys = Object.keys(lmValues!!);
-        const targetIds = optionId.filter(k => lmValuesKeys.includes(k));
-        const targetId = targetIds[0];
-        result[key].lightMap = lmValues!![targetId][nowSelected[targetId]];
-      });
-    });
-
-    return result;
-  }
 
   async function processState(state: OptionState) {
     if (isProcessing) {
@@ -338,7 +171,7 @@ const OptionPreview = ({
     setIsProcessing(true);
     const meshEffects = state.meshEffects;
     const probesToRender: string[] = [];
-    const anlayzed = analyze(nowSelected);
+    const anlayzed = analyze();
     const timeLines: gsap.core.Timeline[] = [];
     meshEffects.forEach(meshEffect => {
       const timeLine = gsap.timeline().pause();
@@ -880,7 +713,7 @@ const MeshEffectElem = ({
             targetEffect.setLightMapValues(meshEffect.parent, str);
           }
 
-          setRenderVersion(pre => pre+1);
+          setRenderVersion(pre => pre + 1);
         }}
       />,
     );
@@ -1003,9 +836,9 @@ const MeshEffectElem = ({
                               return (
                                 <div>
                                   <div className="flex gap-x-1 items-center">
-                                  <span className="text-gray-600">
-                                    - {stateObject.name}
-                                  </span>
+                                    <span className="text-gray-600">
+                                      - {stateObject.name}
+                                    </span>
                                     <button
                                       onClick={() => {
                                         openLightMapModal(stateObject);
@@ -1014,11 +847,14 @@ const MeshEffectElem = ({
                                       변경
                                     </button>
                                   </div>
-                                  {lightMapValues && keys.includes(option.id) && (
-                                    <div className="max-w-full overflow-ellipsis overflow-hidden text-nowrap">
-                                      {getNameFromURL(lightMapValues[option.id][state.id])}
-                                    </div>
-                                  )}
+                                  {lightMapValues &&
+                                    keys.includes(option.id) && (
+                                      <div className="max-w-full overflow-ellipsis overflow-hidden text-nowrap">
+                                        {getNameFromURL(
+                                          lightMapValues[option.id][state.id],
+                                        )}
+                                      </div>
+                                    )}
                                 </div>
                               );
                             })}
