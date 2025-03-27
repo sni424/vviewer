@@ -29,6 +29,7 @@ export type Effects = {
   useLightMap: boolean;
   visibleValue: boolean;
   lmValue: string | null;
+  lightMapValues?: { [key: string]: { [key: string]: string } };
 };
 
 export type ModelOptionSelectedState = {

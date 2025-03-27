@@ -37,6 +37,7 @@ import {
 import * as THREE from '../scripts/VTHREE.ts';
 import { SelectableNodes } from './DPC/DPCModelSelector.tsx';
 import FileUploader from './util/FileUploader.tsx';
+import modelOption from '../scripts/options/ModelOption.ts';
 
 const OptionConfigTab = () => {
   const [mcOptions, setMcOptions] = useAtom(modelOptionClassAtom);
@@ -44,10 +45,11 @@ const OptionConfigTab = () => {
   const [lightMaps, setLightMaps] = useAtom(lightMapAtom);
   const { openModal } = useModal();
   const { openToast, closeToast } = useToast();
+  const [fileName, setFileName] = useState<string>('options_test.json');
 
   function uploadOptionJSON() {
     uploadJson(
-      'options.json',
+      fileName,
       mcOptions.map(o => o.toJSON()),
     )
       .then(res => res.json())
@@ -67,7 +69,7 @@ const OptionConfigTab = () => {
   async function loadOptions() {
     openToast('옵션 불러오는 중..', { autoClose: false });
     setMcOptions([]);
-    const options = (await loadOption()) as ModelOptionObject[];
+    const options = (await loadOption(fileName)) as ModelOptionObject[];
     const keys = Object.keys(lightMaps);
     const keysToLoad: string[] = [];
     options.forEach(option => {
@@ -75,15 +77,27 @@ const OptionConfigTab = () => {
       states.forEach(state => {
         const meshEffects = state.meshEffects;
         meshEffects.forEach(effect => {
-          const lm = effect.effects.lmValue;
-          if (lm && !keys.includes(lm)) {
-            keysToLoad.push(lm);
+          const lm = effect.effects.lightMapValues;
+          if (lm) {
+            const optionValues = Object.values(lm);
+            optionValues.forEach(value => {
+              const lms = Object.values(value);
+              lms.forEach(lm => {
+                if (!keys.includes(lm) && !keysToLoad.includes(lm)) {
+                  keysToLoad.push(lm);
+                }
+              })
+            })
           }
         });
       });
     });
 
     if (keysToLoad.length > 0) {
+      openToast('옵션 라이트맵 불러오는 중..', {
+        autoClose: false,
+        override: true,
+      });
       const loader = getVKTX2Loader();
       const map = new Map<string, THREE.Texture>();
       await Promise.all(
@@ -121,22 +135,34 @@ const OptionConfigTab = () => {
   }
 
   return (
-    <>
+    <div className="flex flex-col gap-y-2">
       <div className="flex gap-x-1 items-center">
         <OptionManager />
         <button onClick={() => openModal(<OptionCreateModal />)}>
           옵션 생성하기
         </button>
+        <button onClick={() => openModal(<FileUploader />)}>
+          파일업로더 열기
+        </button>
+      </div>
+      <div className="flex gap-x-1 items-center">
+        <input
+          type="text"
+          className="px-1 py-0.5"
+          value={fileName}
+          onChange={e => setFileName(e.target.value)}
+        />
         <button onClick={uploadOptionJSON}>업로드</button>
         <button onClick={loadOptions}>불러오기</button>
-        <button onClick={() => openModal(<FileUploader/>)}>파일업로더 열기</button>
+        <button onClick={() => setFileName('options.json')}>기본</button>
+        <button onClick={() => setFileName('options_test.json')}>Test</button>
       </div>
-      <div className="pt-2">
+      <div className="flex flex-col gap-y-1">
         {mcOptions.map((modelOption, idx) => (
           <Option key={idx} modelOption={modelOption} />
         ))}
       </div>
-    </>
+    </div>
   );
 };
 
@@ -156,24 +182,38 @@ const OptionManager = () => {
       return {
         id: modelOption.id,
         effect: modelOption.arrangeEffects(),
+        option: modelOption
       };
     });
 
-    const result: { [key: string]: { visible: boolean } } = {};
+    const result: { [key: string]: { visible?: boolean;lightMap?:string } } = {};
 
-    effects.forEach(effect => {
-      const selectedId = selected[effect.id];
-      const targetEffect = effect.effect[selectedId];
+    effects.forEach(effectObject => {
+      const selectedId = selected[effectObject.id];
+      const targetEffect = effectObject.effect[selectedId];
       Object.entries(targetEffect).forEach(([key, value]) => {
-        const originalValue: { visible: boolean } | undefined = result[key];
+        const originalValue: { visible?: boolean, lightMap?: string, } | undefined = result[key];
         if (originalValue) {
           originalValue.visible =
             originalValue.visible && value.effects.visibleValue;
         } else {
           result[key] = { visible: value.effects.visibleValue };
         }
+
+        console.log(key, value, effectObject);
+        const optionId = Object.keys(selected);
+        const lmValues = value.effects.lightMapValues;
+        const lmValuesKeys = Object.keys(lmValues!!);
+        const targetIds = optionId.filter(k => lmValuesKeys.includes(k));
+        const targetId = targetIds[0];
+        result[key].lightMap = lmValues!![targetId][selected[targetId]];
       });
     });
+
+
+    // 라이트맵 비교
+
+    console.log(result);
   }
 
   return <button onClick={analyze}>분석 사항 로그</button>;
@@ -246,6 +286,10 @@ const OptionPreview = ({
   const probes = useAtomValue(ProbeAtom);
   const setSelecteds = useSetAtom(selectedAtom);
 
+  useEffect(() => {
+    console.log('optionChanged : ', optionSelected);
+  }, [optionSelected]);
+
   function analyze(nowSelected: { [key: string]: string }) {
     const effects = mcOptions.map(modelOption => {
       return {
@@ -254,25 +298,29 @@ const OptionPreview = ({
       };
     });
 
-    console.log(effects, nowSelected);
+    const result: { [key: string]: { visible?: boolean; lightMap?: string; } } = {};
 
-    const result: { [key: string]: { visible: boolean } } = {};
+    // Visible 비교
+    effects.forEach(effectObject => {
+      const selectedId = nowSelected[effectObject.id];
+      const targetEffect = effectObject.effect[selectedId];
+      Object.entries(targetEffect).forEach(([key, value]) => {
+        const originalValue: { visible?: boolean, lightMap?: string, } | undefined = result[key];
+        if (originalValue) {
+          originalValue.visible =
+            originalValue.visible && value.effects.visibleValue;
+        } else {
+          result[key] = { visible: value.effects.visibleValue };
+        }
 
-    effects.forEach(effect => {
-      const selectedId = nowSelected[effect.id];
-      if (selectedId) {
-        const targetEffect = effect.effect[selectedId];
-        Object.entries(targetEffect).forEach(([key, value]) => {
-          const originalValue: { visible: boolean } | undefined = result[key];
-          if (originalValue) {
-            originalValue.visible =
-              originalValue.visible && value.effects.visibleValue;
-          } else {
-            result[key] = { visible: value.effects.visibleValue };
-          }
-        });
-      } else {
-      }
+        console.log(key, value, effectObject);
+        const optionId = Object.keys(nowSelected);
+        const lmValues = value.effects.lightMapValues;
+        const lmValuesKeys = Object.keys(lmValues!!);
+        const targetIds = optionId.filter(k => lmValuesKeys.includes(k));
+        const targetId = targetIds[0];
+        result[key].lightMap = lmValues!![targetId][nowSelected[targetId]];
+      });
     });
 
     return result;
@@ -288,8 +336,7 @@ const OptionPreview = ({
     nowSelected[option.id] = state.id;
     setOptionSelected(nowSelected);
     setIsProcessing(true);
-    const meshEffects = state.effects;
-    let hasAnimation;
+    const meshEffects = state.meshEffects;
     const probesToRender: string[] = [];
     const anlayzed = analyze(nowSelected);
     const timeLines: gsap.core.Timeline[] = [];
@@ -305,6 +352,10 @@ const OptionPreview = ({
         // Visible Control
         if (effects.useVisible) {
           const targetVisible = anlayzed[mesh.name].visible;
+          if (targetVisible === undefined) {
+            throw new Error('targetVisible set Error');
+          }
+
           if (mesh.visible !== targetVisible) {
             changeMeshVisibleWithTransition(
               mesh,
@@ -319,9 +370,7 @@ const OptionPreview = ({
         if (effects.useLightMap) {
           const lightMapCache = getAtomValue(lightMapAtom);
           const keys = Object.keys(lightMapCache);
-          let target = effects.lmValue
-            ? effects.lmValue
-            : mat.vUserData.lightMap;
+          let target = anlayzed[mesh.name].lightMap;
 
           if (target && !target.startsWith('https')) {
             target = ENV.base + target;
@@ -440,7 +489,7 @@ export const OptionTab = () => {
           <p className="text-center">Config</p>
         </div>
       </div>
-      <div className="p-3 max-h-[calc(100%-20px)] h-[calc(100%-20px)]">
+      <div className="py-1 px-3 max-h-[calc(100%-20px)] h-[calc(100%-20px)]">
         {tabMode === 'config' ? <OptionConfigTab /> : <OptionPreviewTab />}
       </div>
     </div>
@@ -452,6 +501,9 @@ const Option = ({ modelOption }: { modelOption: ModelOption }) => {
   const [states, setStates] = useState<OptionState[]>(modelOption.states);
   const [nameEditMode, setNameEditMode] = useState<boolean>(false);
   const [name, setName] = useState<string>(modelOption.name);
+  const [defaultState, setDefaultState] = useState<string>(
+    modelOption.defaultSelected,
+  );
 
   useEffect(() => {
     // modelOption.states = states;
@@ -494,7 +546,7 @@ const Option = ({ modelOption }: { modelOption: ModelOption }) => {
   }
 
   return (
-    <div className="p-2 border border-gray-600 mb-1">
+    <div className="p-2 border border-gray-600">
       <div className="flex gap-x-2 items-center mb-2">
         {nameEditMode ? (
           <TextEditor
@@ -526,7 +578,13 @@ const Option = ({ modelOption }: { modelOption: ModelOption }) => {
       {modelOption.expanded && (
         <>
           {states.map((state, idx) => (
-            <State key={idx} state={state} setStates={setStates} />
+            <State
+              key={idx}
+              defaultState={defaultState}
+              setDefaultState={setDefaultState}
+              state={state}
+              setStates={setStates}
+            />
           ))}
         </>
       )}
@@ -535,9 +593,13 @@ const Option = ({ modelOption }: { modelOption: ModelOption }) => {
 };
 
 const State = ({
+  defaultState,
+  setDefaultState,
   state,
   setStates,
 }: {
+  defaultState: string;
+  setDefaultState: Dispatch<SetStateAction<string>>;
   state: OptionState;
   setStates: Dispatch<SetStateAction<OptionState[]>>;
 }) => {
@@ -545,7 +607,7 @@ const State = ({
   const { openModal } = useModal();
   const [name, setName] = useState<string>(state.name);
   const [nameEditMode, setNameEditMode] = useState<boolean>(false);
-  const [models, setModels] = useState<MeshEffect[]>(state.effects);
+  const [models, setModels] = useState<MeshEffect[]>(state.meshEffects);
   const [open, setOpen] = useState<boolean>(state.expanded);
 
   function openMeshSelectModal() {
@@ -590,7 +652,7 @@ const State = ({
     setStates(pre => {
       const t = [...pre];
       const idx = t.findIndex(o => o.id === state.id);
-      t[idx].effects = models;
+      t[idx].meshEffects = models;
       return t;
     });
   }, [models]);
@@ -603,6 +665,10 @@ const State = ({
     models.forEach((meshEffect: MeshEffect) => {
       meshEffect.expanded = false;
     });
+  }
+
+  function setDefault() {
+    setDefaultState(state.id);
   }
 
   return (
@@ -620,16 +686,21 @@ const State = ({
           <div onDoubleClick={() => setNameEditMode(true)}>{state.name}</div>
         )}
         {!nameEditMode && (
-          <div className="flex items-center ml-auto gap-x-1">
+          <div className="flex items-center ml-auto gap-x-2">
             <span style={{ fontSize: 10 }}>메시 {models.length}개</span>
-            <button onClick={openMeshSelectModal}>메시 선택</button>
-            <button onClick={copyState}>복사</button>
-            {models.length > 0 && (
-              <button onClick={() => setOpen(pre => !pre)}>
-                {open ? '접기' : '펼치기'}
+            <div className="grid gap-x-1 gap-y-0.5 grid-cols-2">
+              <button disabled={defaultState === state.id} onClick={setDefault}>
+                기본값
               </button>
-            )}
-            <button onClick={deleteState}>삭제</button>
+              <button onClick={openMeshSelectModal}>메시 선택</button>
+              <button onClick={copyState}>복사</button>
+              {models.length > 0 && (
+                <button onClick={() => setOpen(pre => !pre)}>
+                  {open ? '접기' : '펼치기'}
+                </button>
+              )}
+              <button onClick={deleteState}>삭제</button>
+            </div>
           </div>
         )}
       </div>
@@ -719,6 +790,7 @@ const MeshEffectElem = ({
   meshEffect: MeshEffect;
   setMeshEffects: Dispatch<SetStateAction<MeshEffect[]>>;
 }) => {
+  const modelOptions = useAtomValue(modelOptionClassAtom);
   const [use, setUse] = useState<{
     visible: boolean;
     lightMap: boolean;
@@ -740,9 +812,31 @@ const MeshEffectElem = ({
   const mesh = object!! as THREE.Mesh;
   const { openModal } = useModal();
 
+  function getOtherModelOptionAndStates(): {
+    id: string;
+    name: string;
+    states: { state: OptionState; name: string; id: string }[];
+  }[] {
+    const parent = meshEffect.grandParent;
+    const otherOptions = modelOptions.filter(m => m.id !== parent.id);
+    return otherOptions.map(m => {
+      const states = m.states.map(state => ({
+        state: state,
+        name: state.name,
+        id: state.id,
+      }));
+      return {
+        name: m.name,
+        id: m.id,
+        states,
+      };
+    });
+  }
+
   const [expanded, setExpanded] = useState<boolean>(meshEffect.expanded);
   const [visible, setVisible] = useState<boolean>(meshEffect.visibleValue);
   const [lmValue, setLMValue] = useState<string | null>(meshEffect.lmValue);
+  const [renderVersion, setRenderVersion] = useState<number>(0); // 임시
   useEffect(() => {
     meshEffect.visibleValue = visible;
   }, [visible]);
@@ -764,8 +858,32 @@ const MeshEffectElem = ({
     meshEffect[key] = value;
   }
 
-  function openLightMapModal() {
-    openModal(<LightMapSelector mesh={mesh} setLMValue={setLMValue} />);
+  function openLightMapModal(state: {
+    state: OptionState;
+    name: string;
+    id: string;
+  }) {
+    openModal(
+      <LightMapSelector
+        mesh={mesh}
+        onConfirm={str => {
+          const targetState = state.state;
+          meshEffect.setLightMapValues(targetState, str);
+          // 연관된 상대 옵션에도 같이 넣기
+          const targetEffect = targetState.meshEffects.find(
+            m => m.meshProperty.name === meshEffect.meshProperty.name,
+          );
+          if (targetEffect) {
+            if (!targetEffect.useLightMap) {
+              targetEffect.useLightMap = true;
+            }
+            targetEffect.setLightMapValues(meshEffect.parent, str);
+          }
+
+          setRenderVersion(pre => pre+1);
+        }}
+      />,
+    );
   }
 
   function resetToMeshDefault() {
@@ -869,12 +987,46 @@ const MeshEffectElem = ({
               {use.lightMap && (
                 <div className="flex items-center gap-x-2 mt-1 pl-1">
                   <div className="max-w-[70%] overflow-ellipsis overflow-hidden text-nowrap">
-                    {lmValue ? getNameFromURL(lmValue) : '메시 기본 값'}
+                    {getOtherModelOptionAndStates().map(o => {
+                      const lightMapValues = meshEffect.effect.lightMapValues;
+                      let keys: string[] = [];
+                      if (lightMapValues) {
+                        keys.push(...Object.keys(lightMapValues));
+                      }
+                      return (
+                        <div>
+                          <span>{o.name}</span>
+                          <div className="mt-1 ml-2 flex flex-col gap-y-1">
+                            {o.states.map(stateObject => {
+                              const state = stateObject.state;
+                              const option = state.parent;
+                              return (
+                                <div>
+                                  <div className="flex gap-x-1 items-center">
+                                  <span className="text-gray-600">
+                                    - {stateObject.name}
+                                  </span>
+                                    <button
+                                      onClick={() => {
+                                        openLightMapModal(stateObject);
+                                      }}
+                                    >
+                                      변경
+                                    </button>
+                                  </div>
+                                  {lightMapValues && keys.includes(option.id) && (
+                                    <div className="max-w-full overflow-ellipsis overflow-hidden text-nowrap">
+                                      {getNameFromURL(lightMapValues[option.id][state.id])}
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
-                  {lmValue && (
-                    <button onClick={resetToMeshDefault}>리셋</button>
-                  )}
-                  <button onClick={openLightMapModal}>변경</button>
                 </div>
               )}
             </div>
@@ -887,10 +1039,10 @@ const MeshEffectElem = ({
 
 const LightMapSelector = ({
   mesh,
-  setLMValue,
+  onConfirm,
 }: {
   mesh: THREE.Mesh;
-  setLMValue: Dispatch<SetStateAction<string | null>>;
+  onConfirm: (url: string) => void;
 }) => {
   const [lightMaps, setLightMaps] = useAtom(lightMapAtom);
   const [selected, setSelected] = useState<string>('');
@@ -934,7 +1086,7 @@ const LightMapSelector = ({
   }
 
   function confirm() {
-    setLMValue(selected);
+    onConfirm(selected);
     closeModal();
   }
 
@@ -1055,6 +1207,14 @@ const KTXPreview = ({
 
   if (!isKtx) {
     return <span>KTX2 이미지 아님</span>;
+  }
+
+  if (!image) {
+    return (
+      <div className="rounded-[8px] w-[60px] h-[60px] border-black border flex items-center justify-center">
+        <p className="text-center">No Preview</p>
+      </div>
+    );
   }
 
   return (
