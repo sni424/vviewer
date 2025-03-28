@@ -707,7 +707,7 @@ const ProgressiveAlphaControl = () => {
       if (!mat) {
         return;
       }
-      if (mat.VISIBILITY_TRANSITION) {
+      if (mat.MESH_TRANSITION) {
         mat.uniform!.progress.value = progress;
       }
     });
@@ -729,7 +729,7 @@ const ProgressiveAlphaControl = () => {
       <button
         onClick={() => {
           scene.traverse(o => {
-            o.asMesh?.prepareVisibilityTransition?.({
+            o.asMesh?.mat?.prepareMeshTransition?.({
               direction: 'fadeOut',
               progress,
             });
@@ -741,7 +741,7 @@ const ProgressiveAlphaControl = () => {
       <button
         onClick={() => {
           scene.traverse(o => {
-            o.asMesh?.prepareVisibilityTransition?.({
+            o.asMesh?.mat?.prepareMeshTransition?.({
               direction: 'fadeIn',
               progress,
             });
@@ -753,7 +753,7 @@ const ProgressiveAlphaControl = () => {
       <button
         onClick={() => {
           scene.traverse(o => {
-            o.asMesh?.prepareVisibilityTransition?.({
+            o.asMesh?.mat?.prepareMeshTransition?.({
               direction: 'fadeOut',
             });
           });
@@ -783,7 +783,7 @@ const ProgressiveAlphaControl = () => {
       <button
         onClick={() => {
           scene.traverse(o => {
-            o.asMesh?.prepareVisibilityTransition?.({
+            o.asMesh?.mat?.prepareMeshTransition?.({
               direction: 'fadeIn',
             });
           });
@@ -818,7 +818,7 @@ const ProgressiveAlphaControl = () => {
               return;
             }
 
-            mat.VISIBILITY_TRANSITION = false;
+            mat.MESH_TRANSITION = false;
           });
         }}
       >

@@ -1,6 +1,8 @@
 import * as THREE from 'three';
+import { threes } from '../atomUtils';
 import { patchFragment } from '../shaders/v_env_frag.glsl';
 import { patchVertex } from '../shaders/v_env_vertex.glsl';
+import { computeBoundingBoxForMaterial } from '../utils';
 import { DEFAULT_MATERIAL_SHADER, defaultUniforms, MATERIAL_DEFINE, MATERIAL_SHADER, MATERIAL_SHADER_TYPE, MATERIAL_UNIFORM, MATERIAL_UNIFORM_VALUE, VUserData } from './VTHREETypes';
 
 // 재질 : uniform
@@ -29,10 +31,20 @@ declare module 'three' {
     get progress(): number;
     set progress(value: number);
 
-    get VISIBILITY_TRANSITION(): boolean;
-    set VISIBILITY_TRANSITION(value: boolean);
+    get MESH_TRANSITION(): boolean;
+    set MESH_TRANSITION(value: boolean);
     get LIGHTMAP_TRANSITION(): boolean;
     set LIGHTMAP_TRANSITION(value: boolean);
+
+    // mat을 쓰는 모든 메시의 바운딩박스와 dissolve 관련 유니폼 준비
+    // fadeOut = fale
+    // fadeIn = true
+    prepareMeshTransition(params: {
+      direction: "fadeIn" | "fadeOut",
+      progress?: number, // default : 0
+      useMeshTrantision?: boolean, // default : true, 유니폼의 MESH_TRANSITION을 설정할것인가
+      scene?: THREE.Scene, // undefined면 threeExports 사용
+    }): void;
 
     updateMultiProbeTexture?(): void;
 
@@ -121,13 +133,13 @@ THREE.Material.prototype.uniform = (() => {
   DEFAULT_MATERIAL_SHADER
 })() as any;
 
-if (!Object.getOwnPropertyDescriptor(THREE.Material.prototype, 'VISIBILITY_TRANSITION')) {
-  Object.defineProperty(THREE.Material.prototype, 'VISIBILITY_TRANSITION', {
+if (!Object.getOwnPropertyDescriptor(THREE.Material.prototype, 'MESH_TRANSITION')) {
+  Object.defineProperty(THREE.Material.prototype, 'MESH_TRANSITION', {
     get() {
-      return this.uniform.VISIBILITY_TRANSITION.value;
+      return this.uniform.MESH_TRANSITION.value;
     },
     set(value: boolean) {
-      this.uniform.VISIBILITY_TRANSITION.value = value;
+      this.uniform.MESH_TRANSITION.value = value;
     },
   });
 }
@@ -346,4 +358,74 @@ if (
 
 THREE.Material.prototype.fromThree = function (material: THREE.Material) {
   return material;
+}
+
+
+THREE.Material.prototype.prepareMeshTransition = function (params: {
+  direction: "fadeIn" | "fadeOut",
+  progress?: number, // default : 0
+  useMeshTrantision?: boolean, // default : true
+  scene?: THREE.Scene,
+}) {
+  const { scene, direction, progress, useMeshTrantision } = params;
+
+  if (
+    typeof this.vUserData.dissolveOrigin === "undefined" ||
+    typeof this.vUserData.dissolveMaxDist === "undefined"
+  ) {
+    const targetScene = scene ?? threes()?.scene;
+    if (!targetScene) {
+      console.warn("prepareMeshTransition : scene 없음", this.name, this);
+      return;
+    }
+
+    const box = computeBoundingBoxForMaterial(targetScene, this)!;
+    if (!box) {
+      console.warn("prepareMeshTransition : bounding box 없음", this.name, this);
+      return;
+    }
+
+
+    // dissolveOrigin 설정: x는 minX, y는 중앙, z는 minZ
+    const minX = box.min.x; // 왼쪽 X 좌표
+    const centerY = (box.min.y + box.max.y) / 2; // Y 중앙
+    const minZ = box.min.z; // 가장 앞쪽 (액자의 왼쪽 테두리)
+
+    // dissolveOrigin을 Three.js Vector3로 설정
+    const dissolveOrigin = new THREE.Vector3(minX, centerY, minZ);
+
+    const dissolveMaxDist = box.max.distanceTo(box.min);
+
+    this.vUserData.dissolveOrigin = dissolveOrigin;
+    this.vUserData.dissolveMaxDist = dissolveMaxDist;
+  }
+
+  // uniform 세팅
+  const mat = this;
+  if (mat && mat.uniform) {
+    if (!mat.uniform.dissolveOrigin) {
+      mat.uniform.dissolveOrigin = { value: this.vUserData.dissolveOrigin };
+    } else {
+      mat.uniform.dissolveOrigin.value.copy(this.vUserData.dissolveOrigin);
+    }
+
+    if (!mat.uniform.dissolveMaxDist) {
+      mat.uniform.dissolveMaxDist = { value: this.vUserData.dissolveMaxDist };
+    } else {
+      mat.uniform.dissolveMaxDist.value = this.vUserData.dissolveMaxDist;
+    }
+
+    const directionValue = direction === "fadeIn" ? true : false;
+    if (!mat.uniform.dissolveDirection) {
+      mat.uniform.dissolveDirection = { value: directionValue };
+    } else {
+      if (typeof direction !== 'undefined') {
+        mat.uniform.dissolveDirection.value = directionValue;
+      }
+    }
+
+    mat.uniform.progress.value = progress ?? 0;
+    mat.uniform.MESH_TRANSITION.value = useMeshTrantision ?? true;
+  }
+
 }

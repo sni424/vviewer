@@ -8,10 +8,10 @@ import type { ReflectionProbeJSON } from "../ReflectionProbe";
 export type MATERIAL_DEFINE_TYPE = "" | 0 | 1 | true | false;
 
 export type MATERIAL_SHADER = {
-  VISIBILITY_TRANSITION: {
-    type: "VISIBILITY_TRANSITION";
+  MESH_TRANSITION: {
+    type: "MESH_TRANSITION";
     uniforms: {
-      VISIBILITY_TRANSITION: { value: boolean };
+      MESH_TRANSITION: { value: boolean };
       progress: {
         value: number;
       };
@@ -173,8 +173,8 @@ export interface VUserData {
 
 export const MATERIAL_DEFINES = [
   'LIGHTMAP_TRANSITION',
-  'VISIBILITY_TRANSITION',
-  'VISIBILITY_TRANSITION',
+  'MESH_TRANSITION',
+  'MESH_TRANSITION',
   'USE_LIGHTMAP_CONTRAST',
 
   // multiprobe
@@ -197,12 +197,12 @@ const EMPTY_TEXTURE = (() => {
   return emptyTexture;
 })();
 export const DEFAULT_MATERIAL_SHADER: MATERIAL_SHADER = {
-  VISIBILITY_TRANSITION: {
-    type: "VISIBILITY_TRANSITION",
+  MESH_TRANSITION: {
+    type: "MESH_TRANSITION",
     defines: {
     },
     uniforms: {
-      VISIBILITY_TRANSITION: { value: false },
+      MESH_TRANSITION: { value: false },
       progress: { value: 0 },
       dissolveOrigin: { value: new THREE.Vector3() },
       dissolveMaxDist: { value: 0 },

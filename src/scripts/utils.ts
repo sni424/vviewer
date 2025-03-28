@@ -1800,3 +1800,38 @@ export const resetColor = <T extends { color?: number }>(coloredArray: T[]): T[]
   });
   return coloredArray;
 };
+
+// 재질 주어졌을 때 해당 재질을 사용하는 모든 메시를 포함하는 바운딩 박스 계산
+// MESH_TRANSITION에서 사용
+export function computeBoundingBoxForMaterial(scene: THREE.Scene, targetMaterial: THREE.Material): THREE.Box3 | null {
+  const resultBox = new THREE.Box3();
+  let found = false;
+
+  scene.traverse((object) => {
+    if ((object as THREE.Mesh).isMesh) {
+      const mesh = object as THREE.Mesh;
+      if (!mesh.isMesh) {
+        return;
+      }
+
+      const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+      const materialsUuid = materials.map(m => m.uuid);
+
+      // 이 mesh가 targetMaterial을 쓰는지 확인
+      if (materialsUuid.includes(targetMaterial.uuid)) {
+        // geometry가 유효한지 체크
+        if (!mesh.geometry.boundingBox) {
+          mesh.geometry.computeBoundingBox();
+        }
+
+        const meshBox = mesh.geometry.boundingBox!.clone();
+        meshBox.applyMatrix4(mesh.matrixWorld); // local → world 변환
+
+        resultBox.union(meshBox); // 전체 박스와 합산
+        found = true;
+      }
+    }
+  });
+
+  return found ? resultBox : null; // 아무 것도 없으면 null
+}

@@ -75,7 +75,7 @@ void main()
 `;
 
 const ditheringReplace = `
-  #ifdef VISIBILITY_TRANSITION
+  #ifdef MESH_TRANSITION
     float distance = distance(wp.xyz, dissolveOrigin );
     float falloffRange = dissolveMaxDist * 0.01;
     float distToBorder = (dissolveMaxDist + falloffRange) * abs(progress);
@@ -148,7 +148,7 @@ export const VShaderLib = {
   V_LIGHTMAP_PARS_FRAGMENT: V_LIGHTMAP_PARS_FRAGMENT,
   V_VERTEX_WORLD_POSITION: VERTEX_WORLD_POSITION,
   V_ALPHA_MIX_FUNC: addAlphaMixFunc,
-  V_VISIBILITY_TRANSITION: ditheringReplace,
+  V_MESH_TRANSITION: ditheringReplace,
   V_WORLD_POS_REPLACE: worldPosReplace,
   V_BOX_PROJECTED_ENV: boxProjectDefinitions,
   getIBLIrradiance_patch,

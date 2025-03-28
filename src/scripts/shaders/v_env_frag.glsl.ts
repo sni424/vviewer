@@ -6,10 +6,10 @@ type Shader = THREE.WebGLProgramParametersWithUniforms;
 /**
  * 공통으로 쓰이는 변수
  * 1. progress
- *      - LIGHTMAP_TRANSITION || VISIBILITY_TRANSITION
+ *      - LIGHTMAP_TRANSITION || MESH_TRANSITION
  * 
  * 2. vWorldPos
- *      - V_ENV_MAP || VISIBILITY_TRANSITION
+ *      - V_ENV_MAP || MESH_TRANSITION
  */
 
 
@@ -22,7 +22,7 @@ const defines = /* glsl */ `
 #define V_FRAG_DEFINES_GUARD
 
 uniform bool LIGHTMAP_TRANSITION;
-uniform bool VISIBILITY_TRANSITION;
+uniform bool MESH_TRANSITION;
 
 uniform float progress;
 
@@ -580,7 +580,7 @@ const progAlpha = /* glsl */ `
 #ifndef V_FRAG_PROG_ALPHA_GUARD
 #define V_FRAG_PROG_ALPHA_GUARD
 
-  if(VISIBILITY_TRANSITION){
+  if(MESH_TRANSITION){
     float distance = distance(vWorldPos.xyz, dissolveOrigin );
     float falloffRange = dissolveMaxDist * 0.01;
     float distToBorder = (dissolveMaxDist + falloffRange) * abs(progress);
