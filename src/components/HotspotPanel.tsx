@@ -3,7 +3,7 @@ import { useState } from 'react';
 import {
   getAtomValue,
   hotspotAtom,
-  roomAtom,
+  newRoomAtom,
   setAtomValue,
   settingsAtom,
   threeExportsAtom,
@@ -30,7 +30,8 @@ const uploadHotspot = async () => {
 
 function HotspotPanel() {
   const [hotspots, setHotspots] = useAtom(hotspotAtom);
-  const rooms = useAtomValue(roomAtom);
+  // const rooms = useAtomValue(roomAtom);
+  const newRooms = useAtomValue(newRoomAtom);
   const threeExports = useAtomValue(threeExportsAtom);
   const [writeContent, setWriteContent] = useState(false);
   const [settings, setSettings] = useAtom(settingsAtom);
@@ -282,7 +283,7 @@ function HotspotPanel() {
                   </button>
                   방:{' '}
                   <span>
-                    {rooms
+                    {newRooms
                       .filter(room => hotspot.rooms.includes(room.index))
                       .map(room => room.name)
                       .join(', ')}
@@ -309,7 +310,7 @@ function HotspotPanel() {
                     });
                   }}
                 >
-                  {rooms.map(room => {
+                  {newRooms.map(room => {
                     return (
                       <option
                         value={room.index}

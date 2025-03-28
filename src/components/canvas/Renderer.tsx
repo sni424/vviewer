@@ -16,11 +16,11 @@ import {
   materialSelectedAtom,
   modalAtom,
   moveToPointAtom,
+  newRoomAtom,
   orbitSettingAtom,
   panelTabAtom,
   pathfindingAtom,
   pointsAtom,
-  roomAtom,
   selectedAtom,
   setAtomValue,
   sourceAtom,
@@ -347,8 +347,14 @@ const useMouseHandler = () => {
   const moveToPoint = useAtomValue(moveToPointAtom);
   const lastClickRef = useRef<number>(0);
   const mouseDownPosition = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
-  const isRoomCreating = useAtomValue(roomAtom).some(room =>
-    Boolean(room.creating),
+  // const isRoomCreating = useAtomValue(roomAtom).some(room =>
+  //   Boolean(room.creating),
+  // );
+  const isRoomCreating = useAtomValue(newRoomAtom).some(
+    room =>
+      room.roomInfo &&
+      room.roomInfo.length > 0 &&
+      room.roomInfo.some(child => child.creating),
   );
   const wallCreating = useAtomValue(wallOptionAtom).creating;
   const isSettingHotspot = useAtomValue(hotspotAtom).some(hotspot =>

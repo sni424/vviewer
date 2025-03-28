@@ -495,7 +495,25 @@ export type RoomCreateOption = Room & {
   creating?: boolean; // 생성중이면 좌표값의 배열
   color?: number;
 };
+
+export type newRoom = {
+  show?: boolean;
+  tourMatrix: number[];
+  border: [number, number][]; // [x, z]
+  index: string;
+  creating?: boolean;
+  visible: boolean
+};
+
+export type newRoomCreateOption = {
+  color?: number;
+  index: number;
+  name: string;
+  visible: boolean
+  roomInfo: newRoom[]
+};
 export const roomAtom = atom<RoomCreateOption[]>([]);
+export const newRoomAtom = atom<newRoomCreateOption[]>([])
 
 export const [wallOptionAtom,
   getWallOptionAtom,
