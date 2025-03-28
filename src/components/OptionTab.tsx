@@ -10,6 +10,7 @@ import {
 } from 'react';
 import { ENV } from '../Constants.ts';
 import {
+  animationDurationAtom,
   getAtomValue,
   lightMapAtom,
   modelOptionClassAtom,
@@ -25,7 +26,9 @@ import { createLightmapCache } from '../scripts/loaders/VGLTFLoader.ts';
 import { getVKTX2Loader } from '../scripts/loaders/VKTX2Loader.ts';
 import VMaterial from '../scripts/material/VMaterial.ts';
 import ModelOption from '../scripts/options/ModelOption.ts';
-import OptionState from '../scripts/options/OptionState.ts';
+import OptionState, {
+  FunctionEffects, FunctionEffectsBooleans, FunctionEffectsURLs,
+} from '../scripts/options/OptionState.ts';
 import MeshEffect from '../scripts/options/MeshEffect.ts';
 import {
   changeMeshLightMapWithTransition,
@@ -76,7 +79,7 @@ const OptionConfigTab = () => {
 };
 
 const OptionManager = () => {
-  const {analyze} = useOptionManager();
+  const { analyze } = useOptionManager();
   /**
    * 1. 하나의 옵션을 토글할 때 다른 옵션들의 상태를 체크
    * 2. 다른 옵션들의 토글 여부에 있는 겹쳐지는 메시를 체크
@@ -85,12 +88,12 @@ const OptionManager = () => {
    *    2) LightMap 의 경우 현재 적용될 옵션에 맞춰서 LightMap On ? // TODO check 필요
    * **/
 
-  return <button onClick={analyze}>분석 사항 로그</button>;
+  return <button onClick={() => analyze()}>분석 사항 로그</button>;
 };
 
 const OptionPreviewTab = () => {
-  const {options} = useOptionManager();
-  const [animationDuration, setAnimationDuration] = useState<number>(1.5);
+  const { options } = useOptionManager();
+  const [animationDuration, setAnimationDuration] = useAtom<number>(animationDurationAtom);
   const animationTimeInputConfig = {
     min: 0.2,
     max: 5,
@@ -153,11 +156,7 @@ const OptionPreview = ({
   const { scene } = threeExports;
   const probes = useAtomValue(ProbeAtom);
   const setSelecteds = useSetAtom(selectedAtom);
-  const {analyze} = useOptionManager();
-
-  useEffect(() => {
-    console.log('optionChanged : ', optionSelected);
-  }, [optionSelected]);
+  const { analyze } = useOptionManager();
 
   async function processState(state: OptionState) {
     if (isProcessing) {
@@ -171,7 +170,7 @@ const OptionPreview = ({
     setIsProcessing(true);
     const meshEffects = state.meshEffects;
     const probesToRender: string[] = [];
-    const anlayzed = analyze();
+    const anlayzed = analyze(nowSelected);
     const timeLines: gsap.core.Timeline[] = [];
     meshEffects.forEach(meshEffect => {
       const timeLine = gsap.timeline().pause();
@@ -380,7 +379,7 @@ const Option = ({ modelOption }: { modelOption: ModelOption }) => {
 
   return (
     <div className="p-2 border border-gray-600">
-      <div className="flex gap-x-2 items-center mb-2">
+      <div className="flex gap-x-2 items-center">
         {nameEditMode ? (
           <TextEditor
             value={name}
@@ -407,6 +406,9 @@ const Option = ({ modelOption }: { modelOption: ModelOption }) => {
           )}
           <button onClick={deleteOption}>삭제</button>
         </div>
+      </div>
+      <div className="my-1">
+        <span>ID: {modelOption.id}</span>
       </div>
       {modelOption.expanded && (
         <>
@@ -504,6 +506,10 @@ const State = ({
     setDefaultState(state.id);
   }
 
+  function openStateFunctionEffectChangeModal() {
+    openModal(<StateFunctionEffectModal state={state} />);
+  }
+
   return (
     <div className="px-2 py-1 border  border-gray-600 mb-1">
       <div className="flex gap-x-1.5 items-center relative">
@@ -526,6 +532,9 @@ const State = ({
                 기본값
               </button>
               <button onClick={openMeshSelectModal}>메시 선택</button>
+              <button onClick={openStateFunctionEffectChangeModal}>
+                이벤트
+              </button>
               <button onClick={copyState}>복사</button>
               {models.length > 0 && (
                 <button onClick={() => setOpen(pre => !pre)}>
@@ -536,6 +545,9 @@ const State = ({
             </div>
           </div>
         )}
+      </div>
+      <div className="my-1">
+        <span>ID: {state.id}</span>
       </div>
       {open && models.length > 0 && (
         <div className="mt-1">
@@ -555,6 +567,139 @@ const State = ({
     </div>
   );
 };
+
+const StateFunctionEffectModal = ({ state }: { state: OptionState }) => {
+  const { closeModal } = useModal();
+  const functionEffects = state.functionEffects;
+  const [uses, setUses] = useState<FunctionEffectsBooleans>(functionEffects.booleans);
+  const [values, setValues] = useState<FunctionEffectsURLs>(functionEffects.urls);
+
+  function confirm() {
+    closeModal();
+  }
+
+  return (
+    <div
+      className="w-[30%] bg-white px-4 py-3"
+      onClick={e => {
+        e.preventDefault();
+        e.stopPropagation();
+      }}
+    >
+      {/* Header */}
+      <div className="py-1 w-full mb-2">
+        <strong style={{ fontSize: 16 }}>
+          Event States - [{state.parent.name} : {state.name}]
+        </strong>
+      </div>
+      {/* Body */}
+      <div className="w-full mb-4 flex flex-col gap-y-2 h-fit">
+        <div className="mt-1">
+          <strong className="mr-1">미니맵</strong>
+          <button onClick={e => setUses(pre => ({...pre, changeMinimap: !uses.changeMinimap }))}>{uses.changeMinimap ? '사용' : '미사용'}</button>
+          <div className="flex mt-1 justify-between">
+            {uses.changeMinimap && (
+              <>
+                <input
+                  className="py-1 px-0.5 border border-black rounded w-[90%]"
+                  type="text"
+                  value={values.minimap}
+                  onChange={e => setValues(pre => ({...pre, minimap : e.target.value}))}
+                />
+                <button
+                  onClick={() =>
+                    setValues(pre => ({...pre, minimap: functionEffects.urls.minimap}))
+                  }
+                >
+                  초기화
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+        <div className="mt-1">
+          <strong className="mr-1">벽</strong>
+          <button onClick={e => setUses(pre => ({...pre, changeWall: !uses.changeWall }))}>{uses.changeWall ? '사용' : '미사용'}</button>
+          <div className="flex mt-1 justify-between">
+            {uses.changeWall && (
+              <>
+                <input
+                  className="py-1 px-0.5 border border-black rounded w-[90%]"
+                  type="text"
+                  value={values.walls}
+                  onChange={e => setValues(pre => ({...pre, walls : e.target.value}))}
+                />
+                <button
+                  onClick={() =>
+                    setValues(pre => ({...pre, walls: functionEffects.urls.walls}))
+                  }
+                >
+                  초기화
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+        <div className="mt-1">
+          <strong className="mr-1">Nav Mesh</strong>
+          <button onClick={e => setUses(pre => ({...pre, changeNav: !uses.changeNav }))}>{uses.changeNav ? '사용' : '미사용'}</button>
+          <div className="flex mt-1 justify-between">
+            {uses.changeNav && (
+              <>
+                <input
+                  className="py-1 px-0.5 border border-black rounded w-[90%]"
+                  type="text"
+                  value={values.nav}
+                  onChange={e => setValues(pre => ({...pre, nav : e.target.value}))}
+                />
+                <button
+                  onClick={() =>
+                    setValues(pre => ({...pre, nav: functionEffects.urls.nav}))
+                  }
+                >
+                  초기화
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+        <div className="mt-1">
+          <strong className="mr-1">Floor Mesh</strong>
+          <button onClick={e => setUses(pre => ({...pre, changeFloor: !uses.changeFloor }))}>{uses.changeFloor ? '사용' : '미사용'}</button>
+          <div className="flex mt-1 justify-between">
+            {uses.changeFloor && (
+              <>
+                <input
+                  className="py-1 px-0.5 border border-black rounded w-[90%]"
+                  type="text"
+                  value={values.floor}
+                  onChange={e => setValues(pre => ({...pre, floor : e.target.value}))}
+                />
+                <button
+                  onClick={() =>
+                    setValues(pre => ({...pre, floor: functionEffects.urls.floor}))
+                  }
+                >
+                  초기화
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+      {/* Footer  */}
+      <div className="flex w-full justify-end gap-x-2">
+        <button className="py-1.5 px-3 text-md" onClick={closeModal}>
+          취소
+        </button>
+        <button className="py-1.5 px-3 text-md" onClick={confirm}>
+          저장
+        </button>
+      </div>
+    </div>
+  );
+};
+
 
 const ValueModal = ({ meshEffects }: { meshEffects: MeshEffect[] }) => {
   const { closeModal } = useModal();

@@ -144,6 +144,7 @@ export const ktxTexturePreviewCachedAtom = atom<{
 }>({});
 
 export const selectedAtom = atom<string[]>([]);
+export const animationDurationAtom = atom<number>(1.5);
 export const forceUpdateAtom = atom<number>(0);
 export const setForceUpdate = () => {
   const setForceUpdateAtom = useSetAtom(forceUpdateAtom);
