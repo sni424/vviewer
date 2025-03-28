@@ -3,7 +3,7 @@ import {
   animationDurationAtom,
   getAtomValue,
   lightMapAtom,
-  modelOptionClassAtom,
+  modelOptionClassAtom, optionProcessingAtom,
   optionSelectedAtom, ProbeAtom, selectedAtom, threeExportsAtom,
   useToast,
 } from '../atoms.ts';
@@ -14,7 +14,7 @@ import { createLightmapCache } from '../loaders/VGLTFLoader.ts';
 import ModelOption from './ModelOption.ts';
 import * as THREE from '../VTHREE.ts';
 import OptionState from './OptionState.ts';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import gsap from 'gsap';
 import VMaterial from '../material/VMaterial.ts';
 import { changeMeshLightMapWithTransition, changeMeshVisibleWithTransition } from '../utils.ts';
@@ -28,10 +28,14 @@ const useOptionManager = () => {
   const [optionSelected, setOptionSelected] = useAtom(optionSelectedAtom);
   const [lightMaps, setLightMaps] = useAtom(lightMapAtom);
   const { openToast, closeToast } = useToast();
-  const [isProcessing, setProcessing] = useState<boolean>(false);
+  const [isProcessing, setProcessing] = useAtom(optionProcessingAtom);
   const setSelecteds = useSetAtom(selectedAtom);
   const animationDuration = useAtomValue(animationDurationAtom);
   const probes = useAtomValue(ProbeAtom);
+
+  useEffect(() => {
+    console.log('processing Changed Caught in hook');
+  }, [isProcessing]);
 
   async function loadOptions(fileName: string) {
     openToast('옵션 불러오는 중..', { autoClose: false });
@@ -202,7 +206,7 @@ const useOptionManager = () => {
       probes.forEach(probe => {
         probe.renderCamera(true);
       });
-      setIsProcessing(false);
+      setProcessing(false);
     }
 
     openToast('애니메이션 실행됨', {
@@ -216,6 +220,7 @@ const useOptionManager = () => {
       });
 
       setTimeout(() => {
+        console.log('done ? ');
         processAfter();
       }, animationDuration);
     }
@@ -262,7 +267,7 @@ const useOptionManager = () => {
     return result;
   }
 
-  return { loadOptions, uploadOptionJSON, options, processState, analyze };
+  return { loadOptions, uploadOptionJSON, options, processState, analyze, isProcessing, optionSelected };
 };
 
 export default useOptionManager;

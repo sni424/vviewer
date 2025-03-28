@@ -135,6 +135,7 @@ const FileUploader = () => {
         />
       ) : (
         <div
+          className="p-2 h-full"
           onClick={e => {
             e.preventDefault();
             e.stopPropagation();
@@ -148,10 +149,12 @@ const FileUploader = () => {
               display: 'flex',
               marginTop: 24,
               justifyContent: 'space-around',
+              height: '80%'
             }}
           >
             <button
-              style={{ fontSize: 16, padding: 64 }}
+              className="rounded-none"
+              style={{ width: '50%', fontSize: 16, padding: 64 }}
               onClick={() => {
                 setMode('model');
               }}
@@ -159,7 +162,8 @@ const FileUploader = () => {
               모델
             </button>
             <button
-              style={{ fontSize: 16, padding: 80 }}
+              className="rounded-none"
+              style={{ width: '50%', fontSize: 16, padding: 80 }}
               onClick={() => {
                 setMode('image');
               }}
