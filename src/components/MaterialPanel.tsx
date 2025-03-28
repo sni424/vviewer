@@ -1,6 +1,7 @@
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import React, { useEffect, useState } from 'react';
 import { ColorPicker, ColorService, useColor } from 'react-color-palette';
+//@ts-ignore
 import 'react-color-palette/css';
 import { AOMAP_INTENSITY_MAX, LIGHTMAP_INTENSITY_MAX } from '../Constants';
 import {

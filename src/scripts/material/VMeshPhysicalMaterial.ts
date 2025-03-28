@@ -1,8 +1,9 @@
-import { THREE } from '../vthree/VTHREE.ts';
+import { MeshPhysicalMaterial, THREE } from '../vthree/VTHREE.ts';
 import VMaterial from './VMaterial.ts';
 import * as VMaterialUtils from './VMaterialUtils.ts';
 
-export default class VMeshPhysicalMaterial
+export default MeshPhysicalMaterial;
+class _VMeshPhysicalMaterial
   extends THREE.MeshPhysicalMaterial
   implements VMaterial {
   _shader: THREE.WebGLProgramParametersWithUniforms;

@@ -1,24 +1,24 @@
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import { useEffect } from 'react';
-import CameraPanel from '../components/CameraPanel';
-import RendererContainer from '../components/canvas/Renderer';
-import MaterialPanelContainer from '../components/MaterialPanel';
-import MeshInfoPanel from '../components/MeshInfoPanel';
-import Modal from '../components/Modal';
-import OptionPanel from '../components/OptionPanel.tsx';
-import ThePanel from '../components/ThePanel';
-import { Toast } from '../components/Toast.tsx';
+import CameraPanel from '../../components/CameraPanel';
+import RendererContainer from '../../components/canvas/Renderer';
+import MaterialPanelContainer from '../../components/MaterialPanel';
+import MeshInfoPanel from '../../components/MeshInfoPanel';
+import Modal from '../../components/Modal';
+import OptionPanel from '../../components/OptionPanel.tsx';
+import ThePanel from '../../components/ThePanel';
+import { Toast } from '../../components/Toast.tsx';
+import { getSettings, loadSettings } from '../../pages/useSettings.ts';
 import {
   DPAtom,
   modalAtom,
   threeExportsAtom,
   viewGridAtom,
-} from '../scripts/atoms';
-import { loadNavMesh } from '../scripts/atomUtils';
-import useFiles from '../scripts/useFiles';
-import useModelDragAndDrop from '../scripts/useModelDragAndDrop';
-import { toggleDP } from '../scripts/utils.ts';
-import { getSettings, loadSettings } from './useSettings';
+} from '../../scripts/atoms';
+import { loadNavMesh } from '../../scripts/atomUtils';
+import useFiles from '../../scripts/useFiles';
+import useModelDragAndDrop from '../../scripts/useModelDragAndDrop';
+import { toggleDP } from '../../scripts/utils.ts';
 
 function Loading() {
   const files = useFiles();

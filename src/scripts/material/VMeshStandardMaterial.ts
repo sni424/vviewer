@@ -4,7 +4,9 @@ import * as VMaterialUtils from './VMaterialUtils.ts';
 
 type ShaderPatch = THREE.MeshStandardMaterial['onBeforeCompile'];
 
-class VMeshStandardMaterial
+export default THREE.MeshStandardMaterial;
+
+class _VMeshStandardMaterial
   extends THREE.MeshStandardMaterial
   implements VMaterial {
   _shader!: THREE.WebGLProgramParametersWithUniforms;
@@ -166,4 +168,3 @@ class VMeshStandardMaterial
   }
 }
 
-export default VMeshStandardMaterial;

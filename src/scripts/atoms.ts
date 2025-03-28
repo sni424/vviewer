@@ -310,6 +310,7 @@ export const lightMapContrastAtom = atom<{ use: boolean; value: number }>({
 });
 
 export const Tabs = [
+  "shadertest",
   'scene',
   'tree',
   'probe',

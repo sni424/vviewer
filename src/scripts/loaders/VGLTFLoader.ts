@@ -8,9 +8,6 @@ import {
 import { KTX2Loader } from 'three/examples/jsm/loaders/KTX2Loader.js';
 import { ENV, Layer } from '../../Constants.ts';
 import VMaterial from '../material/VMaterial.ts';
-import VMeshBasicMaterial from '../material/VMeshBasicMaterial.ts';
-import VMeshPhysicalMaterial from '../material/VMeshPhysicalMaterial.ts';
-import VMeshStandardMaterial from '../material/VMeshStandardMaterial.ts';
 import * as THREE from '../vthree/VTHREE.ts';
 import { getVKTX2Loader } from './VKTX2Loader.ts';
 
@@ -105,20 +102,21 @@ export default class VGLTFLoader extends GLTFLoader {
 
           if (vMaterialCache.has(originalMatID)) {
             mesh.material = vMaterialCache.get(originalMatID);
-          } else {
-            let vMat: VMaterial;
-            if (mat.type === 'MeshStandardMaterial') {
-              vMat = VMeshStandardMaterial.fromThree(mat);
-            } else if (mat.type === 'MeshPhysicalMaterial') {
-              vMat = VMeshPhysicalMaterial.fromThree(mat);
-            } else if (mat.type === 'MeshBasicMaterial') {
-              vMat = VMeshBasicMaterial.fromThree(mat);
-            } else {
-              console.warn('???', mat);
-            }
-            mesh.material = vMat;
-            vMaterialCache.set(originalMatID, vMat);
           }
+          // else {
+          //   let vMat: VMaterial;
+          //   if (mat.type === 'MeshStandardMaterial') {
+          //     vMat = VMeshStandardMaterial.fromThree(mat);
+          //   } else if (mat.type === 'MeshPhysicalMaterial') {
+          //     vMat = VMeshPhysicalMaterial.fromThree(mat);
+          //   } else if (mat.type === 'MeshBasicMaterial') {
+          //     vMat = VMeshBasicMaterial.fromThree(mat);
+          //   } else {
+          //     console.warn('???', mat);
+          //   }
+          //   mesh.material = vMat;
+          //   vMaterialCache.set(originalMatID, vMat);
+          // }
         }
         getLightmap(object, lightMapSet);
       });

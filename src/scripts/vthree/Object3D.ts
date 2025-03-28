@@ -1,5 +1,7 @@
 import { RootState } from '@react-three/fiber';
 import * as THREE from 'three';
+import type { TransformControlsPlane } from 'three/examples/jsm/controls/TransformControls.js';
+import { Layer } from '../../Constants';
 import { resetGL } from '../utils';
 import { ThreeUserData } from './types';
 
@@ -80,6 +82,24 @@ THREE.Object3D.prototype.materials = function () {
   return result;
 };
 
+THREE.Object3D.prototype.traverseAll = function (
+  callback: (node: THREE.Object3D) => any,
+) {
+  callback(this);
+  this.children.forEach(child => child.traverseAll(callback));
+};
+
+THREE.Object3D.prototype.traverse = function (
+  callback: (node: THREE.Object3D) => any,
+) {
+  if (this.type !== 'Scene' && !this.layers.isEnabled(Layer.Model)) {
+    // console.warn('traverse(): this Not in Model Layer : ', this);
+    return;
+  }
+  callback(this);
+  this.children.forEach(child => child.traverse(callback));
+};
+
 THREE.Object3D.prototype.updateAllMaterials = function (
   threeExports?: RootState,
 ) {
@@ -112,3 +132,28 @@ if (
     },
   });
 }
+
+
+THREE.Object3D.prototype.isTransformControl = function () {
+  return (
+    this.name === 'TransformControl' ||
+    ['translate', 'rotate', 'scale'].includes(
+      (this as TransformControlsPlane).mode,
+    ) ||
+    // R3F Drei 로 추가된 TransformControls 에 userData 를 통해 생성된 데이터로 Group 데이터 구별
+    (this.type === 'Group' && this.userData.isTransformControl)
+  );
+};
+THREE.Object3D.prototype.isBoxHelper = function () {
+  return this.type === 'BoxHelper';
+};
+
+THREE.Object3D.prototype.isXYZGizmo = function () {
+  return (
+    this.name === 'GizmoHelper' || (this.type === 'Mesh' && this.name === 'XYZ')
+  );
+};
+
+THREE.Object3D.prototype.isSystemGenerated = function () {
+  return this.isBoxHelper() || this.isXYZGizmo() || this.isTransformControl();
+};

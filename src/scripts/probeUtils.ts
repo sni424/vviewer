@@ -851,9 +851,9 @@ export function applyMultiProbe(mat: VMaterial, probes: ReflectionProbe[], walls
 
   // 캐시키가 바뀌어도 onBeforeCompile이 불리지 않아 별도로 define을 추가해서 강제 리렌더 촉발
   const handleProbeVersion = () => {
-    for (const key in Object.keys(mat.defines)) {
+    for (const key in Object.keys(mat.defines as object)) {
       if (key.includes("PROBE_VERSION")) {
-        delete mat.defines[key];
+        delete (mat.defines as any)[key];
         break;
       }
     }
@@ -870,7 +870,7 @@ export function applyMultiProbe(mat: VMaterial, probes: ReflectionProbe[], walls
     })
 
     const probeVersionKey = "PROBE_VERSION" + probeVersion;
-    mat.defines[probeVersionKey] = "";
+    (mat.defines as any)[probeVersionKey] = "";
   }
   handleProbeVersion();
 

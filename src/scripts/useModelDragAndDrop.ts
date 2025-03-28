@@ -29,7 +29,8 @@ const parse = (models: File[], maps: File[], mapDst: MapDst) => {
       // 베이크했을 때 _Bake...가 붙어있는 경우
       return (
         filenameWithoutExtension === lightmapName.split('_Bake')[0] ||
-        filenameWithoutExtension + '_Lightmap' === lightmapName
+        filenameWithoutExtension + '_Lightmap' === lightmapName ||
+        filenameWithoutExtension === lightmapName.split('__')[0]
       );
     });
     if (map) {

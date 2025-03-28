@@ -1,12 +1,9 @@
-import ContrastTest from '../components/test/ContrastTest';
+import ShaderTest from '../components/test/ShaderTest';
 
 function TestPage() {
   return (
-    // <div>TestPage
-    //     <div className='font-bold'>sdf</div>
-    // </div>
     <div className="fullscreen">
-      <ContrastTest></ContrastTest>
+      <ShaderTest></ShaderTest>
     </div>
   );
 }

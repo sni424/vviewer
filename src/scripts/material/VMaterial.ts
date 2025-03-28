@@ -1,43 +1,47 @@
 import * as THREE from '../vthree/VTHREE.ts';
 
-export default interface VMaterial extends THREE.MeshStandardMaterial {
-  get shader(): THREE.WebGLProgramParametersWithUniforms;
+export default THREE.Material;
 
-  set shader(shader: THREE.WebGLProgramParametersWithUniforms);
+// export default interface VMaterial extends THREE.MeshStandardMaterial {
+//   get shader(): THREE.WebGLProgramParametersWithUniforms;
 
-  get uniforms(): { [uniform: string]: THREE.IUniform };
+//   set shader(shader: THREE.WebGLProgramParametersWithUniforms);
 
-  clone(): this;
+//   get uniforms(): { [uniform: string]: THREE.IUniform };
 
-  copy(source: VMaterial): this;
+//   clone(): this;
 
-  setUniformByValue(key: string, value: any): void;
+//   copy(source: VMaterial): this;
 
-  setUniform(key: string, uniform: THREE.Uniform): void;
+//   setUniformByValue(key: string, value: any): void;
 
-  addDefines(key: string, value?: any = ''): void;
+//   setUniform(key: string, uniform: THREE.Uniform): void;
 
-  removeDefines(key: string): void;
+//   addDefines(key: string, value?: any = ''): void;
 
-  set dissolveMaxDist(dist: number): void;
+//   removeDefines(key: string): void;
 
-  set dissolveOrigin(origin: THREE.Vector3): void;
+//   set dissolveMaxDist(dist: number): void;
 
-  set dissolveDirection(direction: boolean): void;
+//   set dissolveOrigin(origin: THREE.Vector3): void;
 
-  set dissolveProgress(progress: number): void;
+//   set dissolveDirection(direction: boolean): void;
 
-  set useLightMapContrast(use: boolean): void;
+//   set dissolveProgress(progress: number): void;
 
-  get useLightMapContrast(): boolean;
+//   set useLightMapContrast(use: boolean): void;
 
-  set useProgressiveAlpha(use: boolean);
+//   get useLightMapContrast(): boolean;
 
-  get useProgressiveAlpha(): boolean;
+//   set useProgressiveAlpha(use: boolean);
 
-  set useBoxProjectedEnv(use: boolean);
+//   get useProgressiveAlpha(): boolean;
 
-  get useBoxProjectedEnv(): boolean;
+//   set useBoxProjectedEnv(use: boolean);
 
-  updateEnvUniforms(position: THREE.Vector3, size: THREE.Vector3);
-}
+//   get useBoxProjectedEnv(): boolean;
+
+//   updateEnvUniforms(position: THREE.Vector3, size: THREE.Vector3);
+// }
+
+

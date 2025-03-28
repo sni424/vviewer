@@ -398,12 +398,12 @@ export const loadLatest = async ({
       'specularMap',
       'specularColorMap',
       'transmissionMap',
-      'thicknessMap',
-    ] as (keyof VMaterial)[];
+      // 'thicknessMap',
+    ];
 
     textureKeys.forEach(key => {
-      if (material[key]) {
-        (material[key] as { dispose: () => void }).dispose(); // 텍스처 메모리 해제
+      if ((material as any)[key]) {
+        ((material as any)[key] as { dispose: () => void }).dispose(); // 텍스처 메모리 해제
         // material[key] = null;     // 참조 제거
       }
     });
@@ -1018,7 +1018,7 @@ export const uploadExrLightmap = async (
   object.traverseAll(async obj => {
     if ((obj as THREE.Mesh).isMesh) {
       const mesh = obj as THREE.Mesh;
-      const mat = mesh.material as VMaterial;
+      const mat = mesh.matStandard;
       const isEXR = (tex: THREE.Texture) =>
         tex.vUserData.isExr !== undefined && tex.vUserData.isExr;
       const isKTX = (tex: THREE.Texture) =>
@@ -1075,7 +1075,7 @@ export const uploadExrLightmap = async (
   const hashes = Object.keys(lightmapHashes);
 
   const files: File[] = [];
-  const afterMats: VMaterial[] = [];
+  const afterMats: THREE.Material[] = [];
 
   await Promise.all(
     hashes.map(hash => {
@@ -1112,7 +1112,7 @@ export const uploadExrLightmap = async (
         };
 
         afterMats.forEach(mat => {
-          mat.lightMap = null;
+          (mat as any).lightMap = null;
 
           // lightMap 업데이트
           updateKtxName('lightMap', mat);
@@ -1436,7 +1436,7 @@ export function changeMeshVisibleWithTransition(
   mat.shader.uniforms.dissolveMaxDist.value = box.max.distanceTo(box.min);
 
   // Shader Uniform에 dissolveOrigin 전달
-  mat.dissolveOrigin = dissolveOrigin;
+  mat.uniforms.dissolveOrigin = dissolveOrigin;
   mat.shader.uniforms.dissolveDirection.value = targetVisible;
   mat.shader.uniforms.progress.value = 0;
 

@@ -11,6 +11,7 @@ import {
   uploadExrLightmap,
 } from '../scripts/utils';
 
+import gsap from 'gsap';
 import { get, set } from 'idb-keyval';
 import objectHash from 'object-hash';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -562,12 +563,202 @@ const GeneralSceneInfo = () => {
   );
 };
 
-const LightmapImageContrastControl = () => {
-  const threeExports = useAtomValue(threeExportsAtom);
-
-  if (!threeExports) {
-    return null;
+// direction : false일때 0->1로 생김, true일 때 사라짐
+const setProgAlpha = (meshlike: any, direction: boolean, progress: number) => {
+  const mesh = meshlike as THREE.Mesh;
+  if (!mesh.isMesh) {
+    return;
   }
+
+  const box = new THREE.Box3().setFromObject(mesh);
+
+  // dissolveOrigin 설정: x는 minX, y는 중앙, z는 minZ
+  const minX = box.min.x; // 왼쪽 X 좌표
+  const centerY = (box.min.y + box.max.y) / 2; // Y 중앙
+  const minZ = box.min.z; // 가장 앞쪽 (액자의 왼쪽 테두리)
+
+  // dissolveOrigin을 Three.js Vector3로 설정
+  const dissolveOrigin = new THREE.Vector3(minX, centerY, minZ);
+
+  const mat = mesh.material as THREE.Material;
+  if (!mat) {
+    return;
+  }
+
+  mat.on('MESH_TRANSITION', {
+    uniforms: {
+      dissolveDirection: { value: direction },
+      dissolveOrigin: {
+        value: dissolveOrigin,
+      },
+      dissolveMaxDist: {
+        value: box.max.distanceTo(box.min),
+      },
+      progress: { value: progress },
+    },
+  });
+};
+
+const ProgressiveAlphaControl = () => {
+  const { scene } = useAtomValue(threeExportsAtom)!;
+  const [progress, setProgress] = useState(0);
+
+  useEffect(() => {
+    scene.traverse(o => {
+      const mat = (o as THREE.Mesh).material as THREE.Material;
+      if (!mat) {
+        return;
+      }
+      if (mat.using('MESH_TRANSITION')) {
+        mat.uniform!.progress.value = progress;
+      }
+    });
+  }, [progress]);
+
+  return (
+    <div>
+      <input
+        type="range"
+        min={0}
+        max={1}
+        step={0.01}
+        value={progress}
+        onChange={e => {
+          setProgress(parseFloat(e.target.value));
+        }}
+      />
+      <button
+        onClick={() => {
+          scene.traverse(o => {
+            const mat = (o as THREE.Mesh).material as THREE.Material;
+            if (mat) {
+              if (mat.using('MESH_TRANSITION')) {
+                mat.uniform!.progress.value = 0;
+                mat.uniform!.dissolveDirection.value = false;
+              } else {
+                setProgAlpha(o, false, 0);
+                mat.updateVersion();
+                mat.needsUpdate = true;
+              }
+            }
+          });
+        }}
+      >
+        없어지는
+      </button>
+      <button
+        onClick={() => {
+          scene.traverse(o => {
+            const mat = (o as THREE.Mesh).material as THREE.Material;
+            if (mat) {
+              if (mat.using('MESH_TRANSITION')) {
+                mat.uniform!.progress.value = 0;
+                mat.uniform!.dissolveDirection.value = true;
+              } else {
+                setProgAlpha(o, true, 0);
+                mat.updateVersion();
+                mat.needsUpdate = true;
+              }
+            }
+          });
+        }}
+      >
+        생기는
+      </button>
+      <button
+        onClick={() => {
+          scene.traverse(o => {
+            const mat = (o as THREE.Mesh).material as THREE.Material;
+            if (mat) {
+              if (mat.using('MESH_TRANSITION')) {
+                mat.uniform!.progress.value = 0;
+                mat.uniform!.dissolveDirection.value = false;
+              } else {
+                setProgAlpha(o, false, 0);
+                mat.updateVersion();
+                mat.needsUpdate = true;
+              }
+            }
+          });
+          gsap.to(
+            { progress: 0 },
+            {
+              duration: 1,
+              progress: 1,
+              onUpdate() {
+                const progressValue = this.targets()[0].progress;
+                setProgress(progressValue);
+
+                scene.traverse(o => {
+                  const mat = (o as THREE.Mesh).material as THREE.Material;
+                  if (mat?.using('MESH_TRANSITION')) {
+                    mat.uniform!.progress.value = progressValue as number;
+                  }
+                });
+              },
+            },
+          );
+        }}
+      >
+        gsap없어지는
+      </button>
+      <button
+        onClick={() => {
+          scene.traverse(o => {
+            const mat = (o as THREE.Mesh).material as THREE.Material;
+            if (mat) {
+              if (mat.using('MESH_TRANSITION')) {
+                mat.uniform!.progress.value = 0;
+                mat.uniform!.dissolveDirection.value = true;
+              } else {
+                setProgAlpha(o, true, 0);
+                mat.updateVersion();
+                mat.needsUpdate = true;
+              }
+            }
+          });
+          gsap.to(
+            { progress: 0 },
+            {
+              duration: 1,
+              progress: 1,
+              onUpdate() {
+                const progressValue = this.targets()[0].progress;
+                setProgress(progressValue);
+                scene.traverse(o => {
+                  const mat = (o as THREE.Mesh).material as THREE.Material;
+                  if (mat?.using('MESH_TRANSITION')) {
+                    mat.uniform!.progress.value = progressValue as number;
+                  }
+                });
+              },
+            },
+          );
+        }}
+      >
+        gsap생기는
+      </button>
+      <button
+        onClick={() => {
+          scene.traverse(o => {
+            const mat = (o as THREE.Mesh).material as THREE.Material;
+            if (!mat) {
+              return;
+            }
+
+            mat.off('MESH_TRANSITION');
+            mat.needsUpdate = true;
+          });
+        }}
+      >
+        삭제
+      </button>
+    </div>
+  );
+};
+
+const LightmapImageContrastControl = () => {
+  const threeExports = useAtomValue(threeExportsAtom)!;
 
   const { scene } = threeExports;
 
@@ -578,13 +769,13 @@ const LightmapImageContrastControl = () => {
       if (o.type === 'Mesh') {
         const mesh = o as THREE.Mesh;
         const mat = mesh.material as VMaterial;
-        const shader = mat.shader;
-        mat.useLightMapContrast = use;
+
         if (use) {
-          shader.uniforms.lightMapContrast.value = value;
+          mat.on('LIGHTMAP_CONTRAST');
         } else {
-          shader.uniforms.lightMapContrast.value = 1;
+          mat.off('LIGHTMAP_CONTRAST');
         }
+        mat.needsUpdate = true;
       }
     });
   }, [use]);
@@ -595,8 +786,10 @@ const LightmapImageContrastControl = () => {
         if (o.type === 'Mesh') {
           const mesh = o as THREE.Mesh;
           const mat = mesh.material as VMaterial;
-          const shader = mat.shader;
-          shader.uniforms.lightMapContrast.value = value;
+
+          if (mat.using('LIGHTMAP_CONTRAST')) {
+            mat.uniform!.lightMapContrast.value = value;
+          }
         }
       });
     }
@@ -734,6 +927,7 @@ const GeneralPostProcessingControl = () => {
       <ColorTemperatureOption></ColorTemperatureOption>
       <BrightnessContrastOption></BrightnessContrastOption>
       <LightmapImageContrastControl></LightmapImageContrastControl>
+      <ProgressiveAlphaControl></ProgressiveAlphaControl>
       <SRGBControl></SRGBControl>
       <BloomOption></BloomOption>
       <ColorLUTOption></ColorLUTOption>
