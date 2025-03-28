@@ -328,6 +328,7 @@ export const treeSearchAtom = atom<string | undefined>();
 
 export const modelOptionClassAtom = atom<ModelOption[]>([]);
 export const optionSelectedAtom = atom<{ [key: string]: string }>({});
+export const optionProcessingAtom = atom<boolean>(false);
 
 //카메라 정보값
 export const lastCameraInfoAtom = atom<{

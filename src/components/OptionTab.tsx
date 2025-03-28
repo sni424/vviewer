@@ -1,4 +1,3 @@
-import gsap from 'gsap';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import {
   ChangeEvent,
@@ -8,31 +7,25 @@ import {
   useRef,
   useState,
 } from 'react';
-import { ENV } from '../Constants.ts';
 import {
   animationDurationAtom,
   getAtomValue,
   lightMapAtom,
   modelOptionClassAtom,
   ModelSelectorAtom,
-  optionSelectedAtom,
-  ProbeAtom,
   selectedAtom,
   useModal,
-  useToast,
 } from '../scripts/atoms.ts';
 import { threes } from '../scripts/atomUtils.ts';
 import { createLightmapCache } from '../scripts/loaders/VGLTFLoader.ts';
 import { getVKTX2Loader } from '../scripts/loaders/VKTX2Loader.ts';
-import VMaterial from '../scripts/material/VMaterial.ts';
 import ModelOption from '../scripts/options/ModelOption.ts';
 import OptionState, {
-  FunctionEffects, FunctionEffectsBooleans, FunctionEffectsURLs,
+  FunctionEffectsBooleans,
+  FunctionEffectsURLs,
 } from '../scripts/options/OptionState.ts';
 import MeshEffect from '../scripts/options/MeshEffect.ts';
 import {
-  changeMeshLightMapWithTransition,
-  changeMeshVisibleWithTransition,
   loadLatest,
   splitExtension,
 } from '../scripts/utils.ts';
@@ -92,13 +85,19 @@ const OptionManager = () => {
 };
 
 const OptionPreviewTab = () => {
-  const { options } = useOptionManager();
-  const [animationDuration, setAnimationDuration] = useAtom<number>(animationDurationAtom);
+  const { options, isProcessing } = useOptionManager();
+  const [animationDuration, setAnimationDuration] = useAtom<number>(
+    animationDurationAtom,
+  );
   const animationTimeInputConfig = {
     min: 0.2,
     max: 5,
     step: 0.1,
   };
+
+  useEffect(() => {
+    console.log('processing Changed ', isProcessing);
+  }, [isProcessing]);
 
   return (
     <div>
@@ -127,140 +126,24 @@ const OptionPreviewTab = () => {
         />
         <span>초</span>
       </div>
-      {options.map(modelOption => (
-        <OptionPreview
-          key={'option_preview_' + Math.random().toString()}
-          option={modelOption}
-          animationDuration={animationDuration}
-        />
-      ))}
+      <div className="relative">
+        {isProcessing ? '진행중' : ''}
+        {isProcessing && (
+          <div className="absolute h-full w-full cursor-not-allowed"></div>
+        )}
+        {options.map(modelOption => (
+          <OptionPreview
+            key={'option_preview_' + Math.random().toString()}
+            option={modelOption}
+          />
+        ))}
+      </div>
     </div>
   );
 };
 
-const OptionPreview = ({
-  option,
-  animationDuration,
-}: {
-  option: ModelOption;
-  animationDuration: number;
-}) => {
-  const threeExports = threes();
-  if (!threeExports) {
-    return null;
-  }
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [optionSelected, setOptionSelected] = useAtom(optionSelectedAtom);
-  const { openToast } = useToast();
-
-  const { scene } = threeExports;
-  const probes = useAtomValue(ProbeAtom);
-  const setSelecteds = useSetAtom(selectedAtom);
-  const { analyze } = useOptionManager();
-
-  async function processState(state: OptionState) {
-    if (isProcessing) {
-      console.warn('processState is On Processing');
-      return;
-    }
-    setSelecteds([]);
-    const nowSelected = { ...optionSelected };
-    nowSelected[option.id] = state.id;
-    setOptionSelected(nowSelected);
-    setIsProcessing(true);
-    const meshEffects = state.meshEffects;
-    const probesToRender: string[] = [];
-    const anlayzed = analyze(nowSelected);
-    const timeLines: gsap.core.Timeline[] = [];
-    meshEffects.forEach(meshEffect => {
-      const timeLine = gsap.timeline().pause();
-      const object = scene
-        .getObjectsByProperty('name', meshEffect.name)
-        .find(o => o.type === 'Mesh');
-      if (object) {
-        const mesh = object as THREE.Mesh;
-        const effects = meshEffect.effect;
-        const mat = mesh.material as VMaterial;
-        // Visible Control
-        if (effects.useVisible) {
-          const targetVisible = anlayzed[mesh.name].visible;
-          if (targetVisible === undefined) {
-            throw new Error('targetVisible set Error');
-          }
-
-          if (mesh.visible !== targetVisible) {
-            changeMeshVisibleWithTransition(
-              mesh,
-              animationDuration,
-              targetVisible,
-              timeLine,
-            );
-          }
-        }
-
-        // LightMap control
-        if (effects.useLightMap) {
-          const lightMapCache = getAtomValue(lightMapAtom);
-          const keys = Object.keys(lightMapCache);
-          let target = anlayzed[mesh.name].lightMap;
-
-          if (target && !target.startsWith('https')) {
-            target = ENV.base + target;
-          }
-
-          if (!target) {
-            console.log('lightMap Setting null : ', mat, mesh);
-            mat.lightMap = null;
-          } else if (keys.includes(target)) {
-            const { texture } = lightMapCache[target];
-            texture.flipY = false;
-            changeMeshLightMapWithTransition(
-              mesh,
-              animationDuration,
-              texture,
-              timeLine,
-            );
-          } else {
-            // TODO fetch
-          }
-        }
-
-        const probeId = mat.vUserData.probeId;
-        if (probeId) {
-          // 그냥 해당 프로브 리렌더
-          if (!probesToRender.includes(probeId)) {
-            probesToRender.push(probeId);
-          }
-        }
-
-        timeLines.push(timeLine);
-      } else {
-        console.warn('no Mesh Found On state, passing By : ', meshEffect.name);
-      }
-    });
-
-    function processAfter() {
-      probes.forEach(probe => {
-        probe.renderCamera(true);
-      });
-      setIsProcessing(false);
-    }
-
-    openToast('애니메이션 실행됨', {
-      duration: animationDuration,
-      autoClose: true,
-    });
-
-    if (timeLines.length > 0) {
-      timeLines.forEach(timeLine => {
-        timeLine.play(0);
-      });
-
-      setTimeout(() => {
-        processAfter();
-      }, animationDuration);
-    }
-  }
+const OptionPreview = ({ option }: { option: ModelOption }) => {
+  const { processState, optionSelected } = useOptionManager();
 
   return (
     <div className="mt-2 border border-gray-600 p-2">
@@ -271,12 +154,6 @@ const OptionPreview = ({
             style={{ width: `calc(100%/${option.states.length})` }}
             key={Math.random()}
           >
-            {isProcessing && (
-              <div
-                key={Math.random()}
-                className="absolute w-full h-full bg-transparent cursor-progress"
-              ></div>
-            )}
             <button
               key={Math.random()}
               className="rounded-none w-full"
@@ -390,11 +267,12 @@ const Option = ({ modelOption }: { modelOption: ModelOption }) => {
           />
         ) : (
           <div
+            className="hover:bg-gray-300"
             onDoubleClick={() => {
               setNameEditMode(true);
             }}
           >
-            옵션 명: {name}
+            <strong>{name}</strong>
           </div>
         )}
         <button onClick={createNewState}>state 생성</button>
@@ -522,11 +400,36 @@ const State = ({
             }}
           />
         ) : (
-          <div onDoubleClick={() => setNameEditMode(true)}>{state.name}</div>
+          <div
+            className="hover:bg-gray-300 px-1 py-1"
+            onDoubleClick={() => setNameEditMode(true)}
+          >
+            <strong>{state.name}</strong>
+          </div>
         )}
         {!nameEditMode && (
           <div className="flex items-center ml-auto gap-x-2">
-            <span style={{ fontSize: 10 }}>메시 {models.length}개</span>
+            <div className="grid grid-cols-2 gap-x-1 text-[11px]">
+              <span>
+                <strong>메시</strong> {models.length}개
+              </span>
+              <span>
+                <strong>미니맵</strong>{' '}
+                {state.functionEffects.booleans.changeMinimap ? 'O' : 'X'}
+              </span>
+              <span>
+                <strong>벽</strong>{' '}
+                {state.functionEffects.booleans.changeWall ? 'O' : 'X'}
+              </span>
+              <span>
+                <strong>Nav</strong>{' '}
+                {state.functionEffects.booleans.changeNav ? 'O' : 'X'}
+              </span>
+              <span>
+                <strong>Floor</strong>{' '}
+                {state.functionEffects.booleans.changeFloor ? 'O' : 'X'}
+              </span>
+            </div>
             <div className="grid gap-x-1 gap-y-0.5 grid-cols-2">
               <button disabled={defaultState === state.id} onClick={setDefault}>
                 기본값
@@ -571,8 +474,12 @@ const State = ({
 const StateFunctionEffectModal = ({ state }: { state: OptionState }) => {
   const { closeModal } = useModal();
   const functionEffects = state.functionEffects;
-  const [uses, setUses] = useState<FunctionEffectsBooleans>(functionEffects.booleans);
-  const [values, setValues] = useState<FunctionEffectsURLs>(functionEffects.urls);
+  const [uses, setUses] = useState<FunctionEffectsBooleans>(
+    functionEffects.booleans,
+  );
+  const [values, setValues] = useState<FunctionEffectsURLs>(
+    functionEffects.urls,
+  );
 
   function confirm() {
     closeModal();
@@ -596,7 +503,16 @@ const StateFunctionEffectModal = ({ state }: { state: OptionState }) => {
       <div className="w-full mb-4 flex flex-col gap-y-2 h-fit">
         <div className="mt-1">
           <strong className="mr-1">미니맵</strong>
-          <button onClick={e => setUses(pre => ({...pre, changeMinimap: !uses.changeMinimap }))}>{uses.changeMinimap ? '사용' : '미사용'}</button>
+          <button
+            onClick={() =>
+              setUses(pre => ({
+                ...pre,
+                changeMinimap: !uses.changeMinimap,
+              }))
+            }
+          >
+            {uses.changeMinimap ? '사용' : '미사용'}
+          </button>
           <div className="flex mt-1 justify-between">
             {uses.changeMinimap && (
               <>
@@ -604,11 +520,16 @@ const StateFunctionEffectModal = ({ state }: { state: OptionState }) => {
                   className="py-1 px-0.5 border border-black rounded w-[90%]"
                   type="text"
                   value={values.minimap}
-                  onChange={e => setValues(pre => ({...pre, minimap : e.target.value}))}
+                  onChange={e =>
+                    setValues(pre => ({ ...pre, minimap: e.target.value }))
+                  }
                 />
                 <button
                   onClick={() =>
-                    setValues(pre => ({...pre, minimap: functionEffects.urls.minimap}))
+                    setValues(pre => ({
+                      ...pre,
+                      minimap: functionEffects.urls.minimap,
+                    }))
                   }
                 >
                   초기화
@@ -619,7 +540,16 @@ const StateFunctionEffectModal = ({ state }: { state: OptionState }) => {
         </div>
         <div className="mt-1">
           <strong className="mr-1">벽</strong>
-          <button onClick={e => setUses(pre => ({...pre, changeWall: !uses.changeWall }))}>{uses.changeWall ? '사용' : '미사용'}</button>
+          <button
+            onClick={() =>
+              setUses(pre => ({
+                ...pre,
+                changeWall: !uses.changeWall,
+              }))
+            }
+          >
+            {uses.changeWall ? '사용' : '미사용'}
+          </button>
           <div className="flex mt-1 justify-between">
             {uses.changeWall && (
               <>
@@ -627,11 +557,16 @@ const StateFunctionEffectModal = ({ state }: { state: OptionState }) => {
                   className="py-1 px-0.5 border border-black rounded w-[90%]"
                   type="text"
                   value={values.walls}
-                  onChange={e => setValues(pre => ({...pre, walls : e.target.value}))}
+                  onChange={e =>
+                    setValues(pre => ({ ...pre, walls: e.target.value }))
+                  }
                 />
                 <button
                   onClick={() =>
-                    setValues(pre => ({...pre, walls: functionEffects.urls.walls}))
+                    setValues(pre => ({
+                      ...pre,
+                      walls: functionEffects.urls.walls,
+                    }))
                   }
                 >
                   초기화
@@ -642,7 +577,16 @@ const StateFunctionEffectModal = ({ state }: { state: OptionState }) => {
         </div>
         <div className="mt-1">
           <strong className="mr-1">Nav Mesh</strong>
-          <button onClick={e => setUses(pre => ({...pre, changeNav: !uses.changeNav }))}>{uses.changeNav ? '사용' : '미사용'}</button>
+          <button
+            onClick={() =>
+              setUses(pre => ({
+                ...pre,
+                changeNav: !uses.changeNav,
+              }))
+            }
+          >
+            {uses.changeNav ? '사용' : '미사용'}
+          </button>
           <div className="flex mt-1 justify-between">
             {uses.changeNav && (
               <>
@@ -650,11 +594,16 @@ const StateFunctionEffectModal = ({ state }: { state: OptionState }) => {
                   className="py-1 px-0.5 border border-black rounded w-[90%]"
                   type="text"
                   value={values.nav}
-                  onChange={e => setValues(pre => ({...pre, nav : e.target.value}))}
+                  onChange={e =>
+                    setValues(pre => ({ ...pre, nav: e.target.value }))
+                  }
                 />
                 <button
                   onClick={() =>
-                    setValues(pre => ({...pre, nav: functionEffects.urls.nav}))
+                    setValues(pre => ({
+                      ...pre,
+                      nav: functionEffects.urls.nav,
+                    }))
                   }
                 >
                   초기화
@@ -665,7 +614,16 @@ const StateFunctionEffectModal = ({ state }: { state: OptionState }) => {
         </div>
         <div className="mt-1">
           <strong className="mr-1">Floor Mesh</strong>
-          <button onClick={e => setUses(pre => ({...pre, changeFloor: !uses.changeFloor }))}>{uses.changeFloor ? '사용' : '미사용'}</button>
+          <button
+            onClick={() =>
+              setUses(pre => ({
+                ...pre,
+                changeFloor: !uses.changeFloor,
+              }))
+            }
+          >
+            {uses.changeFloor ? '사용' : '미사용'}
+          </button>
           <div className="flex mt-1 justify-between">
             {uses.changeFloor && (
               <>
@@ -673,11 +631,16 @@ const StateFunctionEffectModal = ({ state }: { state: OptionState }) => {
                   className="py-1 px-0.5 border border-black rounded w-[90%]"
                   type="text"
                   value={values.floor}
-                  onChange={e => setValues(pre => ({...pre, floor : e.target.value}))}
+                  onChange={e =>
+                    setValues(pre => ({ ...pre, floor: e.target.value }))
+                  }
                 />
                 <button
                   onClick={() =>
-                    setValues(pre => ({...pre, floor: functionEffects.urls.floor}))
+                    setValues(pre => ({
+                      ...pre,
+                      floor: functionEffects.urls.floor,
+                    }))
                   }
                 >
                   초기화
@@ -699,7 +662,6 @@ const StateFunctionEffectModal = ({ state }: { state: OptionState }) => {
     </div>
   );
 };
-
 
 const ValueModal = ({ meshEffects }: { meshEffects: MeshEffect[] }) => {
   const { closeModal } = useModal();
@@ -813,14 +775,11 @@ const MeshEffectElem = ({
 
   const [expanded, setExpanded] = useState<boolean>(meshEffect.expanded);
   const [visible, setVisible] = useState<boolean>(meshEffect.visibleValue);
-  const [lmValue, setLMValue] = useState<string | null>(meshEffect.lmValue);
-  const [renderVersion, setRenderVersion] = useState<number>(0); // 임시
+  const [_, setRenderVersion] = useState<number>(0); // 임시
   useEffect(() => {
     meshEffect.visibleValue = visible;
   }, [visible]);
-  useEffect(() => {
-    meshEffect.lmValue = lmValue;
-  }, [lmValue]);
+
   useEffect(() => {
     meshEffect.expanded = expanded;
   }, [expanded]);
@@ -862,10 +821,6 @@ const MeshEffectElem = ({
         }}
       />,
     );
-  }
-
-  function resetToMeshDefault() {
-    setLMValue(null);
   }
 
   function deleteThis() {
@@ -1343,12 +1298,12 @@ const MeshSelectModal = ({
     scene.traverseAll(o => {
       if (o.type === 'Mesh') {
         if (keyword === '') {
-          meshes.push(o);
+          meshes.push(o as THREE.Mesh);
         } else if (
           keyword !== '' &&
           o.name.toLocaleLowerCase().includes(keyword.toLowerCase())
         ) {
-          meshes.push(o);
+          meshes.push(o as THREE.Mesh);
         }
       }
     });
@@ -1362,13 +1317,13 @@ const MeshSelectModal = ({
     scene.traverseAll(o => {
       if (o.type === 'Mesh') {
         if (keyword === '') {
-          if (!modelSelectedUuids.includes(o.uuid)) meshes.push(o);
+          if (!modelSelectedUuids.includes(o.uuid)) meshes.push(o as THREE.Mesh);
         } else if (
           keyword !== '' &&
           o.name.toLocaleLowerCase().includes(keyword.toLowerCase()) &&
           !modelSelectedUuids.includes(o.uuid)
         ) {
-          meshes.push(o);
+          meshes.push(o as THREE.Mesh);
         }
       }
     });
