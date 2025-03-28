@@ -8,9 +8,10 @@ import type { ReflectionProbeJSON } from "../ReflectionProbe";
 export type MATERIAL_DEFINE_TYPE = "" | 0 | 1 | true | false;
 
 export type MATERIAL_SHADER = {
-  MESH_TRANSITION: {
-    type: "MESH_TRANSITION";
+  VISIBILITY_TRANSITION: {
+    type: "VISIBILITY_TRANSITION";
     uniforms: {
+      VISIBILITY_TRANSITION: { value: boolean };
       progress: {
         value: number;
       };
@@ -25,12 +26,12 @@ export type MATERIAL_SHADER = {
       }
     };
     defines: {
-      USE_PROGRESSIVE_ALPHA: MATERIAL_DEFINE_TYPE;
     };
   };
   LIGHTMAP_TRANSITION: {
     type: "LIGHTMAP_TRANSITION";
     uniforms: {
+      LIGHTMAP_TRANSITION: { value: boolean };
       progress: {
         value: number;
       },
@@ -39,7 +40,6 @@ export type MATERIAL_SHADER = {
       },
     },
     defines: {
-      USE_LIGHTMAP_TRANSITION: MATERIAL_DEFINE_TYPE;
     },
   };
   PROBE: {
@@ -106,10 +106,12 @@ export type MATERIAL_SHADER = {
     uniforms: {
       lightMapContrast: {
         value: number;
+      };
+      globalLightMapContrast: {
+        value: number;
       }
     };
     defines: {
-      USE_LIGHTMAP_CONTRAST: MATERIAL_DEFINE_TYPE;
     }
   }
 };
@@ -123,9 +125,12 @@ export type MATERIAL_UNIFORM_VALUE<K extends string> = {
   : never;
 }[keyof MATERIAL_SHADER];
 
+
 export type MATERIAL_UNIFORM = {
   [K in keyof MATERIAL_SHADER]: keyof MATERIAL_SHADER[K]["uniforms"];
 }[keyof MATERIAL_SHADER];
+
+
 
 export type MATERIAL_SHADER_TYPE = keyof MATERIAL_SHADER;
 
@@ -157,12 +162,16 @@ export interface ThreeUserData {
   shader?: WebGLProgramParametersWithUniforms;
   isMobile?: boolean;
   originalColor?: string;
+
+  // visibility transition
+  dissolveOrigin?: THREE.Vector3;
+  dissolveMaxDist?: number;
 }
 
 export const MATERIAL_DEFINES = [
-  'USE_LIGHTMAP_TRANSITION',
-  'USE_PROGRESSIVE_ALPHA',
-  'USE_PROGRESSIVE_ALPHA',
+  'LIGHTMAP_TRANSITION',
+  'VISIBILITY_TRANSITION',
+  'VISIBILITY_TRANSITION',
   'USE_LIGHTMAP_CONTRAST',
 
   // multiprobe
@@ -173,3 +182,88 @@ export const MATERIAL_DEFINES = [
 ] as const;
 
 export type MATERIAL_DEFINE = typeof MATERIAL_DEFINES[number];
+
+export const DEFAULT_MATERIAL_SHADER: MATERIAL_SHADER = {
+  VISIBILITY_TRANSITION: {
+    type: "VISIBILITY_TRANSITION",
+    defines: {
+    },
+    uniforms: {
+      VISIBILITY_TRANSITION: { value: false },
+      progress: { value: 0 },
+      dissolveOrigin: { value: new THREE.Vector3() },
+      dissolveMaxDist: { value: 0 },
+      dissolveDirection: { value: false },
+    }
+  },
+
+  LIGHTMAP_TRANSITION: {
+    type: "LIGHTMAP_TRANSITION",
+    defines: {
+    },
+    uniforms: {
+      LIGHTMAP_TRANSITION: { value: false },
+      progress: { value: 0 },
+      // lightmapTo: { value: new THREE.Texture() },
+      lightmapTo: { value: undefined as unknown as THREE.Texture },
+    }
+  },
+
+  PROBE: {
+    type: "PROBE",
+    defines: {
+      PROBE_COUNT: 0,
+      V_CUBEUV_MAX_MIP: "0.0",
+      V_ENVMAP_TYPE_CUBE_UV: 0,
+      V_CUBEUV_TEXEL_WIDTH: 0,
+      V_CUBEUV_TEXEL_HEIGHT: 0,
+    },
+    uniforms: {
+      uProbe: { value: [] },
+      uProbeTextures: { value: [] },
+      uProbeIntensity: { value: 1.0 },
+    },
+  },
+  PROBE_WALL: {
+    type: "PROBE_WALL",
+    defines: {
+      PROBE_COUNT: 0,
+      WALL_COUNT: 0,
+      V_CUBEUV_MAX_MIP: "0.0",
+      V_ENVMAP_TYPE_CUBE_UV: 0,
+      V_CUBEUV_TEXEL_WIDTH: 0,
+      V_CUBEUV_TEXEL_HEIGHT: 0,
+    },
+    uniforms: {
+      uProbe: { value: [] },
+      uProbeTextures: { value: [] },
+      uProbeIntensity: { value: 1.0 },
+      uProbeBlendDist: { value: 20.0 },
+      uWall: { value: [] },
+    },
+  },
+  LIGHTMAP_CONTRAST: {
+    type: "LIGHTMAP_CONTRAST",
+    uniforms: {
+      lightMapContrast: { value: 1 },
+      globalLightMapContrast: { value: 1 },
+    },
+    defines: {
+    }
+  },
+};
+
+export const defaultUniforms: { [uniform in MATERIAL_UNIFORM]: { value: MATERIAL_UNIFORM_VALUE<uniform> } } = (() => {
+  const uniforms: any = {};
+  for (const shaderKey in DEFAULT_MATERIAL_SHADER) {
+    const shader = DEFAULT_MATERIAL_SHADER[shaderKey as keyof MATERIAL_SHADER];
+    for (const uniformKey in shader.uniforms) {
+      uniforms[uniformKey] = shader.uniforms[uniformKey as keyof typeof shader.uniforms];
+    }
+  }
+  return uniforms;
+})() as any;
+
+export const MATERIAL_UNIFORMS: MATERIAL_UNIFORM[] = (() => {
+  return Object.keys(defaultUniforms) as MATERIAL_UNIFORM[];
+})() as any;

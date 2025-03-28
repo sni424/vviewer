@@ -74,9 +74,8 @@ export default class VGLTFLoader extends GLTFLoader {
 
       // Material의 Transmission 관련 값이 Probe CubeCamera의 렌더에 버그가 있어서, 모든 transmission 관련 값 초기화
       gltf.scene.traverseAll(o => {
-        if (o.type === 'Mesh') {
-          const mesh = o as THREE.Mesh;
-          const mat = mesh.matPhysical;
+        const mat = o.asMesh?.matPhysical;
+        if (mat) {
           if (mat['transmissionMap']) {
             mat['transmissionMap'] = null;
           }

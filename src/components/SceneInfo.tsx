@@ -16,6 +16,7 @@ import { get, set } from 'idb-keyval';
 import objectHash from 'object-hash';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { EXRLoader } from 'three/examples/jsm/Addons.js';
 import {
   __UNDEFINED__,
   AOMAP_INTENSITY_MAX,
@@ -42,6 +43,7 @@ import {
 } from '../scripts/atoms';
 import { loadPostProcessAndSet, uploadJson } from '../scripts/atomUtils.ts';
 import useFilelist from '../scripts/useFilelist';
+import { parseDroppedFiles } from '../scripts/useModelDragAndDrop.ts';
 import useStats, { StatPerSecond, VStats } from '../scripts/useStats.ts';
 import VGLTFExporter from '../scripts/VGLTFExporter.ts';
 import { Quaternion, THREE, Vector3 } from '../scripts/vthree/VTHREE.ts';
@@ -562,40 +564,144 @@ const GeneralSceneInfo = () => {
   );
 };
 
-// direction : false일때 0->1로 생김, true일 때 사라짐
-const setProgAlpha = (meshlike: any, direction: boolean, progress: number) => {
-  const mesh = meshlike as THREE.Mesh;
-  if (!mesh.isMesh) {
-    return;
-  }
+const useLightmapTransitionDrag = () => {
+  const [isDragging, setIsDragging] = useState(false);
+  const threeExports = useAtomValue(threeExportsAtom);
+  const [files, setFiles] = useState<File[]>([]);
 
-  const box = new THREE.Box3().setFromObject(mesh);
+  const handleDragOver = (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    setIsDragging(true);
+  };
 
-  // dissolveOrigin 설정: x는 minX, y는 중앙, z는 minZ
-  const minX = box.min.x; // 왼쪽 X 좌표
-  const centerY = (box.min.y + box.max.y) / 2; // Y 중앙
-  const minZ = box.min.z; // 가장 앞쪽 (액자의 왼쪽 테두리)
+  const handleDragLeave = () => {
+    setIsDragging(false);
+  };
 
-  // dissolveOrigin을 Three.js Vector3로 설정
-  const dissolveOrigin = new THREE.Vector3(minX, centerY, minZ);
+  const handleDrop = async (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    setIsDragging(false);
 
-  const mat = mesh.material as THREE.Material;
-  if (!mat) {
-    return;
-  }
+    if (event.dataTransfer.items && event.dataTransfer.items.length > 0) {
+      const extensions = [
+        '.gltf',
+        '.glb',
+        '.png',
+        '.jpg',
+        '.exr',
+        '.ktx',
+        '.json',
+      ];
+      parseDroppedFiles(event, extensions)
+        .then(async filteredFiles => {
+          if (filteredFiles.length === 0) {
+            alert(`다음 파일들만 가능 : ${extensions.join(', ')}`);
+            return;
+          }
 
-  mat.on('MESH_TRANSITION', {
-    uniforms: {
-      dissolveDirection: { value: direction },
-      dissolveOrigin: {
-        value: dissolveOrigin,
-      },
-      dissolveMaxDist: {
-        value: box.max.distanceTo(box.min),
-      },
-      progress: { value: progress },
-    },
-  });
+          setFiles(filteredFiles);
+        })
+        .finally(() => {
+          event.dataTransfer.clearData();
+        });
+    }
+  };
+
+  return {
+    isDragging,
+    handleDragOver,
+    handleDragLeave,
+    handleDrop,
+    files,
+  };
+};
+
+const LightmapTransitionControl = () => {
+  const { scene } = useAtomValue(threeExportsAtom)!;
+  const [progress, setProgress] = useState(0);
+  const { handleDragOver, handleDragLeave, handleDrop, isDragging, files } =
+    useLightmapTransitionDrag();
+
+  useEffect(() => {
+    scene.traverse(o => {
+      const mat = (o as THREE.Mesh).matStandard;
+      if (mat && mat.LIGHTMAP_TRANSITION) {
+        console.log('LIGHTMAP_TRANSITION prog', progress);
+        mat.progress = progress;
+      }
+    });
+  }, [progress]);
+
+  const noFile = files.length === 0;
+
+  return (
+    <section
+      onDrop={handleDrop}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      style={{
+        border: isDragging ? '1px dashed #888' : undefined,
+        padding: 8,
+        marginTop: 16,
+      }}
+    >
+      <strong>라이트맵 트랜지션</strong>{' '}
+      <input
+        type="range"
+        min={0}
+        max={1}
+        step={0.01}
+        value={progress}
+        onChange={e => {
+          setProgress(parseFloat(e.target.value));
+        }}
+      />
+      <button
+        disabled={noFile}
+        onClick={() => {
+          if (noFile) {
+            return;
+          }
+
+          const loader = new EXRLoader();
+          scene.traverse(o => {
+            const mat = o.asMesh?.mat;
+            if (mat) {
+              console.log('Mat name : ', mat.name);
+              const url = URL.createObjectURL(files[0]);
+
+              // 이전의 from을 가져와서 대입
+              if (typeof mat.uniform.lightmapTo?.value !== 'undefined') {
+                console.log('Using Prev lightmap');
+                mat.standard.lightMap = mat.uniform.lightmapTo.value;
+              }
+
+              loader.loadAsync(url).then(t => {
+                mat.uniform.lightmapTo.value = t;
+                mat.LIGHTMAP_TRANSITION = true;
+                console.log('Apply LIGHTMAP_TRANSITION', mat.name);
+              });
+            }
+          });
+        }}
+      >
+        {noFile ? '라이트맵 드래그&드랍' : '적용'}
+      </button>
+      {noFile ? (
+        <div>파일없음</div>
+      ) : (
+        <ul>
+          {files.map((file, index) => {
+            return (
+              <li key={`lmfile-${file.name}-${index}`}>
+                {file.name} : {Math.round(file.size / (1024 * 1024))}mb
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </section>
+  );
 };
 
 const ProgressiveAlphaControl = () => {
@@ -608,14 +714,15 @@ const ProgressiveAlphaControl = () => {
       if (!mat) {
         return;
       }
-      if (mat.using('MESH_TRANSITION')) {
+      if (mat.VISIBILITY_TRANSITION) {
         mat.uniform!.progress.value = progress;
       }
     });
   }, [progress]);
 
   return (
-    <div>
+    <section>
+      <strong>Fade In/Out 애니메이션</strong>{' '}
       <input
         type="range"
         min={0}
@@ -629,17 +736,10 @@ const ProgressiveAlphaControl = () => {
       <button
         onClick={() => {
           scene.traverse(o => {
-            const mat = (o as THREE.Mesh).material as THREE.Material;
-            if (mat) {
-              if (mat.using('MESH_TRANSITION')) {
-                mat.uniform!.progress.value = 0;
-                mat.uniform!.dissolveDirection.value = false;
-              } else {
-                setProgAlpha(o, false, 0);
-                mat.updateVersion();
-                mat.needsUpdate = true;
-              }
-            }
+            o.asMesh?.prepareVisibilityTransition?.({
+              direction: 'fadeOut',
+              progress,
+            });
           });
         }}
       >
@@ -648,17 +748,10 @@ const ProgressiveAlphaControl = () => {
       <button
         onClick={() => {
           scene.traverse(o => {
-            const mat = (o as THREE.Mesh).material as THREE.Material;
-            if (mat) {
-              if (mat.using('MESH_TRANSITION')) {
-                mat.uniform!.progress.value = 0;
-                mat.uniform!.dissolveDirection.value = true;
-              } else {
-                setProgAlpha(o, true, 0);
-                mat.updateVersion();
-                mat.needsUpdate = true;
-              }
-            }
+            o.asMesh?.prepareVisibilityTransition?.({
+              direction: 'fadeIn',
+              progress,
+            });
           });
         }}
       >
@@ -667,18 +760,11 @@ const ProgressiveAlphaControl = () => {
       <button
         onClick={() => {
           scene.traverse(o => {
-            const mat = (o as THREE.Mesh).material as THREE.Material;
-            if (mat) {
-              if (mat.using('MESH_TRANSITION')) {
-                mat.uniform!.progress.value = 0;
-                mat.uniform!.dissolveDirection.value = false;
-              } else {
-                setProgAlpha(o, false, 0);
-                mat.updateVersion();
-                mat.needsUpdate = true;
-              }
-            }
+            o.asMesh?.prepareVisibilityTransition?.({
+              direction: 'fadeOut',
+            });
           });
+
           gsap.to(
             { progress: 0 },
             {
@@ -689,9 +775,9 @@ const ProgressiveAlphaControl = () => {
                 setProgress(progressValue);
 
                 scene.traverse(o => {
-                  const mat = (o as THREE.Mesh).material as THREE.Material;
-                  if (mat?.using('MESH_TRANSITION')) {
-                    mat.uniform!.progress.value = progressValue as number;
+                  const mat = o.asMesh?.mat;
+                  if (mat) {
+                    mat.progress = progressValue;
                   }
                 });
               },
@@ -704,18 +790,11 @@ const ProgressiveAlphaControl = () => {
       <button
         onClick={() => {
           scene.traverse(o => {
-            const mat = (o as THREE.Mesh).material as THREE.Material;
-            if (mat) {
-              if (mat.using('MESH_TRANSITION')) {
-                mat.uniform!.progress.value = 0;
-                mat.uniform!.dissolveDirection.value = true;
-              } else {
-                setProgAlpha(o, true, 0);
-                mat.updateVersion();
-                mat.needsUpdate = true;
-              }
-            }
+            o.asMesh?.prepareVisibilityTransition?.({
+              direction: 'fadeIn',
+            });
           });
+
           gsap.to(
             { progress: 0 },
             {
@@ -724,10 +803,11 @@ const ProgressiveAlphaControl = () => {
               onUpdate() {
                 const progressValue = this.targets()[0].progress;
                 setProgress(progressValue);
+
                 scene.traverse(o => {
-                  const mat = (o as THREE.Mesh).material as THREE.Material;
-                  if (mat?.using('MESH_TRANSITION')) {
-                    mat.uniform!.progress.value = progressValue as number;
+                  const mat = o.asMesh?.mat;
+                  if (mat) {
+                    mat.progress = progressValue;
                   }
                 });
               },
@@ -745,14 +825,13 @@ const ProgressiveAlphaControl = () => {
               return;
             }
 
-            mat.off('MESH_TRANSITION');
-            mat.needsUpdate = true;
+            mat.VISIBILITY_TRANSITION = false;
           });
         }}
       >
         삭제
       </button>
-    </div>
+    </section>
   );
 };
 
@@ -770,29 +849,14 @@ const LightmapImageContrastControl = () => {
         const mat = mesh.material as THREE.Material;
 
         if (use) {
-          mat.on('LIGHTMAP_CONTRAST');
+          mat.uniform.lightMapContrast.value = value;
         } else {
-          mat.off('LIGHTMAP_CONTRAST');
+          mat.uniform.lightMapContrast.value = 1;
         }
         mat.needsUpdate = true;
       }
     });
-  }, [use]);
-
-  useEffect(() => {
-    if (use) {
-      scene.traverse(o => {
-        if (o.type === 'Mesh') {
-          const mesh = o as THREE.Mesh;
-          const mat = mesh.material as THREE.Material;
-
-          if (mat.using('LIGHTMAP_CONTRAST')) {
-            mat.uniform!.lightMapContrast.value = value;
-          }
-        }
-      });
-    }
-  }, [value]);
+  }, [use, value]);
 
   function updateValue(value: number) {
     setLightMapContrast(pre => ({ ...pre, value: value }));
@@ -927,6 +991,7 @@ const GeneralPostProcessingControl = () => {
       <BrightnessContrastOption></BrightnessContrastOption>
       <LightmapImageContrastControl></LightmapImageContrastControl>
       <ProgressiveAlphaControl></ProgressiveAlphaControl>
+      <LightmapTransitionControl></LightmapTransitionControl>
       <SRGBControl></SRGBControl>
       <BloomOption></BloomOption>
       <ColorLUTOption></ColorLUTOption>

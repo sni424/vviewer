@@ -6,10 +6,10 @@ type Shader = THREE.WebGLProgramParametersWithUniforms;
 /**
  * 공통으로 쓰이는 변수
  * 1. progress
- *      - USE_LIGHTMAP_TRANSITION || USE_PROGRESSIVE_ALPHA
+ *      - LIGHTMAP_TRANSITION || VISIBILITY_TRANSITION
  * 
- * 2. vWorldPosition
- *      - V_ENV_MAP || USE_PROGRESSIVE_ALPHA
+ * 2. vWorldPos
+ *      - V_ENV_MAP || VISIBILITY_TRANSITION
  */
 
 
@@ -21,36 +21,33 @@ const defines = /* glsl */ `
 #ifndef V_FRAG_DEFINES_GUARD
 #define V_FRAG_DEFINES_GUARD
 
-#if defined(USE_LIGHTMAP_TRANSITION) || defined(USE_PROGRESSIVE_ALPHA)
+uniform bool LIGHTMAP_TRANSITION;
+uniform bool VISIBILITY_TRANSITION;
+
 uniform float progress;
-#endif //!USE_LIGHTMAP_TRANSITION || USE_PROGRESSIVE_ALPHA
 
-#ifdef USE_LIGHTMAP_TRANSITION
-uniform sampler2D lightmapTo;
-#endif //!USE_LIGHTMAP_TRANSITION
+// uniform sampler2D lightMapFrom;
+#ifdef USE_LIGHTMAP
+uniform sampler2D lightMapTo;
+#endif
 
-#ifdef USE_PROGRESSIVE_ALPHA
-  uniform vec3 dissolveOrigin;
-  uniform float dissolveMaxDist;
-  uniform bool dissolveDirection;
+uniform vec3 dissolveOrigin;
+uniform float dissolveMaxDist;
+uniform bool dissolveDirection;
 
-  float progressiveAlpha(float progress, float x, float xMin, float xMax) {
-    float mid = mix(xMin, xMax, 0.5); // Midpoint of xMin and xMax
-    float factor = abs(x - mid) / max(xMax - mid, 0.0001); // 0으로 나누는 문제 방지
-    return clamp(1.0 - 4.0 * progress * factor, 0.0, 1.0);
-  }
-#endif //!USE_PROGRESSIVE_ALPHA
+float progressiveAlpha(float progress, float x, float xMin, float xMax) {
+  float mid = mix(xMin, xMax, 0.5); // Midpoint of xMin and xMax
+  float factor = abs(x - mid) / max(xMax - mid, 0.0001); // 0으로 나누는 문제 방지
+  return clamp(1.0 - 4.0 * progress * factor, 0.0, 1.0);
+}
 
 // 라이트맵대비는 라이트맵을 사용할 때만 정의됨
 #ifdef USE_LIGHTMAP
-  #ifdef USE_LIGHTMAP_CONTRAST 
-    uniform float lightMapContrast;
-  #endif //!USE_LIGHTMAP_CONTRAST
+  uniform float lightMapContrast;
+  uniform float globalLightMapContrast;
 #endif //!USE_LIGHTMAP
 
-#if defined(PROBE_COUNT) || defined(USE_PROGRESSIVE_ALPHA)
-varying vec3 vWorldPosition;
-#endif //!V_ENV_MAP || USE_PROGRESSIVE_ALPHA
+varying vec3 vWorldPos;
 
 #ifdef PROBE_COUNT
   struct Probe {
@@ -77,11 +74,11 @@ varying vec3 vWorldPosition;
 
   /////////////////////////////////////////////////////////////////////
 // pmrem texture as a cube map
-#ifndef V_ENVMAP_TYPE_CUBE_UV
-#define textureCubeUV textureCube // PMREM텍스쳐 아니면 기존의 textureCube 사용
-#endif //!V_ENVMAP_TYPE_CUBE_UV
+#ifndef WALL_COUNT
+#define pmremUV textureCube // PMREM텍스쳐 아니면 기존의 textureCube 사용
+#endif //!WALL_COUNT
 
-#ifdef V_ENVMAP_TYPE_CUBE_UV
+#ifdef WALL_COUNT
 
 	#define v_cubeUV_minMipLevel 4.0
 	#define v_cubeUV_minTileSize 16.0
@@ -239,7 +236,7 @@ varying vec3 vWorldPosition;
 
 	}
 
-	vec4 textureCubeUV( sampler2D envMap, vec3 sampleDir, float roughness ) {
+	vec4 pmremUV( sampler2D envMap, vec3 sampleDir, float roughness ) {
 
 		float mip = clamp( roughnessToMip( roughness ), v_cubeUV_m0, V_CUBEUV_MAX_MIP );
 
@@ -263,7 +260,7 @@ varying vec3 vWorldPosition;
 
 	}
 
-#endif //! V_ENVMAP_TYPE_CUBE_UV
+#endif //! WALL_COUNT
 
 /////////////////////////////////////////////////////////////////////
 // multiprobe
@@ -271,8 +268,8 @@ varying vec3 vWorldPosition;
   vec3 parallaxCorrectNormal( vec3 v, vec3 cubeSize, vec3 cubePos ) {
       vec3 nDir = normalize( v );
 
-      vec3 rbmax = ( .5 * cubeSize + cubePos - vWorldPosition ) / nDir;
-      vec3 rbmin = ( -.5 * cubeSize + cubePos - vWorldPosition ) / nDir;
+      vec3 rbmax = ( .5 * cubeSize + cubePos - vWorldPos ) / nDir;
+      vec3 rbmin = ( -.5 * cubeSize + cubePos - vWorldPos ) / nDir;
 
       vec3 rbminmax;
 
@@ -282,8 +279,8 @@ varying vec3 vWorldPosition;
 
       // 월드좌표의 반사벡터가 박스에서 얼마만한 강도로 반사될 지 정해주는 계수
       float correction = min( min( rbminmax.x, rbminmax.y ), rbminmax.z );
-      vec3 boxIntersection = vWorldPosition + nDir * correction;
-      // vec3 boxIntersection = vWorldPosition + nDir;
+      vec3 boxIntersection = vWorldPos + nDir * correction;
+      // vec3 boxIntersection = vWorldPos + nDir;
       
       vec3 retval = boxIntersection - cubePos;
       // retval.x = -retval.x;
@@ -312,118 +309,118 @@ varying vec3 vWorldPosition;
 
       if(i == 0){
 
-          envMapColor += textureCubeUV( uProbeTextures[0], localReflectVec, roughness );
+          envMapColor += pmremUV( uProbeTextures[0], localReflectVec, roughness );
 
       }
       #if PROBE_COUNT > 1
       else if( i == 1){
 
-          envMapColor += textureCubeUV( uProbeTextures[1], localReflectVec, roughness );
+          envMapColor += pmremUV( uProbeTextures[1], localReflectVec, roughness );
 
       }
       #endif
       #if PROBE_COUNT > 2
       else if( i == 2){
 
-          envMapColor += textureCubeUV( uProbeTextures[2], localReflectVec, roughness );
+          envMapColor += pmremUV( uProbeTextures[2], localReflectVec, roughness );
 
       }
       #endif
       #if PROBE_COUNT > 3
       else if( i == 3){
 
-          envMapColor += textureCubeUV( uProbeTextures[3], localReflectVec, roughness );
+          envMapColor += pmremUV( uProbeTextures[3], localReflectVec, roughness );
 
       }
       #endif
       #if PROBE_COUNT > 4
       else if( i == 4){
 
-          envMapColor += textureCubeUV( uProbeTextures[4], localReflectVec, roughness );
+          envMapColor += pmremUV( uProbeTextures[4], localReflectVec, roughness );
 
       }
       #endif
       #if PROBE_COUNT > 5
       else if( i == 5){
 
-          envMapColor += textureCubeUV( uProbeTextures[5], localReflectVec, roughness );
+          envMapColor += pmremUV( uProbeTextures[5], localReflectVec, roughness );
 
       }
       #endif
       #if PROBE_COUNT > 6
       else if( i == 6){
 
-          envMapColor += textureCubeUV( uProbeTextures[6], localReflectVec, roughness );
+          envMapColor += pmremUV( uProbeTextures[6], localReflectVec, roughness );
 
       }
       #endif
       #if PROBE_COUNT > 7
       else if( i == 7){
 
-          envMapColor += textureCubeUV( uProbeTextures[7], localReflectVec, roughness );
+          envMapColor += pmremUV( uProbeTextures[7], localReflectVec, roughness );
 
       }
       #endif
       #if PROBE_COUNT > 8
       else if( i == 8){
 
-          envMapColor += textureCubeUV( uProbeTextures[8], localReflectVec, roughness );
+          envMapColor += pmremUV( uProbeTextures[8], localReflectVec, roughness );
 
       }
       #endif
       #if PROBE_COUNT > 9
       else if( i == 9){
 
-          envMapColor += textureCubeUV( uProbeTextures[9], localReflectVec, roughness );
+          envMapColor += pmremUV( uProbeTextures[9], localReflectVec, roughness );
 
       }
       #endif
       #if PROBE_COUNT > 10
       else if( i == 10){
 
-          envMapColor += textureCubeUV( uProbeTextures[10], localReflectVec, roughness );
+          envMapColor += pmremUV( uProbeTextures[10], localReflectVec, roughness );
 
       }
       #endif
       #if PROBE_COUNT > 11
       else if( i == 11){
 
-          envMapColor += textureCubeUV( uProbeTextures[11], localReflectVec, roughness );
+          envMapColor += pmremUV( uProbeTextures[11], localReflectVec, roughness );
 
       }
       #endif
       #if PROBE_COUNT > 12
       else if( i == 12){
 
-          envMapColor += textureCubeUV( uProbeTextures[12], localReflectVec, roughness );
+          envMapColor += pmremUV( uProbeTextures[12], localReflectVec, roughness );
 
       }
       #endif
       #if PROBE_COUNT > 13
       else if( i == 13){
 
-          envMapColor += textureCubeUV( uProbeTextures[13], localReflectVec, roughness );
+          envMapColor += pmremUV( uProbeTextures[13], localReflectVec, roughness );
 
       }
       #endif
       #if PROBE_COUNT > 14
       else if( i == 14){
 
-          envMapColor += textureCubeUV( uProbeTextures[14], localReflectVec, roughness );
+          envMapColor += pmremUV( uProbeTextures[14], localReflectVec, roughness );
 
       }
       #endif
       #if PROBE_COUNT > 15
       else if( i == 15){
 
-          envMapColor += textureCubeUV( uProbeTextures[15], localReflectVec, roughness );
+          envMapColor += pmremUV( uProbeTextures[15], localReflectVec, roughness );
 
       }
       #endif
       #if PROBE_COUNT > 16
       else if( i == 16){
 
-          envMapColor += textureCubeUV( uProbeTextures[16], localReflectVec, roughness );
+          envMapColor += pmremUV( uProbeTextures[16], localReflectVec, roughness );
 
       }
       #endif
@@ -497,8 +494,8 @@ for (int i = 0; i < PROBE_COUNT; i++) {
   vec3 probeCenter = uProbe[i].center;
   vec3 probeSize = uProbe[i].size;
 
-  float distFromCenter = lengthSquared(vWorldPosition-probeCenter);
-  float distFromBox = distanceToAABB(vWorldPosition, probeCenter, probeSize);
+  float distFromCenter = lengthSquared(vWorldPos-probeCenter);
+  float distFromBox = distanceToAABB(vWorldPos, probeCenter, probeSize);
   
   dists[i] = distFromBox;
   
@@ -540,7 +537,7 @@ vec4 envMapColor = vec4(0.0);
       vec2 end = uWall[i].end.xz;
       int probeIndex = uWall[i].index;
 
-      vec2 origin = vWorldPosition.xz;
+      vec2 origin = vWorldPos.xz;
       vec2 ray = worldReflectVec.xz;
       vec2 intersection = vec2(0.0);
 
@@ -583,26 +580,23 @@ const progAlpha = /* glsl */ `
 #ifndef V_FRAG_PROG_ALPHA_GUARD
 #define V_FRAG_PROG_ALPHA_GUARD
 
-#ifdef USE_PROGRESSIVE_ALPHA
-  float distance = distance(vWorldPosition.xyz, dissolveOrigin );
-  float falloffRange = dissolveMaxDist * 0.01;
-  float distToBorder = (dissolveMaxDist + falloffRange) * abs(progress);
-  float falloff = step( distToBorder-falloffRange, distance );
-  float glowFalloff;
-  if ( dissolveDirection ) {
-    falloff = 1.0 - falloff;
-    glowFalloff = 1.0 - smoothstep(distToBorder-falloffRange*5.0, distToBorder+falloffRange*4.0, distance);
+  if(VISIBILITY_TRANSITION){
+    float distance = distance(vWorldPos.xyz, dissolveOrigin );
+    float falloffRange = dissolveMaxDist * 0.01;
+    float distToBorder = (dissolveMaxDist + falloffRange) * abs(progress);
+    float falloff = step( distToBorder-falloffRange, distance );
+    float glowFalloff;
+    if ( dissolveDirection ) {
+      falloff = 1.0 - falloff;
+      glowFalloff = 1.0 - smoothstep(distToBorder-falloffRange*5.0, distToBorder+falloffRange*4.0, distance);
+    }
+    else {
+      glowFalloff = max(smoothstep(distToBorder-falloffRange, distToBorder, distance), 0.0001);
+    }
+    gl_FragColor.a *= falloff;
+    vec3 glowColor = vec3(1.0);
+    gl_FragColor.rgb = mix(glowColor, gl_FragColor.rgb, glowFalloff);
   }
-  else {
-    glowFalloff = max(smoothstep(distToBorder-falloffRange, distToBorder, distance), 0.0001);
-  }
-  gl_FragColor.a *= falloff;
-  vec3 glowColor = vec3(1.0);
-  gl_FragColor.rgb = mix(glowColor, gl_FragColor.rgb, glowFalloff);
-
-  // gl_FragColor = vec4(1.0);
-  // gl_FragColor.rgb = vec3(dissolveDirection ? (1.0-progress) : (progress));
-#endif //!USE_PROGRESSIVE_ALPHA
 
 #endif //!V_FRAG_PROG_ALPHA_GUARD
 `;
@@ -617,23 +611,21 @@ const lightmapContent = /* glsl */ `
 
   #ifdef USE_LIGHTMAP
 
-    #ifdef USE_LIGHTMAP_TRANSITION
-    vec4 lightMapTexel = mix(
-      texture2D(lightMap, vLightMapUv),
-      texture2D(lightMapTo, vLightMapUv),
-      progress
-    );
-    #else
-    vec4 lightMapTexel = texture2D( lightMap, vLightMapUv );
-    #endif //!USE_LIGHTMAP_TRANSITION
-
+    vec4 lightMapTexel = vec4( 0.0 );
+    if(LIGHTMAP_TRANSITION) {
+      lightMapTexel = mix(
+        texture2D(lightMap, vLightMapUv),
+        texture2D(lightMapTo, vLightMapUv),
+        progress
+      );
+    } else {
+      lightMapTexel = texture2D(lightMap, vLightMapUv);
+    }
 
 		vec3 lightMapIrradiance = lightMapTexel.rgb * lightMapIntensity;
 
     // <lights_fragment_maps>에서 추가된 부분
-		#ifdef USE_LIGHTMAP_CONTRAST
-      lightMapIrradiance = pow(lightMapIrradiance, vec3(lightMapContrast));
-    #endif  //!USE_LIGHTMAP_CONTRAST
+    lightMapIrradiance = pow(lightMapIrradiance, vec3(lightMapContrast*globalLightMapContrast));
 
     irradiance += lightMapIrradiance;
   #endif
@@ -677,7 +669,7 @@ export const patchFragment = (shader: Shader) => {
   // 2. multiprobe
   shader.fragmentShader = shader.fragmentShader.replace(multiProbeTarget, multiProbe);
 
-  // 3. progressive alpha
+  // 3. visibility transition
   shader.fragmentShader = shader.fragmentShader.replace(progAlphaTarget, progAlpha);
 
   // 4. lightmap transition & contrast

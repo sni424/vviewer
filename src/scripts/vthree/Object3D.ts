@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import type { TransformControlsPlane } from 'three/examples/jsm/controls/TransformControls.js';
 import { Layer } from '../../Constants';
 import { resetGL } from '../utils';
-import { ThreeUserData } from './types';
+import { ThreeUserData } from './VTHREETypes';
 
 declare module "three" {
   interface Object3D {
@@ -45,14 +45,16 @@ declare module "three" {
   }
 }
 
-Object.defineProperty(THREE.Object3D.prototype, 'asMesh', {
-  get: function () {
-    return this as THREE.Mesh;
-  },
-  set: function () {
-    throw new Error('asMesh is read-only');
-  }
-});
+if (!Object.getOwnPropertyDescriptor(THREE.Object3D.prototype, 'asMesh')) {
+  Object.defineProperty(THREE.Object3D.prototype, 'asMesh', {
+    get: function () {
+      return this as THREE.Mesh;
+    },
+    set: function () {
+      throw new Error('asMesh is read-only');
+    }
+  });
+}
 
 
 THREE.Object3D.prototype.all = function <T = THREE.Object3D>(

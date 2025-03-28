@@ -26,7 +26,7 @@ import { uploadExrToKtx } from './atomUtils.ts';
 import VGLTFLoader from './loaders/VGLTFLoader.ts';
 import ReflectionProbe from './ReflectionProbe.ts';
 import VGLTFExporter from './VGLTFExporter.ts';
-import { ThreeUserData } from './vthree/types.ts';
+import { ThreeUserData } from './vthree/VTHREETypes.ts';
 
 export const groupInfo = (
   group: THREE.Group | { scene: THREE.Group } | THREE.Scene | THREE.Object3D,

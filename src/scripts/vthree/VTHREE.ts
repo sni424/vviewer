@@ -34,6 +34,7 @@ window.getThree = (view: View = View.Shared) => {
 import "./Camera.ts";
 import "./Material.ts";
 import "./Matrix4.ts";
+import "./Mesh.ts";
 import "./Object3D.ts";
 import "./Shader.ts";
 import "./Texture.ts";
@@ -42,3 +43,4 @@ import "./Vector3.ts";
 
 export * from 'three';
 export { THREE };
+

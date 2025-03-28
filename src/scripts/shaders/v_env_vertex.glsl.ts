@@ -6,9 +6,7 @@ const header = /* glsl */ `
 #ifndef V_VERTEX_HEADER_GUARD
 #define V_VERTEX_HEADER_GUARD
 
-#if defined(PROBE_COUNT) || defined(USE_PROGRESSIVE_ALPHA)
-varying vec3 vWorldPosition;
-#endif //!V_ENV_MAP || USE_PROGRESSIVE_ALPHA
+varying vec3 vWorldPos;
 
 #endif //!V_VERTEX_HEADER_GUARD
 `
@@ -18,9 +16,7 @@ const content = /* glsl */ `
 #ifndef V_VERTEX_CONTENT_GUARD
 #define V_VERTEX_CONTENT_GUARD
 
-#if defined(PROBE_COUNT) || defined(USE_PROGRESSIVE_ALPHA)
-  vWorldPosition = (modelMatrix * vec4( transformed, 1.0 )).xyz;
-#endif
+  vWorldPos = (modelMatrix * vec4( transformed, 1.0 )).xyz;
 #include <worldpos_vertex>
 
 #endif //!V_VERTEX_CONTENT_GUARD

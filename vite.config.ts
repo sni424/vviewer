@@ -11,6 +11,7 @@ export default defineConfig({
   resolve: {
     alias: {
       VTHREE: path.resolve(__dirname, 'src/scripts/vthree/VTHREE.ts'),
+      src: path.resolve(__dirname, 'src'),
     },
   },
 });

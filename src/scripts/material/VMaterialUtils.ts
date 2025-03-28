@@ -52,7 +52,7 @@ function addProgressiveAlpha(
 
   shader.fragmentShader = shader.fragmentShader.replace(
     '#include <dithering_fragment>',
-    '#include <dithering_fragment>\n' + VShaderLib.V_USE_PROGRESSIVE_ALPHA,
+    '#include <dithering_fragment>\n' + VShaderLib.V_VISIBILITY_TRANSITION,
   ); // 마지막에 처리하도록 dithering_fragment 다음에 추가
 }
 

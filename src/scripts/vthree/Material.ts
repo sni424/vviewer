@@ -1,112 +1,44 @@
-import { FlushValues } from 'pako';
 import * as THREE from 'three';
 import { patchFragment } from '../shaders/v_env_frag.glsl';
 import { patchVertex } from '../shaders/v_env_vertex.glsl';
-import { MATERIAL_DEFINE, MATERIAL_SHADER, MATERIAL_SHADER_TYPE, MATERIAL_UNIFORM, MATERIAL_UNIFORM_VALUE, ThreeUserData } from './types';
+import { DEFAULT_MATERIAL_SHADER, defaultUniforms, MATERIAL_DEFINE, MATERIAL_SHADER, MATERIAL_SHADER_TYPE, MATERIAL_UNIFORM, MATERIAL_UNIFORM_VALUE, ThreeUserData } from './VTHREETypes';
 
 // 재질 : uniform
 // { material1 : { lightmapContrast : { value : 1.0 } } }
-const uniformMap = new WeakMap<THREE.Material, Record<string, Record<FlushValues, any>>>();
+// const uniformMap = new WeakMap<THREE.Material, Record<string, Record<FlushValues, any>>>();
 
 const versionMap = new WeakMap<THREE.Material, number>();
 
 export type MaterialDefines = { [key in MATERIAL_DEFINE]?: any };
 
-export const DEFAULT_MATERIAL_SHADER: MATERIAL_SHADER = {
-  MESH_TRANSITION: {
-    type: "MESH_TRANSITION",
-    defines: {
-      USE_PROGRESSIVE_ALPHA: ""
-    },
-    uniforms: {
-      progress: { value: 0 },
-      dissolveOrigin: { value: new THREE.Vector3() },
-      dissolveMaxDist: { value: 0 },
-      dissolveDirection: { value: false },
-    }
-  },
 
-  LIGHTMAP_TRANSITION: {
-    type: "LIGHTMAP_TRANSITION",
-    defines: {
-      USE_LIGHTMAP_TRANSITION: ""
-    },
-    uniforms: {
-      progress: { value: 0 },
-      lightmapTo: { value: new THREE.Texture() },
-    }
-  },
-
-  PROBE: {
-    type: "PROBE",
-    defines: {
-      PROBE_COUNT: 0,
-      V_CUBEUV_MAX_MIP: "0.0",
-      V_ENVMAP_TYPE_CUBE_UV: 0,
-      V_CUBEUV_TEXEL_WIDTH: 0,
-      V_CUBEUV_TEXEL_HEIGHT: 0,
-    },
-    uniforms: {
-      uProbe: { value: [] },
-      uProbeTextures: { value: [] },
-      uProbeIntensity: { value: 1.0 },
-    },
-  },
-  PROBE_WALL: {
-    type: "PROBE_WALL",
-    defines: {
-      PROBE_COUNT: 0,
-      WALL_COUNT: 0,
-      V_CUBEUV_MAX_MIP: "0.0",
-      V_ENVMAP_TYPE_CUBE_UV: 0,
-      V_CUBEUV_TEXEL_WIDTH: 0,
-      V_CUBEUV_TEXEL_HEIGHT: 0,
-    },
-    uniforms: {
-      uProbe: { value: [] },
-      uProbeTextures: { value: [] },
-      uProbeIntensity: { value: 1.0 },
-      uProbeBlendDist: { value: 20.0 },
-      uWall: { value: [] },
-    },
-  },
-  LIGHTMAP_CONTRAST: {
-    type: "LIGHTMAP_CONTRAST",
-    uniforms: {
-      lightMapContrast: { value: 1 },
-    },
-    defines: {
-      USE_LIGHTMAP_CONTRAST: ""
-    }
-  },
-};
 
 declare module 'three' {
 
   interface Material {
+    get basic(): THREE.MeshBasicMaterial;
+    get standard(): THREE.MeshStandardMaterial;
+    get physical(): THREE.MeshPhysicalMaterial;
+
+
     get vUserData(): ThreeUserData;
 
     set vUserData(userData: Partial<ThreeUserData>);
 
-    // get/set, _progress.value를 변화시킴
-    progress: number;
+    // get/set, this.uniform.progress.value를 변화시킴
+    get progress(): number;
+    set progress(value: number);
 
-    _progress: { value: number; };
+    get VISIBILITY_TRANSITION(): boolean;
+    set VISIBILITY_TRANSITION(value: boolean);
+    get LIGHTMAP_TRANSITION(): boolean;
+    set LIGHTMAP_TRANSITION(value: boolean);
 
     updateMultiProbeTexture?(): void;
 
-    // defaultOnBeforeCompile: (
-    //   parameters: THREE.WebGLProgramParametersWithUniforms,
-    //   renderer: THREE.WebGLRenderer,
-    // ) => void;
-    // onBeforeCompile: (
-    //   parameters: THREE.WebGLProgramParametersWithUniforms,
-    //   renderer: THREE.WebGLRenderer,
-    // ) => void;
-
     // getter, 셰이더를 사용하는 경우 할당되는 유니폼
     //! uniforms를 쓰는 재질이 있으므로 중복 방지를 위해 단수형
-    readonly uniform?: { [uniform in MATERIAL_UNIFORM]: { value: MATERIAL_UNIFORM_VALUE<uniform> } };
+    uniform: { [uniform in MATERIAL_UNIFORM]: { value: MATERIAL_UNIFORM_VALUE<uniform> } };
 
     // defines?: MaterialDefines;
     setDefines(defines: Partial<MaterialDefines>): this;
@@ -132,25 +64,84 @@ declare module 'three' {
 
 }
 
+if (!Object.getOwnPropertyDescriptor(THREE.Material.prototype, 'basic')) {
+  Object.defineProperty(THREE.Material.prototype, 'basic', {
+    get() {
+      return this as THREE.MeshBasicMaterial;
+    },
+    set() {
+      throw new Error('basic is read-only');
+    }
+  });
+}
 
-Object.defineProperty(THREE.Material.prototype, 'uniform', {
-  get() {
-    return uniformMap.get(this);
-  },
-  set(v: Partial<ThreeUserData>) {
-    // onBeforeCompile이 불리면 자동으로 material.uniform이 설정됨
-    throw new Error("직접 유니폼을 세팅할 수 없음");
-  },
-});
+if (!Object.getOwnPropertyDescriptor(THREE.Material.prototype, 'standard')) {
+  Object.defineProperty(THREE.Material.prototype, 'standard', {
+    get() {
+      return this as THREE.MeshStandardMaterial;
+    },
+    set() {
+      throw new Error('standard is read-only');
+    }
+  });
+}
 
-Object.defineProperty(THREE.Material.prototype, 'progress', {
-  get() {
-    return this._progress.value;
-  },
-  set(value: number) {
-    this._progress.value = value;
-  },
-});
+if (!Object.getOwnPropertyDescriptor(THREE.Material.prototype, 'physical')) {
+  Object.defineProperty(THREE.Material.prototype, 'physical', {
+    get() {
+      return this as THREE.MeshPhysicalMaterial;
+    },
+    set() {
+      throw new Error('physical is read-only');
+    }
+  });
+}
+
+if (!Object.getOwnPropertyDescriptor(THREE.Material.prototype, 'progress')) {
+  Object.defineProperty(THREE.Material.prototype, 'progress', {
+    get() {
+      if (this.uniform?.progress?.value !== undefined) {
+        return this.uniform.progress.value;
+      } else {
+        console.warn("머티리얼 유니폼/프로그레스 없음 : ", this.name)
+        return 0;
+      }
+    },
+    set(value: number) {
+      if (typeof this.uniform?.progress !== undefined) {
+        this.uniform.progress.value = value;
+      } else {
+        console.warn("머티리얼 유니폼/프로그레스 없음 : ", this.name)
+      }
+    },
+  });
+}
+
+THREE.Material.prototype.uniform = (() => {
+  DEFAULT_MATERIAL_SHADER
+})() as any;
+
+if (!Object.getOwnPropertyDescriptor(THREE.Material.prototype, 'VISIBILITY_TRANSITION')) {
+  Object.defineProperty(THREE.Material.prototype, 'VISIBILITY_TRANSITION', {
+    get() {
+      return this.uniform.VISIBILITY_TRANSITION.value;
+    },
+    set(value: boolean) {
+      this.uniform.VISIBILITY_TRANSITION.value = value;
+    },
+  });
+}
+
+if (!Object.getOwnPropertyDescriptor(THREE.Material.prototype, 'LIGHTMAP_TRANSITION')) {
+  Object.defineProperty(THREE.Material.prototype, 'LIGHTMAP_TRANSITION', {
+    get() {
+      return this.uniform.LIGHTMAP_TRANSITION.value;
+    },
+    set(value: boolean) {
+      this.uniform.LIGHTMAP_TRANSITION.value = value;
+    },
+  });
+}
 
 // 유니폼 업서트
 const upsert = (uniform: any, key: string, value: any) => {
@@ -174,7 +165,7 @@ THREE.Material.prototype.updateVersion = function () {
   return this;
 }
 
-THREE.Material.prototype._progress = { value: 0 };
+// THREE.Material.prototype._progress = { value: 0 };
 
 THREE.Material.prototype.on = function <T extends MATERIAL_SHADER_TYPE>(type: T, params?: Partial<MATERIAL_SHADER[T]>) {
 
@@ -220,21 +211,24 @@ THREE.Material.prototype.on = function <T extends MATERIAL_SHADER_TYPE>(type: T,
     patchFragment(shader);
     patchUniforms(shader.uniforms, filledParams.uniforms);
 
-    uniformMap.set(this, shader.uniforms as any);
-
     console.log("Onbeforecompile uniforms : ", matname, shader.uniforms,);
   }
 
-  // const prev = this.onBeforeCompile;
-  // const matname = this.name;
-  // this.onBeforeCompile = (shader, renderer) => {
-  //   prev?.(shader, renderer);
-  //   console.log("Onbeforecompile uniforms : ", shader.uniforms, matname);
-  // };
-
-  // console.log("this.shader.uniforms", this.shader.uniforms, this.name)
-
   return this;
+}
+
+THREE.Material.prototype.onBeforeCompile = function (shader: THREE.WebGLProgramParametersWithUniforms, renderer: THREE.WebGLRenderer) {
+
+  patchVertex(shader);
+  patchFragment(shader);
+
+  // 첫 컴파일 시 default 유니폼 할당
+  for (const key in defaultUniforms) {
+    upsert(shader.uniforms, key, (defaultUniforms as any)[key].value);
+  }
+
+  // 첫 컴파일 시 this.uniform 호출 가능
+  this.uniform = shader.uniforms as any;
 }
 
 THREE.Material.prototype.off = function <T extends MATERIAL_SHADER_TYPE>(type: T) {

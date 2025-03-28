@@ -43,7 +43,7 @@ const parse = (models: File[], maps: File[], mapDst: MapDst) => {
   return fileUrls;
 };
 
-const parseDroppedFiles = async (
+export const parseDroppedFiles = async (
   event: React.DragEvent<HTMLDivElement>,
   acceptedExtensions: string[],
 ) => {
