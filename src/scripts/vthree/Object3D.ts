@@ -7,6 +7,9 @@ import { ThreeUserData } from './types';
 
 declare module "three" {
   interface Object3D {
+
+    get asMesh(): THREE.Mesh;
+
     get vUserData(): ThreeUserData;
 
     set vUserData(userData: Partial<ThreeUserData>);
@@ -41,6 +44,16 @@ declare module "three" {
     updateAllMaterials(threeExports?: RootState): void;
   }
 }
+
+Object.defineProperty(THREE.Object3D.prototype, 'asMesh', {
+  get: function () {
+    return this as THREE.Mesh;
+  },
+  set: function () {
+    throw new Error('asMesh is read-only');
+  }
+});
+
 
 THREE.Object3D.prototype.all = function <T = THREE.Object3D>(
   includeSelf = false,

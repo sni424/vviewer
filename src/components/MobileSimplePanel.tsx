@@ -11,7 +11,6 @@ import {
   threeExportsAtom,
 } from '../scripts/atoms.ts';
 import { loadProbes } from '../scripts/atomUtils.ts';
-import VMaterial from '../scripts/material/VMaterial.ts';
 import ReflectionProbe, {
   ReflectionProbeJSON,
 } from '../scripts/ReflectionProbe.ts';
@@ -74,7 +73,7 @@ const LMIntensityController = () => {
             }
           });
           allMeshes.forEach(mesh => {
-            (mesh.material as VMaterial).lightMapIntensity = parseFloat(
+            (mesh.material as THREE.Material).lightMapIntensity = parseFloat(
               e.target.value,
             );
           });

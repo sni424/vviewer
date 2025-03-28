@@ -290,7 +290,7 @@ function Renderer() {
     //     gl.compileAsync(scene, camera);
     //   }
     // });
-    // window.addEventListener('vmaterial-cloned', () => {
+    // window.addEventListener('THREE.Material-cloned', () => {
     //   gl.compileAsync(scene, camera);
     // });
     setThreeExportsAtom(threeExports);

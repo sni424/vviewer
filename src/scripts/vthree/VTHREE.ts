@@ -42,4 +42,3 @@ import "./Vector3.ts";
 
 export * from 'three';
 export { THREE };
-

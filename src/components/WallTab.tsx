@@ -1,6 +1,7 @@
 import { useAtom, useAtomValue } from 'jotai';
 import { useState } from 'react';
 import { v4 } from 'uuid';
+import { THREE } from 'VTHREE';
 import { __UNDEFINED__ } from '../Constants';
 import {
   getWallOptionAtom,
@@ -23,7 +24,6 @@ import {
   getWallPoint,
   resetColor,
 } from '../scripts/utils';
-import { THREE } from '../scripts/vthree/VTHREE';
 import { WallCreateOption, WallPointView, Walls, WallView } from '../types';
 
 function WallDetail({

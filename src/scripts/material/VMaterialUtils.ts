@@ -1,5 +1,5 @@
 import { THREE } from '../vthree/VTHREE.ts';
-import { VShaderLib } from './VMaterialConstants.ts';
+import { VShaderLib } from './THREE.MaterialConstants.ts';
 
 function addLightMapChangeTransition(shader: Shader, lightMapToChange: THREE.Texture | null) {
   // TODO LightMap Switch transition

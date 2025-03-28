@@ -1,7 +1,7 @@
 import { useAtom, useAtomValue } from 'jotai';
 import { useEffect, useState } from 'react';
+import { THREE } from 'VTHREE';
 import { globalGlAtom, threeExportsAtom } from '../../scripts/atoms';
-import { THREE } from '../../scripts/vthree/VTHREE';
 
 const Clipping = () => {
   const [glSetting, setGlSetting] = useAtom(globalGlAtom);

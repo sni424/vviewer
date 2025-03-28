@@ -1,5 +1,6 @@
 import { useAtom, useAtomValue } from 'jotai';
 import React, { useEffect, useState } from 'react';
+import { Quaternion, THREE, Vector3 } from 'VTHREE';
 import { roomColorString } from '../Constants';
 import {
   cameraMatrixAtom,
@@ -13,7 +14,6 @@ import {
   setAtomValue,
   threeExportsAtom,
 } from '../scripts/atoms';
-import { Quaternion, THREE, Vector3 } from '../scripts/vthree/VTHREE';
 import Clipping from './clipping/Clipping';
 
 const CameraPanel = () => {

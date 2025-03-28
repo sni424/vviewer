@@ -1,10 +1,10 @@
 import { useThree } from '@react-three/fiber';
 import { useAtom, useAtomValue } from 'jotai';
 import { Fragment, useRef } from 'react';
+import { Mesh, Vector3 } from 'VTHREE';
 import { roomColor } from '../../Constants';
 import { panelTabAtom, roomAtom, threeExportsAtom } from '../../scripts/atoms';
 import { createClosedConcaveSurface, PointXZ } from '../../scripts/utils';
-import { Mesh, Vector3 } from '../../scripts/vthree/VTHREE';
 
 interface MarkerProps {
   position: [number, number, number][];

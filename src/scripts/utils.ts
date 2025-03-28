@@ -24,8 +24,6 @@ import {
 } from './atoms';
 import { uploadExrToKtx } from './atomUtils.ts';
 import VGLTFLoader from './loaders/VGLTFLoader.ts';
-import VMaterial from './material/VMaterial.ts';
-import VMeshStandardMaterial from './material/VMeshStandardMaterial.ts';
 import ReflectionProbe from './ReflectionProbe.ts';
 import VGLTFExporter from './VGLTFExporter.ts';
 import { ThreeUserData } from './vthree/types.ts';
@@ -367,14 +365,14 @@ export const loadLatest = async ({
         const m = t as THREE.Mesh;
         m.geometry.dispose();
         const mat = m.material as THREE.Material;
-        disposeMaterial(mat as VMaterial);
+        disposeMaterial(mat as THREE.Material);
       }
     });
     console.log('after add : ', afterInfo.geometries, afterInfo.textures);
     addBenchMark('sceneAddEnd');
   };
 
-  function disposeMaterial(material: VMaterial) {
+  function disposeMaterial(material: THREE.Material) {
     if (!material) return;
 
     // 사용된 모든 텍스처를 dispose
@@ -1013,7 +1011,7 @@ export const uploadExrLightmap = async (
 ) => {
   // 같은 라이트맵을 공유하는 material 검출
   // { hash : [mat1, mat2] }
-  const lightmapHashes: { [key in string]: VMaterial[] } = {};
+  const lightmapHashes: { [key in string]: THREE.Material[] } = {};
 
   object.traverseAll(async obj => {
     if ((obj as THREE.Mesh).isMesh) {
@@ -1025,7 +1023,7 @@ export const uploadExrLightmap = async (
         tex.vUserData.mimeType === 'image/ktx2';
 
       // Lightmap to HashMap
-      const addLightMapToHash = (hashKey: string, material: VMaterial) => {
+      const addLightMapToHash = (hashKey: string, material: THREE.Material) => {
         if (!lightmapHashes[hashKey]) {
           lightmapHashes[hashKey] = [];
         }
@@ -1418,7 +1416,7 @@ export function changeMeshVisibleWithTransition(
   targetVisible: boolean,
   timeLine: gsap.core.Timeline,
 ) {
-  const mat = mesh.material as VMaterial;
+  const mat = mesh.material as THREE.Material;
   const originalRenderOrder = mesh.renderOrder;
   const originalTransparent = mat.transparent;
   // 메시의 바운딩 박스 계산
@@ -1480,7 +1478,7 @@ export function changeMeshLightMapWithTransition(
   targetLightMap: THREE.Texture,
   timeLine: gsap.core.Timeline,
 ) {
-  const mat = mesh.material as VMaterial;
+  const mat = mesh.material as THREE.Material;
   const beforeLightMap = mat.lightMap;
   if (!beforeLightMap) {
     console.warn('No LightMap : ', mesh);
@@ -1583,7 +1581,7 @@ export function changeMeshLightMapWithTransition(
 }
 
 export function applyProbeOnMaterial(
-  material: VMaterial,
+  material: THREE.Material,
   probe: ReflectionProbe,
 ) {
   material.envMap = probe.getRenderTargetTexture();

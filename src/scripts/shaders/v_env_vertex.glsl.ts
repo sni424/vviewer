@@ -1,4 +1,4 @@
-import { type THREE } from "../vthree/VTHREE";
+import { THREE } from 'VTHREE';
 
 type Shader = THREE.WebGLProgramParametersWithUniforms;
 

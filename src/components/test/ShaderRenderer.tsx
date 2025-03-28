@@ -1,9 +1,9 @@
 import { Canvas, useThree } from '@react-three/fiber';
 import { useAtomValue, useSetAtom } from 'jotai';
 import { useEffect } from 'react';
+import { THREE } from 'VTHREE';
 import { Layer } from '../../Constants';
 import { globalGlAtom, threeExportsAtom } from '../../scripts/atoms';
-import { THREE } from '../../scripts/vthree/VTHREE';
 import { View } from '../../types';
 
 const Renderer = () => {

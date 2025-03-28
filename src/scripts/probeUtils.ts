@@ -1,7 +1,6 @@
+import { THREE } from 'VTHREE';
 import cube_uv from "./cube_uv";
-import VMaterial from "./material/VMaterial";
 import type ReflectionProbe from "./ReflectionProbe";
-import { THREE } from "./vthree/VTHREE";
 
 // key : material.uuid
 const probeVersions = new Map<string, { cacheKey: string; version: number; }>();
@@ -759,7 +758,7 @@ function generateCubeUVSize(imageHeight: number) {
 
 }
 
-export function applyMultiProbe(mat: VMaterial, probes: ReflectionProbe[], walls?: {
+export function applyMultiProbe(mat: THREE.Material, probes: ReflectionProbe[], walls?: {
   start: THREE.Vector3;
   end: THREE.Vector3;
   probeId: string;
@@ -839,7 +838,7 @@ export function applyMultiProbe(mat: VMaterial, probes: ReflectionProbe[], walls
     ...defines
   }
 
-  const createCacheKey = (mat: VMaterial, defines: any, uniforms: any): string => {
+  const createCacheKey = (mat: THREE.Material, defines: any, uniforms: any): string => {
     let retval: string[] = [];
     retval.push(mat.name);
     retval.push(probes.map(p => p.getName()).join(","));

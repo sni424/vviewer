@@ -8,14 +8,13 @@ import {
   wallOptionAtom,
 } from '../scripts/atoms';
 import { threes, wallOptionToWalls } from '../scripts/atomUtils.ts';
-import VMaterial from '../scripts/material/VMaterial.ts';
 import { applyMultiProbe } from '../scripts/probeUtils.ts';
 import ReflectionProbe from '../scripts/ReflectionProbe.ts';
 import { THREE } from '../scripts/vthree/VTHREE.ts';
 import { ProbeTypes, WallCreateOption } from '../types.ts';
 
 export interface MapPreviewProps {
-  material: VMaterial;
+  material: THREE.Material;
   matKey: MaterialSlot;
   width?: number;
   height?: number;
@@ -152,7 +151,7 @@ const MapPreview: React.FC<MapPreviewProps> = ({
   height,
   matKey: mapKey,
 }) => {
-  const texture = material[mapKey as keyof VMaterial] as THREE.Texture;
+  const texture = material[mapKey as keyof THREE.Material] as THREE.Texture;
   const { openModal, closeModal } = useModal();
   const probes = useAtomValue(ProbeAtom);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -352,7 +351,7 @@ const prepareWalls = (wallInfo: WallCreateOption) => {
 };
 
 const applyMultiProbeOnMaterial = (
-  material: VMaterial,
+  material: THREE.Material,
   probes: ReflectionProbe[],
   probeIds: string[],
   walls?: { start: THREE.Vector3; end: THREE.Vector3; probeId: string }[],
@@ -372,7 +371,7 @@ const applyMultiProbeOnMaterial = (
 };
 
 function applySingleProbeOnMaterial(
-  material: VMaterial,
+  material: THREE.Material,
   probe: ReflectionProbe,
 ) {
   material.envMap = probe.getRenderTargetTexture();
@@ -393,7 +392,7 @@ const MultiProbeSelector = ({
   material,
   useWall,
 }: {
-  material: VMaterial;
+  material: THREE.Material;
   useWall: boolean;
 }) => {
   const wallInfo = useAtomValue(wallOptionAtom); // 벽 정보가 바뀔때마다 리렌더
@@ -443,7 +442,7 @@ const MultiProbeSelector = ({
   );
 };
 
-const ProbeSelector = ({ material }: { material: VMaterial }) => {
+const ProbeSelector = ({ material }: { material: THREE.Material }) => {
   const probes = useAtomValue(ProbeAtom);
   const isMulti = Boolean(material?.vUserData.probeIds);
   const [multiprobe, setMultiprobe] = useState<ProbeTypes>(
@@ -556,7 +555,7 @@ const ProbeSelector = ({ material }: { material: VMaterial }) => {
   );
 };
 
-const SingleProbeSelector = ({ material }: { material: VMaterial }) => {
+const SingleProbeSelector = ({ material }: { material: THREE.Material }) => {
   const probes = useAtomValue(ProbeAtom);
   const [value, setValue] = useState(material.vUserData.probeId ?? 'none');
 

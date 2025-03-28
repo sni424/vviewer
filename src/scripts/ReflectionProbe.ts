@@ -5,7 +5,6 @@ import { ENV, Layer } from '../Constants.ts';
 import { uploadPngToKtx } from './atomUtils.ts';
 import { getVKTX2Loader } from './loaders/VKTX2Loader.ts';
 import VTextureLoader from './loaders/VTextureLoader.ts';
-import VMeshStandardMaterial from './material/VMeshStandardMaterial.ts';
 import { splitExtension } from './utils.ts';
 import * as THREE from './vthree/VTHREE.ts';
 
@@ -1100,7 +1099,7 @@ function getMeshSize(mesh: THREE.Object3D) {
 function createProbeSphere() {
   const geometry = new THREE.SphereGeometry(0.5, 32, 16);
 
-  const material = new VMeshStandardMaterial({
+  const material = new THREE.MeshStandardMaterial({
     color: 0xffffff,
     metalness: 1,
     roughness: 0,

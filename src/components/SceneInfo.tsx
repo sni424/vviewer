@@ -41,7 +41,6 @@ import {
   useToast,
 } from '../scripts/atoms';
 import { loadPostProcessAndSet, uploadJson } from '../scripts/atomUtils.ts';
-import VMaterial from '../scripts/material/VMaterial.ts';
 import useFilelist from '../scripts/useFilelist';
 import useStats, { StatPerSecond, VStats } from '../scripts/useStats.ts';
 import VGLTFExporter from '../scripts/VGLTFExporter.ts';
@@ -250,7 +249,7 @@ const GeneralButtons = () => {
     if (!lightMapUploaded) {
       scene.traverse(o => {
         if (o.type === 'Mesh') {
-          const mat = (o as THREE.Mesh).material as VMaterial;
+          const mat = (o as THREE.Mesh).material as THREE.Material;
           const lm = mat.vUserData.lightMap;
           if (lm && lm.endsWith('.exr')) {
             mat.vUserData.lightMap = lm.replace('.exr', '.ktx');
@@ -768,7 +767,7 @@ const LightmapImageContrastControl = () => {
     scene.traverse(o => {
       if (o.type === 'Mesh') {
         const mesh = o as THREE.Mesh;
-        const mat = mesh.material as VMaterial;
+        const mat = mesh.material as THREE.Material;
 
         if (use) {
           mat.on('LIGHTMAP_CONTRAST');
@@ -785,7 +784,7 @@ const LightmapImageContrastControl = () => {
       scene.traverse(o => {
         if (o.type === 'Mesh') {
           const mesh = o as THREE.Mesh;
-          const mat = mesh.material as VMaterial;
+          const mat = mesh.material as THREE.Material;
 
           if (mat.using('LIGHTMAP_CONTRAST')) {
             mat.uniform!.lightMapContrast.value = value;

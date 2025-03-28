@@ -1,9 +1,9 @@
 import type { Texture, WebGLProgramParametersWithUniforms } from "three";
+import { THREE } from 'VTHREE';
 import type { ProbeTypes } from "../../types";
 import type { PlaneControlDirections } from "../CubePlaneControls";
 import type ReflectionProbe from "../ReflectionProbe";
 import type { ReflectionProbeJSON } from "../ReflectionProbe";
-import { THREE } from "./VTHREE";
 
 export type MATERIAL_DEFINE_TYPE = "" | 0 | 1 | true | false;
 

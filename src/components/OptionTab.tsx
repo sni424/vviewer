@@ -23,7 +23,6 @@ import {
 import { loadOption, threes, uploadJson } from '../scripts/atomUtils.ts';
 import { createLightmapCache } from '../scripts/loaders/VGLTFLoader.ts';
 import { getVKTX2Loader } from '../scripts/loaders/VKTX2Loader.ts';
-import VMaterial from '../scripts/material/VMaterial.ts';
 import { ModelOptionObject } from '../scripts/ModelOptionObject.ts';
 import MeshEffect from '../scripts/options/MeshEffect.ts';
 import ModelOption from '../scripts/options/ModelOption.ts';
@@ -294,7 +293,7 @@ const OptionPreview = ({
       if (object) {
         const mesh = object as THREE.Mesh;
         const effects = meshEffect.effect;
-        const mat = mesh.material as VMaterial;
+        const mat = mesh.material as THREE.Material;
         // Visible Control
         if (effects.useVisible) {
           const targetVisible = anlayzed[mesh.name].visible;

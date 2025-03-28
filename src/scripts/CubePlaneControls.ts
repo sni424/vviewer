@@ -1,5 +1,4 @@
 import { Layer } from '../Constants.ts';
-import VMaterial from './material/VMaterial.ts';
 import { ProbeMeshEventMap } from './ReflectionProbe.ts';
 import { THREE } from './vthree/VTHREE.ts';
 
@@ -24,7 +23,7 @@ export default class CubePlaneControls {
   private centerMeshes: {
     [key in PlaneControlDirections | string]: THREE.Mesh<
       THREE.BufferGeometry,
-      VMaterial
+      THREE.Material
     >;
   };
   private domElement: HTMLCanvasElement;

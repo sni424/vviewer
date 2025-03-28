@@ -2,9 +2,9 @@ import { useFrame, useLoader, useThree } from '@react-three/fiber';
 import { useAtomValue } from 'jotai';
 import { Fragment, useRef } from 'react';
 import { TextureLoader } from 'three';
+import { THREE } from 'VTHREE';
 import { HotspotIcon, Layer } from '../../Constants';
 import { hotspotAtom, settingsAtom } from '../../scripts/atoms';
-import { THREE } from '../../scripts/vthree/VTHREE';
 
 function SingleHotspot({
   texture,

@@ -1,6 +1,6 @@
 import { useAtom } from 'jotai';
+import { THREE } from 'VTHREE';
 import { globalGlAtom } from '../../scripts/atoms';
-import { THREE } from '../../scripts/vthree/VTHREE';
 import { GLProps } from '../../types';
 
 const useGlobalREnderOption = () => {

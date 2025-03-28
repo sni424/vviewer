@@ -10,7 +10,6 @@ import {
   threeExportsAtom,
 } from '../scripts/atoms';
 import VTextureLoader from '../scripts/loaders/VTextureLoader.ts';
-import VMaterial from '../scripts/material/VMaterial.ts';
 import { loadHDRTexture, loadPNGAsENV } from '../scripts/utils';
 import { THREE } from '../scripts/vthree/VTHREE.ts';
 import MapPreview, { MapPreviewProps } from './MapPreview';
@@ -35,11 +34,11 @@ interface MapInfoProps extends MapPreviewProps {
 }
 
 const setMap = (
-  material: VMaterial,
+  material: THREE.Material,
   mapKey: string,
   texture: THREE.Texture | null,
 ) => {
-  const dstKey = mapKey as keyof VMaterial;
+  const dstKey = mapKey as keyof THREE.Material;
   if (dstKey === 'lightMap') {
     material.lightMap = texture;
   } else if (dstKey === 'map') {
@@ -82,12 +81,12 @@ const MapInfo = (props: MapInfoProps) => {
     materialRange,
     textureRange,
   } = props;
-  const texture = material[mapKey as keyof VMaterial] as THREE.Texture;
+  const texture = material[mapKey as keyof THREE.Material] as THREE.Texture;
   const [channel, setChannel] = useState(texture?.channel ?? -1);
   const setMaterialSelected = useSetAtom(materialSelectedAtom);
   const threeExports = useAtomValue(threeExportsAtom)!;
 
-  const materialRangeKey = materialRange?.matKey as keyof VMaterial;
+  const materialRangeKey = materialRange?.matKey as keyof THREE.Material;
   const materialValue = materialRangeKey
     ? material[materialRangeKey]
     : undefined;
@@ -324,7 +323,7 @@ const MapInfo = (props: MapInfoProps) => {
   );
 };
 
-const UserDataSection = ({ mat }: { mat: VMaterial }) => {
+const UserDataSection = ({ mat }: { mat: THREE.Material }) => {
   const userData = mat.vUserData;
   const keys = Object.keys(userData);
 
@@ -343,7 +342,7 @@ const UserDataSection = ({ mat }: { mat: VMaterial }) => {
   );
 };
 
-const MapSection = ({ mat }: { mat: VMaterial }) => {
+const MapSection = ({ mat }: { mat: THREE.Material }) => {
   const isPhysical = mat.type === 'MeshPhysicalMaterial';
 
   return (
@@ -461,7 +460,7 @@ const MapSection = ({ mat }: { mat: VMaterial }) => {
   );
 };
 
-const ColorInfo = ({ mat }: { mat: VMaterial }) => {
+const ColorInfo = ({ mat }: { mat: THREE.Material }) => {
   const [diffuseColor, setDiffuseColor] = useColor(
     `#${mat.color.getHexString()}`,
   );
@@ -514,7 +513,7 @@ const ColorInfo = ({ mat }: { mat: VMaterial }) => {
   );
 };
 
-const OpacityPanel = ({ mat }: { mat: VMaterial }) => {
+const OpacityPanel = ({ mat }: { mat: THREE.Material }) => {
   const [opacity, setOpacity] = useState(mat.opacity);
   const [transparent, setTransparent] = useState(mat.transparent);
 
@@ -653,7 +652,7 @@ function MaterialPanelContainer() {
       </div>
       {/* <MaterialPanel style={{width:"100%"}} mat={mat}></MaterialPanel> */}
 
-      <MapSection mat={mat as VMaterial} />
+      <MapSection mat={mat as THREE.Material} />
       {/*<>*/}
       {/*  {isStandard && (*/}
       {/*    <div className="my-2">*/}
