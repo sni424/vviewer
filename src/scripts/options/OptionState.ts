@@ -7,19 +7,9 @@ import MeshEffect from './MeshEffect.ts';
 import { Walls } from '../../types.ts';
 import { Pathfinding } from 'three-pathfinding';
 
-type FunctionEffects = {
-  booleans: {
-    changeMinimap: boolean;
-    changeWall: boolean;
-    changeNav: boolean;
-    changeFloor: boolean;
-  };
-  urls?: {
-    minimap?: string; // URL
-    walls?: string;
-    nav?: string;
-    floor?: string;
-  };
+export type FunctionEffects = {
+  booleans: FunctionEffectsBooleans;
+  urls: FunctionEffectsURLs;
   // If Required -> Minimap is just URL
   objects?: {
     walls?: Walls;
@@ -31,6 +21,20 @@ type FunctionEffects = {
   };
 };
 
+export type FunctionEffectsBooleans = {
+  changeMinimap: boolean;
+  changeWall: boolean;
+  changeNav: boolean;
+  changeFloor: boolean;
+}
+
+export type FunctionEffectsURLs = {
+  minimap: string; // URL
+  walls: string;
+  nav: string;
+  floor: string;
+}
+
 type FunctionEffectsJSON = Omit<FunctionEffects, 'objects'>;
 
 const DEFAULT_FUNCTION_EFFECTS = {
@@ -40,6 +44,12 @@ const DEFAULT_FUNCTION_EFFECTS = {
     changeNav: false,
     changeFloor: false,
   },
+  urls: {
+    minimap: '', // URL
+    walls: '',
+    nav: '',
+    floor: '',
+  }
 };
 
 export default class OptionState {

@@ -124,7 +124,7 @@ const FileUploader = () => {
   };
 
   return (
-    <div className="w-[500px] bg-white h-[300px] p-2 rounded-lg">
+    <div className="w-[500px] bg-white h-[300px] rounded-lg">
       {mode ? (
         <FileDragDiv
           title={`${mode} 업로드`}
@@ -191,6 +191,7 @@ const FileDragDiv = ({
   const [isDragging, setIsDragging] = useState(false);
   const [files, setFiles] = useState<ImportType[]>([]);
   const [results, setResults] = useState<string[]>([]);
+  const [loading, setLoading] = useState<boolean>(false);
   const { closeModal } = useModal();
 
   const handleDragOver = (event: React.DragEvent<HTMLDivElement>) => {
@@ -271,12 +272,14 @@ const FileDragDiv = ({
   };
 
   async function confirmFunction() {
+    setLoading(true)
     const res = await onConfirm(files.map(i => i.file));
     if (res.success) {
       setResults(res.data.map(d => d.fileUrl));
     } else {
       alert('업로드 실패');
     }
+    setLoading(false);
   }
 
   function copyResults() {
@@ -298,11 +301,17 @@ const FileDragDiv = ({
 
   return (
     <div
+      className="relative h-full p-2"
       onClick={e => {
         e.preventDefault();
         e.stopPropagation();
       }}
     >
+      {loading && (
+        <div className="absolute left-0 top-0 w-full h-full bg-gray-400 opacity-90 flex justify-center items-center text-lg font-bold z-50">
+          업로드 중..
+        </div>
+      )}
       <div
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
@@ -327,7 +336,7 @@ const FileDragDiv = ({
                 setFiles([]);
               }
             }}
-            style={{ fontSize: 12, zIndex: 1000 }}
+            style={{ fontSize: 12 }}
           >
             모두 삭제
           </button>
