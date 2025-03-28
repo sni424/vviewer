@@ -35,7 +35,7 @@ export type MATERIAL_SHADER = {
       progress: {
         value: number;
       },
-      lightmapTo: {
+      lightMapTo: {
         value: THREE.Texture;
       },
     },
@@ -134,7 +134,7 @@ export type MATERIAL_UNIFORM = {
 
 export type MATERIAL_SHADER_TYPE = keyof MATERIAL_SHADER;
 
-export interface ThreeUserData {
+export interface VUserData {
   lightMap?: string; // filename
   lightMapIntensity?: number;
   probe?: ReflectionProbe;
@@ -166,6 +166,9 @@ export interface ThreeUserData {
   // visibility transition
   dissolveOrigin?: THREE.Vector3;
   dissolveMaxDist?: number;
+
+  // lightmap transition때 쓰이는 빈 텍스쳐
+  isEmptyTexture?: boolean;
 }
 
 export const MATERIAL_DEFINES = [
@@ -183,6 +186,16 @@ export const MATERIAL_DEFINES = [
 
 export type MATERIAL_DEFINE = typeof MATERIAL_DEFINES[number];
 
+const EMPTY_TEXTURE = (() => {
+  const emptyTexture = new THREE.DataTexture(
+    new Uint8Array([0, 0, 0, 0]), // transparent 1x1 pixel
+    1,
+    1,
+    THREE.RGBAFormat
+  );
+  emptyTexture.needsUpdate = true;
+  return emptyTexture;
+})();
 export const DEFAULT_MATERIAL_SHADER: MATERIAL_SHADER = {
   VISIBILITY_TRANSITION: {
     type: "VISIBILITY_TRANSITION",
@@ -204,8 +217,9 @@ export const DEFAULT_MATERIAL_SHADER: MATERIAL_SHADER = {
     uniforms: {
       LIGHTMAP_TRANSITION: { value: false },
       progress: { value: 0 },
-      // lightmapTo: { value: new THREE.Texture() },
-      lightmapTo: { value: undefined as unknown as THREE.Texture },
+      lightMapTo: {
+        value: EMPTY_TEXTURE
+      },
     }
   },
 

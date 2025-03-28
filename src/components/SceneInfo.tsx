@@ -16,7 +16,7 @@ import { get, set } from 'idb-keyval';
 import objectHash from 'object-hash';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { EXRLoader } from 'three/examples/jsm/Addons.js';
+import VTextureLoader from 'src/scripts/loaders/VTextureLoader.ts';
 import {
   __UNDEFINED__,
   AOMAP_INTENSITY_MAX,
@@ -621,6 +621,7 @@ const LightmapTransitionControl = () => {
   const [progress, setProgress] = useState(0);
   const { handleDragOver, handleDragLeave, handleDrop, isDragging, files } =
     useLightmapTransitionDrag();
+  const threeExports = useAtomValue(threeExportsAtom);
 
   useEffect(() => {
     scene.traverse(o => {
@@ -663,23 +664,15 @@ const LightmapTransitionControl = () => {
             return;
           }
 
-          const loader = new EXRLoader();
           scene.traverse(o => {
             const mat = o.asMesh?.mat;
             if (mat) {
-              console.log('Mat name : ', mat.name);
-              const url = URL.createObjectURL(files[0]);
-
-              // 이전의 from을 가져와서 대입
-              if (typeof mat.uniform.lightmapTo?.value !== 'undefined') {
-                console.log('Using Prev lightmap');
-                mat.standard.lightMap = mat.uniform.lightmapTo.value;
-              }
-
-              loader.loadAsync(url).then(t => {
-                mat.uniform.lightmapTo.value = t;
+              VTextureLoader.loadAsync(files[0], {
+                gl: threeExports?.gl,
+                as: 'texture',
+              }).then(t => {
+                mat.uniform.lightMapTo.value = t;
                 mat.LIGHTMAP_TRANSITION = true;
-                console.log('Apply LIGHTMAP_TRANSITION', mat.name);
               });
             }
           });

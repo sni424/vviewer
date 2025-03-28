@@ -3,16 +3,16 @@ import * as THREE from 'three';
 import type { TransformControlsPlane } from 'three/examples/jsm/controls/TransformControls.js';
 import { Layer } from '../../Constants';
 import { resetGL } from '../utils';
-import { ThreeUserData } from './VTHREETypes';
+import { VUserData } from './VTHREETypes';
 
 declare module "three" {
   interface Object3D {
 
     get asMesh(): THREE.Mesh;
 
-    get vUserData(): ThreeUserData;
+    get vUserData(): VUserData;
 
-    set vUserData(userData: Partial<ThreeUserData>);
+    set vUserData(userData: Partial<VUserData>);
 
     traverse(callback: (node: Object3D) => any): void;
 
@@ -140,9 +140,9 @@ if (
 ) {
   Object.defineProperty(THREE.Object3D.prototype, 'vUserData', {
     get: function () {
-      return this.userData as ThreeUserData;
+      return this.userData as VUserData;
     },
-    set: function (userData: Partial<ThreeUserData>) {
+    set: function (userData: Partial<VUserData>) {
       this.userData = { ...this.userData, ...userData };
     },
   });

@@ -26,7 +26,7 @@ import { uploadExrToKtx } from './atomUtils.ts';
 import VGLTFLoader from './loaders/VGLTFLoader.ts';
 import ReflectionProbe from './ReflectionProbe.ts';
 import VGLTFExporter from './VGLTFExporter.ts';
-import { ThreeUserData } from './vthree/VTHREETypes.ts';
+import { VUserData } from './vthree/VTHREETypes.ts';
 
 export const groupInfo = (
   group: THREE.Group | { scene: THREE.Group } | THREE.Scene | THREE.Object3D,
@@ -1096,7 +1096,7 @@ export const uploadExrLightmap = async (
       console.log(res);
       if (res.success) {
         const data = res.data;
-        const updateKtxName = (key: keyof ThreeUserData, mat: any) => {
+        const updateKtxName = (key: keyof VUserData, mat: any) => {
           const exrName = mat.vUserData[key];
           if (exrName) {
             const ktxName = exrName.replace('.exr', '.ktx');

@@ -598,6 +598,8 @@ const progAlpha = /* glsl */ `
     gl_FragColor.rgb = mix(glowColor, gl_FragColor.rgb, glowFalloff);
   }
 
+  //END_OF_FRAG
+
 #endif //!V_FRAG_PROG_ALPHA_GUARD
 `;
 
@@ -661,6 +663,13 @@ const lightmapContent = /* glsl */ `
 #endif //!V_FRAG_LIGHTMAP_CONTRAST_GUARD
 `;
 
+const debugging = /* glsl */ `
+// if(LIGHTMAP_TRANSITION){
+//   gl_FragColor = texture2D(lightMapTo, vLightMapUv);
+// }
+//END_OF_FRAG
+`;
+
 export const patchFragment = (shader: Shader) => {
 
   // 1. defines
@@ -674,6 +683,8 @@ export const patchFragment = (shader: Shader) => {
 
   // 4. lightmap transition & contrast
   shader.fragmentShader = shader.fragmentShader.replace(lightmapTarget, lightmapContent);
+
+  shader.fragmentShader = shader.fragmentShader.replace("//END_OF_FRAG", debugging)
 
   return shader;
 };

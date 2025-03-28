@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { ThreeUserData } from './VTHREETypes.ts';
+import { VUserData } from './VTHREETypes.ts';
 
 declare module 'three' {
 
@@ -8,9 +8,9 @@ declare module 'three' {
   }
 
   interface Texture {
-    get vUserData(): ThreeUserData;
+    get vUserData(): VUserData;
 
-    set vUserData(userData: Partial<ThreeUserData>);
+    set vUserData(userData: Partial<VUserData>);
   }
 
 }
@@ -20,9 +20,9 @@ if (
 ) {
   Object.defineProperty(THREE.Texture.prototype, 'vUserData', {
     get: function () {
-      return this.userData as ThreeUserData;
+      return this.userData as VUserData;
     },
-    set: function (userData: Partial<ThreeUserData>) {
+    set: function (userData: Partial<VUserData>) {
       this.userData = { ...this.userData, ...userData };
     },
   });

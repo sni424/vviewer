@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { patchFragment } from '../shaders/v_env_frag.glsl';
 import { patchVertex } from '../shaders/v_env_vertex.glsl';
-import { DEFAULT_MATERIAL_SHADER, defaultUniforms, MATERIAL_DEFINE, MATERIAL_SHADER, MATERIAL_SHADER_TYPE, MATERIAL_UNIFORM, MATERIAL_UNIFORM_VALUE, ThreeUserData } from './VTHREETypes';
+import { DEFAULT_MATERIAL_SHADER, defaultUniforms, MATERIAL_DEFINE, MATERIAL_SHADER, MATERIAL_SHADER_TYPE, MATERIAL_UNIFORM, MATERIAL_UNIFORM_VALUE, VUserData } from './VTHREETypes';
 
 // 재질 : uniform
 // { material1 : { lightmapContrast : { value : 1.0 } } }
@@ -21,9 +21,9 @@ declare module 'three' {
     get physical(): THREE.MeshPhysicalMaterial;
 
 
-    get vUserData(): ThreeUserData;
+    get vUserData(): VUserData;
 
-    set vUserData(userData: Partial<ThreeUserData>);
+    set vUserData(userData: Partial<VUserData>);
 
     // get/set, this.uniform.progress.value를 변화시킴
     get progress(): number;
@@ -335,9 +335,9 @@ if (
 ) {
   Object.defineProperty(THREE.Material.prototype, 'vUserData', {
     get: function () {
-      return this.userData as ThreeUserData;
+      return this.userData as VUserData;
     },
-    set: function (userData: Partial<ThreeUserData>) {
+    set: function (userData: Partial<VUserData>) {
       this.userData = { ...this.userData, ...userData };
     },
   });
