@@ -1829,3 +1829,11 @@ export function computeBoundingBoxForMaterial(scene: THREE.Scene, targetMaterial
 
   return found ? resultBox : null; // 아무 것도 없으면 null
 }
+
+import { ClassValue, clsx } from 'clsx';
+import { twMerge } from 'tailwind-merge';
+
+// tailwind에 동적으로 클래스이름 할당할 때 필요
+export function cn(...inputs: ClassValue[]): string {
+  return twMerge(clsx(...inputs));
+}

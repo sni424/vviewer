@@ -19,6 +19,7 @@ import {
 } from '../scripts/atomUtils';
 import {
   assignClosestProbeToWall,
+  cn,
   colorNumberToCSS,
   createWallFromPoints,
   getWallPoint,
@@ -50,6 +51,9 @@ function WallDetail({
     useAtomValue(wallHighlightAtom).wallHighlights.includes(id);
   const probes = useAtomValue(ProbeAtom);
 
+  const probeIds = probes.map(p => p.getId());
+  const probeNotFound = !probeId || !probeIds.includes(probeId);
+
   return (
     <li
       className="flex items-center m-0 p-0 box-border h-10"
@@ -78,6 +82,7 @@ function WallDetail({
       ></div>
       <select
         value={probeId ?? __UNDEFINED__}
+        className={cn(probeNotFound ? 'bg-red-600 text-white' : undefined)}
         onChange={e => {
           setWallOptionAtom(prev => {
             const copied = { ...prev };
