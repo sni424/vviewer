@@ -35,7 +35,7 @@ export type FunctionEffectsURLs = {
   floor: string;
 }
 
-type FunctionEffectsJSON = Omit<FunctionEffects, 'objects'>;
+export type FunctionEffectsJSON = Omit<FunctionEffects, 'objects'>;
 
 const DEFAULT_FUNCTION_EFFECTS = {
   booleans: {
@@ -124,11 +124,11 @@ export default class OptionState {
       if (mesh) {
         const effects = effect.effect;
 
-        result[mesh.name] = { mesh, effects };
+        result[mesh.name] = {mesh, effects};
       }
     });
 
-    return result;
+    return { meshEffects: result, functionEffects: this.functionEffects};
   }
 
   copy() {
@@ -139,12 +139,14 @@ export default class OptionState {
 
   toJSON(): ModelOptionState {
     const effectsToJSON = this.meshEffects.map(effect => effect.toJSON());
+    const { booleans, urls }: FunctionEffects = this.functionEffects;
 
     return {
       id: this.id,
       stateName: this.name,
       expanded: this.expanded,
       meshEffects: effectsToJSON,
+      functionEffects: { booleans, urls }
     };
   }
 
@@ -170,6 +172,8 @@ export default class OptionState {
         effect,
       );
     });
+    this.functionEffects = state.functionEffects;
+    // TODO Object create from json
     return this;
   }
 

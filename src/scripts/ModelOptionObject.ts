@@ -1,4 +1,5 @@
 import { atom } from 'jotai';
+import { FunctionEffects, FunctionEffectsJSON } from './options/OptionState.ts';
 
 export type ModelOptionObject = {
   id: string;
@@ -13,6 +14,7 @@ export type ModelOptionState = {
   stateName: string;
   expanded: boolean;
   meshEffects: MeshEffectJSON[];
+  functionEffects: FunctionEffectsJSON;
 };
 
 export type MeshEffectJSON = {
