@@ -101,10 +101,10 @@ export default /* glsl */`
 
 		uv.x += filterInt * 3.0 * v_cubeUV_minTileSize;
 
-		uv.y += 4.0 * ( exp2( V_CUBEUV_MAX_MIP ) - faceSize );
+		uv.y += 4.0 * ( exp2( uCubeUVMaxMip ) - faceSize );
 
-		uv.x *= V_CUBEUV_TEXEL_WIDTH;
-		uv.y *= V_CUBEUV_TEXEL_HEIGHT;
+		uv.x *= uCubeUVTexelWidth;
+		uv.y *= uCubeUVTexelHeight;
 
 		#ifdef texture2DGradEXT
 
@@ -161,7 +161,7 @@ export default /* glsl */`
 
 	vec4 textureCubeUV( sampler2D envMap, vec3 sampleDir, float roughness ) {
 
-		float mip = clamp( roughnessToMip( roughness ), v_cubeUV_m0, V_CUBEUV_MAX_MIP );
+		float mip = clamp( roughnessToMip( roughness ), v_cubeUV_m0, uCubeUVMaxMip );
 
 		float mipF = fract( mip );
 

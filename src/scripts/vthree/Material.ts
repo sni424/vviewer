@@ -4,7 +4,7 @@ import type ReflectionProbe from '../ReflectionProbe';
 import { patchFragment } from '../shaders/v_env_frag.glsl';
 import { patchVertex } from '../shaders/v_env_vertex.glsl';
 import { computeBoundingBoxForMaterial } from '../utils';
-import { DEFAULT_MATERIAL_SHADER, defaultUniforms, MATERIAL_DEFINE, MATERIAL_SHADER, MATERIAL_UNIFORM, MATERIAL_UNIFORM_VALUE, VUserData } from './VTHREETypes';
+import { DEFAULT_MATERIAL_SHADER, defaultUniforms, EMPTY_TEXTURE, MATERIAL_DEFINE, MATERIAL_SHADER, MATERIAL_UNIFORM, MATERIAL_UNIFORM_VALUE, VUserData } from './VTHREETypes';
 
 // 재질 : uniform
 // { material1 : { lightmapContrast : { value : 1.0 } } }
@@ -48,6 +48,11 @@ declare module 'three' {
     }): void;
 
     prepareProbe(params: {
+      probeCount: number;
+      wallCount?: number;
+    }): void;
+
+    applyProbe(params: {
       probes: ReflectionProbe[];
       walls?: {
         start: THREE.Vector3;
@@ -109,16 +114,16 @@ if (!Object.getOwnPropertyDescriptor(THREE.Material.prototype, 'physical')) {
 if (!Object.getOwnPropertyDescriptor(THREE.Material.prototype, 'progress')) {
   Object.defineProperty(THREE.Material.prototype, 'progress', {
     get() {
-      if (this.uniform?.progress?.value !== undefined) {
-        return this.uniform.progress.value;
+      if (this.uniform?.uProgress?.value !== undefined) {
+        return this.uniform.uProgress.value;
       } else {
         console.warn("머티리얼 유니폼/프로그레스 없음 : ", this.name)
         return 0;
       }
     },
     set(value: number) {
-      if (typeof this.uniform?.progress !== undefined) {
-        this.uniform.progress.value = value;
+      if (typeof this.uniform?.uProgress !== undefined) {
+        this.uniform.uProgress.value = value;
       } else {
         console.warn("머티리얼 유니폼/프로그레스 없음 : ", this.name)
       }
@@ -133,10 +138,10 @@ THREE.Material.prototype.uniform = (() => {
 if (!Object.getOwnPropertyDescriptor(THREE.Material.prototype, 'MESH_TRANSITION')) {
   Object.defineProperty(THREE.Material.prototype, 'MESH_TRANSITION', {
     get() {
-      return this.uniform.MESH_TRANSITION.value;
+      return this.uniform.uUseMeshTransition.value;
     },
     set(value: boolean) {
-      this.uniform.MESH_TRANSITION.value = value;
+      this.uniform.uUseMeshTransition.value = value;
     },
   });
 }
@@ -144,10 +149,10 @@ if (!Object.getOwnPropertyDescriptor(THREE.Material.prototype, 'MESH_TRANSITION'
 if (!Object.getOwnPropertyDescriptor(THREE.Material.prototype, 'LIGHTMAP_TRANSITION')) {
   Object.defineProperty(THREE.Material.prototype, 'LIGHTMAP_TRANSITION', {
     get() {
-      return this.uniform.LIGHTMAP_TRANSITION.value;
+      return this.uniform.uUseLightMapTransition.value;
     },
     set(value: boolean) {
-      this.uniform.LIGHTMAP_TRANSITION.value = value;
+      this.uniform.uUseLightMapTransition.value = value;
     },
   });
 }
@@ -278,32 +283,32 @@ THREE.Material.prototype.prepareMeshTransition = function (params: {
   // uniform 세팅
   const mat = this;
   if (mat && mat.uniform) {
-    if (!mat.uniform.dissolveOrigin) {
-      mat.uniform.dissolveOrigin = { value: this.vUserData.dissolveOrigin };
+    if (!mat.uniform.uDissolveOrigin) {
+      mat.uniform.uDissolveOrigin = { value: this.vUserData.dissolveOrigin };
     } else {
-      mat.uniform.dissolveOrigin.value = this.vUserData.dissolveOrigin;
+      mat.uniform.uDissolveOrigin.value = this.vUserData.dissolveOrigin;
 
       // 아래처럼 값을 복사하면 Vector3가 새로 바인딩이 되지 않는다
       // mat.uniform.dissolveOrigin.value.copy(this.vUserData.dissolveOrigin);
     }
 
-    if (!mat.uniform.dissolveMaxDist) {
-      mat.uniform.dissolveMaxDist = { value: this.vUserData.dissolveMaxDist };
+    if (!mat.uniform.uDissolveMaxDist) {
+      mat.uniform.uDissolveMaxDist = { value: this.vUserData.dissolveMaxDist };
     } else {
-      mat.uniform.dissolveMaxDist.value = this.vUserData.dissolveMaxDist;
+      mat.uniform.uDissolveMaxDist.value = this.vUserData.dissolveMaxDist;
     }
 
     const directionValue = direction === "fadeIn" ? true : false;
-    if (!mat.uniform.dissolveDirection) {
-      mat.uniform.dissolveDirection = { value: directionValue };
+    if (!mat.uniform.uDissolveDirection) {
+      mat.uniform.uDissolveDirection = { value: directionValue };
     } else {
       if (typeof direction !== 'undefined') {
-        mat.uniform.dissolveDirection.value = directionValue;
+        mat.uniform.uDissolveDirection.value = directionValue;
       }
     }
 
-    mat.uniform.progress.value = progress ?? 0;
-    mat.uniform.MESH_TRANSITION.value = useMeshTrantision ?? true;
+    mat.uniform.uProgress.value = progress ?? 0;
+    mat.uniform.uUseMeshTransition.value = useMeshTrantision ?? true;
   }
 
 }
@@ -321,6 +326,64 @@ function generateCubeUVSize(imageHeight: number) {
 }
 
 THREE.Material.prototype.prepareProbe = function (params: {
+  probeCount: number;
+  wallCount?: number;
+}) {
+  const { probeCount, wallCount } = params;
+  this.addDefines({
+    PROBE_COUNT: probeCount,
+    USE_PROBE_PMREM: true,
+  })
+
+  const probe = [];
+  const textures = [];
+  for (let i = 0; i < probeCount; i++) {
+    probe.push({
+      center: new THREE.Vector3(),
+      size: new THREE.Vector3(),
+    });
+    textures.push(EMPTY_TEXTURE.clone());
+  }
+
+  const uniform: Partial<MATERIAL_SHADER["PROBE"]["uniforms"]> = {
+    uProbe: { value: probe },
+    uProbeTextures: { value: textures },
+    uProbeIntensity: { value: 1.0 },
+    uCubeUVMaxMip: { value: 0.0 },
+    uCubeUVTexelWidth: { value: 0.0 },
+    uCubeUVTexelHeight: { value: 0.0 },
+  }
+
+  if (wallCount) {
+    this.addDefines({
+      WALL_COUNT: wallCount,
+    })
+
+    const walls = [];
+    for (let i = 0; i < wallCount; i++) {
+      walls.push({
+        start: new THREE.Vector3(),
+        end: new THREE.Vector3(),
+        index: -1,
+      })
+    }
+    uniform.uWall = { value: walls };
+    uniform.uProbeBlendDist = { value: 20.0 };
+  }
+
+  for (const _key in uniform) {
+    const key = _key as MATERIAL_UNIFORM;
+    const value = (uniform as any)[key];
+    this.uniform = this.uniform ?? {};
+    if (this.uniform[key]) {
+      this.uniform[key].value = value.value;
+    } else {
+      this.uniform[key] = value;
+    }
+  }
+}
+
+THREE.Material.prototype.applyProbe = function (params: {
   probes: ReflectionProbe[];
   walls?: {
     start: THREE.Vector3;
@@ -328,9 +391,18 @@ THREE.Material.prototype.prepareProbe = function (params: {
     probeId: string;
   }[];
 }) {
-  const usePmrem = true;
   const { probes, walls } = params;
-  const PROBE_TYPE = Boolean(walls) ? 2 : 1;
+  if (probes.length === 0) {
+    console.warn("applyProbe : probes 없음", this.name, this);
+    return;
+  }
+
+  if (walls && walls.length === 0) {
+    console.warn("applyProbe : walls 없음", this.name, this);
+  }
+  const useWall = walls && walls.length > 0;
+
+  const usePmrem = true;
 
   this.addDefines({
     PROBE_COUNT: probes.length,
@@ -357,9 +429,9 @@ THREE.Material.prototype.prepareProbe = function (params: {
     const { texelWidth, texelHeight, maxMip } = pmremParams;;
 
     pmremUniforms = {
-      V_CUBEUV_MAX_MIP: { value: maxMip },
-      V_CUBEUV_TEXEL_WIDTH: { value: texelWidth },
-      V_CUBEUV_TEXEL_HEIGHT: { value: texelHeight },
+      uCubeUVMaxMip: { value: maxMip },
+      uCubeUVTexelWidth: { value: texelWidth },
+      uCubeUVTexelHeight: { value: texelHeight },
     }
   }
 
@@ -383,7 +455,7 @@ THREE.Material.prototype.prepareProbe = function (params: {
 
   };
 
-  if (walls) {
+  if (useWall) {
     this.addDefines({
       WALL_COUNT: walls.length,
     })

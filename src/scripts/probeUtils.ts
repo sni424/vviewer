@@ -787,9 +787,9 @@ export function applyMultiProbe(mat: THREE.Material, probes: ReflectionProbe[], 
 
     pmremDefines = {
       V_ENVMAP_TYPE_CUBE_UV: 1, // pmrem
-      V_CUBEUV_MAX_MIP: `${maxMip}.0`, // float으로 glsl까지 전달되어야 함
-      V_CUBEUV_TEXEL_WIDTH: texelWidth,
-      V_CUBEUV_TEXEL_HEIGHT: texelHeight,
+      uCubeUVMaxMip: `${maxMip}.0`, // float으로 glsl까지 전달되어야 함
+      uCubeUVTexelWidth: texelWidth,
+      uCubeUVTexelHeight: texelHeight,
     }
   }
 

@@ -11,17 +11,17 @@ export type MATERIAL_SHADER = {
   MESH_TRANSITION: {
     type: "MESH_TRANSITION";
     uniforms: {
-      MESH_TRANSITION: { value: boolean };
-      progress: {
+      uUseMeshTransition: { value: boolean };
+      uProgress: {
         value: number;
       };
-      dissolveOrigin: {
+      uDissolveOrigin: {
         value: THREE.Vector3;
       };
-      dissolveMaxDist: {
+      uDissolveMaxDist: {
         value: number;
       };
-      dissolveDirection: {
+      uDissolveDirection: {
         value: boolean;
       }
     };
@@ -31,11 +31,11 @@ export type MATERIAL_SHADER = {
   LIGHTMAP_TRANSITION: {
     type: "LIGHTMAP_TRANSITION";
     uniforms: {
-      LIGHTMAP_TRANSITION: { value: boolean };
-      progress: {
+      uUseLightMapTransition: { value: boolean };
+      uProgress: {
         value: number;
       },
-      lightMapTo: {
+      uLightMapTo: {
         value: THREE.Texture;
       },
     },
@@ -58,9 +58,9 @@ export type MATERIAL_SHADER = {
       uProbeIntensity: {
         value: number;
       },
-      V_CUBEUV_MAX_MIP: { value: number };
-      V_CUBEUV_TEXEL_WIDTH: { value: number };
-      V_CUBEUV_TEXEL_HEIGHT: { value: number };
+      uCubeUVMaxMip: { value: number };
+      uCubeUVTexelWidth: { value: number };
+      uCubeUVTexelHeight: { value: number };
 
       // 벽을 쓰는 프로브일 때만
       uWall?: {
@@ -83,10 +83,10 @@ export type MATERIAL_SHADER = {
   LIGHTMAP_CONTRAST: {
     type: "LIGHTMAP_CONTRAST";
     uniforms: {
-      lightMapContrast: {
+      uLightMapContrast: {
         value: number;
       };
-      globalLightMapContrast: {
+      uGlobalLightMapContrast: {
         value: number;
       }
     };
@@ -176,11 +176,11 @@ export const DEFAULT_MATERIAL_SHADER: MATERIAL_SHADER = {
     defines: {
     },
     uniforms: {
-      MESH_TRANSITION: { value: false },
-      progress: { value: 0 },
-      dissolveOrigin: { value: new THREE.Vector3() },
-      dissolveMaxDist: { value: 0 },
-      dissolveDirection: { value: false },
+      uUseMeshTransition: { value: false },
+      uProgress: { value: 0 },
+      uDissolveOrigin: { value: new THREE.Vector3() },
+      uDissolveMaxDist: { value: 0 },
+      uDissolveDirection: { value: false },
     }
   },
 
@@ -189,10 +189,10 @@ export const DEFAULT_MATERIAL_SHADER: MATERIAL_SHADER = {
     defines: {
     },
     uniforms: {
-      LIGHTMAP_TRANSITION: { value: false },
-      progress: { value: 0 },
-      lightMapTo: {
-        value: EMPTY_TEXTURE
+      uUseLightMapTransition: { value: false },
+      uProgress: { value: 0 },
+      uLightMapTo: {
+        value: EMPTY_TEXTURE.clone()
       },
     }
   },
@@ -205,15 +205,17 @@ export const DEFAULT_MATERIAL_SHADER: MATERIAL_SHADER = {
     },
     uniforms: {
       // 여기에 기본 키값들을
-      //   #1. 넣은 경우, 프로브 할당 전 최초 onBeforeCompile에서 예측할 수 없는 에러 발생, 예를 들어 uProbe:{ value:[] }을 기본값으로 넣어두면 에러 발생
+      //   #1. 넣은 경우, 프로브 할당 전 최초 onBeforeCompile에서 예측할 수 없는 에러 발생
+      //       예를 들어 uProbe:{ value:[] }을 기본값으로 넣어두면 에러 발생
+      // 
       //   #2. 넣지 않는 경우, onBeforeCompile에서 아래 키 값들을 참조할 수 없음.
       //       밖에서 mat.uniform에 넣은 키들(ex. uProbe)을 순회하면서 shader.uniform에 재할당해야하는데, 이 때 참조할 키값들을 위해 undefined로라도 넣어둔다.
       uProbe: undefined as unknown as any,
       uProbeTextures: undefined as unknown as any,
       uProbeIntensity: undefined as unknown as any,
-      V_CUBEUV_MAX_MIP: undefined as unknown as any,
-      V_CUBEUV_TEXEL_WIDTH: undefined as unknown as any,
-      V_CUBEUV_TEXEL_HEIGHT: undefined as unknown as any,
+      uCubeUVMaxMip: undefined as unknown as any,
+      uCubeUVTexelWidth: undefined as unknown as any,
+      uCubeUVTexelHeight: undefined as unknown as any,
       uWall: undefined,
       uProbeBlendDist: undefined,
     },
@@ -222,8 +224,8 @@ export const DEFAULT_MATERIAL_SHADER: MATERIAL_SHADER = {
   LIGHTMAP_CONTRAST: {
     type: "LIGHTMAP_CONTRAST",
     uniforms: {
-      lightMapContrast: { value: 1 },
-      globalLightMapContrast: { value: 1 },
+      uLightMapContrast: { value: 1 },
+      uGlobalLightMapContrast: { value: 1 },
     },
     defines: {
     }

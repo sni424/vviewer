@@ -6,10 +6,10 @@ type Shader = THREE.WebGLProgramParametersWithUniforms;
 /**
  * 공통으로 쓰이는 변수
  * 1. progress
- *      - LIGHTMAP_TRANSITION || MESH_TRANSITION
+ *      - uUseLightMapTransition || uUseMeshTransition
  * 
  * 2. vWorldPos
- *      - V_ENV_MAP || MESH_TRANSITION
+ *      - V_ENV_MAP || uUseMeshTransition
  */
 
 
@@ -23,19 +23,19 @@ const defines = /* glsl */ `
 
 // MAX_PROBE_COUNT_REPLACE
 
-uniform bool LIGHTMAP_TRANSITION;
-uniform bool MESH_TRANSITION;
+uniform bool uUseLightMapTransition;
+uniform bool uUseMeshTransition;
 
-uniform float progress;
+uniform float uProgress;
 
 // uniform sampler2D lightMapFrom;
 #ifdef USE_LIGHTMAP
-uniform sampler2D lightMapTo;
+uniform sampler2D uLightMapTo;
 #endif
 
-uniform vec3 dissolveOrigin;
-uniform float dissolveMaxDist;
-uniform bool dissolveDirection;
+uniform vec3 uDissolveOrigin;
+uniform float uDissolveMaxDist;
+uniform bool uDissolveDirection;
 
 float progressiveAlpha(float progress, float x, float xMin, float xMax) {
   float mid = mix(xMin, xMax, 0.5); // Midpoint of xMin and xMax
@@ -45,8 +45,8 @@ float progressiveAlpha(float progress, float x, float xMin, float xMax) {
 
 // 라이트맵대비는 라이트맵을 사용할 때만 정의됨
 #ifdef USE_LIGHTMAP
-  uniform float lightMapContrast;
-  uniform float globalLightMapContrast;
+  uniform float uLightMapContrast;
+  uniform float uGlobalLightMapContrast;
 #endif //!USE_LIGHTMAP
 
 varying vec3 vWorldPos;
@@ -89,9 +89,9 @@ varying vec3 vWorldPos;
 
 	#define v_cubeUV_minMipLevel 4.0
 	#define v_cubeUV_minTileSize 16.0
-  uniform float V_CUBEUV_MAX_MIP;  
-  uniform float V_CUBEUV_TEXEL_WIDTH;
-  uniform float V_CUBEUV_TEXEL_HEIGHT;  
+  uniform float uCubeUVMaxMip;  
+  uniform float uCubeUVTexelWidth;
+  uniform float uCubeUVTexelHeight;  
 
 	// These shader functions convert between the UV coordinates of a single face of
 	// a cubemap, the 0-5 integer index of a cube face, and the direction vector for
@@ -188,10 +188,10 @@ varying vec3 vWorldPos;
 
 		uv.x += filterInt * 3.0 * v_cubeUV_minTileSize;
 
-		uv.y += 4.0 * ( exp2( V_CUBEUV_MAX_MIP ) - faceSize );
+		uv.y += 4.0 * ( exp2( uCubeUVMaxMip ) - faceSize );
 
-		uv.x *= V_CUBEUV_TEXEL_WIDTH;
-		uv.y *= V_CUBEUV_TEXEL_HEIGHT;
+		uv.x *= uCubeUVTexelWidth;
+		uv.y *= uCubeUVTexelHeight;
 
 		#ifdef texture2DGradEXT
 
@@ -248,7 +248,7 @@ varying vec3 vWorldPos;
 
 	vec4 pmremUV( sampler2D envMap, vec3 sampleDir, float roughness ) {
 
-		float mip = clamp( v_roughnessToMip( roughness ), v_cubeUV_m0, V_CUBEUV_MAX_MIP );
+		float mip = clamp( v_roughnessToMip( roughness ), v_cubeUV_m0, uCubeUVMaxMip );
 
 		float mipF = fract( mip );
 
@@ -589,13 +589,13 @@ const progAlpha = /* glsl */ `
 #ifndef V_FRAG_PROG_ALPHA_GUARD
 #define V_FRAG_PROG_ALPHA_GUARD
 
-  if(MESH_TRANSITION){
-    float distance = distance(vWorldPos.xyz, dissolveOrigin );
-    float falloffRange = dissolveMaxDist * 0.01;
-    float distToBorder = (dissolveMaxDist + falloffRange) * abs(progress);
+  if(uUseMeshTransition){
+    float distance = distance(vWorldPos.xyz, uDissolveOrigin );
+    float falloffRange = uDissolveMaxDist * 0.01;
+    float distToBorder = (uDissolveMaxDist + falloffRange) * abs(uProgress);
     float falloff = step( distToBorder-falloffRange, distance );
     float glowFalloff;
-    if ( dissolveDirection ) {
+    if ( uDissolveDirection ) {
       falloff = 1.0 - falloff;
       glowFalloff = 1.0 - smoothstep(distToBorder-falloffRange*5.0, distToBorder+falloffRange*4.0, distance);
     }
@@ -623,11 +623,11 @@ const lightmapContent = /* glsl */ `
   #ifdef USE_LIGHTMAP
 
     vec4 lightMapTexel = vec4( 0.0 );
-    if(LIGHTMAP_TRANSITION) {
+    if(uUseLightMapTransition) {
       lightMapTexel = mix(
         texture2D(lightMap, vLightMapUv),
-        texture2D(lightMapTo, vLightMapUv),
-        progress
+        texture2D(uLightMapTo, vLightMapUv),
+        uProgress
       );
     } else {
       lightMapTexel = texture2D(lightMap, vLightMapUv);
@@ -636,7 +636,7 @@ const lightmapContent = /* glsl */ `
 		vec3 lightMapIrradiance = lightMapTexel.rgb * lightMapIntensity;
 
     // <lights_fragment_maps>에서 추가된 부분
-    lightMapIrradiance = pow(lightMapIrradiance, vec3(lightMapContrast*globalLightMapContrast));
+    lightMapIrradiance = pow(lightMapIrradiance, vec3(uLightMapContrast*uGlobalLightMapContrast));
 
     irradiance += lightMapIrradiance;
   #endif
@@ -673,7 +673,7 @@ const lightmapContent = /* glsl */ `
 `;
 
 const debugging = /* glsl */ `
-// if(LIGHTMAP_TRANSITION){
+// if(uUseLightMapTransition){
 //   gl_FragColor = texture2D(lightMapTo, vLightMapUv);
 // }
 //END_OF_FRAG

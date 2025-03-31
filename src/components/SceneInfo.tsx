@@ -43,7 +43,11 @@ import {
   useModal,
   useToast,
 } from '../scripts/atoms';
-import { loadPostProcessAndSet, uploadJson } from '../scripts/atomUtils.ts';
+import {
+  loadPostProcessAndSet,
+  prepareWalls,
+  uploadJson,
+} from '../scripts/atomUtils.ts';
 import useFilelist from '../scripts/useFilelist';
 import { parseDroppedFiles } from '../scripts/useModelDragAndDrop.ts';
 import useStats, { StatPerSecond, VStats } from '../scripts/useStats.ts';
@@ -668,12 +672,12 @@ const LightmapTransitionControl = () => {
 
           scene.traverse(o => {
             const mat = o.asMesh?.mat;
-            if (mat) {
+            if (mat && mat.name === 'MI_TCE036S.003') {
               VTextureLoader.loadAsync(files[0], {
                 gl: threeExports?.gl,
                 as: 'texture',
               }).then(t => {
-                mat.uniform.lightMapTo.value = t;
+                mat.uniform.uLightMapTo.value = t;
                 mat.LIGHTMAP_TRANSITION = true;
               });
             }
@@ -725,12 +729,58 @@ const ProbeControl = () => {
       <strong>프로브</strong> <button onClick={addProbe}>프로브 추가</button>
       <button
         onClick={() => {
+          const walls: {
+            start: THREE.Vector3;
+            end: THREE.Vector3;
+            probeId: string;
+          }[] = prepareWalls();
+
           scene.traverse(o => {
             if (o.asMesh?.mat?.vUserData?.isVMaterial) {
               const mat = o.asMesh.mat!;
-              mat.prepareProbe({
-                probes,
-              });
+
+              if (mat.name === 'MI_TCE036S.003') {
+                mat.prepareProbe({
+                  probeCount: probes.length,
+                  wallCount: walls.length,
+                });
+              } else {
+                mat.prepareProbe({
+                  probeCount: probes.length,
+                });
+              }
+
+              mat.needsUpdate = true;
+            }
+          });
+
+          console.log('prepareProbe finished');
+        }}
+      >
+        프로브 준비 (셰이더컴파일)
+      </button>
+      <button
+        onClick={() => {
+          const walls: {
+            start: THREE.Vector3;
+            end: THREE.Vector3;
+            probeId: string;
+          }[] = prepareWalls();
+
+          scene.traverse(o => {
+            if (o.asMesh?.mat?.vUserData?.isVMaterial) {
+              const mat = o.asMesh.mat!;
+              if (mat.name === 'MI_TCE036S.003') {
+                mat.applyProbe({
+                  probes,
+                  walls,
+                });
+              } else {
+                mat.applyProbe({
+                  probes,
+                });
+              }
+
               mat.needsUpdate = true;
             }
           });
@@ -752,7 +802,6 @@ const ProbeControl = () => {
               </button>
               <button
                 onClick={() => {
-                  p.setShowControls(false);
                   p.setShowProbe(false);
                 }}
               >
@@ -777,7 +826,7 @@ const ProgressiveAlphaControl = () => {
         return;
       }
       if (mat.MESH_TRANSITION) {
-        mat.uniform!.progress.value = progress;
+        mat.uniform!.uProgress.value = progress;
       }
     });
   }, [progress]);
@@ -911,9 +960,9 @@ const LightmapImageContrastControl = () => {
         const mat = mesh.material as THREE.Material;
 
         if (use) {
-          mat.uniform.lightMapContrast.value = value;
+          mat.uniform.uLightMapContrast.value = value;
         } else {
-          mat.uniform.lightMapContrast.value = 1;
+          mat.uniform.uLightMapContrast.value = 1;
         }
         mat.needsUpdate = true;
       }

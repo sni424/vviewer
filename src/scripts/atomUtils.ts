@@ -473,6 +473,30 @@ export const wallOptionToWalls = (option?: WallCreateOption, probes?: Reflection
   return result;
 }
 
+export const prepareWalls = (wallInfo?: WallCreateOption) => {
+  const retval = [] as {
+    start: THREE.Vector3;
+    end: THREE.Vector3;
+    probeId: string;
+  }[];
+  const WALLS = wallOptionToWalls(wallInfo);
+  const points = WALLS.points;
+  const targetProbes = WALLS.probes;
+  WALLS.walls.forEach(wall => {
+    const startNumber = points[wall[0]];
+    const endNumber = points[wall[1]];
+    const start = new THREE.Vector3(startNumber[0], 0, startNumber[1]);
+    const end = new THREE.Vector3(endNumber[0], 0, endNumber[1]);
+
+    const probeId = targetProbes[wall[2]];
+
+    retval.push({ start, end, probeId });
+  });
+
+  return retval;
+};
+
+
 export async function fileToJson<T>(file: File): Promise<T> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
