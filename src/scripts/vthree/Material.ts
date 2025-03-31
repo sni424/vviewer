@@ -177,13 +177,13 @@ THREE.Material.prototype.onBeforeCompile = function (shader: THREE.WebGLProgramP
   ] as MATERIAL_UNIFORM[];
   for (const key of possibleUniforms) {
 
-    console.log(`   (this.uniform as any)?.[${key}]?.value : `, (this.uniform as any)?.[key]?.value);
+    // console.log(`   (this.uniform as any)?.[${key}]?.value : `, (this.uniform as any)?.[key]?.value);
 
     // 밖에서 넣어준 uniform을 재할당
     const value = (this.uniform as any)?.[key]?.value ?? (defaultUniforms as any)[key]?.value;
 
     if (typeof value !== "undefined") {
-      console.log("   onBeforeCompile", key, value);
+      // console.log("   onBeforeCompile", key, value);
       upsert(shader.uniforms, key, value);
     }
 
@@ -254,10 +254,7 @@ THREE.Material.prototype.prepareMeshTransition = function (params: {
     }
 
     const box = computeBoundingBoxForMaterial(targetScene, this)!;
-    {
-      const boxHelper = new THREE.Box3Helper(box, 0x00ff00);
-      targetScene?.add(boxHelper);
-    }
+
     if (!box) {
       console.warn("prepareMeshTransition : bounding box 없음", this.name, this);
       return;
@@ -284,7 +281,10 @@ THREE.Material.prototype.prepareMeshTransition = function (params: {
     if (!mat.uniform.dissolveOrigin) {
       mat.uniform.dissolveOrigin = { value: this.vUserData.dissolveOrigin };
     } else {
-      mat.uniform.dissolveOrigin.value.copy(this.vUserData.dissolveOrigin);
+      mat.uniform.dissolveOrigin.value = this.vUserData.dissolveOrigin;
+
+      // 아래처럼 값을 복사하면 Vector3가 새로 바인딩이 되지 않는다
+      // mat.uniform.dissolveOrigin.value.copy(this.vUserData.dissolveOrigin);
     }
 
     if (!mat.uniform.dissolveMaxDist) {

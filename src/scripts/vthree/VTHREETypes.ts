@@ -43,34 +43,6 @@ export type MATERIAL_SHADER = {
     },
   };
   PROBE: {
-    // 프로브 플레이스홀더
-    type: "PROBE";
-    uniforms: {};
-    defines: {};
-  } | {
-    // 일반 멀티 프로브 - 셰이더 상에서 가장 가까운 프로브 찾아서 사용
-    type: "PROBE";
-    uniforms: {
-      uProbe: {
-        value: {
-          center: THREE.Vector3;
-          size: THREE.Vector3;
-        }[];
-      };
-      uProbeTextures: {
-        value: THREE.Texture[];
-      };
-      uProbeIntensity: {
-        value: number;
-      },
-      V_CUBEUV_MAX_MIP: { value: number };
-      V_CUBEUV_TEXEL_WIDTH: { value: number };
-      V_CUBEUV_TEXEL_HEIGHT: { value: number };
-    };
-    defines: {
-      PROBE_COUNT: number;
-    };
-  } | {
     // 벽을 쓰는 프로브
     type: "PROBE";
     uniforms: {
@@ -91,7 +63,7 @@ export type MATERIAL_SHADER = {
       V_CUBEUV_TEXEL_HEIGHT: { value: number };
 
       // 벽을 쓰는 프로브일 때만
-      uWall: {
+      uWall?: {
         value: {
           start: THREE.Vector3;
           end: THREE.Vector3;
@@ -99,13 +71,13 @@ export type MATERIAL_SHADER = {
         }[];
       };
       // 벽을 쓰는 프로브일 때만
-      uProbeBlendDist: {
+      uProbeBlendDist?: {
         value: number;
       }
     };
     defines: {
-      PROBE_COUNT: number;
-      WALL_COUNT: number;
+      PROBE_COUNT?: number;
+      WALL_COUNT?: number;
     };
   };
   LIGHTMAP_CONTRAST: {
@@ -232,12 +204,16 @@ export const DEFAULT_MATERIAL_SHADER: MATERIAL_SHADER = {
       WALL_COUNT: undefined,
     },
     uniforms: {
-      uProbe: undefined,
-      uProbeTextures: undefined,
-      uProbeIntensity: undefined,
-      V_CUBEUV_MAX_MIP: undefined,
-      V_CUBEUV_TEXEL_WIDTH: undefined,
-      V_CUBEUV_TEXEL_HEIGHT: undefined,
+      // 여기에 기본 키값들을
+      //   #1. 넣은 경우, 프로브 할당 전 최초 onBeforeCompile에서 예측할 수 없는 에러 발생, 예를 들어 uProbe:{ value:[] }을 기본값으로 넣어두면 에러 발생
+      //   #2. 넣지 않는 경우, onBeforeCompile에서 아래 키 값들을 참조할 수 없음.
+      //       밖에서 mat.uniform에 넣은 키들(ex. uProbe)을 순회하면서 shader.uniform에 재할당해야하는데, 이 때 참조할 키값들을 위해 undefined로라도 넣어둔다.
+      uProbe: undefined as unknown as any,
+      uProbeTextures: undefined as unknown as any,
+      uProbeIntensity: undefined as unknown as any,
+      V_CUBEUV_MAX_MIP: undefined as unknown as any,
+      V_CUBEUV_TEXEL_WIDTH: undefined as unknown as any,
+      V_CUBEUV_TEXEL_HEIGHT: undefined as unknown as any,
       uWall: undefined,
       uProbeBlendDist: undefined,
     },

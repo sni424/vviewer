@@ -1819,15 +1819,9 @@ export function computeBoundingBoxForMaterial(scene: THREE.Scene, targetMaterial
 
       // 이 mesh가 targetMaterial을 쓰는지 확인
       if (materialsUuid.includes(targetMaterial.uuid)) {
-        // geometry가 유효한지 체크
-        if (!mesh.geometry.boundingBox) {
-          mesh.geometry.computeBoundingBox();
-        }
 
-        const meshBox = mesh.geometry.boundingBox!.clone();
-        meshBox.applyMatrix4(mesh.matrixWorld); // local → world 변환
+        resultBox.expandByObject(mesh);
 
-        resultBox.union(meshBox); // 전체 박스와 합산
         found = true;
       }
     }
