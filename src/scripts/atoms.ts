@@ -21,7 +21,7 @@ import {
   Matrix4Array,
   View,
   ViewportOption,
-  WallCreateOption
+  WallCreateOption, Walls,
 } from '../types';
 import ReflectionProbe from './ReflectionProbe.ts';
 import { THREE } from './VTHREE';
@@ -516,6 +516,11 @@ export const [wallOptionAtom,
   walls: [],
   autoCreateWall: true
 });
+
+export const [wallCacheAtom,
+  getWallCacheAtom,
+  setWallCacheAtom
+] = createAtomCombo<{[key:string]: Walls}>({});
 
 export const [wallHighlightAtom,
   getWallHighlightAtom,

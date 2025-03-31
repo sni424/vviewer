@@ -763,7 +763,7 @@ const GeneralMinimapControl = () => {
       </div>
       <div className="flex gap-x-1 mt-1">
         {urls.map((url, index) => (
-          <button
+          <button key={'minimapHandleButton-' + index}
             onClick={() => {
               setMinimap(pre => ({ ...pre, useIndex: index }));
             }}

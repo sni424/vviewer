@@ -15,6 +15,7 @@ const ImageTransitionComponent = ({
     <div className="relative w-full h-full">
       {sources.map((source, index) => (
         <img
+          key={"minimap-image-" + index}
           className="absolute transition-opacity"
           style={{ opacity: idx === index ? 1 : 0, transitionDuration: (animationDuration * 1000) + 'ms' }}
           src={source}

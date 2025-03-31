@@ -26,7 +26,7 @@ import OptionState, {
   FunctionEffectsURLs,
 } from '../scripts/options/OptionState.ts';
 import MeshEffect from '../scripts/options/MeshEffect.ts';
-import { loadLatest, splitExtension } from '../scripts/utils.ts';
+import { isImage, loadLatest, splitExtension } from '../scripts/utils.ts';
 import * as THREE from '../scripts/VTHREE.ts';
 import { SelectableNodes } from './DPC/DPCModelSelector.tsx';
 import FileUploader from './util/FileUploader.tsx';
@@ -491,18 +491,6 @@ const StateFunctionEffectModal = ({ state, onComplete }: { state: OptionState, o
     error: boolean;
     url: string | null;
   }>({ show: false, error: false, url: null });
-
-  const DEFAULT_MINIMAP_URL =
-    'https://vra-configurator-dev.s3.ap-northeast-2.amazonaws.com/models/images/miniMap';
-
-  function isImage(url: string): Promise<boolean> {
-    return new Promise(resolve => {
-      const img = new Image();
-      img.onload = () => resolve(true);
-      img.onerror = () => resolve(false);
-      img.src = url;
-    });
-  }
 
   async function updateMinimap() {
     if (!uses.changeMinimap) {

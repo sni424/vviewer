@@ -452,6 +452,26 @@ function WallTab() {
             </button>
           </form>
         </div>
+        <div className="my-1 flex gap-x-1">
+          <button
+            onClick={() => {
+              loadJson<Walls>('walls_expanded.json').then(walls => {
+                setWallOptionAtom(wallsToWallOption(walls));
+              });
+            }}
+          >
+            확장 벽
+          </button>
+          <button
+            onClick={() => {
+              loadJson<Walls>('walls_none_expanded.json').then(walls => {
+                setWallOptionAtom(wallsToWallOption(walls));
+              });
+            }}
+          >
+            알파룸 벽
+          </button>
+        </div>
         <h2>포인트 관련</h2>
         <div className="flex flex-col justify-center">
           <div>
