@@ -372,8 +372,8 @@ THREE.Material.prototype.prepareProbe = function (params: {
     uniform.uProbeBlendDist = { value: 20.0 };
   } else {
     this.removeDefine("WALL_COUNT");
-    delete this.uniform.uWall;
-    delete this.uniform.uProbeBlendDist;
+    delete (this.uniform as any).uWall;
+    delete (this.uniform as any).uProbeBlendDist;
   }
 
   for (const _key in uniform) {
@@ -482,8 +482,8 @@ THREE.Material.prototype.applyProbe = function (params: {
     };
   } else {
     this.removeDefine("WALL_COUNT");
-    delete this.uniform.uWall;
-    delete this.uniform.uProbeBlendDist;
+    delete (this.uniform as any).uWall;
+    delete (this.uniform as any).uProbeBlendDist;
   }
 
   // shader.uniforms에 적용

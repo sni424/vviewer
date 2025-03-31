@@ -125,6 +125,8 @@ export interface VUserData {
   probeId?: string;
   probeIds?: string[];
   probeType?: ProbeTypes;
+  probeIntensity?: number;
+  probeContrast?: number;
   probeMeshType?: 'box' | 'controls' | 'sphere' | 'helper' | 'plane-controls';
   probeControlDirection?: PlaneControlDirections;
   probes?: ReflectionProbeJSON[];

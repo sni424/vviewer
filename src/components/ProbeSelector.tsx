@@ -191,6 +191,7 @@ const ProbeSelector = ({ material }: { material: THREE.Material }) => {
                       if (!isNaN(value)) {
                         setProbeIntensity(value);
                         material.uniform.uProbeIntensity.value = value;
+                        material.vUserData.probeIntensity = value;
                       }
                     }
                   }}
@@ -213,6 +214,7 @@ const ProbeSelector = ({ material }: { material: THREE.Material }) => {
                       if (!isNaN(value)) {
                         setProbeContrast(value);
                         material.uniform.uProbeContrast.value = value;
+                        material.vUserData.probeContrast = value;
                       }
                     }
                   }}
@@ -235,7 +237,11 @@ const ProbeSelector = ({ material }: { material: THREE.Material }) => {
                     params.wallCount = wallInfo.walls.length;
                   }
                   material.prepareProbe(params);
-                  // material.needsUpdate = true;
+                  material.vUserData.probeIds = probeSelections;
+                  material.vUserData.probeType = useWall
+                    ? 'multiWall'
+                    : 'multi';
+                  material.needsUpdate = true;
                 }}
               >
                 프로브 셰이더 컴파일
@@ -254,6 +260,11 @@ const ProbeSelector = ({ material }: { material: THREE.Material }) => {
                     walls: walls,
                   };
                   material.applyProbe(params);
+                  material.vUserData.probeIds = probeSelections;
+                  material.vUserData.probeType = useWall
+                    ? 'multiWall'
+                    : 'multi';
+                  material.needsUpdate = true;
                 }}
               >
                 프로브 적용
