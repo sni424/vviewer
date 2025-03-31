@@ -75,6 +75,15 @@ export const formatNumber = (num: number): string => {
   return new Intl.NumberFormat('en-US').format(num);
 };
 
+export function isImage(url: string): Promise<boolean> {
+  return new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => resolve(true);
+    img.onerror = () => resolve(false);
+    img.src = url;
+  });
+}
+
 export const toNthDigit = (num: number, digit: number): string => {
   const isNegative = num < 0;
   const positivePart = Math.abs(num);

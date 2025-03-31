@@ -21,23 +21,21 @@ import { createLightmapCache } from '../scripts/loaders/VGLTFLoader.ts';
 import { getVKTX2Loader } from '../scripts/loaders/VKTX2Loader.ts';
 import ModelOption from '../scripts/options/ModelOption.ts';
 import OptionState, {
+  FunctionEffects,
   FunctionEffectsBooleans,
   FunctionEffectsURLs,
 } from '../scripts/options/OptionState.ts';
 import MeshEffect from '../scripts/options/MeshEffect.ts';
-import {
-  loadLatest,
-  splitExtension,
-} from '../scripts/utils.ts';
+import { isImage, loadLatest, splitExtension } from '../scripts/utils.ts';
 import * as THREE from '../scripts/VTHREE.ts';
 import { SelectableNodes } from './DPC/DPCModelSelector.tsx';
 import FileUploader from './util/FileUploader.tsx';
 import useOptionManager from '../scripts/options/OptionManager.ts';
 
 const OptionConfigTab = () => {
-  const { openModal } = useModal();
   const [fileName, setFileName] = useState<string>('options_test.json');
   const { loadOptions, uploadOptionJSON, options } = useOptionManager();
+  const { openModal } = useModal();
 
   return (
     <div className="flex flex-col gap-y-2">
@@ -81,7 +79,7 @@ const OptionManager = () => {
    *    2) LightMap 의 경우 현재 적용될 옵션에 맞춰서 LightMap On ? // TODO check 필요
    * **/
 
-  return <button onClick={() => analyze()}>분석 사항 로그</button>;
+  return <button onClick={() => console.log(analyze())}>분석 사항 로그</button>;
 };
 
 const OptionPreviewTab = () => {
@@ -94,10 +92,6 @@ const OptionPreviewTab = () => {
     max: 5,
     step: 0.1,
   };
-
-  useEffect(() => {
-    console.log('processing Changed ', isProcessing);
-  }, [isProcessing]);
 
   return (
     <div>
@@ -127,9 +121,8 @@ const OptionPreviewTab = () => {
         <span>초</span>
       </div>
       <div className="relative">
-        {isProcessing ? '진행중' : ''}
         {isProcessing && (
-          <div className="absolute h-full w-full cursor-not-allowed"></div>
+          <div className="absolute h-full w-full cursor-wait z-10"></div>
         )}
         {options.map(modelOption => (
           <OptionPreview
@@ -216,6 +209,7 @@ const Option = ({ modelOption }: { modelOption: ModelOption }) => {
 
   useEffect(() => {
     // modelOption.states = states;
+    console.log('state Updated');
     setModelOptions(pre => {
       const t = [...pre];
       const idx = t.findIndex(o => o.id === modelOption.id);
@@ -322,6 +316,7 @@ const State = ({
   const [nameEditMode, setNameEditMode] = useState<boolean>(false);
   const [models, setModels] = useState<MeshEffect[]>(state.meshEffects);
   const [open, setOpen] = useState<boolean>(state.expanded);
+  const [functionEffects, setFunctionEffects] = useState<FunctionEffects>(state.functionEffects);
 
   function openMeshSelectModal() {
     if (!threeExports) {
@@ -370,6 +365,16 @@ const State = ({
     });
   }, [models]);
 
+  useEffect(() => {
+    console.log('functionEffects Updated');
+    setStates(pre => {
+      const t = [...pre];
+      const idx = t.findIndex(o => o.id === state.id);
+      t[idx].functionEffects = functionEffects;
+      return t;
+    })
+  }, [functionEffects]);
+
   function openValueModal() {
     openModal(<ValueModal meshEffects={models} />);
   }
@@ -385,7 +390,7 @@ const State = ({
   }
 
   function openStateFunctionEffectChangeModal() {
-    openModal(<StateFunctionEffectModal state={state} />);
+    openModal(<StateFunctionEffectModal state={state} onComplete={(functionEffects) => setFunctionEffects(functionEffects)} />);
   }
 
   return (
@@ -471,7 +476,7 @@ const State = ({
   );
 };
 
-const StateFunctionEffectModal = ({ state }: { state: OptionState }) => {
+const StateFunctionEffectModal = ({ state, onComplete }: { state: OptionState, onComplete: (functionEffects: FunctionEffects) => void }) => {
   const { closeModal } = useModal();
   const functionEffects = state.functionEffects;
   const [uses, setUses] = useState<FunctionEffectsBooleans>(
@@ -481,7 +486,30 @@ const StateFunctionEffectModal = ({ state }: { state: OptionState }) => {
     functionEffects.urls,
   );
 
+  const [previewMinimap, setPreviewMinimap] = useState<{
+    show: boolean;
+    error: boolean;
+    url: string | null;
+  }>({ show: false, error: false, url: null });
+
+  async function updateMinimap() {
+    if (!uses.changeMinimap) {
+      return;
+    }
+    const minimapUrl = values.minimap;
+    if (await isImage(minimapUrl)) {
+      setPreviewMinimap({ show: true, error: false, url: minimapUrl });
+    } else {
+      setPreviewMinimap({ show: true, error: true, url: minimapUrl });
+    }
+  }
+
   function confirm() {
+    state.functionEffects = {
+      booleans: uses,
+      urls: values,
+    };
+    onComplete(state.functionEffects);
     closeModal();
   }
 
@@ -513,17 +541,27 @@ const StateFunctionEffectModal = ({ state }: { state: OptionState }) => {
           >
             {uses.changeMinimap ? '사용' : '미사용'}
           </button>
-          <div className="flex mt-1 justify-between">
-            {uses.changeMinimap && (
-              <>
+          {uses.changeMinimap && (
+            <div>
+              {previewMinimap.show && (
+                <div>
+                  {previewMinimap.error ? (
+                    <span>URL이 올바르지 않습니다.</span>
+                  ) : (
+                    <img src={previewMinimap.url!!} alt="" />
+                  )}
+                </div>
+              )}
+              <div className="flex mt-1 gap-x-1">
                 <input
-                  className="py-1 px-0.5 border border-black rounded w-[90%]"
+                  className="py-1 px-0.5 border border-black rounded w-[80%]"
                   type="text"
                   value={values.minimap}
                   onChange={e =>
                     setValues(pre => ({ ...pre, minimap: e.target.value }))
                   }
                 />
+                <button onClick={updateMinimap}>미리보기</button>
                 <button
                   onClick={() =>
                     setValues(pre => ({
@@ -534,9 +572,9 @@ const StateFunctionEffectModal = ({ state }: { state: OptionState }) => {
                 >
                   초기화
                 </button>
-              </>
-            )}
-          </div>
+              </div>
+            </div>
+          )}
         </div>
         <div className="mt-1">
           <strong className="mr-1">벽</strong>
@@ -1317,7 +1355,8 @@ const MeshSelectModal = ({
     scene.traverseAll(o => {
       if (o.type === 'Mesh') {
         if (keyword === '') {
-          if (!modelSelectedUuids.includes(o.uuid)) meshes.push(o as THREE.Mesh);
+          if (!modelSelectedUuids.includes(o.uuid))
+            meshes.push(o as THREE.Mesh);
         } else if (
           keyword !== '' &&
           o.name.toLocaleLowerCase().includes(keyword.toLowerCase()) &&

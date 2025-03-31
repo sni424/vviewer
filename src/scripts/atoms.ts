@@ -21,7 +21,7 @@ import {
   Matrix4Array,
   View,
   ViewportOption,
-  WallCreateOption
+  WallCreateOption, Walls,
 } from '../types';
 import ReflectionProbe from './ReflectionProbe.ts';
 import { THREE } from './VTHREE';
@@ -114,16 +114,16 @@ export const orbitControlAtom = atom<OrbitControls>();
 export type Env = {
   select: 'none' | 'preset' | 'custom' | 'url';
   preset?:
-  | 'apartment'
-  | 'city'
-  | 'dawn'
-  | 'forest'
-  | 'lobby'
-  | 'night'
-  | 'park'
-  | 'studio'
-  | 'sunset'
-  | 'warehouse';
+    | 'apartment'
+    | 'city'
+    | 'dawn'
+    | 'forest'
+    | 'lobby'
+    | 'night'
+    | 'park'
+    | 'studio'
+    | 'sunset'
+    | 'warehouse';
   url?: string;
   intensity?: number;
   rotation?: {
@@ -132,6 +132,16 @@ export type Env = {
     z: number;
   };
 };
+
+export const minimapAtom = atom<{show: boolean; urls: string[]; useIndex: number }>({
+  show: false,
+  urls: [
+    'https://vra-configurator-dev.s3.ap-northeast-2.amazonaws.com/models/images/miniMap',
+    'https://vra-configurator-dev.s3.ap-northeast-2.amazonaws.com/models/images/miniMap_expanded',
+  ],
+  useIndex: 0,
+});
+
 // export const envAtom = atom<Env>({ select: "none" });
 export const envAtom = atom<Env>({
   select: 'none',
@@ -506,6 +516,11 @@ export const [wallOptionAtom,
   walls: [],
   autoCreateWall: true
 });
+
+export const [wallCacheAtom,
+  getWallCacheAtom,
+  setWallCacheAtom
+] = createAtomCombo<{[key:string]: Walls}>({});
 
 export const [wallHighlightAtom,
   getWallHighlightAtom,

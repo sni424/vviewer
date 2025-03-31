@@ -1,51 +1,59 @@
 import { useAtom, useAtomValue } from 'jotai';
 import {
   animationDurationAtom,
-  getAtomValue,
+  getAtomValue, getWallCacheAtom,
   lightMapAtom,
-  modelOptionClassAtom, optionProcessingAtom,
-  optionSelectedAtom, ProbeAtom, selectedAtom, threeExportsAtom,
+  minimapAtom,
+  modelOptionClassAtom,
+  optionProcessingAtom,
+  optionSelectedAtom,
+  ProbeAtom,
+  selectedAtom, setWallCacheAtom, setWallOptionAtom,
+  threeExportsAtom,
   useToast,
 } from '../atoms.ts';
-import { loadOption, uploadJson } from '../atomUtils.ts';
-import { ModelOptionObject } from '../ModelOptionObject.ts';
+import { loadJson, loadOption, uploadJson, wallsToWallOption } from '../atomUtils.ts';
+import { Effects, ModelOptionObject } from '../ModelOptionObject.ts';
 import { getVKTX2Loader } from '../loaders/VKTX2Loader.ts';
 import { createLightmapCache } from '../loaders/VGLTFLoader.ts';
 import ModelOption from './ModelOption.ts';
 import * as THREE from '../VTHREE.ts';
-import OptionState from './OptionState.ts';
-import { useEffect, useState } from 'react';
+import OptionState, { FunctionEffects } from './OptionState.ts';
 import gsap from 'gsap';
 import VMaterial from '../material/VMaterial.ts';
-import { changeMeshLightMapWithTransition, changeMeshVisibleWithTransition } from '../utils.ts';
+import {
+  changeMeshLightMapWithTransition,
+  changeMeshVisibleWithTransition, isImage,
+} from '../utils.ts';
 import { ENV } from '../../Constants.ts';
 import { useSetAtom } from 'jotai/index';
+import { useEffect } from 'react';
+import { Walls } from '../../types.ts';
 
 const useOptionManager = () => {
   const threeExports = useAtomValue(threeExportsAtom);
-  const {scene} = threeExports || {};
+  const { scene } = threeExports || {};
   const [options, setOptions] = useAtom(modelOptionClassAtom);
   const [optionSelected, setOptionSelected] = useAtom(optionSelectedAtom);
   const [lightMaps, setLightMaps] = useAtom(lightMapAtom);
-  const { openToast, closeToast } = useToast();
   const [isProcessing, setProcessing] = useAtom(optionProcessingAtom);
   const setSelecteds = useSetAtom(selectedAtom);
   const animationDuration = useAtomValue(animationDurationAtom);
   const probes = useAtomValue(ProbeAtom);
-
-  useEffect(() => {
-    console.log('processing Changed Caught in hook');
-  }, [isProcessing]);
+  const [minimapInfo, setMinimapInfo] = useAtom(minimapAtom);
+  const { openToast, closeToast } = useToast();
 
   async function loadOptions(fileName: string) {
     openToast('옵션 불러오는 중..', { autoClose: false });
     setOptions([]);
     const optionJSON = (await loadOption(fileName)) as ModelOptionObject[];
     const keys = Object.keys(lightMaps);
-    const keysToLoad: string[] = [];
+    const lightMapsToLoad: string[] = [];
+    const minimapsToLoad: string[] = [];
+    const wallsToLoad: string[] = [];
     optionJSON.forEach(option => {
       const states = option.states;
-      states.forEach(state => {
+      states.forEach(async state => {
         const meshEffects = state.meshEffects;
         meshEffects.forEach(effect => {
           const lm = effect.effects.lightMapValues;
@@ -55,13 +63,27 @@ const useOptionManager = () => {
               const lms = Object.values(value);
               lms.forEach(lm => {
                 // 이미 로드된 라이트맵이면 패스
-                if (!keys.includes(lm) && !keysToLoad.includes(lm)) {
-                  keysToLoad.push(lm);
+                if (!keys.includes(lm) && !lightMapsToLoad.includes(lm)) {
+                  lightMapsToLoad.push(lm);
                 }
               });
             });
           }
         });
+        const functionEffects = state.functionEffects;
+        const { changeMinimap, changeWall } = functionEffects.booleans;
+        if (changeMinimap) {
+          const minimap = functionEffects.urls.minimap;
+          if (await isImage(minimap) && !minimapsToLoad.includes(minimap))
+            minimapsToLoad.push(functionEffects.urls.minimap);
+        }
+
+        if (changeWall) {
+          const wall = functionEffects.urls.walls;
+          if (wall.length > 0 && !wallsToLoad.includes(wall)) {
+            wallsToLoad.push(functionEffects.urls.walls);
+          }
+        }
       });
     });
 
@@ -71,16 +93,29 @@ const useOptionManager = () => {
     });
 
     // 옵션에서 사용되는 LightMaps Load
-    if (keysToLoad.length > 0) {
+    if (lightMapsToLoad.length > 0) {
       openToast('옵션 라이트맵 불러오는 중..', {
         autoClose: false,
         override: true,
       });
 
-      const lightMapObj = await loadLightMaps(keysToLoad);
+      const lightMapObj = await loadLightMaps(lightMapsToLoad);
       setLightMaps(pre => {
         return { ...pre, ...lightMapObj };
       });
+    }
+
+    // 미니맵 정보 SET
+    // TODO 초기값 SET
+    setMinimapInfo(pre => ({ ...pre, urls: minimapsToLoad }));
+
+    if (wallsToLoad.length > 0) {
+      const wallEntries = await Promise.all(
+        wallsToLoad.map(async url => [url, await loadJson<Walls>(url.replace(ENV.s3Base, ""))] as const)
+      );
+
+      const cache: { [key: string]: Walls } = Object.fromEntries(wallEntries);
+      setWallCacheAtom(cache);
     }
 
     // 안전하게 라이트맵 다 로드 후 옵션 Set
@@ -94,6 +129,25 @@ const useOptionManager = () => {
       }
     });
     setOptionSelected(optionSelected);
+
+    const { meshResult, functionResult } = analyze(optionSelected);
+
+    console.log(functionResult);
+
+    if (functionResult.changeMinimap) {
+      const targetMinimap = functionResult.minimap;
+      if (targetMinimap) {
+      setMinimapInfo(pre => ({ ...pre, useIndex: targetMinimap }));
+      }
+    }
+
+    if (functionResult.changeWalls) {
+      const targetWall = functionResult.walls;
+      if (targetWall) {
+        setWallOptionAtom(wallsToWallOption(getWallCacheAtom()!![targetWall]));
+      }
+    }
+
     closeToast();
   }
 
@@ -146,7 +200,7 @@ const useOptionManager = () => {
         const mat = mesh.material as VMaterial;
         // Visible Control
         if (effects.useVisible) {
-          const targetVisible = anlayzed[mesh.name].visible;
+          const targetVisible = anlayzed.meshResult[mesh.name].visible;
           if (targetVisible === undefined) {
             throw new Error('targetVisible set Error');
           }
@@ -165,7 +219,7 @@ const useOptionManager = () => {
         if (effects.useLightMap) {
           const lightMapCache = getAtomValue(lightMapAtom);
           const keys = Object.keys(lightMapCache);
-          let target = anlayzed[mesh.name].lightMap;
+          let target = anlayzed.meshResult[mesh.name].lightMap;
 
           if (target && !target.startsWith('https')) {
             target = ENV.base + target;
@@ -201,6 +255,24 @@ const useOptionManager = () => {
         console.warn('no Mesh Found On state, passing By : ', meshEffect.name);
       }
     });
+    const functionResults = anlayzed.functionResult;
+    console.log('fR : ', functionResults);
+    if (
+      functionResults.changeMinimap
+    ) {
+      const minimapIndex = functionResults.minimap;
+      if (minimapIndex !== undefined) {
+      setMinimapInfo(pre => ({ ...pre, useIndex: minimapIndex }));
+      }
+    }
+
+    if (functionResults.changeWalls) {
+      const key = functionResults.walls;
+      if (key) {
+        const walls = getWallCacheAtom()!![key];
+        setWallOptionAtom(wallsToWallOption(walls));
+      }
+    }
 
     function processAfter() {
       probes.forEach(probe => {
@@ -222,12 +294,14 @@ const useOptionManager = () => {
       setTimeout(() => {
         console.log('done ? ');
         processAfter();
-      }, animationDuration);
+      }, animationDuration * 1000);
+    } else {
+      processAfter();
     }
   }
 
-  function analyze(nowSelected?: {[key: string]: string}) {
-    const selectedInfo = nowSelected? nowSelected : optionSelected;
+  function analyze(nowSelected?: { [key: string]: string }) {
+    const selectedInfo = nowSelected ? nowSelected : optionSelected;
     const effects = options.map(modelOption => {
       return {
         id: modelOption.id,
@@ -236,45 +310,91 @@ const useOptionManager = () => {
       };
     });
 
-    const result: { [key: string]: { visible?: boolean; lightMap?: string } } =
-      {};
+    const meshResult: {
+      [key: string]: { visible?: boolean; lightMap?: string; minimap?: number };
+    } = {};
+    const functionResult: {
+      changeMinimap: boolean;
+      changeWalls: boolean;
+      minimap?: number;
+      walls?: string;
+    } = { changeMinimap: false, changeWalls: false };
 
-    console.log('analyze', selectedInfo);
+    effects.forEach(({ id: modelOptionId, effect: effects, option }) => {
+      const selectedId = selectedInfo[modelOptionId];
+      const {
+        meshEffects,
+        functionEffects,
+      }: {
+        functionEffects: FunctionEffects;
+        meshEffects: {
+          [key: string]: {
+            mesh: THREE.Mesh;
+            effects: Effects;
+          };
+        };
+      } = effects[selectedId];
+      // Handle Functional Effects
+      const [
+        { changeMinimap, changeWall, changeNav, changeFloor },
+        { minimap, walls, nav, floor },
+      ] = [functionEffects.booleans, functionEffects.urls];
 
-    effects.forEach(effectObject => {
-      const selectedId = selectedInfo[effectObject.id];
-      const targetEffect = effectObject.effect[selectedId];
-      Object.entries(targetEffect).forEach(([key, value]) => {
+      const originalMinimapIndex = minimapInfo.useIndex;
+
+      if (changeMinimap) {
+        const index = minimapInfo.urls.indexOf(minimap);
+        if (index >= 0) {
+          // 현재 상태와 같으면 change X
+          functionResult.changeMinimap = changeMinimap;
+          functionResult.minimap = index;
+        }
+      }
+
+      if (changeWall) {
+        const targetWallJSONUrl = walls;
+        functionResult.changeWalls = changeWall;
+        functionResult.walls = targetWallJSONUrl;
+      }
+
+      // Handle Mesh Effects
+      Object.entries(meshEffects).forEach(([meshName, { mesh, effects }]) => {
         const originalValue:
           | { visible?: boolean; lightMap?: string }
-          | undefined = result[key];
+          | undefined = meshResult[meshName];
         if (originalValue) {
-          originalValue.visible =
-            originalValue.visible && value.effects.visibleValue;
+          originalValue.visible = originalValue.visible && effects.visibleValue;
         } else {
-          result[key] = { visible: value.effects.visibleValue };
+          meshResult[meshName] = { visible: effects.visibleValue };
         }
 
         const optionId = Object.keys(selectedInfo);
-        const lmValues = value.effects.lightMapValues;
+        const lmValues = effects.lightMapValues;
         const lmValuesKeys = Object.keys(lmValues!!);
         const targetIds = optionId.filter(k => lmValuesKeys.includes(k));
         const targetId = targetIds[0];
-        result[key].lightMap = lmValues!![targetId][selectedInfo[targetId]];
+        meshResult[meshName].lightMap =
+          lmValues!![targetId][selectedInfo[targetId]];
       });
     });
 
-    return result;
+    return { meshResult, functionResult };
   }
 
-  return { loadOptions, uploadOptionJSON, options, processState, analyze, isProcessing, optionSelected };
+  return {
+    loadOptions,
+    uploadOptionJSON,
+    options,
+    processState,
+    analyze,
+    isProcessing,
+    optionSelected,
+  };
 };
 
 export default useOptionManager;
 
-async function loadLightMaps(
-  keysToLoad: string[]
-) {
+async function loadLightMaps(keysToLoad: string[]) {
   const loader = getVKTX2Loader();
   const map = new Map<string, THREE.Texture>();
   await Promise.all(
@@ -292,4 +412,3 @@ async function loadLightMaps(
 
   return await createLightmapCache(map, gl);
 }
-
