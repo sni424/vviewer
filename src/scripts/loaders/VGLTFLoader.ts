@@ -95,6 +95,7 @@ export default class VGLTFLoader extends GLTFLoader {
           }
           mat.vUserData.originalOpacity = mat.opacity;
           mat.vUserData.originalColor = mat.color.getHexString();
+          mat.vUserData.isVMaterial = true;
 
           const originalMatID = mat.uuid;
 

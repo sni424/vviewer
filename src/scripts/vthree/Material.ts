@@ -1,9 +1,10 @@
 import * as THREE from 'three';
 import { threes } from '../atomUtils';
+import type ReflectionProbe from '../ReflectionProbe';
 import { patchFragment } from '../shaders/v_env_frag.glsl';
 import { patchVertex } from '../shaders/v_env_vertex.glsl';
 import { computeBoundingBoxForMaterial } from '../utils';
-import { DEFAULT_MATERIAL_SHADER, defaultUniforms, MATERIAL_DEFINE, MATERIAL_SHADER, MATERIAL_SHADER_TYPE, MATERIAL_UNIFORM, MATERIAL_UNIFORM_VALUE, VUserData } from './VTHREETypes';
+import { DEFAULT_MATERIAL_SHADER, defaultUniforms, MATERIAL_DEFINE, MATERIAL_SHADER, MATERIAL_UNIFORM, MATERIAL_UNIFORM_VALUE, VUserData } from './VTHREETypes';
 
 // 재질 : uniform
 // { material1 : { lightmapContrast : { value : 1.0 } } }
@@ -46,6 +47,15 @@ declare module 'three' {
       scene?: THREE.Scene, // undefined면 threeExports 사용
     }): void;
 
+    prepareProbe(params: {
+      probes: ReflectionProbe[];
+      walls?: {
+        start: THREE.Vector3;
+        end: THREE.Vector3;
+        probeId: string;
+      }[];
+    }): void;
+
     updateMultiProbeTexture?(): void;
 
     // getter, 셰이더를 사용하는 경우 할당되는 유니폼
@@ -58,19 +68,6 @@ declare module 'three' {
     setDefine(key: MATERIAL_DEFINE, value?: any): this;
     removeDefine(key: MATERIAL_DEFINE): this;
 
-    fromThree(material: THREE.Material): this;
-
-    updateVersion(): this;
-
-    // 셰이더를 사용하고 있는지
-    using<T extends MATERIAL_SHADER_TYPE>(type: T): boolean;
-
-    on<T extends MATERIAL_SHADER_TYPE>(type: T, params?: Partial<MATERIAL_SHADER[T]>): this;
-
-    off<T extends MATERIAL_SHADER_TYPE>(type: T): this;
-
-    // off->on으로 갈 때 params 사용
-    toggle<T extends MATERIAL_SHADER_TYPE>(type: T, params?: Partial<MATERIAL_SHADER[T]>): this;
   }
 
 
@@ -164,156 +161,39 @@ const upsert = (uniform: any, key: string, value: any) => {
   }
 }
 
-THREE.Material.prototype.updateVersion = function () {
-
-  const targetVersion = (versionMap.get(this) ?? 0) + 1;
-
-  versionMap.set(this, targetVersion);
-
-  this.addDefines({
-    MATERIAL_VERSION: targetVersion
-  })
-
-  return this;
-}
-
-// THREE.Material.prototype._progress = { value: 0 };
-
-THREE.Material.prototype.on = function <T extends MATERIAL_SHADER_TYPE>(type: T, params?: Partial<MATERIAL_SHADER[T]>) {
-
-  // if (this.using(type)) {
-  // console.warn("Already using", type, ", Material name : ", this.name, this);
-  //   return this;
-  // }
-
-  const filledParams: MATERIAL_SHADER[T] = {
-    ...DEFAULT_MATERIAL_SHADER[type],
-    ...params,
-  };
-
-  this.defines = {
-    ...this.defines,
-    ...filledParams.defines,
-  };
-
-  // this.shader.uniforms = {
-  //   ...this.shader.uniforms,
-  //   ...filledParams.uniforms,
-  // };
-
-  const prevUniforms: Record<string, any> = this.uniform ?? {};
-  const patchUniforms = (shaderUniforms: any, uniforms: any) => {
-    for (const key in uniforms) {
-      upsert(shaderUniforms, key, uniforms[key].value);
-    }
-
-    // 이전 유니폼 중 없는 유니폼만 이어서 추가
-    for (const key in prevUniforms) {
-      if (key in shaderUniforms) {
-        continue;
-      }
-      shaderUniforms[key] = prevUniforms[key];
-    }
-  }
-
-  const matname = this.name;
-  this.onBeforeCompile = (shader, renderer) => {
-    console.log("onBeforeCompile:", matname);
-    patchVertex(shader);
-    patchFragment(shader);
-    patchUniforms(shader.uniforms, filledParams.uniforms);
-
-    console.log("Onbeforecompile uniforms : ", matname, shader.uniforms,);
-  }
-
-  return this;
-}
-
 THREE.Material.prototype.onBeforeCompile = function (shader: THREE.WebGLProgramParametersWithUniforms, renderer: THREE.WebGLRenderer) {
+
+  if (!this.vUserData.isVMaterial) {
+    return;
+  }
+
+  console.log("onBeforeCompile", this.name, this.type,);
 
   patchVertex(shader);
   patchFragment(shader);
 
   // 첫 컴파일 시 default 유니폼 할당
-  for (const key in defaultUniforms) {
-    upsert(shader.uniforms, key, (defaultUniforms as any)[key].value);
+  const possibleUniforms = [...Object.keys(defaultUniforms),
+  ] as MATERIAL_UNIFORM[];
+  for (const key of possibleUniforms) {
+
+    console.log(`   (this.uniform as any)?.[${key}]?.value : `, (this.uniform as any)?.[key]?.value);
+
+    // 밖에서 넣어준 uniform을 재할당
+    const value = (this.uniform as any)?.[key]?.value ?? (defaultUniforms as any)[key]?.value;
+
+    if (typeof value !== "undefined") {
+      console.log("   onBeforeCompile", key, value);
+      upsert(shader.uniforms, key, value);
+    }
+
   }
 
-  // 첫 컴파일 시 this.uniform 호출 가능
+  // initProbeOnBeforeCompile.call(this, shader);
+
+  // 컴파일 시 this.uniform 호출 가능
   this.uniform = shader.uniforms as any;
 }
-
-THREE.Material.prototype.off = function <T extends MATERIAL_SHADER_TYPE>(type: T) {
-
-  if (!this.using(type)) {
-    // console.warn("Not using", type, ", Cannot turn off.  Material name : ", this.name, this);
-    return this;
-  }
-
-  const {
-    defines,
-    uniforms
-  } = DEFAULT_MATERIAL_SHADER[type];
-
-  // handle defines
-  const defineKeys = Object.keys(defines) as string[];
-
-  const defineCopied = { ...this.defines };
-
-  for (const key of defineKeys) {
-    delete defineCopied[key];
-  }
-  this.defines = defineCopied;
-
-
-  // handle uniforms
-  // const uniformKeys = Object.keys(uniforms) as string[];
-  // const uniformCopied = { ...this.shader.uniforms };
-  // for (const key of uniformKeys) {
-  //   delete uniformCopied[key];
-  // }
-  // this.shader.uniforms = uniformCopied;
-
-  return this;
-}
-
-THREE.Material.prototype.using = function <T extends MATERIAL_SHADER_TYPE>(type: T) {
-  const {
-    defines,
-    // uniforms
-  } = DEFAULT_MATERIAL_SHADER[type];
-
-  const defineKeys = Object.keys(defines) as string[];
-  // const uniformKeys = Object.keys(uniforms) as string[];
-
-  const toCheck = this.defines ?? {};
-  const keys = Object.keys(toCheck);
-
-  // 이미 재질의 defines에 정의된 키들이 모두 있는지 확인
-  for (const key of defineKeys) {
-    if (!keys.includes(key)) {
-      return false;
-    }
-  }
-
-  // for (const key of uniformKeys) {
-  //   if (!(this.shader.uniforms ?? {})[key]) {
-  //     return false;
-  //   }
-  // }
-
-  return true;
-};
-
-THREE.Material.prototype.toggle = function <T extends MATERIAL_SHADER_TYPE>(type: T, params?: Partial<MATERIAL_SHADER[T]>) {
-
-  if (this.using(type)) {
-    return this.off(type);
-  } else {
-    return this.on<T>(type, params);
-  }
-}
-
 
 THREE.Material.prototype.setDefines = function (defines: Partial<MaterialDefines>) {
   this.defines = defines;
@@ -355,12 +235,6 @@ if (
   });
 }
 
-
-THREE.Material.prototype.fromThree = function (material: THREE.Material) {
-  return material;
-}
-
-
 THREE.Material.prototype.prepareMeshTransition = function (params: {
   direction: "fadeIn" | "fadeOut",
   progress?: number, // default : 0
@@ -380,6 +254,10 @@ THREE.Material.prototype.prepareMeshTransition = function (params: {
     }
 
     const box = computeBoundingBoxForMaterial(targetScene, this)!;
+    {
+      const boxHelper = new THREE.Box3Helper(box, 0x00ff00);
+      targetScene?.add(boxHelper);
+    }
     if (!box) {
       console.warn("prepareMeshTransition : bounding box 없음", this.name, this);
       return;
@@ -428,4 +306,113 @@ THREE.Material.prototype.prepareMeshTransition = function (params: {
     mat.uniform.MESH_TRANSITION.value = useMeshTrantision ?? true;
   }
 
+}
+
+function generateCubeUVSize(imageHeight: number) {
+
+  const maxMip = Math.log2(imageHeight) - 2;
+
+  const texelHeight = 1.0 / imageHeight;
+
+  const texelWidth = 1.0 / (3 * Math.max(Math.pow(2, maxMip), 7 * 16));
+
+  return { texelWidth, texelHeight, maxMip };
+
+}
+
+THREE.Material.prototype.prepareProbe = function (params: {
+  probes: ReflectionProbe[];
+  walls?: {
+    start: THREE.Vector3;
+    end: THREE.Vector3;
+    probeId: string;
+  }[];
+}) {
+  const usePmrem = true;
+  const { probes, walls } = params;
+  const PROBE_TYPE = Boolean(walls) ? 2 : 1;
+
+  this.addDefines({
+    PROBE_COUNT: probes.length,
+  })
+  if (usePmrem) {
+    this.addDefines({
+      USE_PROBE_PMREM: true,
+    })
+  }
+
+  const metaUniform = probes.map((p) => ({
+    center: p.getBox().getCenter(new THREE.Vector3()),
+    size: p.getBox().getSize(new THREE.Vector3()),
+  }))
+
+  const getTextures = () => probes.map(p => usePmrem ? p.getTexture() : p.getRenderTargetTexture());
+  // const textures = getTextures();
+
+
+  let pmremUniforms = {};
+
+  if (usePmrem) {
+    const pmremParams = generateCubeUVSize(probes[0]?.getResolution());
+    const { texelWidth, texelHeight, maxMip } = pmremParams;;
+
+    pmremUniforms = {
+      V_CUBEUV_MAX_MIP: { value: maxMip },
+      V_CUBEUV_TEXEL_WIDTH: { value: texelWidth },
+      V_CUBEUV_TEXEL_HEIGHT: { value: texelHeight },
+    }
+  }
+
+  const uniforms: Partial<MATERIAL_SHADER["PROBE"]["uniforms"]> = {
+
+    // uProbeType: { value: PROBE_TYPE },
+    // uProbeCount: {
+    //   value: probes.length
+    // },
+    uProbe: {
+      value: metaUniform
+    },
+    uProbeTextures: {
+      value: getTextures()
+    },
+    uProbeIntensity: {
+      value: 1.0
+    },
+
+    ...pmremUniforms,
+
+  };
+
+  if (walls) {
+    this.addDefines({
+      WALL_COUNT: walls.length,
+    })
+    const targetProbeIds = probes.map(p => p.getId());
+    const targetWalls = walls.map((wall) => ({
+      start: wall.start,
+      end: wall.end,
+      index: targetProbeIds.indexOf(wall.probeId)
+    }));
+
+    uniforms.uWall = {
+      value: targetWalls
+    }
+    uniforms.uProbeBlendDist = {
+      value: 20.0
+    }
+  }
+
+  // shader.uniforms에 적용
+  for (const _key in uniforms) {
+    const key = _key as MATERIAL_UNIFORM;
+    const uniform = (uniforms as any)[key];
+    if (this.uniform[key]) {
+      this.uniform[key].value = uniform.value;
+    } else {
+      this.uniform[key] = uniform;
+    }
+    // console.log(`this.uniform[${key}].value = ${uniform.value};`)
+  }
+  // console.log(this.uniform);
+  // console.log(this.defines);
 }

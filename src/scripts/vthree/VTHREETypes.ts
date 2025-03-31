@@ -43,6 +43,12 @@ export type MATERIAL_SHADER = {
     },
   };
   PROBE: {
+    // 프로브 플레이스홀더
+    type: "PROBE";
+    uniforms: {};
+    defines: {};
+  } | {
+    // 일반 멀티 프로브 - 셰이더 상에서 가장 가까운 프로브 찾아서 사용
     type: "PROBE";
     uniforms: {
       uProbe: {
@@ -56,18 +62,17 @@ export type MATERIAL_SHADER = {
       };
       uProbeIntensity: {
         value: number;
-      }
+      },
+      V_CUBEUV_MAX_MIP: { value: number };
+      V_CUBEUV_TEXEL_WIDTH: { value: number };
+      V_CUBEUV_TEXEL_HEIGHT: { value: number };
     };
     defines: {
       PROBE_COUNT: number;
-      V_ENVMAP_TYPE_CUBE_UV: number;
-      V_CUBEUV_MAX_MIP: string;
-      V_CUBEUV_TEXEL_WIDTH: number;
-      V_CUBEUV_TEXEL_HEIGHT: number;
     };
-  };
-  PROBE_WALL: {
-    type: "PROBE_WALL",
+  } | {
+    // 벽을 쓰는 프로브
+    type: "PROBE";
     uniforms: {
       uProbe: {
         value: {
@@ -80,7 +85,12 @@ export type MATERIAL_SHADER = {
       };
       uProbeIntensity: {
         value: number;
-      };
+      },
+      V_CUBEUV_MAX_MIP: { value: number };
+      V_CUBEUV_TEXEL_WIDTH: { value: number };
+      V_CUBEUV_TEXEL_HEIGHT: { value: number };
+
+      // 벽을 쓰는 프로브일 때만
       uWall: {
         value: {
           start: THREE.Vector3;
@@ -88,16 +98,13 @@ export type MATERIAL_SHADER = {
           index: number; //프로브인덱스
         }[];
       };
+      // 벽을 쓰는 프로브일 때만
       uProbeBlendDist: {
         value: number;
       }
     };
     defines: {
       PROBE_COUNT: number;
-      V_ENVMAP_TYPE_CUBE_UV: number;
-      V_CUBEUV_MAX_MIP: string;
-      V_CUBEUV_TEXEL_WIDTH: number;
-      V_CUBEUV_TEXEL_HEIGHT: number;
       WALL_COUNT: number;
     };
   };
@@ -169,24 +176,19 @@ export interface VUserData {
 
   // lightmap transition때 쓰이는 빈 텍스쳐
   isEmptyTexture?: boolean;
+
+  isVMaterial?: boolean; // VGLTFLoader로 로드 한 재질
 }
 
 export const MATERIAL_DEFINES = [
-  'LIGHTMAP_TRANSITION',
-  'MESH_TRANSITION',
-  'MESH_TRANSITION',
-  'USE_LIGHTMAP_CONTRAST',
-
-  // multiprobe
-  'PROBE_COUNT',
-  'WALL_COUNT',
-
-  'MATERIAL_VERSION',
+  "PROBE_COUNT",
+  "WALL_COUNT",
+  "USE_PROBE_PMREM",
 ] as const;
 
 export type MATERIAL_DEFINE = typeof MATERIAL_DEFINES[number];
 
-const EMPTY_TEXTURE = (() => {
+export const EMPTY_TEXTURE = (() => {
   const emptyTexture = new THREE.DataTexture(
     new Uint8Array([0, 0, 0, 0]), // transparent 1x1 pixel
     1,
@@ -226,36 +228,21 @@ export const DEFAULT_MATERIAL_SHADER: MATERIAL_SHADER = {
   PROBE: {
     type: "PROBE",
     defines: {
-      PROBE_COUNT: 0,
-      V_CUBEUV_MAX_MIP: "0.0",
-      V_ENVMAP_TYPE_CUBE_UV: 0,
-      V_CUBEUV_TEXEL_WIDTH: 0,
-      V_CUBEUV_TEXEL_HEIGHT: 0,
+      PROBE_COUNT: undefined,
+      WALL_COUNT: undefined,
     },
     uniforms: {
-      uProbe: { value: [] },
-      uProbeTextures: { value: [] },
-      uProbeIntensity: { value: 1.0 },
+      uProbe: undefined,
+      uProbeTextures: undefined,
+      uProbeIntensity: undefined,
+      V_CUBEUV_MAX_MIP: undefined,
+      V_CUBEUV_TEXEL_WIDTH: undefined,
+      V_CUBEUV_TEXEL_HEIGHT: undefined,
+      uWall: undefined,
+      uProbeBlendDist: undefined,
     },
   },
-  PROBE_WALL: {
-    type: "PROBE_WALL",
-    defines: {
-      PROBE_COUNT: 0,
-      WALL_COUNT: 0,
-      V_CUBEUV_MAX_MIP: "0.0",
-      V_ENVMAP_TYPE_CUBE_UV: 0,
-      V_CUBEUV_TEXEL_WIDTH: 0,
-      V_CUBEUV_TEXEL_HEIGHT: 0,
-    },
-    uniforms: {
-      uProbe: { value: [] },
-      uProbeTextures: { value: [] },
-      uProbeIntensity: { value: 1.0 },
-      uProbeBlendDist: { value: 20.0 },
-      uWall: { value: [] },
-    },
-  },
+
   LIGHTMAP_CONTRAST: {
     type: "LIGHTMAP_CONTRAST",
     uniforms: {

@@ -171,3 +171,28 @@ export const ViewName: { [key in View]: string } = {
   [View.Left]: 'Left',
   [View.Bottom]: 'Bottom',
 } as const;
+
+export const TEXTURE_KEYS = [
+  "map",                  // 컬러 텍스처 (diffuse)
+  "alphaMap",             // 알파 투명도 텍스처
+  "aoMap",                // Ambient Occlusion
+  "bumpMap",              // Bump (흑백 높이맵 기반)
+  "displacementMap",      // Displacement (기하 변형)
+  "emissiveMap",          // Emissive 텍스처
+  "envMap",               // 환경 반사 텍스처 (큐브맵 등)
+  "lightMap",             // 추가적인 라이트 맵
+  "metalnessMap",         // 금속도 텍스처
+  "normalMap",            // 노멀 맵
+  "roughnessMap",         // 거칠기 텍스처
+  "clearcoatMap",         // 클리어코트 레벨
+  "clearcoatNormalMap",   // 클리어코트 노멀
+  "clearcoatRoughnessMap",// 클리어코트 거칠기
+  "iridescenceMap",       // iridescence 강도 맵
+  "iridescenceThicknessMap", // iridescence 두께 맵
+  "sheenColorMap",        // Sheen 색상
+  "sheenRoughnessMap",    // Sheen 거칠기
+  "specularIntensityMap", // Specular 강도
+  "specularColorMap",     // Specular 색상
+  "transmissionMap",      // 투명도 (Translucency)
+  "thicknessMap",         // 두께 맵 (볼륨 쉐이딩)
+];

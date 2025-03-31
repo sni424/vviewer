@@ -17,6 +17,7 @@ import objectHash from 'object-hash';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import VTextureLoader from 'src/scripts/loaders/VTextureLoader.ts';
+import ReflectionProbe from 'src/scripts/ReflectionProbe.ts';
 import {
   __UNDEFINED__,
   AOMAP_INTENSITY_MAX,
@@ -33,6 +34,7 @@ import {
   lightMapContrastAtom,
   materialSettingAtom,
   postprocessAtoms,
+  ProbeAtom,
   selectedAtom,
   threeExportsAtom,
   uploadingAtom,
@@ -697,6 +699,73 @@ const LightmapTransitionControl = () => {
   );
 };
 
+const ProbeControl = () => {
+  const { scene, gl, camera } = useAtomValue(threeExportsAtom)!;
+  const [probes, setProbes] = useAtom<ReflectionProbe[]>(ProbeAtom);
+
+  function addProbe() {
+    const probe = new ReflectionProbe(gl, scene, camera);
+    probe.addToScene();
+    setProbes(prev => [...prev, probe]);
+  }
+
+  // useEffect(() => {
+  //   scene.traverse(o => {
+  //     if (o.asMesh?.mat?.vUserData?.isVMaterial) {
+  //       const mat = o.asMesh.mat!;
+  //       mat.prepareProbe({
+  //         probes,
+  //       });
+  //     }
+  //   });
+  // }, [probes]);
+
+  return (
+    <section>
+      <strong>프로브</strong> <button onClick={addProbe}>프로브 추가</button>
+      <button
+        onClick={() => {
+          scene.traverse(o => {
+            if (o.asMesh?.mat?.vUserData?.isVMaterial) {
+              const mat = o.asMesh.mat!;
+              mat.prepareProbe({
+                probes,
+              });
+              mat.needsUpdate = true;
+            }
+          });
+        }}
+      >
+        프로브 적용
+      </button>
+      <ul>
+        {probes.map(p => {
+          return (
+            <li key={`probe-shader-${p.getId()}`}>
+              {p.getName()}{' '}
+              <button
+                onClick={() => {
+                  p.updateCameraPosition(p.getBoxMesh().position, true);
+                }}
+              >
+                찍기
+              </button>
+              <button
+                onClick={() => {
+                  p.setShowControls(false);
+                  p.setShowProbe(false);
+                }}
+              >
+                숨기기
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  );
+};
+
 const ProgressiveAlphaControl = () => {
   const { scene } = useAtomValue(threeExportsAtom)!;
   const [progress, setProgress] = useState(0);
@@ -984,6 +1053,7 @@ const GeneralPostProcessingControl = () => {
       <BrightnessContrastOption></BrightnessContrastOption>
       <LightmapImageContrastControl></LightmapImageContrastControl>
       <ProgressiveAlphaControl></ProgressiveAlphaControl>
+      <ProbeControl></ProbeControl>
       <LightmapTransitionControl></LightmapTransitionControl>
       <SRGBControl></SRGBControl>
       <BloomOption></BloomOption>

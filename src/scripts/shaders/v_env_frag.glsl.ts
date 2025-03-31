@@ -21,6 +21,8 @@ const defines = /* glsl */ `
 #ifndef V_FRAG_DEFINES_GUARD
 #define V_FRAG_DEFINES_GUARD
 
+// MAX_PROBE_COUNT_REPLACE
+
 uniform bool LIGHTMAP_TRANSITION;
 uniform bool MESH_TRANSITION;
 
@@ -56,16 +58,20 @@ varying vec3 vWorldPos;
       // samplerCube cubeTexture;
       // sampler2D envTexture;
   };
-  struct Wall {
-      vec3 start;
-      vec3 end;
-      int index; // 프로브 인덱스, 0부터 PROBE_COUNT-1까지
-  };
   uniform Probe uProbe[PROBE_COUNT];
+  #ifdef USE_PROBE_PMREM
+  uniform sampler2D uProbeTextures[PROBE_COUNT];
+  #else
   uniform samplerCube uProbeTextures[PROBE_COUNT];
+  #endif
   uniform float uProbeIntensity;
 
   #ifdef WALL_COUNT
+    struct Wall {
+      vec3 start;
+      vec3 end;
+      int index; // 프로브 인덱스, 0부터 PROBE_COUNT-1까지
+    };
     uniform Wall uWall[WALL_COUNT];
     uniform float uProbeBlendDist;
   #endif //!V_ENV_MAP_FLOOR
@@ -74,20 +80,24 @@ varying vec3 vWorldPos;
 
   /////////////////////////////////////////////////////////////////////
 // pmrem texture as a cube map
-#ifndef WALL_COUNT
-#define pmremUV textureCube // PMREM텍스쳐 아니면 기존의 textureCube 사용
-#endif //!WALL_COUNT
 
-#ifdef WALL_COUNT
+#ifndef USE_PROBE_PMREM
+#define pmremUV texture // PMREM텍스쳐 아니면 기존의 textureCube 사용
+#endif //!USE_PROBE_PMREM
+
+#ifdef USE_PROBE_PMREM
 
 	#define v_cubeUV_minMipLevel 4.0
 	#define v_cubeUV_minTileSize 16.0
+  uniform float V_CUBEUV_MAX_MIP;  
+  uniform float V_CUBEUV_TEXEL_WIDTH;
+  uniform float V_CUBEUV_TEXEL_HEIGHT;  
 
 	// These shader functions convert between the UV coordinates of a single face of
 	// a cubemap, the 0-5 integer index of a cube face, and the direction vector for
 	// sampling a textureCube (not generally normalized ).
 
-	float getFace( vec3 direction ) {
+	float v_getFace( vec3 direction ) {
 
 		vec3 absDirection = abs( direction );
 
@@ -120,7 +130,7 @@ varying vec3 vWorldPos;
 	}
 
 	// RH coordinate system; PMREM face-indexing convention
-	vec2 getUV( vec3 direction, float face ) {
+	vec2 v_getUV( vec3 direction, float face ) {
 
 		vec2 uv;
 
@@ -154,9 +164,9 @@ varying vec3 vWorldPos;
 
 	}
 
-	vec3 bilinearCubeUV( sampler2D envMap, vec3 direction, float mipInt ) {
+	vec3 v_bilinearCubeUV( sampler2D envMap, vec3 direction, float mipInt ) {
 
-		float face = getFace( direction );
+		float face = v_getFace( direction );
 
 		float filterInt = max( v_cubeUV_minMipLevel - mipInt, 0.0 );
 
@@ -164,7 +174,7 @@ varying vec3 vWorldPos;
 
 		float faceSize = exp2( mipInt );
 
-		highp vec2 uv = getUV( direction, face ) * ( faceSize - 2.0 ) + 1.0; // #25071
+		highp vec2 uv = v_getUV( direction, face ) * ( faceSize - 2.0 ) + 1.0; // #25071
 
 		if ( face > 2.0 ) {
 
@@ -207,7 +217,7 @@ varying vec3 vWorldPos;
 	#define v_cubeUV_r6 0.21
 	#define v_cubeUV_m6 4.0
 
-	float roughnessToMip( float roughness ) {
+	float v_roughnessToMip( float roughness ) {
 
 		float mip = 0.0;
 
@@ -238,13 +248,13 @@ varying vec3 vWorldPos;
 
 	vec4 pmremUV( sampler2D envMap, vec3 sampleDir, float roughness ) {
 
-		float mip = clamp( roughnessToMip( roughness ), v_cubeUV_m0, V_CUBEUV_MAX_MIP );
+		float mip = clamp( v_roughnessToMip( roughness ), v_cubeUV_m0, V_CUBEUV_MAX_MIP );
 
 		float mipF = fract( mip );
 
 		float mipInt = floor( mip );
 
-		vec3 color0 = bilinearCubeUV( envMap, sampleDir, mipInt );
+		vec3 color0 = v_bilinearCubeUV( envMap, sampleDir, mipInt );
 
 		if ( mipF == 0.0 ) {
 
@@ -252,7 +262,7 @@ varying vec3 vWorldPos;
 
 		} else {
 
-			vec3 color1 = bilinearCubeUV( envMap, sampleDir, mipInt + 1.0 );
+			vec3 color1 = v_bilinearCubeUV( envMap, sampleDir, mipInt + 1.0 );
 
 			return vec4( mix( color0, color1, mipF ), 1.0 );
 
@@ -260,7 +270,7 @@ varying vec3 vWorldPos;
 
 	}
 
-#endif //! WALL_COUNT
+#endif //! USE_PROBE_PMREM
 
 /////////////////////////////////////////////////////////////////////
 // multiprobe
@@ -307,11 +317,13 @@ varying vec3 vWorldPos;
 
       vec4 envMapColor = vec4(0.0);
 
+      #if PROBE_COUNT > 0
       if(i == 0){
 
           envMapColor += pmremUV( uProbeTextures[0], localReflectVec, roughness );
 
       }
+      #endif
       #if PROBE_COUNT > 1
       else if( i == 1){
 
@@ -472,9 +484,6 @@ const multiProbe = /* glsl */ `
 #ifdef PROBE_COUNT
 
 float roughness = material.roughness;
-
-float weights[PROBE_COUNT];
-float wTotal = 0.0;
 
 // 표면에서 반사되는 벡터를 월드좌표계에서 본 것
 vec3 worldReflectVec = reflect( - geometryViewDir, geometryNormal );
@@ -684,6 +693,7 @@ export const patchFragment = (shader: Shader) => {
   // 4. lightmap transition & contrast
   shader.fragmentShader = shader.fragmentShader.replace(lightmapTarget, lightmapContent);
 
+  // 5. 디버깅용으로 셰이더 가장 마지막 부분에 추가
   shader.fragmentShader = shader.fragmentShader.replace("//END_OF_FRAG", debugging)
 
   return shader;

@@ -99,3 +99,11 @@ THREE.Vector3.prototype.isHidden = function (
   const hidden = filtered.length > 0;
   return hidden;
 };
+
+THREE.Vector3.prototype.revert = function () {
+  this.x = 1 / this.x;
+  this.y = 1 / this.y;
+  this.z = 1 / this.z;
+
+  return this;
+};
