@@ -3,7 +3,6 @@ import React from 'react';
 import SceneInfo from '../components/SceneInfo';
 import SceneTree from '../components/SceneTree';
 import { loadHistoryAtom, panelTabAtom, Tab, Tabs } from '../scripts/atoms';
-import ShaderTestPanel from '../ShaderTestPanel.tsx';
 import HotSpotPanel from './HotspotPanel';
 import { OptionTab } from './OptionTab.tsx';
 import ProbeInfo from './ProbeInfo';
@@ -12,7 +11,6 @@ import TourPanel from './TourPanel';
 import WallTab from './WallTab.tsx';
 
 const tabMap: { [key in Tab]: React.ReactNode } = {
-  shadertest: <ShaderTestPanel></ShaderTestPanel>,
   scene: <SceneInfo />,
   tree: <SceneTree></SceneTree>,
   probe: <ProbeInfo></ProbeInfo>,

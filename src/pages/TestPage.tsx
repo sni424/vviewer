@@ -1,11 +1,5 @@
-import ShaderTest from '../components/test/ShaderTest';
-
 function TestPage() {
-  return (
-    <div className="fullscreen">
-      <ShaderTest></ShaderTest>
-    </div>
-  );
+  return <div className="fullscreen"></div>;
 }
 
 export default TestPage;

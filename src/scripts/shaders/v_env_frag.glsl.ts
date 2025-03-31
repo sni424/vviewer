@@ -566,14 +566,14 @@ vec4 envMapColor = vec4(0.0);
   }    
   #pragma unroll_loop_end
 
-  envMapColor = probeColor(worldReflectVec, closestProbeIndex, roughness);
+  envMapColor = probeColor(worldReflectVec, closestProbeIndex, roughness * roughness);
 
 #else // ifndef V_ENV_MAP_FLOOR
 
   ////////////////////////////////////////////////
   // case2. 바닥이 아닌 여러 개의 프로브가 적용되는 경우
   // 그냥 제일 가까운 프로브 반사
-  envMapColor = probeColor(worldReflectVec, minIndex, roughness);
+  envMapColor = probeColor(worldReflectVec, minIndex, roughness * roughness);
   // envMapColor = vec4(1.0, 0.0, 0.0, 1.0);
       
 #endif //!V_ENV_MAP_FLOOR
