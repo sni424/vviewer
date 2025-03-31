@@ -14,7 +14,6 @@ import {
   threeExportsAtom,
 } from '../scripts/atoms';
 import { Quaternion, THREE, Vector3 } from '../scripts/VTHREE';
-import Clipping from './clipping/Clipping';
 
 const CameraPanel = () => {
   const [isCameraPanel, setCameraPanel] = useState(true);
@@ -434,7 +433,6 @@ const CameraPanel = () => {
                 />
               </div>
             </div>
-            <Clipping />
           </section>
         </div>
       ) : (

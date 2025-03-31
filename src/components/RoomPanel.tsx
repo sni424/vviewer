@@ -6,14 +6,14 @@ import {
   newRoom,
   newRoomAtom,
   newRoomCreateOption,
-  roomAtom,
   threeExportsAtom,
 } from '../scripts/atoms';
 import { loadRooms, uploadJson } from '../scripts/atomUtils';
 import { THREE } from '../scripts/VTHREE';
 
 const uploadRooms = async () => {
-  const hotspots = getAtomValue(roomAtom);
+  // const hotspots = getAtomValue(roomAtom);
+  const hotspots = getAtomValue(newRoomAtom);
 
   uploadJson('rooms.json', hotspots)
     .then(res => res.json())

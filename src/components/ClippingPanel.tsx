@@ -1,18 +1,51 @@
 import { useAtom, useAtomValue } from 'jotai';
 import { useEffect, useState } from 'react';
-import { globalGlAtom, threeExportsAtom } from '../../scripts/atoms';
-import { THREE } from '../../scripts/VTHREE';
+import { globalGlAtom, threeExportsAtom } from '../scripts/atoms';
+import { loadClipping, uploadJson } from '../scripts/atomUtils';
+import { THREE } from '../scripts/VTHREE';
 
-const Clipping = () => {
+const ClippingPanel = () => {
   const [glSetting, setGlSetting] = useAtom(globalGlAtom);
   const threeExports = useAtomValue(threeExportsAtom);
 
   const [clippingY, setClippingY] = useState(3);
 
+  const [clippingObject, setClippingObject] = useState<string>('');
+
   const globalPlane = new THREE.Plane(new THREE.Vector3(0, -1, 0), 5);
   if (!threeExports) {
     return null;
   }
+
+  const uploadClipping = async () => {
+    const parsed = JSON.parse(clippingObject);
+
+    uploadJson('clipping.json', parsed)
+      .then(res => res.json())
+      .then(res => {
+        if (res?.success === true) {
+          alert('업로드 완료');
+        } else {
+          throw res;
+        }
+      })
+      .catch(err => {
+        console.error(err);
+        alert('업로드 실패');
+      });
+  };
+
+  const loadClippingFun = async () => {
+    loadClipping()
+      .then(res => {
+        setClippingObject(JSON.stringify(res));
+        alert('클리핑핑 로드완료');
+      })
+      .catch(err => {
+        console.error(err);
+        alert('클리핑 로드실패');
+      });
+  };
 
   const { gl } = threeExports;
   useEffect(() => {
@@ -65,8 +98,33 @@ const Clipping = () => {
           />
         </div>
       )}
+      <div>
+        <p>clipping Mesh</p>
+        <button
+          onClick={() => {
+            uploadClipping();
+          }}
+        >
+          업로드
+        </button>
+        <button
+          onClick={() => {
+            loadClippingFun();
+          }}
+        >
+          불러오기
+        </button>
+        <div>
+          <textarea
+            value={clippingObject}
+            onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => {
+              setClippingObject(e.target.value);
+            }}
+          ></textarea>
+        </div>
+      </div>
     </div>
   );
 };
 
-export default Clipping;
+export default ClippingPanel;

@@ -320,6 +320,7 @@ export const Tabs = [
   'option',
   'wall',
   'skyBox',
+  'clipping',
 ] as const;
 export type Tab = (typeof Tabs)[number];
 export const panelTabAtom = atom<Tab>('scene');
