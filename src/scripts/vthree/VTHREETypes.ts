@@ -58,6 +58,9 @@ export type MATERIAL_SHADER = {
       uProbeIntensity: {
         value: number;
       },
+      uProbeContrast: {
+        value: number;
+      },
       uCubeUVMaxMip: { value: number };
       uCubeUVTexelWidth: { value: number };
       uCubeUVTexelHeight: { value: number };
@@ -70,7 +73,7 @@ export type MATERIAL_SHADER = {
           index: number; //프로브인덱스
         }[];
       };
-      // 벽을 쓰는 프로브일 때만
+      // 벽 사용 시 참조할 최대 벽 거리
       uProbeBlendDist?: {
         value: number;
       }
@@ -213,6 +216,7 @@ export const DEFAULT_MATERIAL_SHADER: MATERIAL_SHADER = {
       uProbe: undefined as unknown as any,
       uProbeTextures: undefined as unknown as any,
       uProbeIntensity: undefined as unknown as any,
+      uProbeContrast: undefined as unknown as any,
       uCubeUVMaxMip: undefined as unknown as any,
       uCubeUVTexelWidth: undefined as unknown as any,
       uCubeUVTexelHeight: undefined as unknown as any,

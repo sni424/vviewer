@@ -13,6 +13,7 @@ import VTextureLoader from '../scripts/loaders/VTextureLoader.ts';
 import { loadHDRTexture, loadPNGAsENV } from '../scripts/utils';
 import { THREE } from '../scripts/vthree/VTHREE.ts';
 import MapPreview, { MapPreviewProps } from './MapPreview';
+import ProbeSelector from './ProbeSelector.tsx';
 
 interface MapInfoProps extends MapPreviewProps {
   materialRange?: {
@@ -38,39 +39,40 @@ const setMap = (
   mapKey: string,
   texture: THREE.Texture | null,
 ) => {
-  const dstKey = mapKey as keyof THREE.Material;
+  const mat = material.physical;
+  const dstKey = mapKey as keyof THREE.MeshPhysicalMaterial;
   if (dstKey === 'lightMap') {
-    material.lightMap = texture;
+    mat.lightMap = texture;
   } else if (dstKey === 'map') {
-    material.map = texture;
+    mat.map = texture;
   } else if (dstKey === 'emissiveMap') {
-    material.emissiveMap = texture;
+    mat.emissiveMap = texture;
   } else if (dstKey === 'bumpMap') {
-    material.bumpMap = texture;
+    mat.bumpMap = texture;
   } else if (dstKey === 'normalMap') {
-    material.normalMap = texture;
+    mat.normalMap = texture;
   } else if (dstKey === 'displacementMap') {
-    material.displacementMap = texture;
+    mat.displacementMap = texture;
   } else if (dstKey === 'roughnessMap') {
-    material.roughnessMap = texture;
+    mat.roughnessMap = texture;
   } else if (dstKey === 'metalnessMap') {
-    material.metalnessMap = texture;
+    mat.metalnessMap = texture;
   } else if (dstKey === 'alphaMap') {
-    material.alphaMap = texture;
+    mat.alphaMap = texture;
   } else if (dstKey === 'envMap') {
     if (texture) {
-      material.envMap = texture;
+      mat.envMap = texture;
     } else {
-      material.envMap = null;
-      delete material.vUserData.probeId;
-      material.needsUpdate = true;
+      mat.envMap = null;
+      delete mat.vUserData.probeId;
+      mat.needsUpdate = true;
     }
   } else if (dstKey === 'aoMap') {
-    material.aoMap = texture;
+    mat.aoMap = texture;
   } else {
     throw new Error('Invalid mapKey @MaterialPanel');
   }
-  material.needsUpdate = true;
+  mat.needsUpdate = true;
 };
 
 const MapInfo = (props: MapInfoProps) => {
@@ -378,7 +380,7 @@ const MapSection = ({ mat }: { mat: THREE.Material }) => {
             materialRange={{
               matKey: 'lightMapIntensity',
               onChange: value => {
-                mat.lightMapIntensity = value;
+                mat.standard.lightMapIntensity = value;
                 mat.needsUpdate = true;
               },
               max: LIGHTMAP_INTENSITY_MAX,
@@ -393,7 +395,7 @@ const MapSection = ({ mat }: { mat: THREE.Material }) => {
             materialRange={{
               matKey: 'roughness',
               onChange: value => {
-                mat.roughness = value;
+                mat.standard.roughness = value;
                 mat.needsUpdate = true;
               },
             }}
@@ -651,17 +653,10 @@ function MaterialPanelContainer() {
         <div style={{ fontSize: 10, color: '#444' }}>{mat.type}</div>
       </div>
       {/* <MaterialPanel style={{width:"100%"}} mat={mat}></MaterialPanel> */}
+      <ProbeSelector material={mat}></ProbeSelector>
 
       <MapSection mat={mat as THREE.Material} />
-      {/*<>*/}
-      {/*  {isStandard && (*/}
-      {/*    <div className="my-2">*/}
-      {/*      <button className="w-full" onClick={standardToPhysical}>*/}
-      {/*        MeshPhysicalMaterial 전환*/}
-      {/*      </button>*/}
-      {/*    </div>*/}
-      {/*  )}*/}
-      {/*</>*/}
+
       <button
         onClick={() => {
           console.log(mat);

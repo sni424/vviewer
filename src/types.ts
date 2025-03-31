@@ -450,4 +450,4 @@ export type WallCreateOption = WallMeta & {
   }
 };
 
-export type ProbeTypes = "single" | "multi" | "multiWall";
+export type ProbeTypes = "multi" | "multiWall";

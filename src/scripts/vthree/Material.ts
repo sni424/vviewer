@@ -349,6 +349,7 @@ THREE.Material.prototype.prepareProbe = function (params: {
     uProbe: { value: probe },
     uProbeTextures: { value: textures },
     uProbeIntensity: { value: 1.0 },
+    uProbeContrast: { value: 1.0 },
     uCubeUVMaxMip: { value: 0.0 },
     uCubeUVTexelWidth: { value: 0.0 },
     uCubeUVTexelHeight: { value: 0.0 },
@@ -369,6 +370,10 @@ THREE.Material.prototype.prepareProbe = function (params: {
     }
     uniform.uWall = { value: walls };
     uniform.uProbeBlendDist = { value: 20.0 };
+  } else {
+    this.removeDefine("WALL_COUNT");
+    delete this.uniform.uWall;
+    delete this.uniform.uProbeBlendDist;
   }
 
   for (const _key in uniform) {
@@ -450,6 +455,9 @@ THREE.Material.prototype.applyProbe = function (params: {
     uProbeIntensity: {
       value: 1.0
     },
+    uProbeContrast: {
+      value: 1.0
+    },
 
     ...pmremUniforms,
 
@@ -468,10 +476,14 @@ THREE.Material.prototype.applyProbe = function (params: {
 
     uniforms.uWall = {
       value: targetWalls
-    }
+    };
     uniforms.uProbeBlendDist = {
       value: 20.0
-    }
+    };
+  } else {
+    this.removeDefine("WALL_COUNT");
+    delete this.uniform.uWall;
+    delete this.uniform.uProbeBlendDist;
   }
 
   // shader.uniforms에 적용

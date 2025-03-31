@@ -65,6 +65,7 @@ varying vec3 vWorldPos;
   uniform samplerCube uProbeTextures[PROBE_COUNT];
   #endif
   uniform float uProbeIntensity;
+  uniform float uProbeContrast;
 
   #ifdef WALL_COUNT
     struct Wall {
@@ -451,8 +452,9 @@ varying vec3 vWorldPos;
       vec2 v3 = vec2(-rd.y, rd.x); // 광선의 법선 벡터
 
       float dotProduct = dot(v2, v3);
-      if(abs(dotProduct) < 1e-6f)
+      if(abs(dotProduct) < 1e-6f) {
           return false; // 광선과 선이 평행함
+      }
 
       float t1 = (v2.x * v1.y - v2.y * v1.x) / dotProduct;
       float t2 = dot(v1, v3) / dotProduct;
@@ -463,7 +465,8 @@ varying vec3 vWorldPos;
       }
       return false;
     }
-  #endif //!V_ENV_MAP_FLOOR
+
+  #endif //!WALL_COUNT
 
 
 #endif //!V_ENV_MAP
@@ -532,7 +535,6 @@ vec4 envMapColor = vec4(0.0);
 ////////////////////////////////////////////////
 // case 1. 바닥
 #ifdef WALL_COUNT
-  vec3 localReflectVec = parallaxCorrectNormal( worldReflectVec, uProbe[minIndex].size, uProbe[minIndex].center );
 
   int closestWallIndex = -1;
   int closestProbeIndex = minIndex;
@@ -549,16 +551,17 @@ vec4 envMapColor = vec4(0.0);
       vec2 origin = vWorldPos.xz;
       vec2 ray = worldReflectVec.xz;
       vec2 intersection = vec2(0.0);
+      float tRay;
 
       if(intersectRaySegment(start, end, origin, ray, intersection)){
           
-      float dist = lengthSquared(intersection - origin);
+        float dist = lengthSquared(intersection - origin);
 
-          if(dist < closestWallDist){
-              closestWallDist = dist;
-              closestWallIndex = i;
-              closestProbeIndex = probeIndex;
-          }
+        if(dist < closestWallDist){
+            closestWallDist = dist;
+            closestWallIndex = i;
+            closestProbeIndex = probeIndex;
+        }
       }
   }    
   #pragma unroll_loop_end
@@ -575,7 +578,7 @@ vec4 envMapColor = vec4(0.0);
       
 #endif //!V_ENV_MAP_FLOOR
 
-radiance += clamp(envMapColor.rgb, 0.0, 1.0) * uProbeIntensity;
+radiance += clamp(pow(envMapColor.rgb, vec3(uProbeContrast)), 0.0, 1.0) * uProbeIntensity;
 
 #endif //!V_ENV_MAP
 
