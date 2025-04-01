@@ -1,4 +1,9 @@
+import gsap from 'gsap';
 import { useAtom, useAtomValue } from 'jotai';
+import { useSetAtom } from 'jotai/index';
+import * as THREE from 'VTHREE';
+import { ENV } from '../../Constants.ts';
+import { Walls } from '../../types.ts';
 import {
   animationDurationAtom,
   getAtomValue, getWallCacheAtom,
@@ -13,22 +18,14 @@ import {
   useToast,
 } from '../atoms.ts';
 import { loadJson, loadOption, uploadJson, wallsToWallOption } from '../atomUtils.ts';
-import { Effects, ModelOptionObject } from '../ModelOptionObject.ts';
-import { getVKTX2Loader } from '../loaders/VKTX2Loader.ts';
 import { createLightmapCache } from '../loaders/VGLTFLoader.ts';
-import ModelOption from './ModelOption.ts';
-import * as THREE from '../VTHREE.ts';
-import OptionState, { FunctionEffects } from './OptionState.ts';
-import gsap from 'gsap';
-import VMaterial from '../material/VMaterial.ts';
+import { getVKTX2Loader } from '../loaders/VKTX2Loader.ts';
+import { Effects, ModelOptionObject } from '../ModelOptionObject.ts';
 import {
-  changeMeshLightMapWithTransition,
-  changeMeshVisibleWithTransition, isImage,
+  isImage
 } from '../utils.ts';
-import { ENV } from '../../Constants.ts';
-import { useSetAtom } from 'jotai/index';
-import { useEffect } from 'react';
-import { Walls } from '../../types.ts';
+import ModelOption from './ModelOption.ts';
+import OptionState, { FunctionEffects } from './OptionState.ts';
 
 const useOptionManager = () => {
   const threeExports = useAtomValue(threeExportsAtom);
@@ -137,7 +134,7 @@ const useOptionManager = () => {
     if (functionResult.changeMinimap) {
       const targetMinimap = functionResult.minimap;
       if (targetMinimap) {
-      setMinimapInfo(pre => ({ ...pre, useIndex: targetMinimap }));
+        setMinimapInfo(pre => ({ ...pre, useIndex: targetMinimap }));
       }
     }
 
@@ -197,7 +194,7 @@ const useOptionManager = () => {
       if (object) {
         const mesh = object as THREE.Mesh;
         const effects = meshEffect.effect;
-        const mat = mesh.material as VMaterial;
+        const mat = mesh.matStandard;
         // Visible Control
         if (effects.useVisible) {
           const targetVisible = anlayzed.meshResult[mesh.name].visible;
@@ -206,12 +203,35 @@ const useOptionManager = () => {
           }
 
           if (mesh.visible !== targetVisible) {
-            changeMeshVisibleWithTransition(
-              mesh,
-              animationDuration,
-              targetVisible,
-              timeLine,
-            );
+
+            // changeMeshVisibleWithTransition(
+            //   mesh,
+            //   animationDuration,
+            //   targetVisible,
+            //   timeLine,
+            // );
+            const transparency = mat.transparent;
+            timeLine.to({ progress: 0 }, {
+              progress: 1,
+              duration: animationDuration,
+              onStart() {
+                mat.prepareMeshTransition({
+                  direction: targetVisible ? "fadeIn" : "fadeOut",
+                })
+                mesh.visible = true;
+                mat.transparent = true;
+              },
+              onUpdate() {
+                const progressValue = this.targets()[0].progress;
+                mat.progress = progressValue;
+              },
+              onComplete() {
+                mesh.visible = targetVisible;
+                mat.MESH_TRANSITION = false;
+                mat.transparent = transparency;
+              }
+            })
+
           }
         }
 
@@ -231,12 +251,29 @@ const useOptionManager = () => {
           } else if (keys.includes(target)) {
             const { texture } = lightMapCache[target];
             texture.flipY = false;
-            changeMeshLightMapWithTransition(
-              mesh,
-              animationDuration,
-              texture,
-              timeLine,
-            );
+            // changeMeshLightMapWithTransition(
+            //   mesh,
+            //   animationDuration,
+            //   texture,
+            //   timeLine,
+            // );
+            timeLine.to({ progress: 0 }, {
+              progress: 1,
+              duration: animationDuration,
+              onStart() {
+                mat.uniform.uLightMapTo.value = texture;
+                mat.uniform.uUseLightMapTransition.value = true;
+                mat.progress = 0;
+              },
+              onUpdate() {
+                const progressValue = this.targets()[0].progress;
+                mat.progress = progressValue;
+              },
+              onComplete() {
+                mat.lightMap = texture;
+                mat.uniform.uUseLightMapTransition.value = false;
+              }
+            })
           } else {
             // TODO fetch
           }
@@ -262,7 +299,7 @@ const useOptionManager = () => {
     ) {
       const minimapIndex = functionResults.minimap;
       if (minimapIndex !== undefined) {
-      setMinimapInfo(pre => ({ ...pre, useIndex: minimapIndex }));
+        setMinimapInfo(pre => ({ ...pre, useIndex: minimapIndex }));
       }
     }
 
@@ -368,13 +405,15 @@ const useOptionManager = () => {
           meshResult[meshName] = { visible: effects.visibleValue };
         }
 
-        const optionId = Object.keys(selectedInfo);
-        const lmValues = effects.lightMapValues;
-        const lmValuesKeys = Object.keys(lmValues!!);
-        const targetIds = optionId.filter(k => lmValuesKeys.includes(k));
-        const targetId = targetIds[0];
-        meshResult[meshName].lightMap =
-          lmValues!![targetId][selectedInfo[targetId]];
+        if (effects.useLightMap) {
+          const optionId = Object.keys(selectedInfo);
+          const lmValues = effects.lightMapValues;
+          const lmValuesKeys = Object.keys(lmValues!!);
+          const targetIds = optionId.filter(k => lmValuesKeys.includes(k));
+          const targetId = targetIds[0];
+          meshResult[meshName].lightMap =
+            lmValues!![targetId][selectedInfo[targetId]];
+        }
       });
     });
 
