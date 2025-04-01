@@ -19,6 +19,7 @@ import useFiles from '../scripts/useFiles';
 import useModelDragAndDrop from '../scripts/useModelDragAndDrop';
 import { toggleDP } from '../scripts/utils.ts';
 import { getSettings, loadSettings } from './useSettings';
+import MinimapPanel from '../components/test/MinimapPanel.tsx';
 
 function Loading() {
   const files = useFiles();
@@ -213,6 +214,7 @@ const ViewerPage = () => {
         onDrop={handleDrop}
       >
         <RendererContainer />
+        <MinimapPanel/>
         <Views></Views>
         <CameraPanel />
         <OptionPanel></OptionPanel>

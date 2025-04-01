@@ -51,6 +51,7 @@ import Hotspot from './Hotspot';
 import PostProcess from './PostProcess';
 import Rooms from './Rooms';
 import SelectBox from './SelectBox';
+import SkyBoxMesh from './SkyBox.tsx';
 import Walls from './Walls.tsx';
 
 const MainGrid = () => {
@@ -310,6 +311,7 @@ function Renderer() {
       <Walls></Walls>
       <MainGrid></MainGrid>
       <Hotspot></Hotspot>
+      <SkyBoxMesh></SkyBoxMesh>
     </>
   );
 }

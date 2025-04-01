@@ -7,6 +7,7 @@ import HotSpotPanel from './HotspotPanel';
 import { OptionTab } from './OptionTab.tsx';
 import ProbeInfo from './ProbeInfo';
 import RoomPanel from './RoomPanel';
+import SkyBoxPanel from './SkyBoxPanel.tsx';
 import TourPanel from './TourPanel';
 import WallTab from './WallTab.tsx';
 
@@ -19,6 +20,7 @@ const tabMap: { [key in Tab]: React.ReactNode } = {
   room: <RoomPanel></RoomPanel>,
   option: <OptionTab></OptionTab>,
   wall: <WallTab></WallTab>,
+  skyBox: <SkyBoxPanel></SkyBoxPanel>,
 } as const;
 
 const ThePanel = () => {

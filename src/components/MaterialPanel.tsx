@@ -518,6 +518,8 @@ const ColorInfo = ({ mat }: { mat: THREE.Material }) => {
 const OpacityPanel = ({ mat }: { mat: THREE.Material }) => {
   const [opacity, setOpacity] = useState(mat.opacity);
   const [transparent, setTransparent] = useState(mat.transparent);
+  const [depthWrite, setDepthWrite] = useState(mat.depthWrite);
+  const [depthTest, setDepthTest] = useState(mat.depthTest);
 
   useEffect(() => {
     setTransparent(mat.transparent);
@@ -525,39 +527,57 @@ const OpacityPanel = ({ mat }: { mat: THREE.Material }) => {
   }, [mat]);
 
   return (
-    <div className="w-full text-[11px]">
-      <div className="flex items-center gap-x-2">
-        <strong>투명도 설정</strong>
-        <input
-          type="checkbox"
-          checked={transparent}
-          onChange={e => {
-            const value = e.target.checked;
-            setTransparent(value);
-            mat.transparent = value;
-            mat.needsUpdate = true;
-          }}
-        />
-      </div>
-      {transparent && (
-        <div className="mt-3">
-          <strong>Opacity</strong>
-          <div style={{ display: 'flex', width: '100%', gap: 8 }}>
-            <div
-              style={{
-                flex: 1,
-                minWidth: 0,
-              }}
-            >
-              <input
+    <div>
+      <strong style={{fontSize: 12}}>Transparency</strong>
+
+      <div className="w-full flex flex-col gap-y-1 text-[11px] p-1 border border-black rounded mt-1">
+        <div className="flex items-center gap-x-2">
+          <strong>투명도 설정</strong>
+          <input
+            type="checkbox"
+            checked={transparent}
+            onChange={e => {
+              const value = e.target.checked;
+              setTransparent(value);
+              mat.transparent = value;
+              mat.needsUpdate = true;
+            }}
+          />
+        </div>
+        {transparent && (
+          <div className="">
+            <strong>Opacity</strong>
+            <div style={{ display: 'flex', width: '100%', gap: 8 }}>
+              <div
                 style={{
-                  width: '100%',
+                  flex: 1,
+                  minWidth: 0,
                 }}
-                type="range"
+              >
+                <input
+                  style={{
+                    width: '100%',
+                  }}
+                  type="range"
+                  min={0}
+                  max={1}
+                  step={0.01}
+                  value={mat.opacity}
+                  onChange={e => {
+                    const value = parseFloat(e.target.value);
+                    mat.opacity = value;
+                    setOpacity(value);
+                    mat.needsUpdate = true;
+                  }}
+                />
+              </div>
+              <input
+                style={{ width: 35, borderRadius: 4 }}
+                type="number"
                 min={0}
                 max={1}
                 step={0.01}
-                value={mat.opacity}
+                value={opacity}
                 onChange={e => {
                   const value = parseFloat(e.target.value);
                   mat.opacity = value;
@@ -566,23 +586,33 @@ const OpacityPanel = ({ mat }: { mat: THREE.Material }) => {
                 }}
               />
             </div>
-            <input
-              style={{ width: 35, borderRadius: 4 }}
-              type="number"
-              min={0}
-              max={1}
-              step={0.01}
-              value={opacity}
-              onChange={e => {
-                const value = parseFloat(e.target.value);
-                mat.opacity = value;
-                setOpacity(value);
-                mat.needsUpdate = true;
-              }}
-            />
           </div>
+        )}
+        <div className="flex items-center gap-x-2">
+          <strong>depth Test</strong>
+          <input
+            type="checkbox"
+            checked={depthTest}
+            onChange={e => {
+              const value = e.target.checked;
+              setDepthTest(value);
+              mat.depthTest = value;
+            }}
+          />
         </div>
-      )}
+        <div className="flex items-center gap-x-2">
+          <strong>depth Write</strong>
+          <input
+            type="checkbox"
+            checked={depthWrite}
+            onChange={e => {
+              const value = e.target.checked;
+              setDepthWrite(value);
+              mat.depthWrite = value;
+            }}
+          />
+        </div>
+      </div>
     </div>
   );
 };

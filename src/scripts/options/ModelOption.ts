@@ -1,7 +1,7 @@
 import { v4 } from 'uuid';
+import * as THREE from 'VTHREE';
 import { Effects, ModelOptionObject } from '../ModelOptionObject.ts';
-import * as THREE from '../vthree/VTHREE.ts';
-import OptionState from './OptionState.ts';
+import OptionState, { FunctionEffects } from './OptionState.ts';
 
 class ModelOption {
   private _id: string = v4();
@@ -94,7 +94,13 @@ class ModelOption {
       },
       {} as {
         [key: string]: {
-          [key: string]: { mesh: THREE.Mesh; effects: Effects };
+          meshEffects: {
+            [key: string]: {
+              mesh: THREE.Mesh;
+              effects: Effects;
+            };
+          },
+          functionEffects: FunctionEffects;
         };
       },
     );

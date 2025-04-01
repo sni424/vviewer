@@ -78,6 +78,7 @@ export const ENV = {
   model_dp: base + 'model_dp.glb',
   lut: base.replace('models/', '') + 'static/lut',
   navMesh: base + 'nav.glb',
+  modelUpload: import.meta.env.VITE_UPLOAD_URL as string,
 };
 
 export const HotspotIcon = {

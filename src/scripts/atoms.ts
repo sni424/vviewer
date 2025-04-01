@@ -21,7 +21,7 @@ import {
   Matrix4Array,
   View,
   ViewportOption,
-  WallCreateOption
+  WallCreateOption, Walls,
 } from '../types';
 import ModelOption from './options/ModelOption.ts';
 import ReflectionProbe from './ReflectionProbe.ts';
@@ -114,16 +114,16 @@ export const orbitControlAtom = atom<OrbitControls>();
 export type Env = {
   select: 'none' | 'preset' | 'custom' | 'url';
   preset?:
-  | 'apartment'
-  | 'city'
-  | 'dawn'
-  | 'forest'
-  | 'lobby'
-  | 'night'
-  | 'park'
-  | 'studio'
-  | 'sunset'
-  | 'warehouse';
+    | 'apartment'
+    | 'city'
+    | 'dawn'
+    | 'forest'
+    | 'lobby'
+    | 'night'
+    | 'park'
+    | 'studio'
+    | 'sunset'
+    | 'warehouse';
   url?: string;
   intensity?: number;
   rotation?: {
@@ -132,6 +132,16 @@ export type Env = {
     z: number;
   };
 };
+
+export const minimapAtom = atom<{show: boolean; urls: string[]; useIndex: number }>({
+  show: false,
+  urls: [
+    'https://vra-configurator-dev.s3.ap-northeast-2.amazonaws.com/models/images/miniMap',
+    'https://vra-configurator-dev.s3.ap-northeast-2.amazonaws.com/models/images/miniMap_expanded',
+  ],
+  useIndex: 0,
+});
+
 // export const envAtom = atom<Env>({ select: "none" });
 export const envAtom = atom<Env>({
   select: 'none',
@@ -144,6 +154,7 @@ export const ktxTexturePreviewCachedAtom = atom<{
 }>({});
 
 export const selectedAtom = atom<string[]>([]);
+export const animationDurationAtom = atom<number>(1.5);
 export const forceUpdateAtom = atom<number>(0);
 export const setForceUpdate = () => {
   const setForceUpdateAtom = useSetAtom(forceUpdateAtom);
@@ -318,6 +329,7 @@ export const Tabs = [
   'hotspot',
   'option',
   'wall',
+  'skyBox',
 ] as const;
 export type Tab = (typeof Tabs)[number];
 export const panelTabAtom = atom<Tab>('scene');
@@ -326,6 +338,7 @@ export const treeSearchAtom = atom<string | undefined>();
 
 export const modelOptionClassAtom = atom<ModelOption[]>([]);
 export const optionSelectedAtom = atom<{ [key: string]: string }>({});
+export const optionProcessingAtom = atom<boolean>(false);
 
 //카메라 정보값
 export const lastCameraInfoAtom = atom<{
@@ -504,6 +517,11 @@ export const [wallOptionAtom,
   autoCreateWall: true
 });
 
+export const [wallCacheAtom,
+  getWallCacheAtom,
+  setWallCacheAtom
+] = createAtomCombo<{[key:string]: Walls}>({});
+
 export const [wallHighlightAtom,
   getWallHighlightAtom,
   setWallHighlightAtom
@@ -584,6 +602,50 @@ export const lightMapAtom = atom<{
     image?: Blob;
   };
 }>({});
+
+export const skyBoxAtom = atom<{
+  isSkyBox: boolean, type: string, texture?: THREE.Texture, mesh: {
+    intensity: number
+    rotation: {
+      x: number,
+      y: number,
+      z: number,
+    }
+    position: {
+      x: number,
+      y: number,
+      z: number,
+    }
+    scale: {
+      x: number,
+      y: number,
+      z: number,
+    }
+  }
+}>(
+  {
+    isSkyBox: false,
+    type: "mesh",
+    mesh: {
+      intensity: 1,
+      rotation: {
+        x: 0,
+        y: 0,
+        z: 0
+      },
+      position: {
+        x: 0,
+        y: 0,
+        z: 0
+      },
+      scale: {
+        x: 1,
+        y: 1,
+        z: 1
+      }
+    }
+  }
+)
 
 export type DrawablePoint = {
   point: THREE.Matrix4 | THREE.Vector3 | { x: number; z: number };

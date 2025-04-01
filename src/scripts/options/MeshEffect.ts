@@ -1,6 +1,7 @@
 import { Effects, MeshEffectJSON } from '../ModelOptionObject.ts';
 import * as THREE from '../vthree/VTHREE.ts';
 import OptionState from './OptionState.ts';
+import ModelOption from './ModelOption.ts';
 
 export default class MeshEffect {
   private readonly _targetMeshProperties: { name: string; uuid: string };
@@ -11,6 +12,7 @@ export default class MeshEffect {
     useLightMap: false,
     visibleValue: false,
     lmValue: null,
+    lightMapValues: {},
   };
   private readonly _parent: OptionState;
 
@@ -24,6 +26,7 @@ export default class MeshEffect {
     if (targetMesh) {
       this._targetMesh = targetMesh;
     }
+    this._optionEffect.lightMapValues = {};
   }
 
   get meshProperty() {
@@ -32,6 +35,10 @@ export default class MeshEffect {
 
   get parent(): OptionState {
     return this._parent;
+  }
+
+  get grandParent(): ModelOption {
+    return this._parent.parent;
   }
 
   get mesh(): THREE.Mesh | null {
@@ -100,6 +107,27 @@ export default class MeshEffect {
 
   set effect(value: Effects) {
     this._optionEffect = value;
+  }
+
+  get lightMapValues() {
+    return this._optionEffect.lightMapValues!!;
+  }
+
+  setLightMapValues(targetState: OptionState, url: string) {
+    const lightMapValues = this._optionEffect.lightMapValues;
+    if (!lightMapValues) {
+      this._optionEffect.lightMapValues = {};
+    }
+
+    if (!lightMapValues) { // Temp Error Handle for Type
+      throw new Error('Can not set lightMapValues for this feature');
+    }
+
+    if (Object.keys(lightMapValues).includes(targetState.parent.id)) {
+      lightMapValues[targetState.parent.id] = { ...lightMapValues[targetState.parent.id], [targetState.id]: url };
+    } else {
+      lightMapValues[targetState.parent.id] = {[targetState.id]: url};
+    }
   }
 
   copy(newParent?: OptionState) {

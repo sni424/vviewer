@@ -33,6 +33,7 @@ import {
   lightMapAtom,
   lightMapContrastAtom,
   materialSettingAtom,
+  minimapAtom,
   postprocessAtoms,
   ProbeAtom,
   selectedAtom,
@@ -1114,6 +1115,38 @@ const GeneralPostProcessingControl = () => {
   );
 };
 
+const GeneralMinimapControl = () => {
+  const [{ show, urls, useIndex }, setMinimap] = useAtom(minimapAtom);
+
+  return (
+    <section style={{ width: '100%' }}>
+      <strong>미니맵</strong>
+      <div className="flex gap-x-1">
+        <span>보기</span>
+        <input
+          type="checkbox"
+          checked={show}
+          onChange={e => {
+            setMinimap(pre => ({ ...pre, show: !pre.show }));
+          }}
+        />
+      </div>
+      <div className="flex gap-x-1 mt-1">
+        {urls.map((url, index) => (
+          <button key={'minimapHandleButton-' + index}
+            onClick={() => {
+              setMinimap(pre => ({ ...pre, useIndex: index }));
+            }}
+            disabled={useIndex === index}
+          >
+            {index} 번 미니맵
+          </button>
+        ))}
+      </div>
+    </section>
+  );
+};
+
 const GeneralEnvironmentControl = () => {
   const [env, setEnv] = useEnvParams();
   const [envUrl, setEnvUrl] = useEnvUrl();
@@ -1752,6 +1785,7 @@ const SceneInfo = () => {
       <GeneralButtons></GeneralButtons>
       <GeneralMaterialControl></GeneralMaterialControl>
       <GeneralEnvironmentControl></GeneralEnvironmentControl>
+      <GeneralMinimapControl></GeneralMinimapControl>
       <GeneralPostProcessingControl></GeneralPostProcessingControl>
       <GeneralSceneInfo></GeneralSceneInfo>
 
