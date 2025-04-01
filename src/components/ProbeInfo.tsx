@@ -7,6 +7,7 @@ import React, {
   useState,
 } from 'react';
 import { v4 } from 'uuid';
+import { THREE } from 'VTHREE';
 import {
   getAtomValue,
   ProbeAtom,
@@ -22,7 +23,7 @@ import {
   threes,
   uploadJson,
 } from '../scripts/atomUtils.ts';
-import VMaterial from '../scripts/material/VMaterial.ts';
+import { applyMultiProbe } from '../scripts/probeUtils.ts';
 import ReflectionProbe, {
   ReflectionProbeJSON,
   ReflectionProbeResolutions,
@@ -34,10 +35,8 @@ import {
   loadPNGAsENV,
   splitExtension,
 } from '../scripts/utils.ts';
-import { THREE } from '../scripts/VTHREE.ts';
-import './probe.css';
 import { ProbeTypes } from '../types.ts';
-import { applyMultiProbe } from '../scripts/probeUtils.ts';
+import './probe.css';
 
 const uploadProbes = async () => {
   const probes = getAtomValue(ProbeAtom);
@@ -106,7 +105,7 @@ const ProbeInfo = () => {
         // scene.traverse(node => {
         //   if (node instanceof THREE.Mesh) {
         //     const n = node as THREE.Mesh;
-        //     const material = n.material as VMaterial;
+        //     const material = n.material as THREE.Material;
         //     if (material.vUserData.probeId === probe.getId()) {
         //       material.envMap = texture;
         //       material.updateEnvUniforms(probe.getCenter(), probe.getSize());
@@ -216,7 +215,7 @@ const ProbeInfo = () => {
     scene.traverse(o => {
       if (o.type === 'Mesh') {
         const mesh = o as THREE.Mesh;
-        const mat = mesh.material as VMaterial;
+        const mat = mesh.material as THREE.Material;
         const probeType = mat.vUserData.probeType;
         let obj: {
           probeIds?: string[];
@@ -269,11 +268,11 @@ const ProbeInfo = () => {
         }) => {
           console.log(applyInfo);
           const meshNames = Object.keys(applyInfo);
-          const materials: VMaterial[] = [];
+          const materials: THREE.Material[] = [];
           scene.traverse(o => {
             if (o.type === 'Mesh') {
               const mesh = o as THREE.Mesh;
-              const mat = mesh.material as VMaterial;
+              const mat = mesh.material as THREE.Material;
               if (meshNames.includes(mesh.name)) {
                 const info = applyInfo[mesh.name];
                 mat.vUserData.probeType = info.probeType;

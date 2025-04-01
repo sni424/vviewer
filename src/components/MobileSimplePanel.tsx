@@ -1,6 +1,7 @@
 import { useAtom, useAtomValue } from 'jotai/index';
 import { useEffect, useState } from 'react';
 import { v4 } from 'uuid';
+import { THREE } from 'VTHREE';
 import {
   cameraSettingAtom,
   DPAtom,
@@ -11,12 +12,10 @@ import {
   threeExportsAtom,
 } from '../scripts/atoms.ts';
 import { loadProbes } from '../scripts/atomUtils.ts';
-import VMaterial from '../scripts/material/VMaterial.ts';
 import ReflectionProbe, {
   ReflectionProbeJSON,
 } from '../scripts/ReflectionProbe.ts';
 import { toggleDP } from '../scripts/utils.ts';
-import { THREE } from '../scripts/VTHREE.ts';
 
 const DPController = () => {
   const threeExports = useAtomValue(threeExportsAtom);
@@ -74,7 +73,7 @@ const LMIntensityController = () => {
             }
           });
           allMeshes.forEach(mesh => {
-            (mesh.material as VMaterial).lightMapIntensity = parseFloat(
+            (mesh.material as THREE.Material).lightMapIntensity = parseFloat(
               e.target.value,
             );
           });

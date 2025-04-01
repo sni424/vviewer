@@ -1,8 +1,8 @@
 import { GizmoHelper, GizmoViewport } from '@react-three/drei';
 import { Canvas } from '@react-three/fiber';
 import React, { useEffect } from 'react';
+import { THREE } from 'VTHREE';
 import { Layer } from '../Constants';
-import { THREE } from '../scripts/VTHREE';
 import { View } from '../types';
 import { useGetThreeExports } from './canvas/Viewport';
 

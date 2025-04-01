@@ -1,6 +1,7 @@
 import { useAtom, useAtomValue } from 'jotai';
 import { useState } from 'react';
 import { v4 } from 'uuid';
+import { THREE } from 'VTHREE';
 import { __UNDEFINED__ } from '../Constants';
 import {
   getWallOptionAtom,
@@ -18,12 +19,12 @@ import {
 } from '../scripts/atomUtils';
 import {
   assignClosestProbeToWall,
+  cn,
   colorNumberToCSS,
   createWallFromPoints,
   getWallPoint,
   resetColor,
 } from '../scripts/utils';
-import { THREE } from '../scripts/VTHREE';
 import { WallCreateOption, WallPointView, Walls, WallView } from '../types';
 
 function WallDetail({
@@ -49,6 +50,9 @@ function WallDetail({
   const highlighted =
     useAtomValue(wallHighlightAtom).wallHighlights.includes(id);
   const probes = useAtomValue(ProbeAtom);
+
+  const probeIds = probes.map(p => p.getId());
+  const probeNotFound = !probeId || !probeIds.includes(probeId);
 
   return (
     <li
@@ -78,6 +82,7 @@ function WallDetail({
       ></div>
       <select
         value={probeId ?? __UNDEFINED__}
+        className={cn(probeNotFound ? 'bg-red-600 text-white' : undefined)}
         onChange={e => {
           setWallOptionAtom(prev => {
             const copied = { ...prev };
@@ -451,6 +456,26 @@ function WallTab() {
               불러오기
             </button>
           </form>
+        </div>
+        <div className="my-1 flex gap-x-1">
+          <button
+            onClick={() => {
+              loadJson<Walls>('walls_expanded.json').then(walls => {
+                setWallOptionAtom(wallsToWallOption(walls));
+              });
+            }}
+          >
+            확장 벽
+          </button>
+          <button
+            onClick={() => {
+              loadJson<Walls>('walls_none_expanded.json').then(walls => {
+                setWallOptionAtom(wallsToWallOption(walls));
+              });
+            }}
+          >
+            알파룸 벽
+          </button>
         </div>
         <h2>포인트 관련</h2>
         <div className="flex flex-col justify-center">

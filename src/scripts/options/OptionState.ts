@@ -1,14 +1,62 @@
+import { Pathfinding } from 'three-pathfinding';
 import { v4 } from 'uuid';
+import * as THREE from 'VTHREE';
+import { Walls } from '../../types.ts';
 import { threes } from '../atomUtils.ts';
 import { Effects, ModelOptionState } from '../ModelOptionObject.ts';
-import * as THREE from '../VTHREE.ts';
-import ModelOption from './ModelOption.ts';
 import MeshEffect from './MeshEffect.ts';
+import ModelOption from './ModelOption.ts';
+
+export type FunctionEffects = {
+  booleans: FunctionEffectsBooleans;
+  urls: FunctionEffectsURLs;
+  // If Required -> Minimap is just URL
+  objects?: {
+    walls?: Walls;
+    nav?: {
+      pathfinding: Pathfinding;
+      zoneId: string;
+    };
+    floor?: THREE.Mesh;
+  };
+};
+
+export type FunctionEffectsBooleans = {
+  changeMinimap: boolean;
+  changeWall: boolean;
+  changeNav: boolean;
+  changeFloor: boolean;
+}
+
+export type FunctionEffectsURLs = {
+  minimap: string; // URL
+  walls: string;
+  nav: string;
+  floor: string;
+}
+
+export type FunctionEffectsJSON = Omit<FunctionEffects, 'objects'>;
+
+const DEFAULT_FUNCTION_EFFECTS = {
+  booleans: {
+    changeMinimap: false,
+    changeWall: false,
+    changeNav: false,
+    changeFloor: false,
+  },
+  urls: {
+    minimap: '', // URL
+    walls: '',
+    nav: '',
+    floor: '',
+  }
+};
 
 export default class OptionState {
   private _id: string = v4();
   private _name: string;
-  private _effects: MeshEffect[] = [];
+  private _meshEffects: MeshEffect[] = [];
+  functionEffects: FunctionEffects = DEFAULT_FUNCTION_EFFECTS;
   private _expanded: boolean = true;
   private readonly _parent: ModelOption;
 
@@ -41,25 +89,25 @@ export default class OptionState {
     this._expanded = value;
   }
 
-  get effects(): MeshEffect[] {
-    return this._effects;
+  get meshEffects(): MeshEffect[] {
+    return this._meshEffects;
   }
 
-  set effects(value: MeshEffect[]) {
-    this._effects = value;
+  set meshEffects(value: MeshEffect[]) {
+    this._meshEffects = value;
   }
 
   // Main Logics
 
   private getIndex(target: string | THREE.Mesh): number {
     const name = typeof target === 'string' ? target : target.name;
-    return this._effects.findIndex(eff => eff.name === name);
+    return this._meshEffects.findIndex(eff => eff.name === name);
   }
 
   removeMesh(target: string | THREE.Mesh) {
     const idx = this.getIndex(target);
     if (idx > -1) {
-      this._effects.splice(idx, 1);
+      this._meshEffects.splice(idx, 1);
     }
   }
 
@@ -68,7 +116,7 @@ export default class OptionState {
   }
 
   arrangeEffects() {
-    const e = this._effects;
+    const e = this._meshEffects;
     const result: { [key: string]: { mesh: THREE.Mesh; effects: Effects } } =
       {};
     e.forEach(effect => {
@@ -80,23 +128,25 @@ export default class OptionState {
       }
     });
 
-    return result;
+    return { meshEffects: result, functionEffects: this.functionEffects };
   }
 
   copy() {
     const state = new OptionState(this.parent);
-    state.effects = this.effects.map(effect => effect.copy(state));
+    state.meshEffects = this.meshEffects.map(effect => effect.copy(state));
     return state;
   }
 
   toJSON(): ModelOptionState {
-    const effectsToJSON = this.effects.map(effect => effect.toJSON());
+    const effectsToJSON = this.meshEffects.map(effect => effect.toJSON());
+    const { booleans, urls }: FunctionEffects = this.functionEffects;
 
     return {
       id: this.id,
       stateName: this.name,
       expanded: this.expanded,
       meshEffects: effectsToJSON,
+      functionEffects: { booleans, urls }
     };
   }
 
@@ -108,7 +158,7 @@ export default class OptionState {
     this._id = state.id;
     this.name = state.stateName;
     this.expanded = state.expanded;
-    this.effects = state.meshEffects.map(effect => {
+    this.meshEffects = state.meshEffects.map(effect => {
       let mesh: THREE.Mesh | null = null;
 
       if (three) {
@@ -122,6 +172,8 @@ export default class OptionState {
         effect,
       );
     });
+    this.functionEffects = state.functionEffects;
+    // TODO Object create from json
     return this;
   }
 
@@ -136,7 +188,7 @@ export default class OptionState {
     }
 
     const { scene } = three;
-    const effects = this.effects;
+    const effects = this.meshEffects;
 
     const noMeshEffects = effects.filter(effect => {
       return effect.mesh === null;

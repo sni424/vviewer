@@ -247,7 +247,8 @@ export type ModelFile = {
 
 import { Properties } from '@react-three/fiber';
 import { Pathfinding } from 'three-pathfinding';
-import { THREE } from './scripts/VTHREE';
+// import { THREE } from 'VTHREE';
+import { THREE } from 'VTHREE';
 export declare type GLProps = Partial<Properties<THREE.WebGLRenderer>> &
   Partial<THREE.WebGLRendererParameters> & {
     toneMapping?: THREE.ToneMapping;
@@ -449,8 +450,6 @@ export type WallCreateOption = WallMeta & {
   }
 };
 
-export type ProbeTypes = "single" | "multi" | "multiWall";
-
 
 export interface Vector3 {
   x: number;
@@ -477,3 +476,6 @@ export interface SkyBoxState {
   scene: SceneSkyBox;
   mesh: MeshSkyBox;
 }
+
+export type ProbeTypes = "multi" | "multiWall";
+

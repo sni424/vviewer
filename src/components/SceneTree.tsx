@@ -1,5 +1,6 @@
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import { useEffect, useRef, useState } from 'react';
+import { THREE } from 'VTHREE';
 import { Layer } from '../Constants.ts';
 import {
   materialSelectedAtom,
@@ -9,7 +10,6 @@ import {
   treeSearchAtom,
 } from '../scripts/atoms';
 import { isProbeMesh, isTransformControlOrChild } from '../scripts/utils.ts';
-import { THREE } from '../scripts/VTHREE';
 
 const MeshChildren = ({ data }: { data: THREE.Mesh }) => {
   const material = data.material as THREE.Material;

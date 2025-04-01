@@ -1,6 +1,7 @@
 import { useThree } from '@react-three/fiber';
 import { useAtomValue, useSetAtom } from 'jotai';
 import React, { useEffect, useRef, useState } from 'react';
+import { THREE } from 'VTHREE';
 import {
   cameraMatrixAtom,
   cameraSettingAtom,
@@ -10,7 +11,6 @@ import {
   setAtomValue,
 } from '../../scripts/atoms';
 import { cameraInRoom } from '../../scripts/atomUtils';
-import { THREE } from '../../scripts/VTHREE';
 
 interface UnifiedCameraControlsProps {
   //회전 속도

@@ -1,13 +1,13 @@
 import { LUT } from '@react-three/postprocessing';
 import { BlendFunction } from 'postprocessing';
 import { useEffect, useState } from 'react';
+import { THREE } from 'VTHREE';
 import { forceRerenderPostProcess } from '../../scripts/atoms';
 import OptionBuilder, { OptionTransformer } from '../../scripts/OptionBuilder';
 import {
   getLUTTexture,
   LUTPresets,
 } from '../../scripts/postprocess/PostProcessUtils';
-import { THREE } from '../../scripts/VTHREE';
 
 const defaultColorLUTOption: { [key in string]: OptionTransformer } = {
   preset: {

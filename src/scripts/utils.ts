@@ -1,7 +1,7 @@
 import { RootState } from '@react-three/fiber';
 import gsap from 'gsap';
 import { get, set } from 'idb-keyval';
-import * as THREE from './VTHREE';
+import * as THREE from 'VTHREE';
 
 import objectHash from 'object-hash';
 import pako from 'pako';
@@ -9,6 +9,7 @@ import { TransformControls } from 'three-stdlib';
 import { EXRLoader, OrbitControls } from 'three/examples/jsm/Addons.js';
 import { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { v4 } from 'uuid';
+import { VUserData } from 'VTHREE';
 import { ENV, Layer } from '../Constants';
 import { FileInfo, MoveActionOptions, View, WallPoint, WallPointView, WallView } from '../types.ts';
 import {
@@ -24,8 +25,6 @@ import {
 } from './atoms';
 import { uploadExrToKtx } from './atomUtils.ts';
 import VGLTFLoader from './loaders/VGLTFLoader.ts';
-import VMaterial from './material/VMaterial.ts';
-import VMeshStandardMaterial from './material/VMeshStandardMaterial.ts';
 import ReflectionProbe from './ReflectionProbe.ts';
 import VGLTFExporter from './VGLTFExporter.ts';
 
@@ -74,6 +73,15 @@ export const groupInfo = (
 export const formatNumber = (num: number): string => {
   return new Intl.NumberFormat('en-US').format(num);
 };
+
+export function isImage(url: string): Promise<boolean> {
+  return new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => resolve(true);
+    img.onerror = () => resolve(false);
+    img.src = url;
+  });
+}
 
 export const toNthDigit = (num: number, digit: number): string => {
   const isNegative = num < 0;
@@ -366,14 +374,14 @@ export const loadLatest = async ({
         const m = t as THREE.Mesh;
         m.geometry.dispose();
         const mat = m.material as THREE.Material;
-        disposeMaterial(mat as VMaterial);
+        disposeMaterial(mat as THREE.Material);
       }
     });
     console.log('after add : ', afterInfo.geometries, afterInfo.textures);
     addBenchMark('sceneAddEnd');
   };
 
-  function disposeMaterial(material: VMaterial) {
+  function disposeMaterial(material: THREE.Material) {
     if (!material) return;
 
     // 사용된 모든 텍스처를 dispose
@@ -397,12 +405,12 @@ export const loadLatest = async ({
       'specularMap',
       'specularColorMap',
       'transmissionMap',
-      'thicknessMap',
-    ] as (keyof VMaterial)[];
+      // 'thicknessMap',
+    ];
 
     textureKeys.forEach(key => {
-      if (material[key]) {
-        (material[key] as { dispose: () => void }).dispose(); // 텍스처 메모리 해제
+      if ((material as any)[key]) {
+        ((material as any)[key] as { dispose: () => void }).dispose(); // 텍스처 메모리 해제
         // material[key] = null;     // 참조 제거
       }
     });
@@ -1012,19 +1020,19 @@ export const uploadExrLightmap = async (
 ) => {
   // 같은 라이트맵을 공유하는 material 검출
   // { hash : [mat1, mat2] }
-  const lightmapHashes: { [key in string]: VMaterial[] } = {};
+  const lightmapHashes: { [key in string]: THREE.Material[] } = {};
 
   object.traverseAll(async obj => {
     if ((obj as THREE.Mesh).isMesh) {
       const mesh = obj as THREE.Mesh;
-      const mat = mesh.material as VMaterial;
+      const mat = mesh.matStandard;
       const isEXR = (tex: THREE.Texture) =>
         tex.vUserData.isExr !== undefined && tex.vUserData.isExr;
       const isKTX = (tex: THREE.Texture) =>
         tex.vUserData.mimeType === 'image/ktx2';
 
       // Lightmap to HashMap
-      const addLightMapToHash = (hashKey: string, material: VMaterial) => {
+      const addLightMapToHash = (hashKey: string, material: THREE.Material) => {
         if (!lightmapHashes[hashKey]) {
           lightmapHashes[hashKey] = [];
         }
@@ -1074,7 +1082,7 @@ export const uploadExrLightmap = async (
   const hashes = Object.keys(lightmapHashes);
 
   const files: File[] = [];
-  const afterMats: VMaterial[] = [];
+  const afterMats: THREE.Material[] = [];
 
   await Promise.all(
     hashes.map(hash => {
@@ -1097,7 +1105,7 @@ export const uploadExrLightmap = async (
       console.log(res);
       if (res.success) {
         const data = res.data;
-        const updateKtxName = (key: keyof THREE.ThreeUserData, mat: any) => {
+        const updateKtxName = (key: keyof VUserData, mat: any) => {
           const exrName = mat.vUserData[key];
           if (exrName) {
             const ktxName = exrName.replace('.exr', '.ktx');
@@ -1111,7 +1119,7 @@ export const uploadExrLightmap = async (
         };
 
         afterMats.forEach(mat => {
-          mat.lightMap = null;
+          (mat as any).lightMap = null;
 
           // lightMap 업데이트
           updateKtxName('lightMap', mat);
@@ -1180,7 +1188,7 @@ export function createClosedConcaveSurface(
   geometry.rotateX(Math.PI / 2);
 
   // 이 때 바깥쪽을 보고 있으므로 Material에서 더블사이드로 설정
-  const material = new VMeshStandardMaterial({
+  const material = new THREE.MeshStandardMaterial({
     emissive: color ?? 0x3333cc,
     emissiveIntensity: 1.0,
     side: THREE.DoubleSide,
@@ -1417,7 +1425,7 @@ export function changeMeshVisibleWithTransition(
   targetVisible: boolean,
   timeLine: gsap.core.Timeline,
 ) {
-  const mat = mesh.material as VMaterial;
+  const mat = mesh.material as THREE.Material;
   const originalRenderOrder = mesh.renderOrder;
   const originalTransparent = mat.transparent;
   // 메시의 바운딩 박스 계산
@@ -1435,7 +1443,7 @@ export function changeMeshVisibleWithTransition(
   mat.shader.uniforms.dissolveMaxDist.value = box.max.distanceTo(box.min);
 
   // Shader Uniform에 dissolveOrigin 전달
-  mat.dissolveOrigin = dissolveOrigin;
+  mat.uniforms.dissolveOrigin = dissolveOrigin;
   mat.shader.uniforms.dissolveDirection.value = targetVisible;
   mat.shader.uniforms.progress.value = 0;
 
@@ -1479,7 +1487,7 @@ export function changeMeshLightMapWithTransition(
   targetLightMap: THREE.Texture,
   timeLine: gsap.core.Timeline,
 ) {
-  const mat = mesh.material as VMaterial;
+  const mat = mesh.material as THREE.Material;
   const beforeLightMap = mat.lightMap;
   if (!beforeLightMap) {
     console.warn('No LightMap : ', mesh);
@@ -1582,7 +1590,7 @@ export function changeMeshLightMapWithTransition(
 }
 
 export function applyProbeOnMaterial(
-  material: VMaterial,
+  material: THREE.Material,
   probe: ReflectionProbe,
 ) {
   material.envMap = probe.getRenderTargetTexture();
@@ -1801,3 +1809,40 @@ export const resetColor = <T extends { color?: number }>(coloredArray: T[]): T[]
   });
   return coloredArray;
 };
+
+// 재질 주어졌을 때 해당 재질을 사용하는 모든 메시를 포함하는 바운딩 박스 계산
+// MESH_TRANSITION에서 사용
+export function computeBoundingBoxForMaterial(scene: THREE.Scene, targetMaterial: THREE.Material): THREE.Box3 | null {
+  const resultBox = new THREE.Box3();
+  let found = false;
+
+  scene.traverse((object) => {
+    if ((object as THREE.Mesh).isMesh) {
+      const mesh = object as THREE.Mesh;
+      if (!mesh.isMesh) {
+        return;
+      }
+
+      const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+      const materialsUuid = materials.map(m => m.uuid);
+
+      // 이 mesh가 targetMaterial을 쓰는지 확인
+      if (materialsUuid.includes(targetMaterial.uuid)) {
+
+        resultBox.expandByObject(mesh);
+
+        found = true;
+      }
+    }
+  });
+
+  return found ? resultBox : null; // 아무 것도 없으면 null
+}
+
+import { ClassValue, clsx } from 'clsx';
+import { twMerge } from 'tailwind-merge';
+
+// tailwind에 동적으로 클래스이름 할당할 때 필요
+export function cn(...inputs: ClassValue[]): string {
+  return twMerge(clsx(...inputs));
+}

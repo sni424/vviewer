@@ -1,7 +1,8 @@
 import { GLTFExporter } from 'three/examples/jsm/Addons.js';
+// @ts-ignore
 import * as TextureUtils from 'three/examples/jsm/utils/WebGLTextureUtils';
+import * as THREE from 'VTHREE';
 import { Layer } from '../Constants.ts';
-import * as THREE from '../scripts/VTHREE.ts';
 
 interface GLTFExporterOptions {
   /**
@@ -82,26 +83,6 @@ export default class VGLTFExporter extends GLTFExporter {
    * **/
   onBeforeParse(input: THREE.Object3D | THREE.Object3D[]) {
     console.log('onBeforeParse START');
-    function lightMapToEmissive(object: THREE.Object3D) {
-      if ('isMesh' in object) {
-        const mesh = object as THREE.Mesh;
-        const material = mesh.material as THREE.MeshStandardMaterial;
-
-        if (material.lightMap) {
-          console.log('lightMapToEmissive : ', mesh, material);
-        }
-        // 이미 매핑 됐으면 패스
-        if (!material.vUserData.isEmissiveLightMap && material.lightMap) {
-          const clonedMat = material.clone();
-          clonedMat.emissiveMap = clonedMat.lightMap;
-          clonedMat.vUserData.isEmissiveLightMap = true;
-          clonedMat.vUserData.lightMapIntensity = clonedMat.lightMapIntensity;
-          clonedMat.needsUpdate = true;
-          mesh.material = clonedMat;
-          console.log('lightmap Passed');
-        }
-      }
-    }
 
     function filterNotModelObjects(obj: THREE.Object3D) {
       const toDelete: string[] = [];

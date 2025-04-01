@@ -1,5 +1,5 @@
 import { GLTFExporter, GLTFWriter } from 'three-stdlib';
-import * as THREE from '../scripts/VTHREE.ts';
+import * as THREE from 'VTHREE';
 
 interface MapDef {
   index: number;

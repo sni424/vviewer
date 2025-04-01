@@ -1,6 +1,7 @@
 import { clear } from 'idb-keyval';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import { useMemo, useState } from 'react';
+import { THREE } from 'VTHREE';
 import {
   openLoaderAtom,
   sceneAnalysisAtom,
@@ -10,7 +11,6 @@ import {
 import VGLTFLoader from '../../scripts/loaders/VGLTFLoader.ts';
 import useFilelist from '../../scripts/useFilelist';
 import { loadFile, loadLatest } from '../../scripts/utils';
-import { THREE } from '../../scripts/VTHREE';
 import { FileInfo } from '../../types';
 import FileInfoList from '../FileInfoList';
 

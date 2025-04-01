@@ -13,6 +13,7 @@ import {
 import React from 'react';
 import { Pathfinding } from 'three-pathfinding';
 import { OrbitControls } from 'three/examples/jsm/Addons.js';
+import { THREE } from 'VTHREE';
 import { Catalogue } from '../components/DPC/DPCFileImporter.tsx';
 import { DPConfiguratorMode } from '../components/DPC/DPConfigurator.tsx';
 import {
@@ -22,11 +23,10 @@ import {
   SkyBoxState,
   View,
   ViewportOption,
-  WallCreateOption
+  WallCreateOption, Walls,
 } from '../types';
-import ReflectionProbe from './ReflectionProbe.ts';
-import { THREE } from './VTHREE';
 import ModelOption from './options/ModelOption.ts';
+import ReflectionProbe from './ReflectionProbe.ts';
 
 type AtomArgType<T> = T | ((prev: T) => T);
 export type Store = ReturnType<typeof createStore>;
@@ -133,6 +133,16 @@ export type Env = {
     z: number;
   };
 };
+
+export const minimapAtom = atom<{ show: boolean; urls: string[]; useIndex: number }>({
+  show: false,
+  urls: [
+    'https://vra-configurator-dev.s3.ap-northeast-2.amazonaws.com/models/images/miniMap',
+    'https://vra-configurator-dev.s3.ap-northeast-2.amazonaws.com/models/images/miniMap_expanded',
+  ],
+  useIndex: 0,
+});
+
 // export const envAtom = atom<Env>({ select: "none" });
 export const envAtom = atom<Env>({
   select: 'none',
@@ -145,6 +155,7 @@ export const ktxTexturePreviewCachedAtom = atom<{
 }>({});
 
 export const selectedAtom = atom<string[]>([]);
+export const animationDurationAtom = atom<number>(1.5);
 export const forceUpdateAtom = atom<number>(0);
 export const setForceUpdate = () => {
   const setForceUpdateAtom = useSetAtom(forceUpdateAtom);
@@ -329,6 +340,7 @@ export const treeSearchAtom = atom<string | undefined>();
 
 export const modelOptionClassAtom = atom<ModelOption[]>([]);
 export const optionSelectedAtom = atom<{ [key: string]: string }>({});
+export const optionProcessingAtom = atom<boolean>(false);
 
 //카메라 정보값
 export const lastCameraInfoAtom = atom<{
@@ -524,6 +536,11 @@ export const [wallOptionAtom,
   walls: [],
   autoCreateWall: true
 });
+
+export const [wallCacheAtom,
+  getWallCacheAtom,
+  setWallCacheAtom
+] = createAtomCombo<{ [key: string]: Walls }>({});
 
 export const [wallHighlightAtom,
   getWallHighlightAtom,

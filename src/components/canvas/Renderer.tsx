@@ -2,6 +2,7 @@ import { Canvas, RootState, useThree } from '@react-three/fiber';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import { useEffect, useRef } from 'react';
 import { v4 } from 'uuid';
+import { THREE } from 'VTHREE';
 import { Layer } from '../../Constants';
 import { getSettings } from '../../pages/useSettings';
 import {
@@ -41,7 +42,6 @@ import {
   resetColor,
   zoomToSelected,
 } from '../../scripts/utils';
-import { THREE } from '../../scripts/VTHREE';
 import { View, WallCreateOption, WallPointView } from '../../types';
 import UnifiedCameraControls from '../camera/UnifiedCameraControls';
 import HotspotDialog from '../HotspotDialog';
@@ -282,18 +282,18 @@ function Renderer() {
   const setCameraAtom = useSetAtom(cameraMatrixAtom);
 
   useEffect(() => {
-    scene.addEventListener('childadded', event => {
-      // Scene 에 Mesh 추가 시 윈도우 전체에 이벤트 발생.
-      if (event.child.layers.isEnabled(Layer.Model)) {
-        console.log('Added New Child Mesh on Scene');
-        window.dispatchEvent(new CustomEvent('scene-added'));
-        // Material shader 미리 컴파일
-        gl.compileAsync(scene, camera);
-      }
-    });
-    window.addEventListener('vmaterial-cloned', () => {
-      gl.compileAsync(scene, camera);
-    });
+    // scene.addEventListener('childadded', event => {
+    //   // Scene 에 Mesh 추가 시 윈도우 전체에 이벤트 발생.
+    //   if (event.child.layers.isEnabled(Layer.Model)) {
+    //     console.log('Added New Child Mesh on Scene');
+    //     window.dispatchEvent(new CustomEvent('scene-added'));
+    //     // Material shader 미리 컴파일
+    //     gl.compileAsync(scene, camera);
+    //   }
+    // });
+    // window.addEventListener('THREE.Material-cloned', () => {
+    //   gl.compileAsync(scene, camera);
+    // });
     setThreeExportsAtom(threeExports);
     camera.position.set(1, 1, 1);
     const mat = camera.matrix.clone();

@@ -1,6 +1,7 @@
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import objectHash from 'object-hash';
 import { useEffect, useState } from 'react';
+import * as THREE from 'VTHREE';
 import { Layer } from '../../Constants.ts';
 import {
   DPAtom,
@@ -15,7 +16,6 @@ import {
   isTransformControlOrChild,
 } from '../../scripts/utils.ts';
 import VGLTFExporter from '../../scripts/VGLTFExporter.ts';
-import * as THREE from '../../scripts/VTHREE.ts';
 
 export const SelectableNodes = ({
   data,

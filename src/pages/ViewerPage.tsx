@@ -1,8 +1,6 @@
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import { useEffect } from 'react';
 import CameraPanel from '../components/CameraPanel';
-import FloatingFrontView from '../components/canvas/FloatingFrontView';
-import FloatingTopView from '../components/canvas/FloatingTopView';
 import RendererContainer from '../components/canvas/Renderer';
 import MaterialPanelContainer from '../components/MaterialPanel';
 import MeshInfoPanel from '../components/MeshInfoPanel';
@@ -21,6 +19,7 @@ import useFiles from '../scripts/useFiles';
 import useModelDragAndDrop from '../scripts/useModelDragAndDrop';
 import { toggleDP } from '../scripts/utils.ts';
 import { getSettings, loadSettings } from './useSettings';
+import MinimapPanel from '../components/test/MinimapPanel.tsx';
 
 function Loading() {
   const files = useFiles();
@@ -182,9 +181,6 @@ const Views = () => {
     <div className="absolute bottom-2 right-2 flex flex-row gap-2 items-end ">
       <DPToggle></DPToggle>
       <ViewGrid></ViewGrid>
-      <FloatingTopView></FloatingTopView>
-      <FloatingFrontView></FloatingFrontView>
-      {/*<GizmoPanel></GizmoPanel>*/}
     </div>
   );
 };
@@ -218,6 +214,7 @@ const ViewerPage = () => {
         onDrop={handleDrop}
       >
         <RendererContainer />
+        <MinimapPanel/>
         <Views></Views>
         <CameraPanel />
         <OptionPanel></OptionPanel>

@@ -1,14 +1,5 @@
-import ContrastTest from '../components/test/ContrastTest';
-
 function TestPage() {
-  return (
-    // <div>TestPage
-    //     <div className='font-bold'>sdf</div>
-    // </div>
-    <div className="fullscreen">
-      <ContrastTest></ContrastTest>
-    </div>
-  );
+  return <div className="fullscreen"></div>;
 }
 
 export default TestPage;

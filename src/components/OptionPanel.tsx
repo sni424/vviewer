@@ -1,4 +1,5 @@
 import { useAtomValue } from 'jotai';
+import { THREE } from 'VTHREE';
 import {
   getAtomValue,
   hotspotAtom,
@@ -7,7 +8,6 @@ import {
   threeExportsAtom,
   useModal,
 } from '../scripts/atoms';
-import { THREE } from '../scripts/VTHREE';
 import HotspotDialog from './HotspotDialog';
 
 const OptionPanel = () => {

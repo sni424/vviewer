@@ -1,6 +1,8 @@
 import { useAtom } from 'jotai';
 import { useEffect, useState } from 'react';
+import { THREE } from 'VTHREE';
 import { newRoomColorString } from '../Constants';
+
 import {
   getAtomValue,
   newRoom,
@@ -9,7 +11,6 @@ import {
   threeExportsAtom,
 } from '../scripts/atoms';
 import { loadRooms, uploadJson } from '../scripts/atomUtils';
-import { THREE } from '../scripts/VTHREE';
 
 const uploadRooms = async () => {
   // const hotspots = getAtomValue(roomAtom);

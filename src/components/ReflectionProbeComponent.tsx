@@ -2,7 +2,7 @@
 // import { orbitControlsAtom, selectedProbeAtom, showProbeAtom, threeExportsAtom } from '../scripts/atoms.ts';
 // import { useEffect, useRef, useState } from 'react';
 // import { TransformControls } from '@react-three/drei';
-// import * as THREE from '../scripts/VTHREE.ts';
+// import * as THREE from 'VTHREE';
 // import { v4 } from 'uuid';
 // import { useThree } from '@react-three/fiber';
 //

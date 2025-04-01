@@ -11,10 +11,14 @@ import {
   uploadExrLightmap,
 } from '../scripts/utils';
 
+import gsap from 'gsap';
 import { get, set } from 'idb-keyval';
 import objectHash from 'object-hash';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import VTextureLoader from 'src/scripts/loaders/VTextureLoader.ts';
+import ReflectionProbe from 'src/scripts/ReflectionProbe.ts';
+import { Quaternion, THREE, Vector3 } from 'VTHREE';
 import {
   __UNDEFINED__,
   AOMAP_INTENSITY_MAX,
@@ -30,7 +34,9 @@ import {
   lightMapAtom,
   lightMapContrastAtom,
   materialSettingAtom,
+  minimapAtom,
   postprocessAtoms,
+  ProbeAtom,
   selectedAtom,
   threeExportsAtom,
   uploadingAtom,
@@ -39,12 +45,15 @@ import {
   useModal,
   useToast,
 } from '../scripts/atoms';
-import { loadPostProcessAndSet, uploadJson } from '../scripts/atomUtils.ts';
-import VMaterial from '../scripts/material/VMaterial.ts';
+import {
+  loadPostProcessAndSet,
+  prepareWalls,
+  uploadJson,
+} from '../scripts/atomUtils.ts';
 import useFilelist from '../scripts/useFilelist';
+import { parseDroppedFiles } from '../scripts/useModelDragAndDrop.ts';
 import useStats, { StatPerSecond, VStats } from '../scripts/useStats.ts';
 import VGLTFExporter from '../scripts/VGLTFExporter.ts';
-import { Quaternion, THREE, Vector3 } from '../scripts/VTHREE';
 import { BloomOption } from './canvas/Bloom.tsx';
 import { BrightnessContrastOption } from './canvas/BrightnessContrast.tsx';
 import { ColorLUTOption } from './canvas/ColorLUT.tsx';
@@ -249,7 +258,7 @@ const GeneralButtons = () => {
     if (!lightMapUploaded) {
       scene.traverse(o => {
         if (o.type === 'Mesh') {
-          const mat = (o as THREE.Mesh).material as VMaterial;
+          const mat = (o as THREE.Mesh).material as THREE.Material;
           const lm = mat.vUserData.lightMap;
           if (lm && lm.endsWith('.exr')) {
             mat.vUserData.lightMap = lm.replace('.exr', '.ktx');
@@ -562,12 +571,384 @@ const GeneralSceneInfo = () => {
   );
 };
 
-const LightmapImageContrastControl = () => {
+const useLightmapTransitionDrag = () => {
+  const [isDragging, setIsDragging] = useState(false);
+  const threeExports = useAtomValue(threeExportsAtom);
+  const [files, setFiles] = useState<File[]>([]);
+
+  const handleDragOver = (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = () => {
+    setIsDragging(false);
+  };
+
+  const handleDrop = async (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    setIsDragging(false);
+
+    if (event.dataTransfer.items && event.dataTransfer.items.length > 0) {
+      const extensions = [
+        '.gltf',
+        '.glb',
+        '.png',
+        '.jpg',
+        '.exr',
+        '.ktx',
+        '.json',
+      ];
+      parseDroppedFiles(event, extensions)
+        .then(async filteredFiles => {
+          if (filteredFiles.length === 0) {
+            alert(`다음 파일들만 가능 : ${extensions.join(', ')}`);
+            return;
+          }
+
+          setFiles(filteredFiles);
+        })
+        .finally(() => {
+          event.dataTransfer.clearData();
+        });
+    }
+  };
+
+  return {
+    isDragging,
+    handleDragOver,
+    handleDragLeave,
+    handleDrop,
+    files,
+  };
+};
+
+const LightmapTransitionControl = () => {
+  const { scene } = useAtomValue(threeExportsAtom)!;
+  const [progress, setProgress] = useState(0);
+  const { handleDragOver, handleDragLeave, handleDrop, isDragging, files } =
+    useLightmapTransitionDrag();
   const threeExports = useAtomValue(threeExportsAtom);
 
-  if (!threeExports) {
-    return null;
+  useEffect(() => {
+    scene.traverse(o => {
+      const mat = (o as THREE.Mesh).matStandard;
+      if (mat && mat.LIGHTMAP_TRANSITION) {
+        console.log('LIGHTMAP_TRANSITION prog', progress);
+        mat.progress = progress;
+      }
+    });
+  }, [progress]);
+
+  const noFile = files.length === 0;
+
+  return (
+    <section
+      onDrop={handleDrop}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      style={{
+        border: isDragging ? '1px dashed #888' : undefined,
+        padding: 8,
+        marginTop: 16,
+      }}
+    >
+      <strong>라이트맵 트랜지션</strong>{' '}
+      <input
+        type="range"
+        min={0}
+        max={1}
+        step={0.01}
+        value={progress}
+        onChange={e => {
+          setProgress(parseFloat(e.target.value));
+        }}
+      />
+      <button
+        disabled={noFile}
+        onClick={() => {
+          if (noFile) {
+            return;
+          }
+
+          scene.traverse(o => {
+            const mat = o.asMesh?.mat;
+            if (mat && mat.name === 'MI_TCE036S.003') {
+              VTextureLoader.loadAsync(files[0], {
+                gl: threeExports?.gl,
+                as: 'texture',
+              }).then(t => {
+                mat.uniform.uLightMapTo.value = t;
+                mat.LIGHTMAP_TRANSITION = true;
+              });
+            }
+          });
+        }}
+      >
+        {noFile ? '라이트맵 드래그&드랍' : '적용'}
+      </button>
+      {noFile ? (
+        <div>파일없음</div>
+      ) : (
+        <ul>
+          {files.map((file, index) => {
+            return (
+              <li key={`lmfile-${file.name}-${index}`}>
+                {file.name} : {Math.round(file.size / (1024 * 1024))}mb
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </section>
+  );
+};
+
+const ProbeControl = () => {
+  const { scene, gl, camera } = useAtomValue(threeExportsAtom)!;
+  const [probes, setProbes] = useAtom<ReflectionProbe[]>(ProbeAtom);
+
+  function addProbe() {
+    const probe = new ReflectionProbe(gl, scene, camera);
+    probe.addToScene();
+    setProbes(prev => [...prev, probe]);
   }
+
+  // useEffect(() => {
+  //   scene.traverse(o => {
+  //     if (o.asMesh?.mat?.vUserData?.isVMaterial) {
+  //       const mat = o.asMesh.mat!;
+  //       mat.prepareProbe({
+  //         probes,
+  //       });
+  //     }
+  //   });
+  // }, [probes]);
+
+  return (
+    <section>
+      <strong>프로브</strong> <button onClick={addProbe}>프로브 추가</button>
+      <button
+        onClick={() => {
+          const walls: {
+            start: THREE.Vector3;
+            end: THREE.Vector3;
+            probeId: string;
+          }[] = prepareWalls();
+
+          scene.traverse(o => {
+            if (o.asMesh?.mat?.vUserData?.isVMaterial) {
+              const mat = o.asMesh.mat!;
+
+              if (mat.name === 'MI_TCE036S.003') {
+                mat.prepareProbe({
+                  probeCount: probes.length,
+                  wallCount: walls.length,
+                });
+              } else {
+                mat.prepareProbe({
+                  probeCount: probes.length,
+                });
+              }
+
+              mat.needsUpdate = true;
+            }
+          });
+
+          console.log('prepareProbe finished');
+        }}
+      >
+        프로브 준비 (셰이더컴파일)
+      </button>
+      <button
+        onClick={() => {
+          const walls: {
+            start: THREE.Vector3;
+            end: THREE.Vector3;
+            probeId: string;
+          }[] = prepareWalls();
+
+          scene.traverse(o => {
+            if (o.asMesh?.mat?.vUserData?.isVMaterial) {
+              const mat = o.asMesh.mat!;
+              if (mat.name === 'MI_TCE036S.003') {
+                mat.applyProbe({
+                  probes,
+                  walls,
+                });
+              } else {
+                mat.applyProbe({
+                  probes,
+                });
+              }
+
+              mat.needsUpdate = true;
+            }
+          });
+        }}
+      >
+        프로브 적용
+      </button>
+      <ul>
+        {probes.map(p => {
+          return (
+            <li key={`probe-shader-${p.getId()}`}>
+              {p.getName()}{' '}
+              <button
+                onClick={() => {
+                  p.updateCameraPosition(p.getBoxMesh().position, true);
+                }}
+              >
+                찍기
+              </button>
+              <button
+                onClick={() => {
+                  p.setShowProbe(false);
+                }}
+              >
+                숨기기
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  );
+};
+
+const ProgressiveAlphaControl = () => {
+  const { scene } = useAtomValue(threeExportsAtom)!;
+  const [progress, setProgress] = useState(0);
+
+  useEffect(() => {
+    scene.traverse(o => {
+      const mat = (o as THREE.Mesh).material as THREE.Material;
+      if (!mat) {
+        return;
+      }
+      if (mat.MESH_TRANSITION) {
+        mat.uniform!.uProgress.value = progress;
+      }
+    });
+  }, [progress]);
+
+  return (
+    <section>
+      <strong>Fade In/Out 애니메이션</strong>{' '}
+      <input
+        type="range"
+        min={0}
+        max={1}
+        step={0.01}
+        value={progress}
+        onChange={e => {
+          setProgress(parseFloat(e.target.value));
+        }}
+      />
+      <button
+        onClick={() => {
+          scene.traverse(o => {
+            o.asMesh?.mat?.prepareMeshTransition?.({
+              direction: 'fadeOut',
+              progress,
+            });
+          });
+        }}
+      >
+        없어지는
+      </button>
+      <button
+        onClick={() => {
+          scene.traverse(o => {
+            o.asMesh?.mat?.prepareMeshTransition?.({
+              direction: 'fadeIn',
+              progress,
+            });
+          });
+        }}
+      >
+        생기는
+      </button>
+      <button
+        onClick={() => {
+          scene.traverse(o => {
+            o.asMesh?.mat?.prepareMeshTransition?.({
+              direction: 'fadeOut',
+            });
+          });
+
+          gsap.to(
+            { progress: 0 },
+            {
+              duration: 1,
+              progress: 1,
+              onUpdate() {
+                const progressValue = this.targets()[0].progress;
+                setProgress(progressValue);
+
+                scene.traverse(o => {
+                  const mat = o.asMesh?.mat;
+                  if (mat) {
+                    mat.progress = progressValue;
+                  }
+                });
+              },
+            },
+          );
+        }}
+      >
+        gsap없어지는
+      </button>
+      <button
+        onClick={() => {
+          scene.traverse(o => {
+            o.asMesh?.mat?.prepareMeshTransition?.({
+              direction: 'fadeIn',
+            });
+          });
+
+          gsap.to(
+            { progress: 0 },
+            {
+              duration: 1,
+              progress: 1,
+              onUpdate() {
+                const progressValue = this.targets()[0].progress;
+                setProgress(progressValue);
+
+                scene.traverse(o => {
+                  const mat = o.asMesh?.mat;
+                  if (mat) {
+                    mat.progress = progressValue;
+                  }
+                });
+              },
+            },
+          );
+        }}
+      >
+        gsap생기는
+      </button>
+      <button
+        onClick={() => {
+          scene.traverse(o => {
+            const mat = (o as THREE.Mesh).material as THREE.Material;
+            if (!mat) {
+              return;
+            }
+
+            mat.MESH_TRANSITION = false;
+          });
+        }}
+      >
+        삭제
+      </button>
+    </section>
+  );
+};
+
+const LightmapImageContrastControl = () => {
+  const threeExports = useAtomValue(threeExportsAtom)!;
 
   const { scene } = threeExports;
 
@@ -577,30 +958,17 @@ const LightmapImageContrastControl = () => {
     scene.traverse(o => {
       if (o.type === 'Mesh') {
         const mesh = o as THREE.Mesh;
-        const mat = mesh.material as VMaterial;
-        const shader = mat.shader;
-        mat.useLightMapContrast = use;
+        const mat = mesh.material as THREE.Material;
+
         if (use) {
-          shader.uniforms.lightMapContrast.value = value;
+          mat.uniform.uLightMapContrast.value = value;
         } else {
-          shader.uniforms.lightMapContrast.value = 1;
+          mat.uniform.uLightMapContrast.value = 1;
         }
+        mat.needsUpdate = true;
       }
     });
-  }, [use]);
-
-  useEffect(() => {
-    if (use) {
-      scene.traverse(o => {
-        if (o.type === 'Mesh') {
-          const mesh = o as THREE.Mesh;
-          const mat = mesh.material as VMaterial;
-          const shader = mat.shader;
-          shader.uniforms.lightMapContrast.value = value;
-        }
-      });
-    }
-  }, [value]);
+  }, [use, value]);
 
   function updateValue(value: number) {
     setLightMapContrast(pre => ({ ...pre, value: value }));
@@ -734,12 +1102,48 @@ const GeneralPostProcessingControl = () => {
       <ColorTemperatureOption></ColorTemperatureOption>
       <BrightnessContrastOption></BrightnessContrastOption>
       <LightmapImageContrastControl></LightmapImageContrastControl>
+      <ProgressiveAlphaControl></ProgressiveAlphaControl>
+      <ProbeControl></ProbeControl>
+      <LightmapTransitionControl></LightmapTransitionControl>
       <SRGBControl></SRGBControl>
       <BloomOption></BloomOption>
       <ColorLUTOption></ColorLUTOption>
       <ToneMappingOption></ToneMappingOption>
       <FXAAOption></FXAAOption>
       <SMAAOption></SMAAOption>
+    </section>
+  );
+};
+
+const GeneralMinimapControl = () => {
+  const [{ show, urls, useIndex }, setMinimap] = useAtom(minimapAtom);
+
+  return (
+    <section style={{ width: '100%' }}>
+      <strong>미니맵</strong>
+      <div className="flex gap-x-1">
+        <span>보기</span>
+        <input
+          type="checkbox"
+          checked={show}
+          onChange={e => {
+            setMinimap(pre => ({ ...pre, show: !pre.show }));
+          }}
+        />
+      </div>
+      <div className="flex gap-x-1 mt-1">
+        {urls.map((url, index) => (
+          <button
+            key={'minimapHandleButton-' + index}
+            onClick={() => {
+              setMinimap(pre => ({ ...pre, useIndex: index }));
+            }}
+            disabled={useIndex === index}
+          >
+            {index} 번 미니맵
+          </button>
+        ))}
+      </div>
     </section>
   );
 };
@@ -1382,6 +1786,7 @@ const SceneInfo = () => {
       <GeneralButtons></GeneralButtons>
       <GeneralMaterialControl></GeneralMaterialControl>
       <GeneralEnvironmentControl></GeneralEnvironmentControl>
+      <GeneralMinimapControl></GeneralMinimapControl>
       <GeneralPostProcessingControl></GeneralPostProcessingControl>
       <GeneralSceneInfo></GeneralSceneInfo>
 

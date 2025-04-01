@@ -1,7 +1,7 @@
 import { useThree } from '@react-three/fiber';
 import { useAtomValue } from 'jotai';
 import { useEffect, useRef } from 'react';
-import { THREE } from '../../scripts/VTHREE';
+import { THREE } from 'VTHREE';
 import { skyBoxAtom } from '../../scripts/atoms';
 
 const SkyBoxMesh = () => {

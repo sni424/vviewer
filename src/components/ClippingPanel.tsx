@@ -1,8 +1,10 @@
 import { useAtom, useAtomValue } from 'jotai';
 import { useEffect, useState } from 'react';
-import { globalGlAtom, threeExportsAtom } from '../scripts/atoms';
+
 import { loadClipping, uploadJson } from '../scripts/atomUtils';
-import { THREE } from '../scripts/VTHREE';
+
+import { THREE } from 'VTHREE';
+import { globalGlAtom, threeExportsAtom } from '../scripts/atoms';
 
 const ClippingPanel = () => {
   const [glSetting, setGlSetting] = useAtom(globalGlAtom);

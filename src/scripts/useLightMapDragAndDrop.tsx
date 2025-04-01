@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { THREE } from './VTHREE';
+import { THREE } from 'VTHREE';
 import VTextureLoader from './loaders/VTextureLoader.ts';
 
 const useLightMapDragAndDrop = (

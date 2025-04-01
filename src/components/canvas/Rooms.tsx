@@ -1,6 +1,7 @@
 import { useThree } from '@react-three/fiber';
 import { useAtom, useAtomValue } from 'jotai';
 import { Fragment, useRef } from 'react';
+import { Mesh, Vector3 } from 'VTHREE';
 import { newRoomColorString } from '../../Constants';
 import {
   newRoomAtom,
@@ -9,7 +10,6 @@ import {
   threeExportsAtom,
 } from '../../scripts/atoms';
 import { createClosedConcaveSurface, PointXZ } from '../../scripts/utils';
-import { Mesh, Vector3 } from '../../scripts/VTHREE';
 
 interface MarkerProps {
   position: [number, number, number][];

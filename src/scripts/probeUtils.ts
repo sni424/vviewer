@@ -1,7 +1,6 @@
+import { THREE } from 'VTHREE';
 import cube_uv from "./cube_uv";
-import VMaterial from "./material/VMaterial";
 import type ReflectionProbe from "./ReflectionProbe";
-import { THREE } from "./VTHREE";
 
 // key : material.uuid
 const probeVersions = new Map<string, { cacheKey: string; version: number; }>();
@@ -759,7 +758,7 @@ function generateCubeUVSize(imageHeight: number) {
 
 }
 
-export function applyMultiProbe(mat: VMaterial, probes: ReflectionProbe[], walls?: {
+export function applyMultiProbe(mat: THREE.Material, probes: ReflectionProbe[], walls?: {
   start: THREE.Vector3;
   end: THREE.Vector3;
   probeId: string;
@@ -788,9 +787,9 @@ export function applyMultiProbe(mat: VMaterial, probes: ReflectionProbe[], walls
 
     pmremDefines = {
       V_ENVMAP_TYPE_CUBE_UV: 1, // pmrem
-      V_CUBEUV_MAX_MIP: `${maxMip}.0`, // float으로 glsl까지 전달되어야 함
-      V_CUBEUV_TEXEL_WIDTH: texelWidth,
-      V_CUBEUV_TEXEL_HEIGHT: texelHeight,
+      uCubeUVMaxMip: `${maxMip}.0`, // float으로 glsl까지 전달되어야 함
+      uCubeUVTexelWidth: texelWidth,
+      uCubeUVTexelHeight: texelHeight,
     }
   }
 
@@ -839,7 +838,7 @@ export function applyMultiProbe(mat: VMaterial, probes: ReflectionProbe[], walls
     ...defines
   }
 
-  const createCacheKey = (mat: VMaterial, defines: any, uniforms: any): string => {
+  const createCacheKey = (mat: THREE.Material, defines: any, uniforms: any): string => {
     let retval: string[] = [];
     retval.push(mat.name);
     retval.push(probes.map(p => p.getName()).join(","));
@@ -851,9 +850,9 @@ export function applyMultiProbe(mat: VMaterial, probes: ReflectionProbe[], walls
 
   // 캐시키가 바뀌어도 onBeforeCompile이 불리지 않아 별도로 define을 추가해서 강제 리렌더 촉발
   const handleProbeVersion = () => {
-    for (const key in Object.keys(mat.defines)) {
+    for (const key in Object.keys(mat.defines as object)) {
       if (key.includes("PROBE_VERSION")) {
-        delete mat.defines[key];
+        delete (mat.defines as any)[key];
         break;
       }
     }
@@ -870,7 +869,7 @@ export function applyMultiProbe(mat: VMaterial, probes: ReflectionProbe[], walls
     })
 
     const probeVersionKey = "PROBE_VERSION" + probeVersion;
-    mat.defines[probeVersionKey] = "";
+    (mat.defines as any)[probeVersionKey] = "";
   }
   handleProbeVersion();
 

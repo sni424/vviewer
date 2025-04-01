@@ -5,6 +5,7 @@ import {
   LineGeometry,
   LineMaterial,
 } from 'three/examples/jsm/Addons.js';
+import * as THREE from 'VTHREE';
 import { Layer } from '../../Constants';
 import {
   panelTabAtom,
@@ -14,7 +15,6 @@ import {
   wallOptionAtom,
 } from '../../scripts/atoms';
 import { getWallPoint } from '../../scripts/utils';
-import * as THREE from '../../scripts/VTHREE';
 import { WallCreateOption } from '../../types';
 
 const WALL_LAYER = new THREE.Layers();

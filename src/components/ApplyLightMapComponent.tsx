@@ -1,9 +1,8 @@
 import { useAtomValue } from 'jotai';
 import { useState } from 'react';
+import { THREE } from 'VTHREE';
 import { selectedAtom, threeExportsAtom, useModal } from '../scripts/atoms';
 import VTextureLoader from '../scripts/loaders/VTextureLoader.ts';
-import VMaterial from '../scripts/material/VMaterial.ts';
-import { THREE } from '../scripts/VTHREE';
 
 const ApplyLightMapComponent = () => {
   const { closeModal } = useModal();
@@ -195,7 +194,7 @@ const ApplyLightMapComponent = () => {
           onClick={() => {
             VTextureLoader.load(imageFile!, threeExports).then(texture => {
               childrenMeshes.forEach(mesh => {
-                const mat = mesh.material as VMaterial;
+                const mat = mesh.matStandard;
                 if (dst === 'lightmap') {
                   mat.lightMap = texture;
                 } else if (dst === 'ao') {

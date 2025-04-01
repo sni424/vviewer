@@ -1,7 +1,9 @@
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import React, { useEffect, useState } from 'react';
 import { ColorPicker, ColorService, useColor } from 'react-color-palette';
+//@ts-ignore
 import 'react-color-palette/css';
+import { THREE } from 'VTHREE';
 import { AOMAP_INTENSITY_MAX, LIGHTMAP_INTENSITY_MAX } from '../Constants';
 import {
   materialSelectedAtom,
@@ -9,10 +11,9 @@ import {
   threeExportsAtom,
 } from '../scripts/atoms';
 import VTextureLoader from '../scripts/loaders/VTextureLoader.ts';
-import VMaterial from '../scripts/material/VMaterial.ts';
 import { loadHDRTexture, loadPNGAsENV } from '../scripts/utils';
-import { THREE } from '../scripts/VTHREE';
 import MapPreview, { MapPreviewProps } from './MapPreview';
+import ProbeSelector from './ProbeSelector.tsx';
 
 interface MapInfoProps extends MapPreviewProps {
   materialRange?: {
@@ -34,43 +35,44 @@ interface MapInfoProps extends MapPreviewProps {
 }
 
 const setMap = (
-  material: VMaterial,
+  material: THREE.Material,
   mapKey: string,
   texture: THREE.Texture | null,
 ) => {
-  const dstKey = mapKey as keyof VMaterial;
+  const mat = material.physical;
+  const dstKey = mapKey as keyof THREE.MeshPhysicalMaterial;
   if (dstKey === 'lightMap') {
-    material.lightMap = texture;
+    mat.lightMap = texture;
   } else if (dstKey === 'map') {
-    material.map = texture;
+    mat.map = texture;
   } else if (dstKey === 'emissiveMap') {
-    material.emissiveMap = texture;
+    mat.emissiveMap = texture;
   } else if (dstKey === 'bumpMap') {
-    material.bumpMap = texture;
+    mat.bumpMap = texture;
   } else if (dstKey === 'normalMap') {
-    material.normalMap = texture;
+    mat.normalMap = texture;
   } else if (dstKey === 'displacementMap') {
-    material.displacementMap = texture;
+    mat.displacementMap = texture;
   } else if (dstKey === 'roughnessMap') {
-    material.roughnessMap = texture;
+    mat.roughnessMap = texture;
   } else if (dstKey === 'metalnessMap') {
-    material.metalnessMap = texture;
+    mat.metalnessMap = texture;
   } else if (dstKey === 'alphaMap') {
-    material.alphaMap = texture;
+    mat.alphaMap = texture;
   } else if (dstKey === 'envMap') {
     if (texture) {
-      material.envMap = texture;
+      mat.envMap = texture;
     } else {
-      material.envMap = null;
-      delete material.vUserData.probeId;
-      material.needsUpdate = true;
+      mat.envMap = null;
+      delete mat.vUserData.probeId;
+      mat.needsUpdate = true;
     }
   } else if (dstKey === 'aoMap') {
-    material.aoMap = texture;
+    mat.aoMap = texture;
   } else {
     throw new Error('Invalid mapKey @MaterialPanel');
   }
-  material.needsUpdate = true;
+  mat.needsUpdate = true;
 };
 
 const MapInfo = (props: MapInfoProps) => {
@@ -81,12 +83,12 @@ const MapInfo = (props: MapInfoProps) => {
     materialRange,
     textureRange,
   } = props;
-  const texture = material[mapKey as keyof VMaterial] as THREE.Texture;
+  const texture = material[mapKey as keyof THREE.Material] as THREE.Texture;
   const [channel, setChannel] = useState(texture?.channel ?? -1);
   const setMaterialSelected = useSetAtom(materialSelectedAtom);
   const threeExports = useAtomValue(threeExportsAtom)!;
 
-  const materialRangeKey = materialRange?.matKey as keyof VMaterial;
+  const materialRangeKey = materialRange?.matKey as keyof THREE.Material;
   const materialValue = materialRangeKey
     ? material[materialRangeKey]
     : undefined;
@@ -323,7 +325,7 @@ const MapInfo = (props: MapInfoProps) => {
   );
 };
 
-const UserDataSection = ({ mat }: { mat: VMaterial }) => {
+const UserDataSection = ({ mat }: { mat: THREE.Material }) => {
   const userData = mat.vUserData;
   const keys = Object.keys(userData);
 
@@ -342,7 +344,7 @@ const UserDataSection = ({ mat }: { mat: VMaterial }) => {
   );
 };
 
-const MapSection = ({ mat }: { mat: VMaterial }) => {
+const MapSection = ({ mat }: { mat: THREE.Material }) => {
   const isPhysical = mat.type === 'MeshPhysicalMaterial';
 
   return (
@@ -378,7 +380,7 @@ const MapSection = ({ mat }: { mat: VMaterial }) => {
             materialRange={{
               matKey: 'lightMapIntensity',
               onChange: value => {
-                mat.lightMapIntensity = value;
+                mat.standard.lightMapIntensity = value;
                 mat.needsUpdate = true;
               },
               max: LIGHTMAP_INTENSITY_MAX,
@@ -393,7 +395,7 @@ const MapSection = ({ mat }: { mat: VMaterial }) => {
             materialRange={{
               matKey: 'roughness',
               onChange: value => {
-                mat.roughness = value;
+                mat.standard.roughness = value;
                 mat.needsUpdate = true;
               },
             }}
@@ -460,7 +462,7 @@ const MapSection = ({ mat }: { mat: VMaterial }) => {
   );
 };
 
-const ColorInfo = ({ mat }: { mat: VMaterial }) => {
+const ColorInfo = ({ mat }: { mat: THREE.Material }) => {
   const [diffuseColor, setDiffuseColor] = useColor(
     `#${mat.color.getHexString()}`,
   );
@@ -513,9 +515,11 @@ const ColorInfo = ({ mat }: { mat: VMaterial }) => {
   );
 };
 
-const OpacityPanel = ({ mat }: { mat: VMaterial }) => {
+const OpacityPanel = ({ mat }: { mat: THREE.Material }) => {
   const [opacity, setOpacity] = useState(mat.opacity);
   const [transparent, setTransparent] = useState(mat.transparent);
+  const [depthWrite, setDepthWrite] = useState(mat.depthWrite);
+  const [depthTest, setDepthTest] = useState(mat.depthTest);
 
   useEffect(() => {
     setTransparent(mat.transparent);
@@ -523,39 +527,57 @@ const OpacityPanel = ({ mat }: { mat: VMaterial }) => {
   }, [mat]);
 
   return (
-    <div className="w-full text-[11px]">
-      <div className="flex items-center gap-x-2">
-        <strong>투명도 설정</strong>
-        <input
-          type="checkbox"
-          checked={transparent}
-          onChange={e => {
-            const value = e.target.checked;
-            setTransparent(value);
-            mat.transparent = value;
-            mat.needsUpdate = true;
-          }}
-        />
-      </div>
-      {transparent && (
-        <div className="mt-3">
-          <strong>Opacity</strong>
-          <div style={{ display: 'flex', width: '100%', gap: 8 }}>
-            <div
-              style={{
-                flex: 1,
-                minWidth: 0,
-              }}
-            >
-              <input
+    <div>
+      <strong style={{ fontSize: 12 }}>Transparency</strong>
+
+      <div className="w-full flex flex-col gap-y-1 text-[11px] p-1 border border-black rounded mt-1">
+        <div className="flex items-center gap-x-2">
+          <strong>투명도 설정</strong>
+          <input
+            type="checkbox"
+            checked={transparent}
+            onChange={e => {
+              const value = e.target.checked;
+              setTransparent(value);
+              mat.transparent = value;
+              mat.needsUpdate = true;
+            }}
+          />
+        </div>
+        {transparent && (
+          <div className="">
+            <strong>Opacity</strong>
+            <div style={{ display: 'flex', width: '100%', gap: 8 }}>
+              <div
                 style={{
-                  width: '100%',
+                  flex: 1,
+                  minWidth: 0,
                 }}
-                type="range"
+              >
+                <input
+                  style={{
+                    width: '100%',
+                  }}
+                  type="range"
+                  min={0}
+                  max={1}
+                  step={0.01}
+                  value={mat.opacity}
+                  onChange={e => {
+                    const value = parseFloat(e.target.value);
+                    mat.opacity = value;
+                    setOpacity(value);
+                    mat.needsUpdate = true;
+                  }}
+                />
+              </div>
+              <input
+                style={{ width: 35, borderRadius: 4 }}
+                type="number"
                 min={0}
                 max={1}
                 step={0.01}
-                value={mat.opacity}
+                value={opacity}
                 onChange={e => {
                   const value = parseFloat(e.target.value);
                   mat.opacity = value;
@@ -564,23 +586,33 @@ const OpacityPanel = ({ mat }: { mat: VMaterial }) => {
                 }}
               />
             </div>
-            <input
-              style={{ width: 35, borderRadius: 4 }}
-              type="number"
-              min={0}
-              max={1}
-              step={0.01}
-              value={opacity}
-              onChange={e => {
-                const value = parseFloat(e.target.value);
-                mat.opacity = value;
-                setOpacity(value);
-                mat.needsUpdate = true;
-              }}
-            />
           </div>
+        )}
+        <div className="flex items-center gap-x-2">
+          <strong>depth Test</strong>
+          <input
+            type="checkbox"
+            checked={depthTest}
+            onChange={e => {
+              const value = e.target.checked;
+              setDepthTest(value);
+              mat.depthTest = value;
+            }}
+          />
         </div>
-      )}
+        <div className="flex items-center gap-x-2">
+          <strong>depth Write</strong>
+          <input
+            type="checkbox"
+            checked={depthWrite}
+            onChange={e => {
+              const value = e.target.checked;
+              setDepthWrite(value);
+              mat.depthWrite = value;
+            }}
+          />
+        </div>
+      </div>
     </div>
   );
 };
@@ -651,17 +683,10 @@ function MaterialPanelContainer() {
         <div style={{ fontSize: 10, color: '#444' }}>{mat.type}</div>
       </div>
       {/* <MaterialPanel style={{width:"100%"}} mat={mat}></MaterialPanel> */}
+      <ProbeSelector material={mat}></ProbeSelector>
 
-      <MapSection mat={mat as VMaterial} />
-      {/*<>*/}
-      {/*  {isStandard && (*/}
-      {/*    <div className="my-2">*/}
-      {/*      <button className="w-full" onClick={standardToPhysical}>*/}
-      {/*        MeshPhysicalMaterial 전환*/}
-      {/*      </button>*/}
-      {/*    </div>*/}
-      {/*  )}*/}
-      {/*</>*/}
+      <MapSection mat={mat as THREE.Material} />
+
       <button
         onClick={() => {
           console.log(mat);

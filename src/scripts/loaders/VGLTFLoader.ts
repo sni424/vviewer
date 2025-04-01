@@ -6,12 +6,8 @@ import {
   GLTFLoader,
 } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { KTX2Loader } from 'three/examples/jsm/loaders/KTX2Loader.js';
+import * as THREE from 'VTHREE';
 import { ENV, Layer } from '../../Constants.ts';
-import VMaterial from '../material/VMaterial.ts';
-import VMeshBasicMaterial from '../material/VMeshBasicMaterial.ts';
-import VMeshPhysicalMaterial from '../material/VMeshPhysicalMaterial.ts';
-import VMeshStandardMaterial from '../material/VMeshStandardMaterial.ts';
-import * as THREE from '../VTHREE.ts';
 import { getVKTX2Loader } from './VKTX2Loader.ts';
 
 export default class VGLTFLoader extends GLTFLoader {
@@ -74,13 +70,12 @@ export default class VGLTFLoader extends GLTFLoader {
 
       const isCreateLightMapCache = true;
 
-      const vMaterialCache = new Map<string, VMaterial>();
+      const vMaterialCache = new Map<string, THREE.Material>();
 
       // Material의 Transmission 관련 값이 Probe CubeCamera의 렌더에 버그가 있어서, 모든 transmission 관련 값 초기화
       gltf.scene.traverseAll(o => {
-        if (o.type === 'Mesh') {
-          const mesh = o as THREE.Mesh;
-          const mat = mesh.material as THREE.MeshStandardMaterial;
+        const mat = o.asMesh?.matPhysical;
+        if (mat) {
           if (mat['transmissionMap']) {
             mat['transmissionMap'] = null;
           }
@@ -100,25 +95,27 @@ export default class VGLTFLoader extends GLTFLoader {
           }
           mat.vUserData.originalOpacity = mat.opacity;
           mat.vUserData.originalColor = mat.color.getHexString();
+          mat.vUserData.isVMaterial = true;
 
           const originalMatID = mat.uuid;
 
           if (vMaterialCache.has(originalMatID)) {
-            mesh.material = vMaterialCache.get(originalMatID);
-          } else {
-            let vMat: VMaterial;
-            if (mat.type === 'MeshStandardMaterial') {
-              vMat = VMeshStandardMaterial.fromThree(mat);
-            } else if (mat.type === 'MeshPhysicalMaterial') {
-              vMat = VMeshPhysicalMaterial.fromThree(mat);
-            } else if (mat.type === 'MeshBasicMaterial') {
-              vMat = VMeshBasicMaterial.fromThree(mat);
-            } else {
-              console.warn('???', mat);
-            }
-            mesh.material = vMat;
-            vMaterialCache.set(originalMatID, vMat);
+            mesh.material = vMaterialCache.get(originalMatID) as any;
           }
+          // else {
+          //   let vMat: VMaterial;
+          //   if (mat.type === 'MeshStandardMaterial') {
+          //     vMat = VMeshStandardMaterial.fromThree(mat);
+          //   } else if (mat.type === 'MeshPhysicalMaterial') {
+          //     vMat = VMeshPhysicalMaterial.fromThree(mat);
+          //   } else if (mat.type === 'MeshBasicMaterial') {
+          //     vMat = VMeshBasicMaterial.fromThree(mat);
+          //   } else {
+          //     console.warn('???', mat);
+          //   }
+          //   mesh.material = vMat;
+          //   vMaterialCache.set(originalMatID, vMat);
+          // }
         }
         getLightmap(object, lightMapSet);
       });
@@ -248,33 +245,10 @@ export async function createLightmapCache(
   return toLightMapObj;
 }
 
-function updateLightMapFromEmissive(object: THREE.Object3D) {
-  if ('isMesh' in object) {
-    const mesh = object as THREE.Mesh;
-    const material = mesh.material as THREE.MeshStandardMaterial;
-    if (material.vUserData.isEmissiveLightMap) {
-      const emissiveMap = material.emissiveMap;
-      if (emissiveMap) {
-        if (emissiveMap.channel !== 1) {
-          emissiveMap.channel = 1;
-        }
-        emissiveMap.colorSpace = '';
-        material.lightMap = emissiveMap.clone();
-        material.lightMapIntensity = material.vUserData.lightMapIntensity ?? 1;
-        material.emissiveMap = null;
-        material.needsUpdate = true;
-      }
-      // vUserData 초기화
-      delete material.vUserData.isEmissiveLightMap;
-      delete material.vUserData.lightMapIntensity;
-    }
-  }
-}
-
 function getLightmap(object: THREE.Object3D, lightMapSet: Set<string>) {
   if ((object as THREE.Mesh).isMesh) {
     const mesh = object as THREE.Mesh;
-    const mat = mesh.material as VMaterial;
+    const mat = mesh.material as THREE.Material;
     if (mat) {
       const textures: string[] = [];
       if (mat.vUserData.lightMap) {

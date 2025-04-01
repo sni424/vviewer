@@ -1,12 +1,11 @@
 import { Object3DEventMap } from 'three';
 import { TransformControls } from 'three-stdlib';
 import { v4 } from 'uuid';
+import * as THREE from 'VTHREE';
 import { ENV, Layer } from '../Constants.ts';
-import * as THREE from './VTHREE.ts';
 import { uploadPngToKtx } from './atomUtils.ts';
 import { getVKTX2Loader } from './loaders/VKTX2Loader.ts';
 import VTextureLoader from './loaders/VTextureLoader.ts';
-import VMeshStandardMaterial from './material/VMeshStandardMaterial.ts';
 import { splitExtension } from './utils.ts';
 
 const DEFAULT_RESOLUTION: ReflectionProbeResolutions = 1024;
@@ -84,7 +83,7 @@ export default class ReflectionProbe {
   private canvas: HTMLCanvasElement | undefined;
   private imageData: ImageData | null = null;
   // Probe Controllers
-  private readonly translateControls: TransformControls<THREE.Camera>;
+  translateControls: TransformControls<THREE.Camera>;
   private readonly scaleControls: TransformControls<THREE.Camera>;
   private sSize: number = DEFAULT_SSIZE; // Size of Probe Box Scale Controller
   private tSize: number = DEFAULT_TSIZE; // Size of Probe Box Translate Controller
@@ -188,14 +187,14 @@ export default class ReflectionProbe {
     // @ts-ignore
     translateControls.addEventListener('dragging-changed', event => {
       document.dispatchEvent(
-        new CustomEvent('control-dragged', { detail: { moving: event.value } }),
+        new CustomEvent('control-dragged', { detail: { moving: (event as any).value } }),
       );
     });
 
     // @ts-ignore
     scaleControls.addEventListener('dragging-changed', event => {
       document.dispatchEvent(
-        new CustomEvent('control-dragged', { detail: { moving: event.value } }),
+        new CustomEvent('control-dragged', { detail: { moving: (event as any).value } }),
       );
     });
 
@@ -337,12 +336,12 @@ export default class ReflectionProbe {
 
   // TODO unsafe call for transformControls => 방법 찾기
   setControlsVisible(visible: boolean) {
-    this.translateControls.showX = visible;
-    this.translateControls.showY = visible;
-    this.translateControls.showZ = visible;
-    this.scaleControls.showX = visible;
-    this.scaleControls.showY = visible;
-    this.scaleControls.showZ = visible;
+    (this.translateControls as any).showX = visible;
+    (this.translateControls as any).showY = visible;
+    (this.translateControls as any).showZ = visible;
+    (this.scaleControls as any).showX = visible;
+    (this.scaleControls as any).showY = visible;
+    (this.scaleControls as any).showZ = visible;
 
     return this;
   }
@@ -828,7 +827,7 @@ export default class ReflectionProbe {
 
       const sortedTextures = textureUrls.sort((a, b) => {
         const getKey = (str: string) =>
-          str.match(/_(px|nx|py|ny|pz|nz)\.ktx$/)[1];
+          str.match(/_(px|nx|py|ny|pz|nz)\.ktx$/)![1];
         return order.indexOf(getKey(a)) - order.indexOf(getKey(b));
       });
 
@@ -1071,7 +1070,7 @@ function isTransformControlsChild(object: THREE.Object3D) {
     if (current instanceof TransformControls) {
       return true; // Skip if it's part of TransformControls
     }
-    current = current.parent;
+    current = current.parent!;
   }
   return false;
 }
@@ -1100,7 +1099,7 @@ function getMeshSize(mesh: THREE.Object3D) {
 function createProbeSphere() {
   const geometry = new THREE.SphereGeometry(0.5, 32, 16);
 
-  const material = new VMeshStandardMaterial({
+  const material = new THREE.MeshStandardMaterial({
     color: 0xffffff,
     metalness: 1,
     roughness: 0,
