@@ -41,6 +41,7 @@ function HotspotPanel() {
       const copied = [...prev];
       copied.push({
         name: '핫스팟',
+        isoView: false,
         index: prev.length + 1,
         rooms: [],
         content: {
@@ -140,6 +141,23 @@ function HotspotPanel() {
                 >
                   삭제
                 </button>
+                <span>isoView</span>
+                <input
+                  type="checkbox"
+                  checked={hotspot.isoView}
+                  onChange={event => {
+                    setHotspots(pre =>
+                      pre.map(data =>
+                        data.index === hotspot.index
+                          ? {
+                              ...data,
+                              isoView: !data.isoView,
+                            }
+                          : data,
+                      ),
+                    );
+                  }}
+                />
               </div>
               <div className="pl-3 mb-2 grid grid-cols-2">
                 <div>

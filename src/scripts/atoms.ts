@@ -546,6 +546,7 @@ export type Hotspot = {
   rooms: number[]; // 방에 들어갔을 때 표시, 방 인덱스
   target?: [number, number, number]; // x, y, z
   cameraMatrix?: Matrix4Array; // 16자리 매트릭스
+  isoView: boolean;
   content: {
     title: string;
     header: string; // 모델
