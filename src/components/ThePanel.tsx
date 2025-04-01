@@ -3,6 +3,7 @@ import React from 'react';
 import SceneInfo from '../components/SceneInfo';
 import SceneTree from '../components/SceneTree';
 import { loadHistoryAtom, panelTabAtom, Tab, Tabs } from '../scripts/atoms';
+import ClippingPanel from './ClippingPanel.tsx';
 import HotSpotPanel from './HotspotPanel';
 import { OptionTab } from './OptionTab.tsx';
 import ProbeInfo from './ProbeInfo';
@@ -21,6 +22,7 @@ const tabMap: { [key in Tab]: React.ReactNode } = {
   option: <OptionTab></OptionTab>,
   wall: <WallTab></WallTab>,
   skyBox: <SkyBoxPanel></SkyBoxPanel>,
+  clipping: <ClippingPanel></ClippingPanel>,
 } as const;
 
 const ThePanel = () => {
@@ -45,28 +47,31 @@ const ThePanel = () => {
           e.currentTarget.scrollLeft += e.deltaY * 0.1;
         }}
         style={{
-          height: 30,
+          minHeight: 30,
           display: 'flex',
+          flexWrap: 'wrap',
+          width: '100%',
+
           // justifyContent: "space-between",
           // alignItems: "center",
           // display: 'grid',
           // gridTemplateColumns:
-          //   'repeat(auto-fit, minmax(0, 1fr))'
-          width: '100%',
-          overflowX: 'auto',
+
+          // overflowX: 'auto',
         }}
       >
         {Tabs.map(t => {
           return (
             <button
               style={{
-                height: '100%',
-                borderRadius: 0,
-                textTransform: 'capitalize',
+                height: 30,
+                minWidth: 80,
                 paddingLeft: 6,
                 paddingRight: 6,
-                borderBottom: tab === t ? 'none' : undefined,
+                borderRadius: 0,
+                textTransform: 'capitalize',
                 fontWeight: tab === t ? 'bold' : undefined,
+                whiteSpace: 'nowrap',
               }}
               key={'tab-' + t}
               onClick={() => setTab(t)}

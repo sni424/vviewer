@@ -3,7 +3,7 @@ import { useState } from 'react';
 import {
   getAtomValue,
   hotspotAtom,
-  roomAtom,
+  newRoomAtom,
   setAtomValue,
   settingsAtom,
   threeExportsAtom,
@@ -30,7 +30,8 @@ const uploadHotspot = async () => {
 
 function HotspotPanel() {
   const [hotspots, setHotspots] = useAtom(hotspotAtom);
-  const rooms = useAtomValue(roomAtom);
+  // const rooms = useAtomValue(roomAtom);
+  const newRooms = useAtomValue(newRoomAtom);
   const threeExports = useAtomValue(threeExportsAtom);
   const [writeContent, setWriteContent] = useState(false);
   const [settings, setSettings] = useAtom(settingsAtom);
@@ -40,6 +41,7 @@ function HotspotPanel() {
       const copied = [...prev];
       copied.push({
         name: '핫스팟',
+        isoView: false,
         index: prev.length + 1,
         rooms: [],
         content: {
@@ -139,6 +141,23 @@ function HotspotPanel() {
                 >
                   삭제
                 </button>
+                <span>isoView</span>
+                <input
+                  type="checkbox"
+                  checked={hotspot.isoView}
+                  onChange={event => {
+                    setHotspots(pre =>
+                      pre.map(data =>
+                        data.index === hotspot.index
+                          ? {
+                              ...data,
+                              isoView: !data.isoView,
+                            }
+                          : data,
+                      ),
+                    );
+                  }}
+                />
               </div>
               <div className="pl-3 mb-2 grid grid-cols-2">
                 <div>
@@ -282,7 +301,7 @@ function HotspotPanel() {
                   </button>
                   방:{' '}
                   <span>
-                    {rooms
+                    {newRooms
                       .filter(room => hotspot.rooms.includes(room.index))
                       .map(room => room.name)
                       .join(', ')}
@@ -309,7 +328,7 @@ function HotspotPanel() {
                     });
                   }}
                 >
-                  {rooms.map(room => {
+                  {newRooms.map(room => {
                     return (
                       <option
                         value={room.index}

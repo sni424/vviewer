@@ -14,7 +14,6 @@ import {
   setAtomValue,
   threeExportsAtom,
 } from '../scripts/atoms';
-import Clipping from './clipping/Clipping';
 
 const CameraPanel = () => {
   const [isCameraPanel, setCameraPanel] = useState(true);
@@ -434,7 +433,6 @@ const CameraPanel = () => {
                 />
               </div>
             </div>
-            <Clipping />
           </section>
         </div>
       ) : (

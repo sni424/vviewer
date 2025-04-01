@@ -210,6 +210,13 @@ export const loadOption = async (filename?: string) => {
   }).then(res => res.json());
 };
 
+export const loadClipping = async () => {
+  return fetch(ENV.s3Base + 'clipping.json', {
+    cache: 'no-store',
+  }).then(res => res.json());
+};
+
+
 export const loadPostProcessAndSet = async () => {
   return loadPostProcess().then(res => {
     if (res) {

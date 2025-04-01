@@ -1188,7 +1188,7 @@ export function createClosedConcaveSurface(
   geometry.rotateX(Math.PI / 2);
 
   // 이 때 바깥쪽을 보고 있으므로 Material에서 더블사이드로 설정
-  const material = new VMeshStandardMaterial({
+  const material = new THREE.MeshStandardMaterial({
     emissive: color ?? 0x3333cc,
     emissiveIntensity: 1.0,
     side: THREE.DoubleSide,

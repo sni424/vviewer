@@ -6,12 +6,12 @@ import {
   getAtomValue,
   hotspotAtom,
   materialSettingAtom,
+  newRoomAtom,
   orbitSettingAtom,
   postprocessAtoms,
-  roomAtom,
   setAtomValue,
   settingsAtom,
-  viewGridAtom,
+  viewGridAtom
 } from '../scripts/atoms';
 
 export type SavedSettings = Partial<ReturnType<typeof getSettings>>;
@@ -22,7 +22,8 @@ export const getSettings = () => {
   const cameraSetting = getAtomValue(cameraSettingAtom);
   const orbitSetting = getAtomValue(orbitSettingAtom);
   const gridSetting = getAtomValue(viewGridAtom);
-  const rooms = getAtomValue(roomAtom);
+  // const rooms = getAtomValue(roomAtom);
+  const rooms = getAtomValue(newRoomAtom);
   const hotspots = getAtomValue(hotspotAtom);
   const env = getAtomValue(envAtom);
   const settings = getAtomValue(settingsAtom);
@@ -65,7 +66,8 @@ export const loadSettings = () => {
         setAtomValue(viewGridAtom, value.gridSetting);
       }
       if (undefined !== value.rooms) {
-        setAtomValue(roomAtom, value.rooms);
+        // setAtomValue(roomAtom, value.rooms);
+        setAtomValue(newRoomAtom, value.rooms);
       }
       if (undefined !== value.hotspots) {
         setAtomValue(hotspotAtom, value.hotspots);

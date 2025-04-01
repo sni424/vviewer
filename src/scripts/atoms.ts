@@ -20,6 +20,7 @@ import {
   FileInfo,
   GLProps,
   Matrix4Array,
+  SkyBoxState,
   View,
   ViewportOption,
   WallCreateOption, Walls,
@@ -330,6 +331,7 @@ export const Tabs = [
   'option',
   'wall',
   'skyBox',
+  'clipping',
 ] as const;
 export type Tab = (typeof Tabs)[number];
 export const panelTabAtom = atom<Tab>('scene');
@@ -506,7 +508,25 @@ export type RoomCreateOption = Room & {
   creating?: boolean; // 생성중이면 좌표값의 배열
   color?: number;
 };
+
+export type newRoom = {
+  show?: boolean;
+  tourMatrix: number[];
+  border: [number, number][]; // [x, z]
+  index: string;
+  creating?: boolean;
+  visible: boolean
+};
+
+export type newRoomCreateOption = {
+  color?: number;
+  index: number;
+  name: string;
+  visible: boolean
+  roomInfo: newRoom[]
+};
 export const roomAtom = atom<RoomCreateOption[]>([]);
+export const newRoomAtom = atom<newRoomCreateOption[]>([])
 
 export const [wallOptionAtom,
   getWallOptionAtom,
@@ -543,6 +563,7 @@ export type Hotspot = {
   rooms: number[]; // 방에 들어갔을 때 표시, 방 인덱스
   target?: [number, number, number]; // x, y, z
   cameraMatrix?: Matrix4Array; // 16자리 매트릭스
+  isoView: boolean;
   content: {
     title: string;
     header: string; // 모델
@@ -603,49 +624,20 @@ export const lightMapAtom = atom<{
   };
 }>({});
 
-export const skyBoxAtom = atom<{
-  isSkyBox: boolean, type: string, texture?: THREE.Texture, mesh: {
-    intensity: number
-    rotation: {
-      x: number,
-      y: number,
-      z: number,
-    }
-    position: {
-      x: number,
-      y: number,
-      z: number,
-    }
-    scale: {
-      x: number,
-      y: number,
-      z: number,
-    }
-  }
-}>(
-  {
-    isSkyBox: false,
-    type: "mesh",
-    mesh: {
-      intensity: 1,
-      rotation: {
-        x: 0,
-        y: 0,
-        z: 0
-      },
-      position: {
-        x: 0,
-        y: 0,
-        z: 0
-      },
-      scale: {
-        x: 1,
-        y: 1,
-        z: 1
-      }
-    }
-  }
-)
+export const skyBoxAtom = atom<SkyBoxState>({
+  isSkyBox: false,
+  type: 'mesh',
+  scene: {
+    intensity: 1,
+    rotation: { x: 0, y: 0, z: 0 },
+  },
+  mesh: {
+    intensity: 1,
+    rotation: { x: 0, y: 0, z: 0 },
+    position: { x: 0, y: 0, z: 0 },
+    scale: { x: 1, y: 1, z: 1 },
+  },
+});
 
 export type DrawablePoint = {
   point: THREE.Matrix4 | THREE.Vector3 | { x: number; z: number };

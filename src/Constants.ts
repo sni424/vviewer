@@ -55,13 +55,46 @@ export const ROOM_COLORS = [
   0xaa4444, 0x44aa44, 0x3399aa, 0x0033aa,
 ];
 
+export const newROOM_COLORS = Array.from({ length: 200 }, (_, i) => {
+  // Create a more varied color generation using multiple techniques
+  const hue = (i * 137.508) % 360;  // Golden angle method for color distribution
+  const saturation = 70 + (i % 30);  // Vary saturation
+  const lightness = 50 + (i % 20);   // Vary lightness
+
+  // Convert HSL to RGB
+  const h = hue / 60;
+  const c = (1 - Math.abs(2 * (lightness / 100) - 1)) * (saturation / 100);
+  const x = c * (1 - Math.abs(h % 2 - 1));
+  const m = (lightness / 100) - c / 2;
+
+  let r = 0, g = 0, b = 0;
+  if (h < 1) { r = c; g = x; b = 0; }
+  else if (h < 2) { r = x; g = c; b = 0; }
+  else if (h < 3) { r = 0; g = c; b = x; }
+  else if (h < 4) { r = 0; g = x; b = c; }
+  else if (h < 5) { r = x; g = 0; b = c; }
+  else { r = c; g = 0; b = x; }
+
+  return Math.round((r + m) * 255) * 65536 +
+    Math.round((g + m) * 255) * 256 +
+    Math.round((b + m) * 255);
+});
+
+export const newRoomColorString = (index: number) => {
+
+  return '#' + newROOM_COLORS[index % newROOM_COLORS.length].toString(16).padStart(6, '0');
+};
+
 export const roomColor = (index: number) => {
   return ROOM_COLORS[index % ROOM_COLORS.length];
 };
 
 export const roomColorString = (index: number) => {
   return '#' + roomColor(index).toString(16).padStart(6, '0');
+
 };
+
+
 
 const base: string = import.meta.env.VITE_MODELS_CLOUDFRONT_URL as string;
 const s3Base: string = import.meta.env.VITE_MODELS_URL as string;
