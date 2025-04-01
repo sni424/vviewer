@@ -1,9 +1,9 @@
 import { Pathfinding } from 'three-pathfinding';
 import { v4 } from 'uuid';
+import * as THREE from 'VTHREE';
 import { Walls } from '../../types.ts';
 import { threes } from '../atomUtils.ts';
 import { Effects, ModelOptionState } from '../ModelOptionObject.ts';
-import * as THREE from '../vthree/VTHREE.ts';
 import MeshEffect from './MeshEffect.ts';
 import ModelOption from './ModelOption.ts';
 

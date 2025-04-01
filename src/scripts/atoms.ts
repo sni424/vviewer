@@ -13,6 +13,7 @@ import {
 import React from 'react';
 import { Pathfinding } from 'three-pathfinding';
 import { OrbitControls } from 'three/examples/jsm/Addons.js';
+import { THREE } from 'VTHREE';
 import { Catalogue } from '../components/DPC/DPCFileImporter.tsx';
 import { DPConfiguratorMode } from '../components/DPC/DPConfigurator.tsx';
 import {
@@ -25,7 +26,6 @@ import {
 } from '../types';
 import ModelOption from './options/ModelOption.ts';
 import ReflectionProbe from './ReflectionProbe.ts';
-import { THREE } from './vthree/VTHREE.ts';
 
 type AtomArgType<T> = T | ((prev: T) => T);
 export type Store = ReturnType<typeof createStore>;
@@ -114,16 +114,16 @@ export const orbitControlAtom = atom<OrbitControls>();
 export type Env = {
   select: 'none' | 'preset' | 'custom' | 'url';
   preset?:
-    | 'apartment'
-    | 'city'
-    | 'dawn'
-    | 'forest'
-    | 'lobby'
-    | 'night'
-    | 'park'
-    | 'studio'
-    | 'sunset'
-    | 'warehouse';
+  | 'apartment'
+  | 'city'
+  | 'dawn'
+  | 'forest'
+  | 'lobby'
+  | 'night'
+  | 'park'
+  | 'studio'
+  | 'sunset'
+  | 'warehouse';
   url?: string;
   intensity?: number;
   rotation?: {
@@ -133,7 +133,7 @@ export type Env = {
   };
 };
 
-export const minimapAtom = atom<{show: boolean; urls: string[]; useIndex: number }>({
+export const minimapAtom = atom<{ show: boolean; urls: string[]; useIndex: number }>({
   show: false,
   urls: [
     'https://vra-configurator-dev.s3.ap-northeast-2.amazonaws.com/models/images/miniMap',
@@ -520,7 +520,7 @@ export const [wallOptionAtom,
 export const [wallCacheAtom,
   getWallCacheAtom,
   setWallCacheAtom
-] = createAtomCombo<{[key:string]: Walls}>({});
+] = createAtomCombo<{ [key: string]: Walls }>({});
 
 export const [wallHighlightAtom,
   getWallHighlightAtom,

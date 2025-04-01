@@ -1,10 +1,10 @@
 import * as THREE from 'three';
+import { DEFAULT_MATERIAL_SHADER, defaultUniforms, EMPTY_TEXTURE, MATERIAL_DEFINE, MATERIAL_SHADER, MATERIAL_UNIFORM, MATERIAL_UNIFORM_VALUE, VUserData } from "../../scripts/vthree/VTHREETypes";
 import { threes } from '../atomUtils';
 import type ReflectionProbe from '../ReflectionProbe';
 import { patchFragment } from '../shaders/v_env_frag.glsl';
 import { patchVertex } from '../shaders/v_env_vertex.glsl';
 import { computeBoundingBoxForMaterial } from '../utils';
-import { DEFAULT_MATERIAL_SHADER, defaultUniforms, EMPTY_TEXTURE, MATERIAL_DEFINE, MATERIAL_SHADER, MATERIAL_UNIFORM, MATERIAL_UNIFORM_VALUE, VUserData } from './VTHREETypes';
 
 // 재질 : uniform
 // { material1 : { lightmapContrast : { value : 1.0 } } }

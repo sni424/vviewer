@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { ColorPicker, ColorService, useColor } from 'react-color-palette';
 //@ts-ignore
 import 'react-color-palette/css';
+import { THREE } from 'VTHREE';
 import { AOMAP_INTENSITY_MAX, LIGHTMAP_INTENSITY_MAX } from '../Constants';
 import {
   materialSelectedAtom,
@@ -11,7 +12,6 @@ import {
 } from '../scripts/atoms';
 import VTextureLoader from '../scripts/loaders/VTextureLoader.ts';
 import { loadHDRTexture, loadPNGAsENV } from '../scripts/utils';
-import { THREE } from '../scripts/vthree/VTHREE.ts';
 import MapPreview, { MapPreviewProps } from './MapPreview';
 import ProbeSelector from './ProbeSelector.tsx';
 
@@ -528,7 +528,7 @@ const OpacityPanel = ({ mat }: { mat: THREE.Material }) => {
 
   return (
     <div>
-      <strong style={{fontSize: 12}}>Transparency</strong>
+      <strong style={{ fontSize: 12 }}>Transparency</strong>
 
       <div className="w-full flex flex-col gap-y-1 text-[11px] p-1 border border-black rounded mt-1">
         <div className="flex items-center gap-x-2">

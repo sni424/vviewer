@@ -2,6 +2,7 @@ import { Canvas, RootState, useThree } from '@react-three/fiber';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import { useEffect, useRef } from 'react';
 import { v4 } from 'uuid';
+import { THREE } from 'VTHREE';
 import { Layer } from '../../Constants';
 import { getSettings } from '../../pages/useSettings';
 import {
@@ -41,7 +42,6 @@ import {
   resetColor,
   zoomToSelected,
 } from '../../scripts/utils';
-import { THREE } from '../../scripts/vthree/VTHREE.ts';
 import { View, WallCreateOption, WallPointView } from '../../types';
 import UnifiedCameraControls from '../camera/UnifiedCameraControls';
 import HotspotDialog from '../HotspotDialog';

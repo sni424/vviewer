@@ -1,8 +1,8 @@
 import { useAtomValue } from 'jotai';
 import { useState } from 'react';
+import { THREE } from 'VTHREE';
 import { selectedAtom, threeExportsAtom, useModal } from '../scripts/atoms';
 import VTextureLoader from '../scripts/loaders/VTextureLoader.ts';
-import { THREE } from '../scripts/vthree/VTHREE.ts';
 
 const ApplyLightMapComponent = () => {
   const { closeModal } = useModal();

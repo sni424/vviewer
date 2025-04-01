@@ -1,7 +1,7 @@
 import { RootState } from '@react-three/fiber';
 import gsap from 'gsap';
 import { get, set } from 'idb-keyval';
-import * as THREE from './vthree/VTHREE.ts';
+import * as THREE from 'VTHREE';
 
 import objectHash from 'object-hash';
 import pako from 'pako';
@@ -9,6 +9,7 @@ import { TransformControls } from 'three-stdlib';
 import { EXRLoader, OrbitControls } from 'three/examples/jsm/Addons.js';
 import { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { v4 } from 'uuid';
+import { VUserData } from 'VTHREE';
 import { ENV, Layer } from '../Constants';
 import { FileInfo, MoveActionOptions, View, WallPoint, WallPointView, WallView } from '../types.ts';
 import {
@@ -26,7 +27,6 @@ import { uploadExrToKtx } from './atomUtils.ts';
 import VGLTFLoader from './loaders/VGLTFLoader.ts';
 import ReflectionProbe from './ReflectionProbe.ts';
 import VGLTFExporter from './VGLTFExporter.ts';
-import { VUserData } from './vthree/VTHREETypes.ts';
 
 export const groupInfo = (
   group: THREE.Group | { scene: THREE.Group } | THREE.Scene | THREE.Object3D,

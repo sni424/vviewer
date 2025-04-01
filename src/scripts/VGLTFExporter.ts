@@ -1,8 +1,8 @@
 import { GLTFExporter } from 'three/examples/jsm/Addons.js';
 // @ts-ignore
 import * as TextureUtils from 'three/examples/jsm/utils/WebGLTextureUtils';
+import * as THREE from 'VTHREE';
 import { Layer } from '../Constants.ts';
-import * as THREE from './vthree/VTHREE.ts';
 
 interface GLTFExporterOptions {
   /**

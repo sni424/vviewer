@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { VUserData } from './VTHREETypes.ts';
+import { VUserData } from 'VTHREE';
 
 declare module 'three' {
 

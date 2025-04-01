@@ -7,6 +7,7 @@ import {
   useRef,
   useState,
 } from 'react';
+import * as THREE from 'VTHREE';
 import {
   animationDurationAtom,
   getAtomValue,
@@ -28,7 +29,6 @@ import OptionState, {
   FunctionEffectsURLs,
 } from '../scripts/options/OptionState.ts';
 import { isImage, loadLatest, splitExtension } from '../scripts/utils.ts';
-import * as THREE from '../scripts/VTHREE.ts';
 import { SelectableNodes } from './DPC/DPCModelSelector.tsx';
 import FileUploader from './util/FileUploader.tsx';
 

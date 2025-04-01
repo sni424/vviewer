@@ -1,9 +1,9 @@
 import { RootState } from '@react-three/fiber';
 import * as THREE from 'three';
 import type { TransformControlsPlane } from 'three/examples/jsm/controls/TransformControls.js';
+import { VUserData } from 'VTHREE';
 import { Layer } from '../../Constants';
 import { resetGL } from '../utils';
-import { VUserData } from './VTHREETypes';
 
 declare module "three" {
   interface Object3D {

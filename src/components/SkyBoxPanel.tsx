@@ -1,7 +1,7 @@
 import { useAtom } from 'jotai';
 import { useEffect, useRef, useState } from 'react';
+import { THREE } from 'VTHREE';
 import { skyBoxAtom } from '../scripts/atoms';
-import { THREE } from '../scripts/VTHREE';
 
 const SkyBoxPanel = () => {
   const [isOpen, setOpen] = useState(false);

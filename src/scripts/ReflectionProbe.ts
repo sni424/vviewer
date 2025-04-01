@@ -1,12 +1,12 @@
 import { Object3DEventMap } from 'three';
 import { TransformControls } from 'three-stdlib';
 import { v4 } from 'uuid';
+import * as THREE from 'VTHREE';
 import { ENV, Layer } from '../Constants.ts';
 import { uploadPngToKtx } from './atomUtils.ts';
 import { getVKTX2Loader } from './loaders/VKTX2Loader.ts';
 import VTextureLoader from './loaders/VTextureLoader.ts';
 import { splitExtension } from './utils.ts';
-import * as THREE from './vthree/VTHREE.ts';
 
 const DEFAULT_RESOLUTION: ReflectionProbeResolutions = 1024;
 const DEFAULT_POSITION: THREE.Vector3 = new THREE.Vector3(0, 0, 0);

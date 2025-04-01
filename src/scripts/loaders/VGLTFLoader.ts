@@ -6,8 +6,8 @@ import {
   GLTFLoader,
 } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { KTX2Loader } from 'three/examples/jsm/loaders/KTX2Loader.js';
+import * as THREE from 'VTHREE';
 import { ENV, Layer } from '../../Constants.ts';
-import * as THREE from '../vthree/VTHREE.ts';
 import { getVKTX2Loader } from './VKTX2Loader.ts';
 
 export default class VGLTFLoader extends GLTFLoader {

@@ -1,5 +1,5 @@
 import { KTX2Loader } from 'three/examples/jsm/loaders/KTX2Loader.js';
-import * as THREE from '../vthree/VTHREE.ts';
+import * as THREE from 'VTHREE';
 
 export default class VKTX2Loader extends KTX2Loader {
   static instance: VKTX2Loader;

@@ -1,6 +1,7 @@
 import { useAtom, useAtomValue } from 'jotai/index';
 import { useEffect, useState } from 'react';
 import { v4 } from 'uuid';
+import { THREE } from 'VTHREE';
 import {
   cameraSettingAtom,
   DPAtom,
@@ -15,7 +16,6 @@ import ReflectionProbe, {
   ReflectionProbeJSON,
 } from '../scripts/ReflectionProbe.ts';
 import { toggleDP } from '../scripts/utils.ts';
-import { THREE } from '../scripts/vthree/VTHREE.ts';
 
 const DPController = () => {
   const threeExports = useAtomValue(threeExportsAtom);

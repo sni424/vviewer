@@ -7,6 +7,7 @@ import React, {
   useState,
 } from 'react';
 import { v4 } from 'uuid';
+import { THREE } from 'VTHREE';
 import {
   getAtomValue,
   ProbeAtom,
@@ -34,7 +35,6 @@ import {
   loadPNGAsENV,
   splitExtension,
 } from '../scripts/utils.ts';
-import { THREE } from '../scripts/vthree/VTHREE.ts';
 import { ProbeTypes } from '../types.ts';
 import './probe.css';
 

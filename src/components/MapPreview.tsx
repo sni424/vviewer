@@ -1,5 +1,6 @@
 import { useAtom, useAtomValue } from 'jotai';
 import React, { useEffect, useRef, useState } from 'react';
+import { THREE } from 'VTHREE';
 import {
   ktxTexturePreviewCachedAtom,
   MaterialSlot,
@@ -9,7 +10,6 @@ import {
 import { threes, wallOptionToWalls } from '../scripts/atomUtils.ts';
 import { applyMultiProbe } from '../scripts/probeUtils.ts';
 import ReflectionProbe from '../scripts/ReflectionProbe.ts';
-import { THREE } from '../scripts/vthree/VTHREE.ts';
 import { WallCreateOption } from '../types.ts';
 
 export interface MapPreviewProps {

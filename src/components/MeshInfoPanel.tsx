@@ -1,4 +1,5 @@
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
+import { THREE } from 'VTHREE';
 import {
   materialSelectedAtom,
   panelTabAtom,
@@ -8,7 +9,6 @@ import {
   useModal,
 } from '../scripts/atoms';
 import { groupInfo } from '../scripts/utils';
-import { THREE } from '../scripts/vthree/VTHREE.ts';
 import ApplyLightMapComponent from './ApplyLightMapComponent';
 
 const MeshView = ({

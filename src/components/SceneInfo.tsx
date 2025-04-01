@@ -18,6 +18,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import VTextureLoader from 'src/scripts/loaders/VTextureLoader.ts';
 import ReflectionProbe from 'src/scripts/ReflectionProbe.ts';
+import { Quaternion, THREE, Vector3 } from 'VTHREE';
 import {
   __UNDEFINED__,
   AOMAP_INTENSITY_MAX,
@@ -53,7 +54,6 @@ import useFilelist from '../scripts/useFilelist';
 import { parseDroppedFiles } from '../scripts/useModelDragAndDrop.ts';
 import useStats, { StatPerSecond, VStats } from '../scripts/useStats.ts';
 import VGLTFExporter from '../scripts/VGLTFExporter.ts';
-import { Quaternion, THREE, Vector3 } from '../scripts/vthree/VTHREE.ts';
 import { BloomOption } from './canvas/Bloom.tsx';
 import { BrightnessContrastOption } from './canvas/BrightnessContrast.tsx';
 import { ColorLUTOption } from './canvas/ColorLUT.tsx';
@@ -1133,7 +1133,8 @@ const GeneralMinimapControl = () => {
       </div>
       <div className="flex gap-x-1 mt-1">
         {urls.map((url, index) => (
-          <button key={'minimapHandleButton-' + index}
+          <button
+            key={'minimapHandleButton-' + index}
             onClick={() => {
               setMinimap(pre => ({ ...pre, useIndex: index }));
             }}

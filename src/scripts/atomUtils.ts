@@ -1,5 +1,6 @@
 import { Pathfinding } from 'three-pathfinding';
 import { v4 } from 'uuid';
+import { THREE } from 'VTHREE';
 import { ENV } from '../Constants';
 import { WallCreateOption, Walls, WallView } from '../types.ts';
 import {
@@ -17,7 +18,6 @@ import {
 import VGLTFLoader from './loaders/VGLTFLoader.ts';
 import type ReflectionProbe from './ReflectionProbe.ts';
 import { resetColor } from './utils.ts';
-import { THREE } from './vthree/VTHREE.ts';
 
 interface PointXZ {
   x: number;

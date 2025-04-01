@@ -1,6 +1,6 @@
 import { set } from 'idb-keyval';
 import { EXRLoader } from 'three/examples/jsm/Addons.js';
-import { THREE } from '../vthree/VTHREE.ts';
+import { THREE } from 'VTHREE';
 import { getVKTX2Loader } from './VKTX2Loader.ts';
 
 const dispoableUrls: string[] = [];

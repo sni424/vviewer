@@ -1,5 +1,6 @@
 import { useAtom, useAtomValue } from 'jotai';
 import { useEffect, useState } from 'react';
+import { THREE } from 'VTHREE';
 import MobileBenchmarkPanel from '../components/mobile/MobileBenchmarkPanel';
 import MobileCameraManager from '../components/mobile/MobileCameraManager';
 import MobileRenderer from '../components/mobile/MobileRenderer';
@@ -26,7 +27,6 @@ import ReflectionProbe, {
   ReflectionProbeJSON,
 } from '../scripts/ReflectionProbe.ts';
 import { loadLatest } from '../scripts/utils';
-import { THREE } from '../scripts/vthree/VTHREE.ts';
 
 const createGeometry = (points: [number, number][]) => {
   if (points.length < 3) {

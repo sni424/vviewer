@@ -1,7 +1,7 @@
+import * as THREE from 'VTHREE';
 import { Effects, MeshEffectJSON } from '../ModelOptionObject.ts';
-import * as THREE from '../vthree/VTHREE.ts';
-import OptionState from './OptionState.ts';
 import ModelOption from './ModelOption.ts';
+import OptionState from './OptionState.ts';
 
 export default class MeshEffect {
   private readonly _targetMeshProperties: { name: string; uuid: string };
@@ -126,7 +126,7 @@ export default class MeshEffect {
     if (Object.keys(lightMapValues).includes(targetState.parent.id)) {
       lightMapValues[targetState.parent.id] = { ...lightMapValues[targetState.parent.id], [targetState.id]: url };
     } else {
-      lightMapValues[targetState.parent.id] = {[targetState.id]: url};
+      lightMapValues[targetState.parent.id] = { [targetState.id]: url };
     }
   }
 

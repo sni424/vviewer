@@ -1,6 +1,6 @@
+import { THREE } from 'VTHREE';
 import { Layer } from '../Constants.ts';
 import { ProbeMeshEventMap } from './ReflectionProbe.ts';
-import { THREE } from './vthree/VTHREE.ts';
 
 export type PlaneControlDirections = 'x+' | 'x-' | 'y+' | 'y-' | 'z+' | 'z-';
 
