@@ -289,11 +289,7 @@ const ProbeInfo = () => {
               probeIds.includes(probe.getId()),
             );
             if (probesToApply.length > 0) {
-              if (probeType === 'single') {
-                applyProbeOnMaterial(material, probesToApply[0]);
-              } else {
-                applyMultiProbe(material, probesToApply);
-              }
+
             }
           });
         },
