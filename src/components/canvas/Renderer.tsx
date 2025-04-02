@@ -53,6 +53,7 @@ import Rooms from './Rooms';
 import SelectBox from './SelectBox';
 import SkyBoxMesh from './SkyBox.tsx';
 import Walls from './Walls.tsx';
+import SkyBox from 'src/components/test/SkyBox.tsx';
 
 const MainGrid = () => {
   const on = useAtomValue(viewGridAtom);
@@ -806,6 +807,7 @@ function RendererContainer() {
         <Renderer></Renderer>
         <MoveTo></MoveTo>
         <Points></Points>
+        <SkyBox/>
       </Canvas>
     </div>
   );

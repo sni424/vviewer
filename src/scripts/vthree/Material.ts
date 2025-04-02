@@ -172,7 +172,7 @@ THREE.Material.prototype.onBeforeCompile = function (shader: THREE.WebGLProgramP
     return;
   }
 
-  console.log("onBeforeCompile", this.name, this.type,);
+  // console.log("onBeforeCompile", this.name, this.type,);
 
   patchVertex(shader);
   patchFragment(shader);
