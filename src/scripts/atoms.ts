@@ -624,6 +624,10 @@ export const lightMapAtom = atom<{
   };
 }>({});
 
+export const testAtom = atom<{useSkyBox: boolean;}>({
+  useSkyBox: false,
+})
+
 export const skyBoxAtom = atom<SkyBoxState>({
   isSkyBox: false,
   type: 'mesh',
