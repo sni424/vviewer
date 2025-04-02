@@ -8,7 +8,8 @@ export default class VKTX2Loader extends KTX2Loader {
     super.setTranscoderPath(
       'https://vra-configurator-dev.s3.ap-northeast-2.amazonaws.com/static/basis/',
     );
-    super.setWorkerLimit(4);
+    const maxWorkers = navigator.hardwareConcurrency ?? 4;
+    super.setWorkerLimit(maxWorkers);
     if (gl) {
       super.detectSupport(gl);
     }
