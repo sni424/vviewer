@@ -215,7 +215,7 @@ const useOptionManager = () => {
               progress: 1,
               duration: animationDuration,
               onStart() {
-                mat.prepareMeshTransition({
+                mat.apply('meshTransition', {
                   direction: targetVisible ? "fadeIn" : "fadeOut",
                 })
                 mesh.visible = true;
@@ -227,7 +227,7 @@ const useOptionManager = () => {
               },
               onComplete() {
                 mesh.visible = targetVisible;
-                mat.MESH_TRANSITION = false;
+                mat.remove('meshTransition');
                 mat.transparent = transparency;
               }
             })

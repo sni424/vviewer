@@ -48,6 +48,7 @@ import {
 import {
   loadPostProcessAndSet,
   prepareWalls,
+  recompileAsync,
   uploadJson,
 } from '../scripts/atomUtils.ts';
 import useFilelist from '../scripts/useFilelist';
@@ -238,6 +239,9 @@ const GeneralButtons = () => {
   }
 
   async function uploadLightMaps(isMobile?: boolean) {
+    if (!confirm('라이트맵 업로드 하시겠습니까?')) {
+      return;
+    }
     openToast('라이트맵 업로드 중...', { autoClose: false });
     setUploading(true);
     await uploadExrLightmap(threeExports.scene, isMobile);
@@ -246,6 +250,9 @@ const GeneralButtons = () => {
   }
 
   async function uploadModels(lightMapUploaded?: boolean = false) {
+    if (!confirm('GLB 업로드 하시겠습니까?')) {
+      return;
+    }
     const uploadUrl = import.meta.env.VITE_UPLOAD_URL;
     if (!uploadUrl) {
       alert('.env에 환경변수를 설정해주세요, uploadUrl');
@@ -316,6 +323,10 @@ const GeneralButtons = () => {
   }
 
   async function uploadMobileModels() {
+    if (!confirm('모바일 씬을 업로드 하시겠습니까?')) {
+      return;
+    }
+
     const uploadUrl = import.meta.env.VITE_UPLOAD_URL;
     if (!uploadUrl) {
       alert('.env에 환경변수를 설정해주세요, uploadUrl');
@@ -373,14 +384,18 @@ const GeneralButtons = () => {
   }
 
   async function uploadScene() {
-    await uploadLightMaps();
-    await uploadModels(true);
-    alert('씬 업로드 완료');
+    if (confirm('씬을 업로드 하시겠습니까?')) {
+      await uploadLightMaps();
+      await uploadModels(true);
+      alert('씬 업로드 완료');
+    }
   }
 
   async function mobileUpload() {
-    await uploadLightMaps(true);
-    await uploadMobileModels();
+    if (confirm('모바일 씬을 업로드 하시겠습니까?')) {
+      await uploadLightMaps(true);
+      await uploadMobileModels();
+    }
   }
 
   return (
@@ -438,6 +453,7 @@ const GeneralButtons = () => {
         모바일 불러오기
       </button>
       <button onClick={handleResetSettings}>카메라 세팅 초기화</button>
+      <button onClick={recompileAsync}>리컴파일</button>
     </section>
   );
 };
@@ -633,8 +649,7 @@ const LightmapTransitionControl = () => {
   useEffect(() => {
     scene.traverse(o => {
       const mat = (o as THREE.Mesh).matStandard;
-      if (mat && mat.LIGHTMAP_TRANSITION) {
-        console.log('LIGHTMAP_TRANSITION prog', progress);
+      if (mat) {
         mat.progress = progress;
       }
     });
@@ -679,7 +694,10 @@ const LightmapTransitionControl = () => {
                 as: 'texture',
               }).then(t => {
                 mat.uniform.uLightMapTo.value = t;
-                mat.LIGHTMAP_TRANSITION = true;
+                mat.apply('lightmapTransition', {
+                  target: t,
+                  progress,
+                });
               });
             }
           });
@@ -772,12 +790,12 @@ const ProbeControl = () => {
             if (o.asMesh?.mat?.vUserData?.isVMaterial) {
               const mat = o.asMesh.mat!;
               if (mat.name === 'MI_TCE036S.003') {
-                mat.applyProbe({
+                mat.apply('probe', {
                   probes,
                   walls,
                 });
               } else {
-                mat.applyProbe({
+                mat.apply('probe', {
                   probes,
                 });
               }
@@ -826,9 +844,7 @@ const ProgressiveAlphaControl = () => {
       if (!mat) {
         return;
       }
-      if (mat.MESH_TRANSITION) {
-        mat.uniform!.uProgress.value = progress;
-      }
+      mat.uniform!.uProgress.value = progress;
     });
   }, [progress]);
 
@@ -848,7 +864,7 @@ const ProgressiveAlphaControl = () => {
       <button
         onClick={() => {
           scene.traverse(o => {
-            o.asMesh?.mat?.prepareMeshTransition?.({
+            o.asMesh?.mat?.apply?.('meshTransition', {
               direction: 'fadeOut',
               progress,
             });
@@ -860,7 +876,7 @@ const ProgressiveAlphaControl = () => {
       <button
         onClick={() => {
           scene.traverse(o => {
-            o.asMesh?.mat?.prepareMeshTransition?.({
+            o.asMesh?.mat?.apply?.('meshTransition', {
               direction: 'fadeIn',
               progress,
             });
@@ -872,7 +888,7 @@ const ProgressiveAlphaControl = () => {
       <button
         onClick={() => {
           scene.traverse(o => {
-            o.asMesh?.mat?.prepareMeshTransition?.({
+            o.asMesh?.mat?.apply?.('meshTransition', {
               direction: 'fadeOut',
             });
           });
@@ -902,7 +918,7 @@ const ProgressiveAlphaControl = () => {
       <button
         onClick={() => {
           scene.traverse(o => {
-            o.asMesh?.mat?.prepareMeshTransition?.({
+            o.asMesh?.mat?.apply?.('meshTransition', {
               direction: 'fadeIn',
             });
           });
@@ -937,7 +953,7 @@ const ProgressiveAlphaControl = () => {
               return;
             }
 
-            mat.MESH_TRANSITION = false;
+            mat.remove('meshTransition');
           });
         }}
       >
@@ -1102,9 +1118,9 @@ const GeneralPostProcessingControl = () => {
       <ColorTemperatureOption></ColorTemperatureOption>
       <BrightnessContrastOption></BrightnessContrastOption>
       <LightmapImageContrastControl></LightmapImageContrastControl>
-      <ProgressiveAlphaControl></ProgressiveAlphaControl>
-      <ProbeControl></ProbeControl>
-      <LightmapTransitionControl></LightmapTransitionControl>
+      {/* <ProgressiveAlphaControl></ProgressiveAlphaControl> */}
+      {/* <ProbeControl></ProbeControl> */}
+      {/* <LightmapTransitionControl></LightmapTransitionControl> */}
       <SRGBControl></SRGBControl>
       <BloomOption></BloomOption>
       <ColorLUTOption></ColorLUTOption>

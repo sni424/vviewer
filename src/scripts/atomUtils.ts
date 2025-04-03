@@ -540,5 +540,23 @@ export const recompileAsync = async () => {
   }
 
   const { gl, scene, camera } = t;
-  return gl.compileAsync(scene, camera);
+  const visibleMap = new Map<string, boolean>();
+
+  scene.traverse(o => {
+    if (o.asMesh.isMesh) {
+      const mesh = o.asMesh;
+      mesh.frustumCulled = false;
+      visibleMap.set(mesh.uuid, mesh.visible);
+      mesh.visible = true;
+      mesh.matStandard.needsUpdate = true;
+    }
+  })
+  return gl.compileAsync(scene, camera).then(() => {
+    scene.traverse(o => {
+      if (o.asMesh.frustumCulled === false) {
+        o.frustumCulled = true;
+        o.asMesh.visible = visibleMap.get(o.uuid) ?? true;
+      }
+    })
+  })
 }

@@ -1,7 +1,12 @@
 import { useAtomValue } from 'jotai';
 import { useEffect, useState } from 'react';
-import { ProbeAtom, wallOptionAtom } from 'src/scripts/atoms';
+import {
+  materialSelectedAtom,
+  ProbeAtom,
+  wallOptionAtom,
+} from 'src/scripts/atoms';
 import { prepareWalls } from 'src/scripts/atomUtils';
+import { applyProbeReflectionProbe } from 'src/scripts/vthree/Material';
 import { THREE } from 'VTHREE';
 
 const MultiProbeSelector = ({
@@ -70,6 +75,7 @@ const compareStringArray = (l: string[], r: string[]) => {
 };
 
 const ProbeSelector = ({ material }: { material: THREE.Material }) => {
+  const selectedMaterial = useAtomValue(materialSelectedAtom);
   const probes = useAtomValue(ProbeAtom);
   const wallInfo = useAtomValue(wallOptionAtom); // 벽 정보가 바뀔때마다 리렌더
   const [probeIntensity, setProbeIntensity] = useState<number>(
@@ -91,16 +97,6 @@ const ProbeSelector = ({ material }: { material: THREE.Material }) => {
 
   const [probeSelections, setProbeSelections] =
     useState<string[]>(initialProbeIds);
-
-  useEffect(() => {
-    material.vUserData.probeIds = [...probeSelections];
-
-    if (probeSelections.length > 0) {
-      const walls = useWall ? prepareWalls(wallInfo) : undefined;
-      // console.log('applyMultiProbeOnMaterial:', walls);
-      // applyMultiProbeOnMaterial(material, probes, probeSelections, walls);
-    }
-  }, [probeSelections, useWall]);
 
   if (!material) {
     return null;
@@ -249,22 +245,32 @@ const ProbeSelector = ({ material }: { material: THREE.Material }) => {
 
               <button
                 onClick={() => {
-                  const selectedProbes = probes.filter(p =>
-                    probeSelections.includes(p.getId()),
-                  );
-
-                  const walls = useWall ? prepareWalls() : undefined;
-
-                  const params: Parameters<THREE.Material['applyProbe']>[0] = {
-                    probes: selectedProbes,
-                    walls: walls,
-                  };
-                  material.applyProbe(params);
                   material.vUserData.probeIds = probeSelections;
                   material.vUserData.probeType = useWall
                     ? 'multiWall'
                     : 'multi';
-                  material.needsUpdate = true;
+
+                  const selectedProbes = probes.filter(p =>
+                    probeSelections.includes(p.getId()),
+                  );
+
+                  if (selectedProbes.length === 0) {
+                    material.remove('probe');
+                    material.needsUpdate = true;
+                  } else {
+                    const walls = useWall ? prepareWalls() : undefined;
+
+                    const params: applyProbeReflectionProbe = {
+                      probes: selectedProbes,
+                      walls: walls,
+                      probeIntensity: probeIntensity,
+                      probeContrast: probeContrast,
+                    };
+
+                    material.apply('probe', params);
+
+                    material.needsUpdate = true;
+                  }
                 }}
               >
                 프로브 적용
