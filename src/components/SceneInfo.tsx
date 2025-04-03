@@ -37,7 +37,7 @@ import {
   minimapAtom,
   postprocessAtoms,
   ProbeAtom,
-  selectedAtom,
+  selectedAtom, testAtom,
   threeExportsAtom,
   uploadingAtom,
   useBenchmark,
@@ -1164,6 +1164,26 @@ const GeneralMinimapControl = () => {
   );
 };
 
+const TestControl = () => {
+  const [test, setTest] = useAtom(testAtom);
+
+  return (
+    <section style={{ width: '100%' }}>
+      <strong>스카이박스</strong>
+      <div className="flex gap-x-1">
+        <span>보기</span>
+        <input
+          type="checkbox"
+          checked={test.useSkyBox}
+          onChange={e => {
+            setTest(pre => ({ ...pre, useSkyBox: !pre.useSkyBox }));
+          }}
+        />
+      </div>
+    </section>
+  )
+}
+
 const GeneralEnvironmentControl = () => {
   const [env, setEnv] = useEnvParams();
   const [envUrl, setEnvUrl] = useEnvUrl();
@@ -1802,6 +1822,7 @@ const SceneInfo = () => {
       <GeneralButtons></GeneralButtons>
       <GeneralMaterialControl></GeneralMaterialControl>
       <GeneralEnvironmentControl></GeneralEnvironmentControl>
+      <TestControl/>
       <GeneralMinimapControl></GeneralMinimapControl>
       <GeneralPostProcessingControl></GeneralPostProcessingControl>
       <GeneralSceneInfo></GeneralSceneInfo>

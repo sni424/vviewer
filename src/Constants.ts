@@ -45,6 +45,7 @@ export enum Layer {
   Room = 14,
   Hotspot = 15,
   Wall = 16,
+  SkyBox = 17,
 }
 
 export const AOMAP_INTENSITY_MAX = 2 as const;
