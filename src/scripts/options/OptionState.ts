@@ -180,7 +180,11 @@ export default class OptionState {
         effect,
       );
     });
-    this.functionEffects = { ...this.functionEffects, ...state.functionEffects };
+    const functionEffects = { ...this.functionEffects, ...state.functionEffects };
+    if (functionEffects.urls.probe === undefined) {
+      functionEffects.urls.probe = [];
+    }
+    this.functionEffects = functionEffects;
     // TODO Object create from json
     return this;
   }
