@@ -118,7 +118,7 @@ const SkyBoxPanel = () => {
         [field]: {
           ...prev[field],
           [vector]: {
-            ...(prev[field][vector] as Vector3),
+            ...((prev[field] as any)[vector] as THREE.Vector3),
             [axis]: value,
           },
         },

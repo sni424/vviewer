@@ -43,8 +43,7 @@ import {
   uploadingAtom,
   useBenchmark,
   useEnvParams,
-  useModal,
-  useToast,
+  useToast
 } from '../scripts/atoms';
 import {
   loadPostProcessAndSet,
@@ -64,7 +63,6 @@ import { FXAAOption } from './canvas/FXAA.tsx';
 import { HueSaturationOption } from './canvas/HueSaturation.tsx';
 import { SMAAOption } from './canvas/SMAA.tsx';
 import { ToneMappingOption } from './canvas/ToneMapping.tsx';
-import UploadPage from './UploadModal';
 
 const useEnvUrl = () => {
   const [envUrl, setEnvUrl] = useState<string | null>(null);
@@ -172,7 +170,6 @@ const CameraInfoSection = () => {
 
 const GeneralButtons = () => {
   const threeExports = useAtomValue(threeExportsAtom);
-  const { openModal, closeModal } = useModal();
   const { openToast, closeToast } = useToast();
   const navigate = useNavigate();
   const [dpcMode, setDPCMode] = useAtom(DPCModeAtom);
@@ -203,7 +200,7 @@ const GeneralButtons = () => {
     if (dpcModalRef.current) {
       const styleMode = styles['file'];
       Object.entries(styleMode).map(([key, value]) => {
-        dpcModalRef.current.style[key] = value;
+        (dpcModalRef.current as any).style[key] = value;
       });
     }
   }, [dpcModalRef.current, dpcMode]);
@@ -217,40 +214,18 @@ const GeneralButtons = () => {
     return null;
   }
 
-  const { scene, gl, camera } = threeExports;
-
-  // 임시 보관 (모델추가 & 업로드 버튼 로직)
-  function openModelUploadModal() {
-    openModal(() => (
-      <div
-        style={{
-          width: '80%',
-          maxHeight: '80%',
-          backgroundColor: '#ffffffcc',
-          padding: 16,
-          borderRadius: 8,
-          boxSizing: 'border-box',
-          position: 'relative',
-          overflowY: 'auto',
-        }}
-      >
-        <UploadPage></UploadPage>
-      </div>
-    ));
-  }
-
   async function uploadLightMaps(isMobile?: boolean) {
     if (!confirm('라이트맵 업로드 하시겠습니까?')) {
       return;
     }
     openToast('라이트맵 업로드 중...', { autoClose: false });
     setUploading(true);
-    await uploadExrLightmap(threeExports.scene, isMobile);
+    await uploadExrLightmap(threeExports!.scene, isMobile);
     setUploading(false);
     closeToast();
   }
 
-  async function uploadModels(lightMapUploaded?: boolean = false) {
+  async function uploadModels(lightMapUploaded: boolean = false) {
     if (!confirm('GLB 업로드 하시겠습니까?')) {
       return;
     }
@@ -261,7 +236,7 @@ const GeneralButtons = () => {
     }
     openToast('GLB 업로드 중...', { autoClose: false, override: true });
     setUploading(true);
-    const scene = threeExports.scene;
+    const scene = threeExports!.scene;
     console.log(lightMapUploaded);
     if (!lightMapUploaded) {
       scene.traverse(o => {
@@ -275,7 +250,7 @@ const GeneralButtons = () => {
       });
     }
     new VGLTFExporter()
-      .parseAsync(threeExports.scene, { binary: true })
+      .parseAsync(threeExports!.scene, { binary: true })
       .then(glbArr => {
         if (glbArr instanceof ArrayBuffer) {
           console.log('before File Make');
@@ -336,7 +311,7 @@ const GeneralButtons = () => {
     openToast('GLB 업로드 중...', { autoClose: false, override: true });
     setUploading(true);
     new VGLTFExporter()
-      .parseAsync(threeExports.scene, { binary: true })
+      .parseAsync(threeExports!.scene, { binary: true })
       .then(glbArr => {
         if (glbArr instanceof ArrayBuffer) {
           console.log('before File Make');
@@ -410,7 +385,7 @@ const GeneralButtons = () => {
       <button disabled={isUploading} onClick={() => uploadModels()}>
         GLB 만 업로드
       </button>
-      <button disabled={isUploading} onClick={uploadLightMaps}>
+      <button disabled={isUploading} onClick={uploadLightMaps as any}>
         라이트맵만 업로드
       </button>
       <button

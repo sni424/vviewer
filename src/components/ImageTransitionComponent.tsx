@@ -1,6 +1,5 @@
 import { useAtomValue } from 'jotai';
 import { animationDurationAtom } from '../scripts/atoms.ts';
-import { string } from 'three/src/nodes/tsl/TSLCore';
 
 const ImageTransitionComponent = ({
   idx,
