@@ -1,4 +1,4 @@
-import { RootState } from '@react-three/fiber';
+import { type RootState } from '@react-three/fiber';
 import * as THREE from 'three';
 import { View } from '../../types.ts';
 

@@ -53,12 +53,7 @@ const MobileCameraManager = ({
 
   // 카메라 이동 및 회전시 카메라 데이터 저장
   const updateCameraInfo = () => {
-    if (
-      !orbitControl?.enabled &&
-      camera &&
-      !cameraSetting.isoView &&
-      !cameraSetting.topView
-    ) {
+    if (!orbitControl?.enabled && camera && !cameraSetting.isoView) {
       setLastCameraInfo(pre => ({
         ...pre,
         matrix: camera.matrix.toArray(),

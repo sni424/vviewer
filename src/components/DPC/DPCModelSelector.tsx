@@ -360,7 +360,7 @@ const DPCModelSelector = () => {
       Mesh: 3,
     };
 
-    DPObjectFromClonedScene.sort((a, b) => {
+    DPObjectFromClonedScene.sort((a: any, b: any) => {
       return sortOrder[a.type] - sortOrder[b.type];
     });
 
