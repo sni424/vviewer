@@ -99,7 +99,7 @@ class ModelOption {
               mesh: THREE.Mesh;
               effects: Effects;
             };
-          },
+          };
           functionEffects: FunctionEffects;
         };
       },

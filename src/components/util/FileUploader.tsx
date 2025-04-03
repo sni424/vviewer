@@ -149,7 +149,7 @@ const FileUploader = () => {
               display: 'flex',
               marginTop: 24,
               justifyContent: 'space-around',
-              height: '80%'
+              height: '80%',
             }}
           >
             <button
@@ -276,7 +276,7 @@ const FileDragDiv = ({
   };
 
   async function confirmFunction() {
-    setLoading(true)
+    setLoading(true);
     const res = await onConfirm(files.map(i => i.file));
     if (res.success) {
       setResults(res.data.map(d => d.fileUrl));

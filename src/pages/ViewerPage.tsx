@@ -214,7 +214,7 @@ const ViewerPage = () => {
         onDrop={handleDrop}
       >
         <RendererContainer />
-        <MinimapPanel/>
+        <MinimapPanel />
         <Views></Views>
         <CameraPanel />
         <OptionPanel></OptionPanel>

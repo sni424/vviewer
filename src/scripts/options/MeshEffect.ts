@@ -119,12 +119,16 @@ export default class MeshEffect {
       this._optionEffect.lightMapValues = {};
     }
 
-    if (!lightMapValues) { // Temp Error Handle for Type
+    if (!lightMapValues) {
+      // Temp Error Handle for Type
       throw new Error('Can not set lightMapValues for this feature');
     }
 
     if (Object.keys(lightMapValues).includes(targetState.parent.id)) {
-      lightMapValues[targetState.parent.id] = { ...lightMapValues[targetState.parent.id], [targetState.id]: url };
+      lightMapValues[targetState.parent.id] = {
+        ...lightMapValues[targetState.parent.id],
+        [targetState.id]: url,
+      };
     } else {
       lightMapValues[targetState.parent.id] = { [targetState.id]: url };
     }

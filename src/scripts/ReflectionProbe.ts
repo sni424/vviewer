@@ -187,14 +187,18 @@ export default class ReflectionProbe {
     // @ts-ignore
     translateControls.addEventListener('dragging-changed', event => {
       document.dispatchEvent(
-        new CustomEvent('control-dragged', { detail: { moving: (event as any).value } }),
+        new CustomEvent('control-dragged', {
+          detail: { moving: (event as any).value },
+        }),
       );
     });
 
     // @ts-ignore
     scaleControls.addEventListener('dragging-changed', event => {
       document.dispatchEvent(
-        new CustomEvent('control-dragged', { detail: { moving: (event as any).value } }),
+        new CustomEvent('control-dragged', {
+          detail: { moving: (event as any).value },
+        }),
       );
     });
 
@@ -413,7 +417,7 @@ export default class ReflectionProbe {
     } else {
       throw new Error(
         'ReflectionProbe.setFromObject() : Object Must Be Not null or undefined : ' +
-        object,
+          object,
       );
     }
   }
@@ -535,7 +539,7 @@ export default class ReflectionProbe {
     const size = this.resolution;
     const renderer = this.renderer;
     const width = size * 4;
-    const height = size * 2
+    const height = size * 2;
 
     const camera = new THREE.OrthographicCamera(
       width / -4,
@@ -565,9 +569,20 @@ export default class ReflectionProbe {
     }
 
     const pixels = new Uint8Array(4 * width * height);
-    renderer.readRenderTargetPixels(newRenderTarget, 0, 0, width, height, pixels);
+    renderer.readRenderTargetPixels(
+      newRenderTarget,
+      0,
+      0,
+      width,
+      height,
+      pixels,
+    );
 
-    const imageData = new ImageData(new Uint8ClampedArray(pixels), width, height);
+    const imageData = new ImageData(
+      new Uint8ClampedArray(pixels),
+      width,
+      height,
+    );
 
     this.imageData = imageData;
     const context = canvas.getContext('2d');

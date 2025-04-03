@@ -31,19 +31,16 @@ window.getThree = (view: View = View.Shared) => {
 };
 
 // traverse때문에 먼저 임포트
-import "./Object3D.ts";
-
+import './Object3D.ts';
 
 // 구현체 임포트
-import "./Camera.ts";
-import "./Material.ts";
-import "./Matrix4.ts";
-import "./Mesh.ts";
-import "./Shader.ts";
-import "./Texture.ts";
-import "./Vector3.ts";
-
+import './Camera.ts';
+import './Material.ts';
+import './Matrix4.ts';
+import './Mesh.ts';
+import './Shader.ts';
+import './Texture.ts';
+import './Vector3.ts';
 
 export * from 'three';
 export { THREE };
-

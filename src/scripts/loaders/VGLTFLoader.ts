@@ -1,6 +1,6 @@
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
-import "VTHREE";
+import 'VTHREE';
 // @ts-ignore
 import {
   type GLTF,

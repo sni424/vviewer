@@ -27,7 +27,7 @@ export type FunctionEffectsBooleans = {
   changeNav: boolean;
   changeFloor: boolean;
   changeProbe: boolean;
-}
+};
 
 export type FunctionEffectsURLs = {
   minimap: string; // URL
@@ -39,7 +39,7 @@ export type FunctionEffectsURLs = {
     stateId: string;
     url: string;
   }[];
-}
+};
 
 export type FunctionEffectsJSON = Omit<FunctionEffects, 'objects'>;
 
@@ -57,7 +57,7 @@ const DEFAULT_FUNCTION_EFFECTS = {
     nav: '',
     floor: '',
     probe: [],
-  }
+  },
 };
 
 export default class OptionState {
@@ -154,7 +154,7 @@ export default class OptionState {
       stateName: this.name,
       expanded: this.expanded,
       meshEffects: effectsToJSON,
-      functionEffects: { booleans, urls }
+      functionEffects: { booleans, urls },
     };
   }
 
@@ -180,7 +180,10 @@ export default class OptionState {
         effect,
       );
     });
-    const functionEffects = { ...this.functionEffects, ...state.functionEffects };
+    const functionEffects = {
+      ...this.functionEffects,
+      ...state.functionEffects,
+    };
     if (functionEffects.urls.probe === undefined) {
       functionEffects.urls.probe = [];
     }

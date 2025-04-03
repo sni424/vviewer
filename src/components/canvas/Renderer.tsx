@@ -807,7 +807,7 @@ function RendererContainer() {
         <Renderer></Renderer>
         <MoveTo></MoveTo>
         <Points></Points>
-        <SkyBox/>
+        <SkyBox />
       </Canvas>
     </div>
   );

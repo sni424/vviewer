@@ -268,7 +268,7 @@ export default class CubePlaneControls {
       Object.values(this.centerMeshes).forEach(child => {
         child.removeFromParent();
       });
-      this.mesh!!.removeEventListener('updated', () => { });
+      this.mesh!!.removeEventListener('updated', () => {});
       this.mesh = null;
     } else {
       console.warn('CubePlaneControls.detach() occurred After detached');

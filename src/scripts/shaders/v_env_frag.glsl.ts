@@ -7,14 +7,10 @@ type Shader = THREE.WebGLProgramParametersWithUniforms;
  * 공통으로 쓰이는 변수
  * 1. progress
  *      - uUseLightMapTransition || uUseMeshTransition
- * 
+ *
  * 2. vWorldPos
  *      - V_ENV_MAP || uUseMeshTransition
  */
-
-
-
-
 
 const definesTarget = /* glsl */ `void main()`;
 const defines = /* glsl */ `
@@ -495,7 +491,6 @@ void main()
 
 /////////////////////////////////////////////////
 
-
 const multiProbeTarget = /*glsl */ `#include <lights_fragment_end>`;
 const multiProbe = /* glsl */ `
 #ifndef V_FRAG_MULTIPROBE_GUARD
@@ -602,8 +597,8 @@ radiance += clamp(pow(envMapColor.rgb, vec3(uProbeContrast)), 0.0, 1.0) * uProbe
 #include <lights_fragment_end>
 
 #endif //!V_FRAG_MULTIPROBE_GUARD
-`
-const progAlphaTarget = /*glsl */`#include <dithering_fragment>`;
+`;
+const progAlphaTarget = /*glsl */ `#include <dithering_fragment>`;
 const progAlpha = /* glsl */ `
 #include <dithering_fragment>
 #ifndef V_FRAG_PROG_ALPHA_GUARD
@@ -632,7 +627,7 @@ const progAlpha = /* glsl */ `
 #endif //!V_FRAG_PROG_ALPHA_GUARD
 `;
 
-const lightmapTarget = /*glsl */`#include <lights_fragment_maps>`;
+const lightmapTarget = /*glsl */ `#include <lights_fragment_maps>`;
 const lightmapContent = /* glsl */ `
 // <lights_fragment_maps>을 복사해와서 중간 부분을 수정
 #ifndef V_FRAG_LIGHTMAP_CONTRAST_GUARD
@@ -700,21 +695,32 @@ const debugging = /* glsl */ `
 `;
 
 export const patchFragment = (shader: Shader) => {
-
   // 1. defines
   shader.fragmentShader = shader.fragmentShader.replace(definesTarget, defines);
 
   // 2. multiprobe
-  shader.fragmentShader = shader.fragmentShader.replace(multiProbeTarget, multiProbe);
+  shader.fragmentShader = shader.fragmentShader.replace(
+    multiProbeTarget,
+    multiProbe,
+  );
 
   // 3. visibility transition
-  shader.fragmentShader = shader.fragmentShader.replace(progAlphaTarget, progAlpha);
+  shader.fragmentShader = shader.fragmentShader.replace(
+    progAlphaTarget,
+    progAlpha,
+  );
 
   // 4. lightmap transition & contrast
-  shader.fragmentShader = shader.fragmentShader.replace(lightmapTarget, lightmapContent);
+  shader.fragmentShader = shader.fragmentShader.replace(
+    lightmapTarget,
+    lightmapContent,
+  );
 
   // 5. 디버깅용으로 셰이더 가장 마지막 부분에 추가
-  shader.fragmentShader = shader.fragmentShader.replace("//END_OF_FRAG", debugging)
+  shader.fragmentShader = shader.fragmentShader.replace(
+    '//END_OF_FRAG',
+    debugging,
+  );
 
   return shader;
 };
@@ -728,4 +734,4 @@ export const v_env_frag_shaders = {
   progAlphaTarget,
   lightmapContent,
   lightmapTarget,
-}
+};

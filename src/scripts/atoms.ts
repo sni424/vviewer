@@ -23,7 +23,8 @@ import {
   SkyBoxState,
   View,
   ViewportOption,
-  WallCreateOption, Walls,
+  WallCreateOption,
+  Walls,
 } from '../types';
 import ModelOption from './options/ModelOption.ts';
 import ReflectionProbe from './ReflectionProbe.ts';
@@ -71,10 +72,10 @@ export const createAtomCombo = <T = any>(
   initalValue?: T,
   store?: Store,
 ): [
-    WritableAtom<T, unknown[], unknown>,
-    () => T | undefined,
-    (arg: AtomArgType<T>) => void,
-  ] => {
+  WritableAtom<T, unknown[], unknown>,
+  () => T | undefined,
+  (arg: AtomArgType<T>) => void,
+] => {
   const dstStore = store ?? defaultStore;
   // @ts-ignore
   const theAtom = atom<T>(initalValue);
@@ -115,16 +116,16 @@ export const orbitControlAtom = atom<OrbitControls>();
 export type Env = {
   select: 'none' | 'preset' | 'custom' | 'url';
   preset?:
-  | 'apartment'
-  | 'city'
-  | 'dawn'
-  | 'forest'
-  | 'lobby'
-  | 'night'
-  | 'park'
-  | 'studio'
-  | 'sunset'
-  | 'warehouse';
+    | 'apartment'
+    | 'city'
+    | 'dawn'
+    | 'forest'
+    | 'lobby'
+    | 'night'
+    | 'park'
+    | 'studio'
+    | 'sunset'
+    | 'warehouse';
   url?: string;
   intensity?: number;
   rotation?: {
@@ -134,7 +135,11 @@ export type Env = {
   };
 };
 
-export const minimapAtom = atom<{ show: boolean; urls: string[]; useIndex: number }>({
+export const minimapAtom = atom<{
+  show: boolean;
+  urls: string[];
+  useIndex: number;
+}>({
   show: false,
   urls: [
     'https://vra-configurator-dev.s3.ap-northeast-2.amazonaws.com/models/images/miniMap',
@@ -189,10 +194,10 @@ export const useToast = () => {
         autoClose,
         override,
       }: { duration?: number; autoClose?: boolean; override?: boolean } = {
-          duration: 1,
-          autoClose: true,
-          override: false,
-        },
+        duration: 1,
+        autoClose: true,
+        override: false,
+      },
     ) => {
       if (toast.on && !override) {
         console.warn('Toast is Progressing, abort');
@@ -515,43 +520,37 @@ export type newRoom = {
   border: [number, number][]; // [x, z]
   index: string;
   creating?: boolean;
-  visible: boolean
+  visible: boolean;
 };
 
 export type newRoomCreateOption = {
   color?: number;
   index: number;
   name: string;
-  visible: boolean
-  roomInfo: newRoom[]
+  visible: boolean;
+  roomInfo: newRoom[];
 };
 export const roomAtom = atom<RoomCreateOption[]>([]);
-export const newRoomAtom = atom<newRoomCreateOption[]>([])
+export const newRoomAtom = atom<newRoomCreateOption[]>([]);
 
-export const [wallOptionAtom,
-  getWallOptionAtom,
-  setWallOptionAtom
-] = createAtomCombo<WallCreateOption>({
-  points: [],
-  walls: [],
-  autoCreateWall: true
-});
+export const [wallOptionAtom, getWallOptionAtom, setWallOptionAtom] =
+  createAtomCombo<WallCreateOption>({
+    points: [],
+    walls: [],
+    autoCreateWall: true,
+  });
 
-export const [wallCacheAtom,
-  getWallCacheAtom,
-  setWallCacheAtom
-] = createAtomCombo<{ [key: string]: Walls }>({});
+export const [wallCacheAtom, getWallCacheAtom, setWallCacheAtom] =
+  createAtomCombo<{ [key: string]: Walls }>({});
 
-export const [wallHighlightAtom,
-  getWallHighlightAtom,
-  setWallHighlightAtom
-] = createAtomCombo<{
-  pointHighlights: string[];
-  wallHighlights: string[];
-}>({
-  pointHighlights: [],
-  wallHighlights: []
-});
+export const [wallHighlightAtom, getWallHighlightAtom, setWallHighlightAtom] =
+  createAtomCombo<{
+    pointHighlights: string[];
+    wallHighlights: string[];
+  }>({
+    pointHighlights: [],
+    wallHighlights: [],
+  });
 
 // export const [wallAtom, getWallAtom, setWallAtom] = createAtomCombo<Walls>();
 
@@ -624,9 +623,9 @@ export const lightMapAtom = atom<{
   };
 }>({});
 
-export const testAtom = atom<{useSkyBox: boolean;}>({
+export const testAtom = atom<{ useSkyBox: boolean }>({
   useSkyBox: false,
-})
+});
 
 export const skyBoxAtom = atom<SkyBoxState>({
   isSkyBox: false,

@@ -13,7 +13,8 @@ import {
   getAtomValue,
   lightMapAtom,
   modelOptionClassAtom,
-  ModelSelectorAtom, ProbeAtom,
+  ModelSelectorAtom,
+  ProbeAtom,
   selectedAtom,
   useModal,
 } from '../scripts/atoms.ts';
@@ -504,7 +505,9 @@ const StateFunctionEffectModal = ({
   );
 
   console.log('values : ', values);
-  const [probeTextures, setProbeTextures] = useState<{ blob: Blob, url: string; name: string; id: string; }[]>([]);
+  const [probeTextures, setProbeTextures] = useState<
+    { blob: Blob; url: string; name: string; id: string }[]
+  >([]);
   const probes = useAtomValue(ProbeAtom);
   const [loading, setLoading] = useState(false);
 
@@ -557,23 +560,24 @@ const StateFunctionEffectModal = ({
   async function applyTextures() {
     const files = probeTextures.map(({ blob, name, id }) => {
       const fileName = `${name}_${id}_equirectangular_${state.id}.png`;
-      return new File([blob], fileName, { type : blob.type });
+      return new File([blob], fileName, { type: blob.type });
     });
 
     const res = await uploadPngToKtx(files);
     const fileUrls = res.data.map(f => decodeURI(f.fileUrl));
-    const results = fileUrls.map((url) => {
-      const {probeId, stateId} = extractIDsFromURL(url);
-      return {probeId, stateId, url};
-    })
+    const results = fileUrls.map(url => {
+      const { probeId, stateId } = extractIDsFromURL(url);
+      return { probeId, stateId, url };
+    });
     setValues(pre => {
-      return {...pre, probe: results}
-    })
+      return { ...pre, probe: results };
+    });
   }
 
   function extractIDsFromURL(url: string) {
     const fileName = decodeURIComponent(url.split('/').pop() || '');
-    const regex = /_(\w{8}-\w{4}-\w{4}-\w{4}-\w{12})_equirectangular_(\w{8}-\w{4}-\w{4}-\w{4}-\w{12})\.ktx$/;
+    const regex =
+      /_(\w{8}-\w{4}-\w{4}-\w{4}-\w{12})_equirectangular_(\w{8}-\w{4}-\w{4}-\w{4}-\w{12})\.ktx$/;
 
     const match = fileName.match(regex);
     if (!match) {
@@ -789,22 +793,37 @@ const StateFunctionEffectModal = ({
                   현재 프로브 텍스쳐 띄우기
                 </button>
                 <button onClick={applyTextures}>해당 텍스쳐 할당</button>
-                {loading && (<div className="w-full flex justify-center">로딩 중</div>)}
+                {loading && (
+                  <div className="w-full flex justify-center">로딩 중</div>
+                )}
                 <div className="grid mt-1 grid-cols-1 gap-y-1 gap-x-1 overflow-auto max-h-[300px] p-1">
-                  {values.probe.length > 0 && values.probe.map(({probeId, stateId, url}) => {
-                    return (
-                      <div className="w-full">
-                        <p className="mb-1"><strong>프로브 ID: </strong>{probeId}</p>
-                        <p className="mb-1"><strong>URL</strong>{url}</p>
-                      </div>
-                    );
-                  })}
+                  {values.probe.length > 0 &&
+                    values.probe.map(({ probeId, stateId, url }) => {
+                      return (
+                        <div className="w-full">
+                          <p className="mb-1">
+                            <strong>프로브 ID: </strong>
+                            {probeId}
+                          </p>
+                          <p className="mb-1">
+                            <strong>URL</strong>
+                            {url}
+                          </p>
+                        </div>
+                      );
+                    })}
                   {probeTextures.length > 0 &&
                     probeTextures.map(({ url, name, id }) => {
                       return (
                         <div className="w-full aspect-[2/1]">
-                          <p className="mb-1">{name} - {id}</p>
-                          <img className="w-full aspect-[2/1]" src={url} alt="" />
+                          <p className="mb-1">
+                            {name} - {id}
+                          </p>
+                          <img
+                            className="w-full aspect-[2/1]"
+                            src={url}
+                            alt=""
+                          />
                         </div>
                       );
                     })}

@@ -1,9 +1,9 @@
 import { THREE } from 'VTHREE';
-import cube_uv from "./cube_uv";
-import type ReflectionProbe from "./ReflectionProbe";
+import cube_uv from './cube_uv';
+import type ReflectionProbe from './ReflectionProbe';
 
 // key : material.uuid
-const probeVersions = new Map<string, { cacheKey: string; version: number; }>();
+const probeVersions = new Map<string, { cacheKey: string; version: number }>();
 
 type Shader = THREE.WebGLProgramParametersWithUniforms;
 
@@ -11,52 +11,67 @@ function serializeVector3(vector: THREE.Vector3) {
   return { x: vector.x, y: vector.y, z: vector.z };
 }
 
-function serializeArray(data: {
-  start: THREE.Vector3;
-  end: THREE.Vector3;
-  normal: THREE.Vector3;
-  name: string;
-}[]) {
-  return JSON.stringify(data.map(item => ({
-    start: serializeVector3(item.start),
-    end: serializeVector3(item.end),
-    normal: serializeVector3(item.normal),
-    name: item.name
-  })));
+function serializeArray(
+  data: {
+    start: THREE.Vector3;
+    end: THREE.Vector3;
+    normal: THREE.Vector3;
+    name: string;
+  }[],
+) {
+  return JSON.stringify(
+    data.map(item => ({
+      start: serializeVector3(item.start),
+      end: serializeVector3(item.end),
+      normal: serializeVector3(item.normal),
+      name: item.name,
+    })),
+  );
 }
 
-function deserializeVector3(obj: { x: number; y: number; z: number; }) {
+function deserializeVector3(obj: { x: number; y: number; z: number }) {
   return new THREE.Vector3(obj.x, obj.y, obj.z);
 }
 
-function deserializeArray(jsonobj: {
-  start: { x: number; y: number; z: number; };
-  end: { x: number; y: number; z: number; };
-  normal: { x: number; y: number; z: number; };
-  name: string;
-}[]) {
+function deserializeArray(
+  jsonobj: {
+    start: { x: number; y: number; z: number };
+    end: { x: number; y: number; z: number };
+    normal: { x: number; y: number; z: number };
+    name: string;
+  }[],
+) {
   return jsonobj.map(item => ({
     start: deserializeVector3(item.start),
     end: deserializeVector3(item.end),
     normal: deserializeVector3(item.normal),
-    name: item.name
+    name: item.name,
   }));
 }
 
-const detectWallOnScene = (scene: THREE.Scene, probes: ReflectionProbe[], step = 0.1, detectDist = 0.5) => {
-
+const detectWallOnScene = (
+  scene: THREE.Scene,
+  probes: ReflectionProbe[],
+  step = 0.1,
+  detectDist = 0.5,
+) => {
   const meshes: THREE.Mesh[] = [];
-  scene.traverse((child) => {
+  scene.traverse(child => {
     if ((child as THREE.Mesh).isMesh) {
       meshes.push(child as THREE.Mesh);
     }
-  },);
+  });
 
   console.log(meshes);
 
   // normal : 박스 바깥방향
   // { start:THREE.Vector3; end:THREE.Vector3; normal:THREE.Vector3; name:string; }
-  const wallCandidates: { start: THREE.Vector3; end: THREE.Vector3; normal: THREE.Vector3; name: string; }[] = [];
+  const wallCandidates: {
+    start: THREE.Vector3;
+    end: THREE.Vector3;
+    normal: THREE.Vector3;
+    name: string;
+  }[] = [];
 
   const start = performance.now();
   probes.forEach((probe, i) => {
@@ -66,7 +81,7 @@ const detectWallOnScene = (scene: THREE.Scene, probes: ReflectionProbe[], step =
     const max = box.max;
     const probeName = probe.getName();
 
-    console.log("probeName", probe.getName(), probeName, box.min, box.max);
+    console.log('probeName', probe.getName(), probeName, box.min, box.max);
 
     // 중점
     const y = (max.y + min.y) * 0.5;
@@ -124,12 +139,10 @@ const detectWallOnScene = (scene: THREE.Scene, probes: ReflectionProbe[], step =
 
         // 벽이 있음
         if (intersects.length > 0) {
-
           if (wallStart === null) {
             wallStart = origin;
           }
           // 이 외의 경우는 벽이 지속되는 경우
-
         } else {
           // 벽이 없음
           if (wallStart !== null) {
@@ -238,18 +251,15 @@ const detectWallOnScene = (scene: THREE.Scene, probes: ReflectionProbe[], step =
         });
       }
     }
-
-
-  })
+  });
 
   const elapsed = performance.now() - start;
   console.log(`elapsed time : ${elapsed} ms`);
 
   return wallCandidates;
-}
+};
 
-
-const boxProjectDefinitions = /*glsl */`
+const boxProjectDefinitions = /*glsl */ `
 #ifdef V_ENV_MAP
     varying vec3 _vWorldPosition;
     
@@ -447,18 +457,19 @@ const boxProjectDefinitions = /*glsl */`
 #endif
 `;
 
-function useMultiProbe(shader:
-  Shader, args: {
-    uniforms: Record<string, any>,
-    defines: Record<string, any>,
-  }) {
-
+function useMultiProbe(
+  shader: Shader,
+  args: {
+    uniforms: Record<string, any>;
+    defines: Record<string, any>;
+  },
+) {
   shader.cleanup?.();
 
   const { uniforms, defines } = args;
 
   shader.defines = shader.defines ?? {};
-  delete shader.defines["BOX_PROJECTED_ENV_MAP"];
+  delete shader.defines['BOX_PROJECTED_ENV_MAP'];
   // shader.defines = {
   //   ...shader.defines,
   //   ...defines,
@@ -469,34 +480,30 @@ function useMultiProbe(shader:
   shader.uniforms = {
     ...shader.uniforms,
     ...uniforms,
-  }
+  };
 
   shader.cleanup = () => {
     if (shader.defines) {
-      const defineKeys = [
-        ...Object.keys(defines),
-        "V_ENV_MAP"
-      ];
+      const defineKeys = [...Object.keys(defines), 'V_ENV_MAP'];
       defineKeys.forEach(key => {
         delete shader.defines![key];
-      })
+      });
     }
 
     if (shader.uniforms) {
-      const uniformKeys = [
-        ...Object.keys(uniforms)
-      ]
+      const uniformKeys = [...Object.keys(uniforms)];
       uniformKeys.forEach(key => {
         delete shader.uniforms![key];
-      })
+      });
     }
     // shader.customProgramCacheKey = shader.onBeforeCompile;
-  }
+  };
 
   // vertex shader
-  shader.vertexShader = "varying vec3 _vWorldPosition;\n" + shader.vertexShader
-    .replace(
-      "#include <worldpos_vertex>",
+  shader.vertexShader =
+    'varying vec3 _vWorldPosition;\n' +
+    shader.vertexShader.replace(
+      '#include <worldpos_vertex>',
       `
       #ifndef USE_ENVMAP
       vec4 worldPosition = modelMatrix * vec4( transformed, 1.0 );
@@ -505,36 +512,38 @@ function useMultiProbe(shader:
           _vWorldPosition = (modelMatrix * vec4( transformed, 1.0 )).xyz;
       #endif
       #include <worldpos_vertex>
-      `
+      `,
     );
 
   // fragment shader
   shader.fragmentShader = shader.fragmentShader
     .replace(
-      "#include <envmap_physical_pars_fragment>",
-      THREE.ShaderChunk.envmap_physical_pars_fragment
+      '#include <envmap_physical_pars_fragment>',
+      THREE.ShaderChunk.envmap_physical_pars_fragment,
     )
     .replace(
-      "vec3 worldNormal = inverseTransformDirection( normal, viewMatrix );",
+      'vec3 worldNormal = inverseTransformDirection( normal, viewMatrix );',
       `
             vec3 worldNormal = inverseTransformDirection( normal, viewMatrix );
             #ifdef BOX_PROJECTED_ENV_MAP
                 worldNormal = parallaxCorrectNormal( worldNormal, envMapSize, envMapPosition );
             #endif
-            `
+            `,
     )
     .replace(
-      "reflectVec = inverseTransformDirection( reflectVec, viewMatrix );",
+      'reflectVec = inverseTransformDirection( reflectVec, viewMatrix );',
       `
             reflectVec = inverseTransformDirection( reflectVec, viewMatrix );
             #ifdef BOX_PROJECTED_ENV_MAP
                 reflectVec = parallaxCorrectNormal( reflectVec, envMapSize, envMapPosition );
             #endif
-            `
+            `,
     );
 
-  shader.fragmentShader = shader.fragmentShader.replace("void main()",
-    /*glsl */`
+  shader.fragmentShader = shader.fragmentShader
+    .replace(
+      'void main()',
+      /*glsl */ `
         #ifdef V_ENV_MAP
         struct Probe {
             vec3 center;
@@ -562,9 +571,11 @@ function useMultiProbe(shader:
 ${cube_uv}
 ${boxProjectDefinitions}
 void main()
-        `
-  ).replace("#include <lights_fragment_end>",
-        /** glsl */`
+        `,
+    )
+    .replace(
+      '#include <lights_fragment_end>',
+      /** glsl */ `
     #ifdef V_ENV_MAP
         
         float roughness = material.roughness;
@@ -672,14 +683,17 @@ void main()
         radiance += clamp(envMapColor.rgb, 0.0, 1.0) * uProbeIntensity;
 
         #endif
-        ` + "#include <lights_fragment_end>"
-  )
+        ` + '#include <lights_fragment_end>',
+    );
 
   const showVWorldPosition = false;
   if (showVWorldPosition) {
-    shader.fragmentShader = shader.fragmentShader.replace("#include <dithering_fragment>", `#include <dithering_fragment>
+    shader.fragmentShader = shader.fragmentShader.replace(
+      '#include <dithering_fragment>',
+      `#include <dithering_fragment>
         gl_FragColor.rgb = _vWorldPosition;
-        `)
+        `,
+    );
   }
 
   const downloadShader = () => {
@@ -689,11 +703,13 @@ void main()
     // a.download = "vertex.glsl";
     // a.click();
 
-    const b = document.createElement("a");
-    b.href = URL.createObjectURL(new Blob([shader.fragmentShader], { type: "text/plain" }));
-    b.download = "fragment.glsl";
+    const b = document.createElement('a');
+    b.href = URL.createObjectURL(
+      new Blob([shader.fragmentShader], { type: 'text/plain' }),
+    );
+    b.download = 'fragment.glsl';
     b.click();
-  }
+  };
   // downloadShader()
 }
 
@@ -714,12 +730,16 @@ function removeTrailingThreeDigitNumber(str: string) {
   return str.replace(/\.\d{3}$/, '');
 }
 
-export const drawWalls = (walls: {
-  start: THREE.Vector3;
-  end: THREE.Vector3;
-  normal: THREE.Vector3;
-  name: string;
-}[], scene: THREE.Scene, normalLength = 0.2) => {
+export const drawWalls = (
+  walls: {
+    start: THREE.Vector3;
+    end: THREE.Vector3;
+    normal: THREE.Vector3;
+    name: string;
+  }[],
+  scene: THREE.Scene,
+  normalLength = 0.2,
+) => {
   walls.forEach((wall, i) => {
     const { start, end, normal, name } = wall;
     // add line from start to end, then add arrow on middle point using normal
@@ -734,7 +754,10 @@ export const drawWalls = (walls: {
     const color = new THREE.Color();
     color.setHSL(i / walls.length, 1.0, 0.5);
 
-    const line = new THREE.Line(geometry, new THREE.LineBasicMaterial({ color }));
+    const line = new THREE.Line(
+      geometry,
+      new THREE.LineBasicMaterial({ color }),
+    );
 
     scene.add(line);
 
@@ -743,11 +766,10 @@ export const drawWalls = (walls: {
     const arrowHelper = new THREE.ArrowHelper(normal, mid, normalLength, color);
 
     scene.add(arrowHelper);
-  })
-}
+  });
+};
 
 function generateCubeUVSize(imageHeight: number) {
-
   const maxMip = Math.log2(imageHeight) - 2;
 
   const texelHeight = 1.0 / imageHeight;
@@ -755,103 +777,104 @@ function generateCubeUVSize(imageHeight: number) {
   const texelWidth = 1.0 / (3 * Math.max(Math.pow(2, maxMip), 7 * 16));
 
   return { texelWidth, texelHeight, maxMip };
-
 }
 
-export function applyMultiProbe(mat: THREE.Material, probes: ReflectionProbe[], walls?: {
-  start: THREE.Vector3;
-  end: THREE.Vector3;
-  probeId: string;
-}[]) {
-
-
+export function applyMultiProbe(
+  mat: THREE.Material,
+  probes: ReflectionProbe[],
+  walls?: {
+    start: THREE.Vector3;
+    end: THREE.Vector3;
+    probeId: string;
+  }[],
+) {
   mat.defines = mat.defines ?? {};
 
-
-  const metaUniform = probes.map((p) => ({
+  const metaUniform = probes.map(p => ({
     center: p.getBox().getCenter(new THREE.Vector3()),
     size: p.getBox().getSize(new THREE.Vector3()),
-  }))
+  }));
 
   const usePmrem = true;
 
-  const getTextures = () => probes.map(p => usePmrem ? p.getTexture() : p.getRenderTargetTexture());
+  const getTextures = () =>
+    probes.map(p => (usePmrem ? p.getTexture() : p.getRenderTargetTexture()));
   const textures = getTextures();
-
 
   let pmremDefines = {};
 
   if (usePmrem) {
     const pmremParams = generateCubeUVSize(probes[0]?.getResolution());
-    const { texelWidth, texelHeight, maxMip } = pmremParams;;
+    const { texelWidth, texelHeight, maxMip } = pmremParams;
 
     pmremDefines = {
       V_ENVMAP_TYPE_CUBE_UV: 1, // pmrem
       uCubeUVMaxMip: `${maxMip}.0`, // float으로 glsl까지 전달되어야 함
       uCubeUVTexelWidth: texelWidth,
       uCubeUVTexelHeight: texelHeight,
-    }
+    };
   }
 
   const defines: { [key: string]: any } = {
     PROBE_COUNT: probes.length,
     V_ENV_MAP: 1,
-    ...pmremDefines
-  }
+    ...pmremDefines,
+  };
 
   const uniforms: { [key: string]: { value: any } } = {
     uProbe: {
-      value: metaUniform
+      value: metaUniform,
     },
     uProbeTextures: {
-      value: textures
+      value: textures,
     },
     uProbeIntensity: {
-      value: 1.0
+      value: 1.0,
     },
-
   };
 
   if (walls) {
     const targetProbeIds = probes.map(p => p.getId());
-    const targetWalls = walls.map((wall) => ({
+    const targetWalls = walls.map(wall => ({
       start: wall.start,
       end: wall.end,
-      index: targetProbeIds.indexOf(wall.probeId)
+      index: targetProbeIds.indexOf(wall.probeId),
     }));
 
     uniforms.uWall = {
-      value: targetWalls
-    }
+      value: targetWalls,
+    };
     uniforms.uProbeBlendDist = {
-      value: 20.0
-    }
+      value: 20.0,
+    };
 
     defines.WALL_COUNT = targetWalls.length;
     defines.V_ENV_MAP_WALL = 1;
   }
 
-
-
   mat.defines = {
     ...mat.defines,
-    ...defines
-  }
+    ...defines,
+  };
 
-  const createCacheKey = (mat: THREE.Material, defines: any, uniforms: any): string => {
+  const createCacheKey = (
+    mat: THREE.Material,
+    defines: any,
+    uniforms: any,
+  ): string => {
     let retval: string[] = [];
     retval.push(mat.name);
-    retval.push(probes.map(p => p.getName()).join(","));
-    retval.push("" + (defines.PROBE_COUNT ?? -1));
-    retval.push("" + (defines.WALL_COUNT ?? -1));
+    retval.push(probes.map(p => p.getName()).join(','));
+    retval.push('' + (defines.PROBE_COUNT ?? -1));
+    retval.push('' + (defines.WALL_COUNT ?? -1));
 
-    return retval.join(",");
-  }
+    return retval.join(',');
+  };
 
   // 캐시키가 바뀌어도 onBeforeCompile이 불리지 않아 별도로 define을 추가해서 강제 리렌더 촉발
   const handleProbeVersion = () => {
     for (const key in Object.keys(mat.defines as object)) {
-      if (key.includes("PROBE_VERSION")) {
+      if (key.includes('PROBE_VERSION')) {
         delete (mat.defines as any)[key];
         break;
       }
@@ -865,16 +888,13 @@ export function applyMultiProbe(mat: THREE.Material, probes: ReflectionProbe[], 
     const probeVersion = (prevVersion?.version ?? 0) + 1;
     probeVersions.set(mat.uuid, {
       cacheKey: customCacheKey,
-      version: probeVersion
-    })
+      version: probeVersion,
+    });
 
-    const probeVersionKey = "PROBE_VERSION" + probeVersion;
-    (mat.defines as any)[probeVersionKey] = "";
-  }
+    const probeVersionKey = 'PROBE_VERSION' + probeVersion;
+    (mat.defines as any)[probeVersionKey] = '';
+  };
   handleProbeVersion();
-
-
-
 
   const customCacheKey = createCacheKey(mat, defines, uniforms);
   mat.customProgramCacheKey = () => {
@@ -888,9 +908,9 @@ export function applyMultiProbe(mat: THREE.Material, probes: ReflectionProbe[], 
       uniforms,
       defines,
     });
-  }
+  };
 
   mat.updateMultiProbeTexture = () => {
     uniforms.uProbeTextures.value = getTextures();
-  }
+  };
 }

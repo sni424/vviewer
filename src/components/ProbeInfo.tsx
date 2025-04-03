@@ -596,7 +596,7 @@ export const ProbeComponent = ({ probe }: { probe: ReflectionProbe }) => {
       alert('Can not find canvas in probe');
       return;
     }
-    canvas.toBlob(function(blob) {
+    canvas.toBlob(function (blob) {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;

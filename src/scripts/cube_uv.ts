@@ -1,4 +1,4 @@
-export default /* glsl */`
+export default /* glsl */ `
 #ifndef V_ENVMAP_TYPE_CUBE_UV_GUARD
 #define V_ENVMAP_TYPE_CUBE_UV_GUARD
 #ifdef V_ENVMAP_TYPE_CUBE_UV

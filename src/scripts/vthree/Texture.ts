@@ -2,7 +2,6 @@ import * as THREE from 'three';
 import { VUserData } from 'VTHREE';
 
 declare module 'three' {
-
   interface WebGLProgramParametersWithUniforms {
     cleanup?: () => void;
   }
@@ -12,7 +11,6 @@ declare module 'three' {
 
     set vUserData(userData: Partial<VUserData>);
   }
-
 }
 
 if (

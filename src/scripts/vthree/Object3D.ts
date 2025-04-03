@@ -5,9 +5,8 @@ import { VUserData } from 'VTHREE';
 import { Layer } from '../../Constants';
 import { resetGL } from '../utils';
 
-declare module "three" {
+declare module 'three' {
   interface Object3D {
-
     get asMesh(): THREE.Mesh;
 
     get vUserData(): VUserData;
@@ -52,10 +51,9 @@ if (!Object.getOwnPropertyDescriptor(THREE.Object3D.prototype, 'asMesh')) {
     },
     set: function () {
       throw new Error('asMesh is read-only');
-    }
+    },
   });
 }
-
 
 THREE.Object3D.prototype.all = function <T = THREE.Object3D>(
   includeSelf = false,
@@ -147,7 +145,6 @@ if (
     },
   });
 }
-
 
 THREE.Object3D.prototype.isTransformControl = function () {
   return (

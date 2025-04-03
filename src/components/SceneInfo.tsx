@@ -37,7 +37,8 @@ import {
   minimapAtom,
   postprocessAtoms,
   ProbeAtom,
-  selectedAtom, testAtom,
+  selectedAtom,
+  testAtom,
   threeExportsAtom,
   uploadingAtom,
   useBenchmark,
@@ -1181,8 +1182,8 @@ const TestControl = () => {
         />
       </div>
     </section>
-  )
-}
+  );
+};
 
 const GeneralEnvironmentControl = () => {
   const [env, setEnv] = useEnvParams();
@@ -1822,7 +1823,7 @@ const SceneInfo = () => {
       <GeneralButtons></GeneralButtons>
       <GeneralMaterialControl></GeneralMaterialControl>
       <GeneralEnvironmentControl></GeneralEnvironmentControl>
-      <TestControl/>
+      <TestControl />
       <GeneralMinimapControl></GeneralMinimapControl>
       <GeneralPostProcessingControl></GeneralPostProcessingControl>
       <GeneralSceneInfo></GeneralSceneInfo>

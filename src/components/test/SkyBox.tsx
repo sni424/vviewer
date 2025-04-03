@@ -2,7 +2,7 @@ import { useThree } from '@react-three/fiber';
 import { useEffect, useState } from 'react';
 import SkyBoxMesh from './SkyBoxMesh';
 import * as THREE from 'VTHREE';
-import {getVKTX2Loader} from "../../scripts/loaders/VKTX2Loader.ts";
+import { getVKTX2Loader } from '../../scripts/loaders/VKTX2Loader.ts';
 import { useAtomValue } from 'jotai';
 import { testAtom } from 'src/scripts/atoms.ts';
 
@@ -39,11 +39,7 @@ const SkyBox = () => {
 
   if (!texture) return;
 
-  return (
-    <>
-      {useSkyBox && <SkyBoxMesh texture={texture} />}
-    </>
-  );
+  return <>{useSkyBox && <SkyBoxMesh texture={texture} />}</>;
 };
 
 export default SkyBox;

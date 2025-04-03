@@ -13,33 +13,33 @@ const _fetchFunction = async () => {
   return fetch(filelistUrl, { cache: 'no-store' })
     .then(res => res.json())
     .then((filelist: FileInfo[]) =>
-    // 최신순으로 정렬
-    {
-      const models = filelist.filter(
-        fileinfo =>
-          fileinfo.filename.endsWith('.gltf') ||
-          fileinfo.filename.endsWith('.glb'),
-      );
-      const envs = filelist.filter(
-        fileinfo =>
-          fileinfo.filename.endsWith('.hdr') ||
-          fileinfo.filename.endsWith('.exr'),
-      );
+      // 최신순으로 정렬
+      {
+        const models = filelist.filter(
+          fileinfo =>
+            fileinfo.filename.endsWith('.gltf') ||
+            fileinfo.filename.endsWith('.glb'),
+        );
+        const envs = filelist.filter(
+          fileinfo =>
+            fileinfo.filename.endsWith('.hdr') ||
+            fileinfo.filename.endsWith('.exr'),
+        );
 
-      const scenes = filelist.filter(fileinfo =>
-        fileinfo.filename.endsWith('.json'),
-      );
+        const scenes = filelist.filter(fileinfo =>
+          fileinfo.filename.endsWith('.json'),
+        );
 
-      models.reverse();
-      envs.reverse();
-      const retval = {
-        models,
-        envs,
-        scenes,
-        all: filelist,
-      };
-      return retval;
-    },
+        models.reverse();
+        envs.reverse();
+        const retval = {
+          models,
+          envs,
+          scenes,
+          all: filelist,
+        };
+        return retval;
+      },
     )
     .catch(e => {
       console.error(e);

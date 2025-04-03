@@ -11,7 +11,14 @@ import { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { v4 } from 'uuid';
 import { VUserData } from 'VTHREE';
 import { ENV, Layer } from '../Constants';
-import { FileInfo, MoveActionOptions, View, WallPoint, WallPointView, WallView } from '../types.ts';
+import {
+  FileInfo,
+  MoveActionOptions,
+  View,
+  WallPoint,
+  WallPointView,
+  WallView,
+} from '../types.ts';
 import {
   addPoints,
   BenchMark,
@@ -323,7 +330,7 @@ export const loadLatest = async ({
   addBenchmark?: (key: keyof BenchMark, value?: number) => void;
   closeToast?: () => void;
 }) => {
-  const addBenchMark = _addBenchmark ?? (() => { });
+  const addBenchMark = _addBenchmark ?? (() => {});
   const base = ENV.base;
   if (!base) {
     alert('.env에 환경변수를 설정해주세요, VITE_MODELS_URL');
@@ -645,7 +652,7 @@ const handlePathFindingMove = (
   initialPath: THREE.Vector3[],
   speed: number,
   quaternion?: THREE.Quaternion,
-  onComplete: gsap.Callback = () => { },
+  onComplete: gsap.Callback = () => {},
 ) => {
   // path없으면 동작x
   if (initialPath.length === 0) return;
@@ -735,7 +742,7 @@ const handleLinearMove = (
   quaternion: THREE.Quaternion,
   speed: number,
   cameraFov?: number,
-  onComplete: gsap.Callback = () => { },
+  onComplete: gsap.Callback = () => {},
 ) => {
   const startPosition = camera.position.clone();
   const timeline = gsap.timeline();
@@ -1619,7 +1626,6 @@ function getRandomColorWithComplementary() {
   return { randomColor, complementaryColor };
 }
 
-
 export function distSquaredFromLineToBox(
   p1: THREE.Vector2,
   p2: THREE.Vector2,
@@ -1689,7 +1695,6 @@ export function distSquaredFromLineToBox(
   return minDistSquared;
 }
 
-
 export function getWallPoint(indexOrId: number | string, points: WallPoint[]) {
   if (typeof indexOrId === 'number') {
     return points[indexOrId];
@@ -1698,7 +1703,11 @@ export function getWallPoint(indexOrId: number | string, points: WallPoint[]) {
   return points.find(point => point.id === indexOrId);
 }
 
-export const findClosestProbe = (points: WallPoint[], probes: ReflectionProbe[], wall: WallView) => {
+export const findClosestProbe = (
+  points: WallPoint[],
+  probes: ReflectionProbe[],
+  wall: WallView,
+) => {
   if (probes.length === 0) {
     return undefined;
   }
@@ -1738,7 +1747,6 @@ export const findClosestProbe = (points: WallPoint[], probes: ReflectionProbe[],
 };
 
 export function createWallFromPoints(points: WallPointView[]): WallView[] {
-
   const pointLength = points.length;
   if (pointLength < 2) {
     return [];
@@ -1747,13 +1755,14 @@ export function createWallFromPoints(points: WallPointView[]): WallView[] {
   const walls: WallView[] = [];
   const prevWalls = getWallOptionAtom()?.walls ?? [];
 
-
   for (let i = 0; i < pointLength; i++) {
     const startPoint = points[i];
     const endIndex = i + 1 === pointLength ? 0 : i + 1; // 끝점의 경우 시작과 잇는다
     const endPoint = points[endIndex];
 
-    const prevWall = prevWalls.find(w => w.start === startPoint.id && w.end === endPoint.id);
+    const prevWall = prevWalls.find(
+      w => w.start === startPoint.id && w.end === endPoint.id,
+    );
 
     const wall: WallView = {
       start: startPoint.id,
@@ -1772,36 +1781,42 @@ export function createWallFromPoints(points: WallPointView[]): WallView[] {
   return walls;
 }
 
-export function assignClosestProbeToWall(points: WallPointView[], walls: WallView[], probes: ReflectionProbe[]) {
+export function assignClosestProbeToWall(
+  points: WallPointView[],
+  walls: WallView[],
+  probes: ReflectionProbe[],
+) {
   walls.forEach(wall => {
     const closestProbe = findClosestProbe(points, probes, wall);
     if (closestProbe) {
       wall.probeId = closestProbe.getId();
       wall.probeName = closestProbe.getName();
     }
-  })
+  });
   return walls;
 }
 
 export function colorNumberToCSS(color: number, format = 'hex') {
   // Ensure color is an integer and mask to 24 bits (0xFFFFFF)
-  const hex = color & 0xFFFFFF;
+  const hex = color & 0xffffff;
 
   if (format === 'hex') {
     // Convert to hex string, pad to 6 digits, and prefix with #
     return `#${hex.toString(16).padStart(6, '0').toUpperCase()}`;
   } else if (format === 'rgb') {
     // Extract RGB components
-    const r = (hex >> 16) & 0xFF; // Red (first 8 bits)
-    const g = (hex >> 8) & 0xFF;  // Green (middle 8 bits)
-    const b = hex & 0xFF;         // Blue (last 8 bits)
+    const r = (hex >> 16) & 0xff; // Red (first 8 bits)
+    const g = (hex >> 8) & 0xff; // Green (middle 8 bits)
+    const b = hex & 0xff; // Blue (last 8 bits)
     return `rgb(${r}, ${g}, ${b})`;
   } else {
     throw new Error("Unsupported format. Use 'hex' or 'rgb'.");
   }
 }
 
-export const resetColor = <T extends { color?: number }>(coloredArray: T[]): T[] => {
+export const resetColor = <T extends { color?: number }>(
+  coloredArray: T[],
+): T[] => {
   coloredArray.forEach((el, i) => {
     const colorHsl = new THREE.Color();
     colorHsl.setHSL(i / coloredArray.length, 1, 0.5);
@@ -1812,23 +1827,27 @@ export const resetColor = <T extends { color?: number }>(coloredArray: T[]): T[]
 
 // 재질 주어졌을 때 해당 재질을 사용하는 모든 메시를 포함하는 바운딩 박스 계산
 // MESH_TRANSITION에서 사용
-export function computeBoundingBoxForMaterial(scene: THREE.Scene, targetMaterial: THREE.Material): THREE.Box3 | null {
+export function computeBoundingBoxForMaterial(
+  scene: THREE.Scene,
+  targetMaterial: THREE.Material,
+): THREE.Box3 | null {
   const resultBox = new THREE.Box3();
   let found = false;
 
-  scene.traverse((object) => {
+  scene.traverse(object => {
     if ((object as THREE.Mesh).isMesh) {
       const mesh = object as THREE.Mesh;
       if (!mesh.isMesh) {
         return;
       }
 
-      const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+      const materials = Array.isArray(mesh.material)
+        ? mesh.material
+        : [mesh.material];
       const materialsUuid = materials.map(m => m.uuid);
 
       // 이 mesh가 targetMaterial을 쓰는지 확인
       if (materialsUuid.includes(targetMaterial.uuid)) {
-
         resultBox.expandByObject(mesh);
 
         found = true;
