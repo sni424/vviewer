@@ -85,9 +85,6 @@ declare module 'three' {
     get progress(): number;
     set progress(value: number);
 
-    get LIGHTMAP_TRANSITION(): boolean;
-    set LIGHTMAP_TRANSITION(value: boolean);
-
     // mat을 쓰는 모든 메시의 바운딩박스와 dissolve 관련 유니폼 준비
     // fadeOut = fale
     // fadeIn = true
@@ -735,6 +732,11 @@ THREE.Material.prototype.apply = function <T extends keyof MaterialApplyType>(
     case 'lightmapContrast':
       if (this.uniform.uLightMapContrast) {
         this.uniform.uLightMapContrast.value = params as number;
+      }
+      break;
+    case 'progress':
+      if (this.uniform.uProgress) {
+        this.uniform.uProgress.value = params as number;
       }
       break;
   }
