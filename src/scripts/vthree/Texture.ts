@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { VUserData } from 'VTHREE';
+import { type VUserData } from './VTHREETypes';
 
 declare module 'three' {
   interface WebGLProgramParametersWithUniforms {

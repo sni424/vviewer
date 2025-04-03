@@ -9,7 +9,6 @@ import { TransformControls } from 'three-stdlib';
 import { EXRLoader, OrbitControls } from 'three/examples/jsm/Addons.js';
 import { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { v4 } from 'uuid';
-import { VUserData } from 'VTHREE';
 import { ENV, Layer } from '../Constants';
 import {
   FileInfo,
@@ -1426,187 +1425,7 @@ export function getGLStatus(gl: THREE.WebGLRenderer) {
   return info.memory;
 }
 
-export function changeMeshVisibleWithTransition(
-  mesh: THREE.Mesh,
-  transitionDelay: number,
-  targetVisible: boolean,
-  timeLine: gsap.core.Timeline,
-) {
-  const mat = mesh.material as THREE.Material;
-  const originalRenderOrder = mesh.renderOrder;
-  const originalTransparent = mat.transparent;
-  // 메시의 바운딩 박스 계산
-  const box = new THREE.Box3().setFromObject(mesh);
-
-  // dissolveOrigin 설정: x는 minX, y는 중앙, z는 minZ
-  const minX = box.min.x; // 왼쪽 X 좌표
-  const centerY = (box.min.y + box.max.y) / 2; // Y 중앙
-  const minZ = box.min.z; // 가장 앞쪽 (액자의 왼쪽 테두리)
-
-  // dissolveOrigin을 Three.js Vector3로 설정
-  const dissolveOrigin = new THREE.Vector3(minX, centerY, minZ);
-
-  // 3D 거리 사용
-  mat.shader.uniforms.dissolveMaxDist.value = box.max.distanceTo(box.min);
-
-  // Shader Uniform에 dissolveOrigin 전달
-  mat.uniforms.dissolveOrigin = dissolveOrigin;
-  mat.shader.uniforms.dissolveDirection.value = targetVisible;
-  mat.shader.uniforms.progress.value = 0;
-
-  timeLine.to(
-    {
-      t: 0,
-    },
-    {
-      t: 1,
-      duration: transitionDelay,
-      ease: 'none',
-      onStart() {
-        mat.shader.uniforms.progress.value = 0.0001;
-        mat.transparent = true;
-        if (!targetVisible) {
-          mesh.renderOrder = 9999;
-        }
-        if (targetVisible) {
-          mesh.visible = true;
-        }
-        mat.useProgressiveAlpha = true;
-      },
-      onUpdate() {
-        mat.shader.uniforms.progress.value = this.targets()[0].t;
-      },
-      onComplete() {
-        mesh.visible = targetVisible;
-        mesh.renderOrder = originalRenderOrder;
-        mat.transparent = originalTransparent;
-        mat.useProgressiveAlpha = false; // needsUpdate = true 자동
-        mat.shader.uniforms.progress.value = 0.001;
-      },
-    },
-    0,
-  );
-}
-
-export function changeMeshLightMapWithTransition(
-  mesh: THREE.Mesh,
-  transitionDelay: number,
-  targetLightMap: THREE.Texture,
-  timeLine: gsap.core.Timeline,
-) {
-  const mat = mesh.material as THREE.Material;
-  const beforeLightMap = mat.lightMap;
-  if (!beforeLightMap) {
-    console.warn('No LightMap : ', mesh);
-    throw new Error('No LightMap Found in Material');
-  }
-  const cloned = mat.clone();
-
-  const LIGHTMAP_PROGRESS_SHADER = `
-  #if defined( RE_IndirectDiffuse )
-
-    #ifdef USE_LIGHTMAP
-  
-      vec4 lightMap1 = texture2D(texture1, vLightMapUv);
-      vec4 lightMap2 = texture2D(texture2, vLightMapUv);
-      vec4 lightMapTexel = mix(lightMap1, lightMap2, progress);
-      vec3 lightMapIrradiance = lightMapTexel.rgb * lightMapIntensity;
-  
-      irradiance += lightMapIrradiance;
-  
-    #endif
-  
-    #if defined( USE_ENVMAP ) && defined( STANDARD ) && defined( ENVMAP_TYPE_CUBE_UV )
-  
-      iblIrradiance += getIBLIrradiance( geometryNormal );
-  
-    #endif
-  
-  #endif
-  
-  #if defined( USE_ENVMAP ) && defined( RE_IndirectSpecular )
-  
-    #ifdef USE_ANISOTROPY
-  
-      radiance += getIBLAnisotropyRadiance( geometryViewDir, geometryNormal, material.roughness, material.anisotropyB, material.anisotropy );
-  
-    #else
-  
-      radiance += getIBLRadiance( geometryViewDir, geometryNormal, material.roughness );
-  
-    #endif
-  
-    #ifdef USE_CLEARCOAT
-  
-      clearcoatRadiance += getIBLRadiance( geometryViewDir, geometryClearcoatNormal, material.clearcoatRoughness );
-  
-    #endif
-  
-  #endif`;
-
-  cloned.onBeforeCompile = shader => {
-    // 유니폼 변수 설정
-    shader.uniforms.progress = { value: 0.0 };
-    shader.uniforms.texture1 = { value: beforeLightMap };
-    shader.uniforms.texture2 = { value: targetLightMap };
-
-    // 프래그먼트 쉐이더에 유니폼 변수 추가
-    shader.fragmentShader =
-      `uniform float progress;
-                 uniform sampler2D texture1;
-                 uniform sampler2D texture2;
-                 ` + shader.fragmentShader;
-
-    // lights_fragment_maps 부분 완전히 대체 (중요: 기존 lightMap 계산 무시)
-    shader.fragmentShader = shader.fragmentShader.replace(
-      '#include <lights_fragment_maps>',
-      LIGHTMAP_PROGRESS_SHADER,
-    );
-
-    cloned.vUserData.shader = shader;
-  };
-
-  timeLine.to(
-    {
-      t: 0,
-    },
-    {
-      t: 1,
-      duration: transitionDelay,
-      ease: 'none',
-      onStart() {
-        mesh.material = cloned;
-      },
-      onUpdate() {
-        const progress = this.targets()[0].t;
-        const shader = cloned.shader;
-        if (shader) {
-          shader.uniforms.progress.value = progress;
-          cloned.needsUpdate = true;
-        }
-      },
-      onComplete() {
-        mat.lightMap = targetLightMap;
-        mesh.material = mat;
-        mat.needsUpdate = true;
-        cloned.dispose();
-      },
-    },
-    0,
-  );
-}
-
-export function applyProbeOnMaterial(
-  material: THREE.Material,
-  probe: ReflectionProbe,
-) {
-  material.envMap = probe.getRenderTargetTexture();
-  material.updateEnvUniforms(probe.getCenter(), probe.getSize());
-  material.vUserData.probeId = probe.getId();
-  material.needsUpdate = true;
-}
-
-function getRandomColorWithComplementary() {
+export function getRandomColorWithComplementary() {
   // 1. 랜덤한 RGB 색상 생성
   const r = Math.floor(Math.random() * 256);
   const g = Math.floor(Math.random() * 256);
@@ -1860,6 +1679,7 @@ export function computeBoundingBoxForMaterial(
 
 import { ClassValue, clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import { VUserData } from './vthree/VTHREETypes.ts';
 
 // tailwind에 동적으로 클래스이름 할당할 때 필요
 export function cn(...inputs: ClassValue[]): string {

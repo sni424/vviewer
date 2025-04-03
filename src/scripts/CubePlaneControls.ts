@@ -320,7 +320,7 @@ function intersectWithRay(object: THREE.Object3D, raycaster: THREE.Raycaster) {
 
 function getPointer(event: PointerEvent | MouseEvent) {
   const mouse = new THREE.Vector2();
-  const rect = event.currentTarget.getBoundingClientRect();
+  const rect = (event.currentTarget as any).getBoundingClientRect();
   const xRatio = (event.clientX - rect.left) / rect.width;
   const yRatio = (event.clientY - rect.top) / rect.height;
 

@@ -633,10 +633,6 @@ function _applyProbeGeneral(this: THREE.Material, params: applyProbeGeneral) {
     );
   }
 
-  function cleanupEquirect(this: THREE.Material) {
-    this.removeDefine('USE_PROBE_EQUIRECT');
-  }
-
   function cleanupWall(this: THREE.Material) {
     this.removeDefine('WALL_COUNT');
     this.removeUniform('uWall', 'uProbeBlendDist');
@@ -646,7 +642,6 @@ function _applyProbeGeneral(this: THREE.Material, params: applyProbeGeneral) {
     this.addDefines({
       USE_PROBE_PMREM: true,
     });
-    cleanupEquirect.call(this);
 
     const pmremParams = generateCubeUVSize(probeResolution);
     const { texelWidth, texelHeight, maxMip } = pmremParams;

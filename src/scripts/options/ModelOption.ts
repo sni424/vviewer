@@ -79,7 +79,7 @@ class ModelOption {
   }
 
   get defaultSelected() {
-    return this._defaultSelected;
+    return this._defaultSelected!;
   }
 
   set defaultSelected(selected: string) {
