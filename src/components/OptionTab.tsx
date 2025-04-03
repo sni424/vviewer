@@ -502,6 +502,8 @@ const StateFunctionEffectModal = ({
   const [values, setValues] = useState<FunctionEffectsURLs>(
     functionEffects.urls,
   );
+
+  console.log('values : ', values);
   const [probeTextures, setProbeTextures] = useState<{ blob: Blob, url: string; name: string; id: string; }[]>([]);
   const probes = useAtomValue(ProbeAtom);
   const [loading, setLoading] = useState(false);
