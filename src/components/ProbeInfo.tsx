@@ -6,10 +6,12 @@ import React, {
   useRef,
   useState,
 } from 'react';
+import { applyProbeReflectionProbe } from 'src/scripts/vthree/Material.ts';
 import { v4 } from 'uuid';
 import { THREE } from 'VTHREE';
 import {
   getAtomValue,
+  getWallOptionAtom,
   ProbeAtom,
   selectedAtom,
   setAtomValue,
@@ -20,16 +22,15 @@ import {
 import {
   loadProbeApplyInfos,
   loadProbes,
+  prepareWalls,
   threes,
   uploadJson,
 } from '../scripts/atomUtils.ts';
-import { applyMultiProbe } from '../scripts/probeUtils.ts';
 import ReflectionProbe, {
   ReflectionProbeJSON,
   ReflectionProbeResolutions,
 } from '../scripts/ReflectionProbe.ts';
 import {
-  applyProbeOnMaterial,
   listFilesFromDrop,
   loadHDRTexture,
   loadPNGAsENV,
@@ -99,20 +100,6 @@ const ProbeInfo = () => {
 
       probes.forEach(probe => {
         probe.addToScene(true);
-        // 250325 프로브 적용 정보 불러오기로 적용 시키기 위해 아래 코드 주석 처리 - 지우 => 적용하는 방식 변경
-        // const texture = probe.getTexture(true);
-        // const texture = probe.getRenderTargetTexture();
-        // scene.traverse(node => {
-        //   if (node instanceof THREE.Mesh) {
-        //     const n = node as THREE.Mesh;
-        //     const material = n.material as THREE.Material;
-        //     if (material.vUserData.probeId === probe.getId()) {
-        //       material.envMap = texture;
-        //       material.updateEnvUniforms(probe.getCenter(), probe.getSize());
-        //       material.needsUpdate = true;
-        //     }
-        //   }
-        // });
       });
 
       setAtomValue(ProbeAtom, probes);
@@ -202,6 +189,30 @@ const ProbeInfo = () => {
     probes.forEach(probe => {
       probe.updateCameraPosition(probe.getBoxMesh().position, true);
     });
+
+    const walls = getWallOptionAtom();
+
+    scene.traverse(o => {
+      if (o.type === 'Mesh') {
+        const mesh = o as THREE.Mesh;
+        const mat = mesh.matStandard;
+        if (hasProbe(mat)) {
+          const probeType = mat.vUserData.probeType!;
+          const targetProbes = probes.filter(probe =>
+            mat.vUserData.probeIds!.includes(probe.getId()),
+          );
+          const params: applyProbeReflectionProbe = {
+            probes: targetProbes,
+            walls: probeType === 'multiWall' ? prepareWalls(walls) : undefined,
+          };
+          mat.applyProbe(params);
+        }
+      }
+    });
+  }
+
+  function hasProbe(material: THREE.Material) {
+    return material.vUserData.probeIds && material.vUserData.probeType;
   }
 
   function showProbeAppliedMaterials() {
@@ -216,27 +227,14 @@ const ProbeInfo = () => {
       if (o.type === 'Mesh') {
         const mesh = o as THREE.Mesh;
         const mat = mesh.material as THREE.Material;
+        const probeIds = mat.vUserData.probeIds;
         const probeType = mat.vUserData.probeType;
-        let obj: {
-          probeIds?: string[];
-          probeType?: ProbeTypes;
-        } | null = null;
-        if (probeType) {
-          obj = { probeType };
-          if (probeType === 'single') {
-            obj.probeIds = [mat.vUserData.probeId].filter(s => s !== undefined);
-          } else {
-            obj.probeIds = mat.vUserData.probeIds;
-          }
-        } else if (mat.vUserData.probeId) {
-          obj = {
-            probeType: 'single',
-            probeIds: [mat.vUserData.probeId],
-          };
-        }
 
-        if (obj) {
-          probeMap.set(mesh.name, obj);
+        if (probeIds && probeType) {
+          probeMap.set(mesh.name, {
+            probeIds,
+            probeType,
+          });
         }
       }
     });
@@ -258,6 +256,7 @@ const ProbeInfo = () => {
   }
 
   function callProbeApplyInfo() {
+    openToast('프로브 적용 정보 가져오는 중..', { autoClose: false });
     loadProbeApplyInfos()
       .then(
         (applyInfo: {
@@ -266,9 +265,10 @@ const ProbeInfo = () => {
             probeType: ProbeTypes;
           };
         }) => {
-          console.log(applyInfo);
+          openToast('프로브 적용 중..', { autoClose: false, override: true });
           const meshNames = Object.keys(applyInfo);
           const materials: THREE.Material[] = [];
+          const walls = prepareWalls(getWallOptionAtom());
           scene.traverse(o => {
             if (o.type === 'Mesh') {
               const mesh = o as THREE.Mesh;
@@ -289,22 +289,41 @@ const ProbeInfo = () => {
               probeIds.includes(probe.getId()),
             );
             if (probesToApply.length > 0) {
-              if (probeType === 'single') {
-                applyProbeOnMaterial(material, probesToApply[0]);
-              } else {
-                applyMultiProbe(material, probesToApply);
-              }
+              const params: applyProbeReflectionProbe = {
+                probes: probesToApply,
+                walls: probeType === 'multiWall' ? walls : undefined,
+              };
+              material.applyProbe(params);
+              material.needsUpdate = true;
             }
           });
+
+          return { materials, walls };
         },
       )
-      .then(() => {
+      .then(({ materials, walls }) => {
         for (let i = 0; i < 3; i++) {
           probes.forEach(probe => {
             probe.renderCamera(true);
           });
+          materials.forEach(material => {
+            const probeIds = material.vUserData.probeIds!!;
+            const probeType = material.vUserData.probeType!!;
+            const probesToApply = probes.filter(probe =>
+              probeIds.includes(probe.getId()),
+            );
+            if (probesToApply.length > 0) {
+              const params: applyProbeReflectionProbe = {
+                probes: probesToApply,
+                walls: probeType === 'multiWall' ? walls : undefined,
+              };
+              material.applyProbe(params);
+              material.needsUpdate = true;
+            }
+          });
         }
       })
+      .then(closeToast)
       .catch(err => {
         console.error(err);
         alert('불러오지 못했습니다.');
@@ -556,6 +575,22 @@ export const ProbeComponent = ({ probe }: { probe: ReflectionProbe }) => {
     }
   }
 
+  async function exportEqui() {
+    const canvas = probe.getCanvas();
+    if (!canvas) {
+      alert('Can not find canvas in probe');
+      return;
+    }
+    canvas.toBlob(function (blob) {
+      const url = URL.createObjectURL(blob!);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'canvas-image.png';
+      a.click();
+      URL.revokeObjectURL(url); // 메모리 해제
+    }, 'image/png');
+  }
+
   function changeResolution() {
     openModal(() => <ProbeResolutionChanger probe={probe} />);
   }
@@ -701,7 +736,7 @@ export const ProbeComponent = ({ probe }: { probe: ReflectionProbe }) => {
             padding: '4px 8px',
             cursor: 'pointer',
           }}
-          onClick={exportImage}
+          onClick={exportEqui}
         >
           추출
         </button>

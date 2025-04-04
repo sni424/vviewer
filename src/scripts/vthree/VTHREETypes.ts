@@ -1,15 +1,15 @@
-import type { Texture, WebGLProgramParametersWithUniforms } from "three";
+import type { Texture, WebGLProgramParametersWithUniforms } from 'three';
 import { THREE } from 'VTHREE';
-import type { ProbeTypes } from "../../types";
-import type { PlaneControlDirections } from "../CubePlaneControls";
-import type ReflectionProbe from "../ReflectionProbe";
-import type { ReflectionProbeJSON } from "../ReflectionProbe";
+import type { ProbeTypes } from '../../types';
+import type { PlaneControlDirections } from '../CubePlaneControls';
+import type ReflectionProbe from '../ReflectionProbe';
+import type { ReflectionProbeJSON } from '../ReflectionProbe';
 
-export type MATERIAL_DEFINE_TYPE = "" | 0 | 1 | true | false;
+export type MATERIAL_DEFINE_TYPE = '' | 0 | 1 | true | false;
 
 export type MATERIAL_SHADER = {
   MESH_TRANSITION: {
-    type: "MESH_TRANSITION";
+    type: 'MESH_TRANSITION';
     uniforms: {
       uUseMeshTransition: { value: boolean };
       uProgress: {
@@ -23,28 +23,26 @@ export type MATERIAL_SHADER = {
       };
       uDissolveDirection: {
         value: boolean;
-      }
+      };
     };
-    defines: {
-    };
+    defines: {};
   };
   LIGHTMAP_TRANSITION: {
-    type: "LIGHTMAP_TRANSITION";
+    type: 'LIGHTMAP_TRANSITION';
     uniforms: {
       uUseLightMapTransition: { value: boolean };
       uProgress: {
         value: number;
-      },
+      };
       uLightMapTo: {
         value: THREE.Texture;
-      },
-    },
-    defines: {
-    },
+      };
+    };
+    defines: {};
   };
   PROBE: {
     // 벽을 쓰는 프로브
-    type: "PROBE";
+    type: 'PROBE';
     uniforms: {
       uProbe: {
         value: {
@@ -57,10 +55,10 @@ export type MATERIAL_SHADER = {
       };
       uProbeIntensity: {
         value: number;
-      },
+      };
       uProbeContrast: {
         value: number;
-      },
+      };
       uCubeUVMaxMip: { value: number };
       uCubeUVTexelWidth: { value: number };
       uCubeUVTexelHeight: { value: number };
@@ -76,7 +74,7 @@ export type MATERIAL_SHADER = {
       // 벽 사용 시 참조할 최대 벽 거리
       uProbeBlendDist?: {
         value: number;
-      }
+      };
     };
     defines: {
       PROBE_COUNT?: number;
@@ -84,35 +82,30 @@ export type MATERIAL_SHADER = {
     };
   };
   LIGHTMAP_CONTRAST: {
-    type: "LIGHTMAP_CONTRAST";
+    type: 'LIGHTMAP_CONTRAST';
     uniforms: {
       uLightMapContrast: {
         value: number;
       };
       uGlobalLightMapContrast: {
         value: number;
-      }
+      };
     };
-    defines: {
-    }
-  }
+    defines: {};
+  };
 };
 
 export type MATERIAL_UNIFORM_VALUE<K extends string> = {
-  [ShaderKey in keyof MATERIAL_SHADER]:
-  K extends keyof MATERIAL_SHADER[ShaderKey]['uniforms']
-  ? MATERIAL_SHADER[ShaderKey]['uniforms'][K] extends { value: infer V }
-  ? V
-  : never
-  : never;
+  [ShaderKey in keyof MATERIAL_SHADER]: K extends keyof MATERIAL_SHADER[ShaderKey]['uniforms']
+    ? MATERIAL_SHADER[ShaderKey]['uniforms'][K] extends { value: infer V }
+      ? V
+      : never
+    : never;
 }[keyof MATERIAL_SHADER];
-
 
 export type MATERIAL_UNIFORM = {
-  [K in keyof MATERIAL_SHADER]: keyof MATERIAL_SHADER[K]["uniforms"];
+  [K in keyof MATERIAL_SHADER]: keyof MATERIAL_SHADER[K]['uniforms'];
 }[keyof MATERIAL_SHADER];
-
-
 
 export type MATERIAL_SHADER_TYPE = keyof MATERIAL_SHADER;
 
@@ -158,52 +151,50 @@ export interface VUserData {
 }
 
 export const MATERIAL_DEFINES = [
-  "PROBE_COUNT",
-  "WALL_COUNT",
-  "USE_PROBE_PMREM",
+  'PROBE_COUNT',
+  'WALL_COUNT',
+  'USE_PROBE_PMREM',
 ] as const;
 
-export type MATERIAL_DEFINE = typeof MATERIAL_DEFINES[number];
+export type MATERIAL_DEFINE = (typeof MATERIAL_DEFINES)[number];
 
 export const EMPTY_TEXTURE = (() => {
   const emptyTexture = new THREE.DataTexture(
     new Uint8Array([0, 0, 0, 0]), // transparent 1x1 pixel
     1,
     1,
-    THREE.RGBAFormat
+    THREE.RGBAFormat,
   );
   emptyTexture.needsUpdate = true;
   return emptyTexture;
 })();
 export const DEFAULT_MATERIAL_SHADER: MATERIAL_SHADER = {
   MESH_TRANSITION: {
-    type: "MESH_TRANSITION",
-    defines: {
-    },
+    type: 'MESH_TRANSITION',
+    defines: {},
     uniforms: {
       uUseMeshTransition: { value: false },
       uProgress: { value: 0 },
       uDissolveOrigin: { value: new THREE.Vector3() },
       uDissolveMaxDist: { value: 0 },
       uDissolveDirection: { value: false },
-    }
+    },
   },
 
   LIGHTMAP_TRANSITION: {
-    type: "LIGHTMAP_TRANSITION",
-    defines: {
-    },
+    type: 'LIGHTMAP_TRANSITION',
+    defines: {},
     uniforms: {
       uUseLightMapTransition: { value: false },
       uProgress: { value: 0 },
       uLightMapTo: {
-        value: EMPTY_TEXTURE.clone()
+        value: EMPTY_TEXTURE.clone(),
       },
-    }
+    },
   },
 
   PROBE: {
-    type: "PROBE",
+    type: 'PROBE',
     defines: {
       PROBE_COUNT: undefined,
       WALL_COUNT: undefined,
@@ -212,7 +203,7 @@ export const DEFAULT_MATERIAL_SHADER: MATERIAL_SHADER = {
       // 여기에 기본 키값들을
       //   #1. 넣은 경우, 프로브 할당 전 최초 onBeforeCompile에서 예측할 수 없는 에러 발생
       //       예를 들어 uProbe:{ value:[] }을 기본값으로 넣어두면 에러 발생
-      // 
+      //
       //   #2. 넣지 않는 경우, onBeforeCompile에서 아래 키 값들을 참조할 수 없음.
       //       밖에서 mat.uniform에 넣은 키들(ex. uProbe)을 순회하면서 shader.uniform에 재할당해야하는데, 이 때 참조할 키값들을 위해 undefined로라도 넣어둔다.
       uProbe: undefined as unknown as any,
@@ -228,22 +219,24 @@ export const DEFAULT_MATERIAL_SHADER: MATERIAL_SHADER = {
   },
 
   LIGHTMAP_CONTRAST: {
-    type: "LIGHTMAP_CONTRAST",
+    type: 'LIGHTMAP_CONTRAST',
     uniforms: {
       uLightMapContrast: { value: 1 },
       uGlobalLightMapContrast: { value: 1 },
     },
-    defines: {
-    }
+    defines: {},
   },
 };
 
-export const defaultUniforms: { [uniform in MATERIAL_UNIFORM]: { value: MATERIAL_UNIFORM_VALUE<uniform> } } = (() => {
+export const defaultUniforms: {
+  [uniform in MATERIAL_UNIFORM]: { value: MATERIAL_UNIFORM_VALUE<uniform> };
+} = (() => {
   const uniforms: any = {};
   for (const shaderKey in DEFAULT_MATERIAL_SHADER) {
     const shader = DEFAULT_MATERIAL_SHADER[shaderKey as keyof MATERIAL_SHADER];
     for (const uniformKey in shader.uniforms) {
-      uniforms[uniformKey] = shader.uniforms[uniformKey as keyof typeof shader.uniforms];
+      uniforms[uniformKey] =
+        shader.uniforms[uniformKey as keyof typeof shader.uniforms];
     }
   }
   return uniforms;

@@ -1,6 +1,6 @@
-import { RootState } from "@react-three/fiber";
-import { useEffect, useState } from "react";
-import { View } from "../types";
+import { RootState } from '@react-three/fiber';
+import { useEffect, useState } from 'react';
+import { View } from '../types';
 
 export default function useGetThreeExports(view: View = View.Shared) {
   const exists = window.getThree(view);
@@ -24,7 +24,7 @@ export default function useGetThreeExports(view: View = View.Shared) {
   }, []);
 
   return threeExports;
-};
+}
 
 export const useSetThreeExports = (view: View = View.Shared) => {
   return (state: RootState) => window.setThree(view, state);

@@ -14,10 +14,11 @@ import {
   lightMapAtom,
   modelOptionClassAtom,
   ModelSelectorAtom,
+  ProbeAtom,
   selectedAtom,
   useModal,
 } from '../scripts/atoms.ts';
-import { threes } from '../scripts/atomUtils.ts';
+import { threes, uploadImage } from '../scripts/atomUtils.ts';
 import { createLightmapCache } from '../scripts/loaders/VGLTFLoader.ts';
 import { getVKTX2Loader } from '../scripts/loaders/VKTX2Loader.ts';
 import MeshEffect from '../scripts/options/MeshEffect.ts';
@@ -441,6 +442,10 @@ const State = ({
                 <strong>Floor</strong>{' '}
                 {state.functionEffects.booleans.changeFloor ? 'O' : 'X'}
               </span>
+              <span>
+                <strong>Probe</strong>{' '}
+                {state.functionEffects.booleans.changeProbe ? 'O' : 'X'}
+              </span>
             </div>
             <div className="grid gap-x-1 gap-y-0.5 grid-cols-2">
               <button disabled={defaultState === state.id} onClick={setDefault}>
@@ -499,6 +504,13 @@ const StateFunctionEffectModal = ({
     functionEffects.urls,
   );
 
+  console.log('values : ', values);
+  const [probeTextures, setProbeTextures] = useState<
+    { blob: Blob; url: string; name: string; id: string }[]
+  >([]);
+  const probes = useAtomValue(ProbeAtom);
+  const [loading, setLoading] = useState(false);
+
   const [previewMinimap, setPreviewMinimap] = useState<{
     show: boolean;
     error: boolean;
@@ -524,6 +536,70 @@ const StateFunctionEffectModal = ({
     };
     onComplete(state.functionEffects);
     closeModal();
+  }
+
+  async function loadNowProbeTextures() {
+    setLoading(true);
+    const textures = await Promise.all(
+      probes.map(async probe => {
+        const canvas = probe.getCanvas()!;
+        console.log('canvas w h : ', canvas.width, canvas.height);
+        const blob = await canvasToBlobAsync(canvas);
+        return {
+          blob: blob,
+          url: URL.createObjectURL(blob),
+          name: probe.getName(),
+          id: probe.getId(),
+        };
+      }),
+    );
+    setLoading(false);
+    setProbeTextures(textures);
+  }
+
+  async function applyTextures() {
+    const files = probeTextures.map(({ blob, name, id }) => {
+      const fileName = `${name}_${id}_equirectangular_${state.id}.jpg`;
+      return new File([blob], fileName, { type: blob.type });
+    });
+
+    const res = await uploadImage(files);
+    const fileUrls = res.data.map(f => decodeURI(f.fileUrl));
+    const results = fileUrls.map(url => {
+      const { probeId, stateId } = extractIDsFromURL(url);
+      return { probeId, stateId, url };
+    });
+    setValues(pre => {
+      return { ...pre, probe: results };
+    });
+    alert('완료');
+  }
+
+  function extractIDsFromURL(url: string) {
+    const fileName = decodeURIComponent(url.split('/').pop() || '');
+    const regex =
+      /_(\w{8}-\w{4}-\w{4}-\w{4}-\w{12})_equirectangular_(\w{8}-\w{4}-\w{4}-\w{4}-\w{12})\.jpg$/;
+
+    const match = fileName.match(regex);
+    console.log(fileName);
+    if (!match) {
+      throw new Error('파일 이름 형식이 올바르지 않습니다.');
+    }
+
+    const [_, probeId, stateId] = match;
+    return { probeId, stateId };
+  }
+
+  function canvasToBlobAsync(
+    canvas: HTMLCanvasElement,
+    type = 'image/jpeg',
+  ): Promise<Blob> {
+    return new Promise((resolve, reject) => {
+      canvas.toBlob(blob => {
+        if (blob) resolve(blob);
+        else reject(new Error('Canvas toBlob() failed'));
+      }, type);
+    });
   }
 
   return (
@@ -696,6 +772,64 @@ const StateFunctionEffectModal = ({
                 >
                   초기화
                 </button>
+              </>
+            )}
+          </div>
+        </div>
+        <div className="mt-1">
+          <strong className="mr-1">Probe Textures</strong>
+          <button
+            onClick={() =>
+              setUses(pre => ({
+                ...pre,
+                changeProbe: !uses.changeProbe,
+              }))
+            }
+          >
+            {uses.changeProbe ? '사용' : '미사용'}
+          </button>
+          <div className="mt-1">
+            {uses.changeProbe && (
+              <>
+                <button onClick={loadNowProbeTextures}>
+                  현재 프로브 텍스쳐 띄우기
+                </button>
+                <button onClick={applyTextures}>해당 텍스쳐 할당</button>
+                {loading && (
+                  <div className="w-full flex justify-center">로딩 중</div>
+                )}
+                <div className="grid mt-1 grid-cols-1 gap-y-1 gap-x-1 overflow-auto max-h-[300px] p-1">
+                  {values.probe.length > 0 &&
+                    values.probe.map(({ probeId, stateId, url }) => {
+                      return (
+                        <div className="w-full">
+                          <p className="mb-1">
+                            <strong>프로브 ID: </strong>
+                            {probeId}
+                          </p>
+                          <p className="mb-1">
+                            <strong>URL</strong>
+                            {url}
+                          </p>
+                        </div>
+                      );
+                    })}
+                  {probeTextures.length > 0 &&
+                    probeTextures.map(({ url, name, id }) => {
+                      return (
+                        <div className="w-full aspect-[2/1]">
+                          <p className="mb-1">
+                            {name} - {id}
+                          </p>
+                          <img
+                            className="w-full aspect-[2/1]"
+                            src={url}
+                            alt=""
+                          />
+                        </div>
+                      );
+                    })}
+                </div>
               </>
             )}
           </div>
@@ -1143,7 +1277,7 @@ const LightMapSelector = ({
             }
             onClick={() => setSelected(key)}
           >
-            <KTXPreview texture={texture} image={image} />
+            <KTXPreview texture={texture} image={image!} />
             <div>
               <p>{getNameFromURL(key)}</p>
               {meshLightMap === getNameFromURL(key) && (

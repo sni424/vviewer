@@ -402,7 +402,6 @@ export type Walls = {
   walls: [number, number, number][]; // [startIndex, endIndex, probeIndex]
 };
 
-
 export type WallPoint = {
   point: THREE.Vector2;
   id: string;
@@ -418,7 +417,7 @@ export type Wall = {
   id: string;
   probeName?: string;
   probeId?: string;
-}
+};
 
 // 최종 결과에 내보내거나 읽어올 정보
 export type WallMeta = {
@@ -433,23 +432,25 @@ export type WallView = Wall & {
 
 export type WallCreateOption = WallMeta & {
   autoCreateWall: boolean;
-  creating?: {
-    cmd: "end"; // 새로운 점을 points가장 마지막에 추가
-    mouse?: { x: number; y: number; rect: DOMRect };
-    axisSnap?: boolean; // 시프트 누르면 xz축에 스냅
-  } | {
-    cmd: "middle";
-    mouse?: { x: number; y: number; rect: DOMRect };
-    axisSnap?: boolean;
-    index: number; // 이를테면 index=1이면 기존 1을 뒤로 한 칸 미루고 새로운 점이 1이 된다. 즉 0과 1사이에 들어간다
-  } | {
-    cmd: "adjust"; // 기존 점 위치조정
-    id: string;
-    mouse?: { x: number; y: number; rect: DOMRect };
-    axisSnap?: boolean;
-  }
+  creating?:
+    | {
+        cmd: 'end'; // 새로운 점을 points가장 마지막에 추가
+        mouse?: { x: number; y: number; rect: DOMRect };
+        axisSnap?: boolean; // 시프트 누르면 xz축에 스냅
+      }
+    | {
+        cmd: 'middle';
+        mouse?: { x: number; y: number; rect: DOMRect };
+        axisSnap?: boolean;
+        index: number; // 이를테면 index=1이면 기존 1을 뒤로 한 칸 미루고 새로운 점이 1이 된다. 즉 0과 1사이에 들어간다
+      }
+    | {
+        cmd: 'adjust'; // 기존 점 위치조정
+        id: string;
+        mouse?: { x: number; y: number; rect: DOMRect };
+        axisSnap?: boolean;
+      };
 };
-
 
 export interface Vector3 {
   x: number;
@@ -477,5 +478,4 @@ export interface SkyBoxState {
   mesh: MeshSkyBox;
 }
 
-export type ProbeTypes = "multi" | "multiWall";
-
+export type ProbeTypes = 'multi' | 'multiWall';

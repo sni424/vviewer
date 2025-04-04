@@ -11,7 +11,7 @@ import {
   postprocessAtoms,
   setAtomValue,
   settingsAtom,
-  viewGridAtom
+  viewGridAtom,
 } from '../scripts/atoms';
 
 export type SavedSettings = Partial<ReturnType<typeof getSettings>>;

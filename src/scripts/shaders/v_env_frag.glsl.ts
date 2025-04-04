@@ -7,14 +7,10 @@ type Shader = THREE.WebGLProgramParametersWithUniforms;
  * 공통으로 쓰이는 변수
  * 1. progress
  *      - uUseLightMapTransition || uUseMeshTransition
- * 
+ *
  * 2. vWorldPos
  *      - V_ENV_MAP || uUseMeshTransition
  */
-
-
-
-
 
 const definesTarget = /* glsl */ `void main()`;
 const defines = /* glsl */ `
@@ -83,8 +79,25 @@ varying vec3 vWorldPos;
 // pmrem texture as a cube map
 
 #ifndef USE_PROBE_PMREM
-#define pmremUV texture // PMREM텍스쳐 아니면 기존의 textureCube 사용
+#define probeTextureUV texture // PMREM텍스쳐 아니면 기존의 textureCube 사용
 #endif //!USE_PROBE_PMREM
+
+#ifdef USE_PROBE_EQUIRECT
+  vec2 directionToEquirectUV(vec3 dir) {
+    // normalize just in case
+    vec3 n = normalize(dir);
+
+    float u = atan(n.z, n.x) / (2.0 * PI) + 0.5;
+    float v = asin(n.y) / PI + 0.5;
+
+    return vec2(u, v);
+  }
+
+  vec4 probeTextureUV(sampler2D tex, vec3 ray, float roughness) {
+    vec2 uv = directionToEquirectUV(ray);
+    return texture2D(tex, uv, roughness);
+  }
+#endif //!USE_PROBE_EQUIRECT
 
 #ifdef USE_PROBE_PMREM
 
@@ -247,7 +260,7 @@ varying vec3 vWorldPos;
 
 	}
 
-	vec4 pmremUV( sampler2D envMap, vec3 sampleDir, float roughness ) {
+	vec4 probeTextureUV( sampler2D envMap, vec3 sampleDir, float roughness ) {
 
 		float mip = clamp( v_roughnessToMip( roughness ), v_cubeUV_m0, uCubeUVMaxMip );
 
@@ -321,119 +334,119 @@ varying vec3 vWorldPos;
       #if PROBE_COUNT > 0
       if(i == 0){
 
-          envMapColor += pmremUV( uProbeTextures[0], localReflectVec, roughness );
+          envMapColor += probeTextureUV( uProbeTextures[0], localReflectVec, roughness );
 
       }
       #endif
       #if PROBE_COUNT > 1
       else if( i == 1){
 
-          envMapColor += pmremUV( uProbeTextures[1], localReflectVec, roughness );
+          envMapColor += probeTextureUV( uProbeTextures[1], localReflectVec, roughness );
 
       }
       #endif
       #if PROBE_COUNT > 2
       else if( i == 2){
 
-          envMapColor += pmremUV( uProbeTextures[2], localReflectVec, roughness );
+          envMapColor += probeTextureUV( uProbeTextures[2], localReflectVec, roughness );
 
       }
       #endif
       #if PROBE_COUNT > 3
       else if( i == 3){
 
-          envMapColor += pmremUV( uProbeTextures[3], localReflectVec, roughness );
+          envMapColor += probeTextureUV( uProbeTextures[3], localReflectVec, roughness );
 
       }
       #endif
       #if PROBE_COUNT > 4
       else if( i == 4){
 
-          envMapColor += pmremUV( uProbeTextures[4], localReflectVec, roughness );
+          envMapColor += probeTextureUV( uProbeTextures[4], localReflectVec, roughness );
 
       }
       #endif
       #if PROBE_COUNT > 5
       else if( i == 5){
 
-          envMapColor += pmremUV( uProbeTextures[5], localReflectVec, roughness );
+          envMapColor += probeTextureUV( uProbeTextures[5], localReflectVec, roughness );
 
       }
       #endif
       #if PROBE_COUNT > 6
       else if( i == 6){
 
-          envMapColor += pmremUV( uProbeTextures[6], localReflectVec, roughness );
+          envMapColor += probeTextureUV( uProbeTextures[6], localReflectVec, roughness );
 
       }
       #endif
       #if PROBE_COUNT > 7
       else if( i == 7){
 
-          envMapColor += pmremUV( uProbeTextures[7], localReflectVec, roughness );
+          envMapColor += probeTextureUV( uProbeTextures[7], localReflectVec, roughness );
 
       }
       #endif
       #if PROBE_COUNT > 8
       else if( i == 8){
 
-          envMapColor += pmremUV( uProbeTextures[8], localReflectVec, roughness );
+          envMapColor += probeTextureUV( uProbeTextures[8], localReflectVec, roughness );
 
       }
       #endif
       #if PROBE_COUNT > 9
       else if( i == 9){
 
-          envMapColor += pmremUV( uProbeTextures[9], localReflectVec, roughness );
+          envMapColor += probeTextureUV( uProbeTextures[9], localReflectVec, roughness );
 
       }
       #endif
       #if PROBE_COUNT > 10
       else if( i == 10){
 
-          envMapColor += pmremUV( uProbeTextures[10], localReflectVec, roughness );
+          envMapColor += probeTextureUV( uProbeTextures[10], localReflectVec, roughness );
 
       }
       #endif
       #if PROBE_COUNT > 11
       else if( i == 11){
 
-          envMapColor += pmremUV( uProbeTextures[11], localReflectVec, roughness );
+          envMapColor += probeTextureUV( uProbeTextures[11], localReflectVec, roughness );
 
       }
       #endif
       #if PROBE_COUNT > 12
       else if( i == 12){
 
-          envMapColor += pmremUV( uProbeTextures[12], localReflectVec, roughness );
+          envMapColor += probeTextureUV( uProbeTextures[12], localReflectVec, roughness );
 
       }
       #endif
       #if PROBE_COUNT > 13
       else if( i == 13){
 
-          envMapColor += pmremUV( uProbeTextures[13], localReflectVec, roughness );
+          envMapColor += probeTextureUV( uProbeTextures[13], localReflectVec, roughness );
 
       }
       #endif
       #if PROBE_COUNT > 14
       else if( i == 14){
 
-          envMapColor += pmremUV( uProbeTextures[14], localReflectVec, roughness );
+          envMapColor += probeTextureUV( uProbeTextures[14], localReflectVec, roughness );
 
       }
       #endif
       #if PROBE_COUNT > 15
       else if( i == 15){
 
-          envMapColor += pmremUV( uProbeTextures[15], localReflectVec, roughness );
+          envMapColor += probeTextureUV( uProbeTextures[15], localReflectVec, roughness );
 
       }
       #endif
       #if PROBE_COUNT > 16
       else if( i == 16){
 
-          envMapColor += pmremUV( uProbeTextures[16], localReflectVec, roughness );
+          envMapColor += probeTextureUV( uProbeTextures[16], localReflectVec, roughness );
 
       }
       #endif
@@ -477,7 +490,6 @@ void main()
 `;
 
 /////////////////////////////////////////////////
-
 
 const multiProbeTarget = /*glsl */ `#include <lights_fragment_end>`;
 const multiProbe = /* glsl */ `
@@ -585,8 +597,8 @@ radiance += clamp(pow(envMapColor.rgb, vec3(uProbeContrast)), 0.0, 1.0) * uProbe
 #include <lights_fragment_end>
 
 #endif //!V_FRAG_MULTIPROBE_GUARD
-`
-const progAlphaTarget = /*glsl */`#include <dithering_fragment>`;
+`;
+const progAlphaTarget = /*glsl */ `#include <dithering_fragment>`;
 const progAlpha = /* glsl */ `
 #include <dithering_fragment>
 #ifndef V_FRAG_PROG_ALPHA_GUARD
@@ -615,7 +627,7 @@ const progAlpha = /* glsl */ `
 #endif //!V_FRAG_PROG_ALPHA_GUARD
 `;
 
-const lightmapTarget = /*glsl */`#include <lights_fragment_maps>`;
+const lightmapTarget = /*glsl */ `#include <lights_fragment_maps>`;
 const lightmapContent = /* glsl */ `
 // <lights_fragment_maps>을 복사해와서 중간 부분을 수정
 #ifndef V_FRAG_LIGHTMAP_CONTRAST_GUARD
@@ -683,21 +695,32 @@ const debugging = /* glsl */ `
 `;
 
 export const patchFragment = (shader: Shader) => {
-
   // 1. defines
   shader.fragmentShader = shader.fragmentShader.replace(definesTarget, defines);
 
   // 2. multiprobe
-  shader.fragmentShader = shader.fragmentShader.replace(multiProbeTarget, multiProbe);
+  shader.fragmentShader = shader.fragmentShader.replace(
+    multiProbeTarget,
+    multiProbe,
+  );
 
   // 3. visibility transition
-  shader.fragmentShader = shader.fragmentShader.replace(progAlphaTarget, progAlpha);
+  shader.fragmentShader = shader.fragmentShader.replace(
+    progAlphaTarget,
+    progAlpha,
+  );
 
   // 4. lightmap transition & contrast
-  shader.fragmentShader = shader.fragmentShader.replace(lightmapTarget, lightmapContent);
+  shader.fragmentShader = shader.fragmentShader.replace(
+    lightmapTarget,
+    lightmapContent,
+  );
 
   // 5. 디버깅용으로 셰이더 가장 마지막 부분에 추가
-  shader.fragmentShader = shader.fragmentShader.replace("//END_OF_FRAG", debugging)
+  shader.fragmentShader = shader.fragmentShader.replace(
+    '//END_OF_FRAG',
+    debugging,
+  );
 
   return shader;
 };
@@ -711,4 +734,4 @@ export const v_env_frag_shaders = {
   progAlphaTarget,
   lightmapContent,
   lightmapTarget,
-}
+};

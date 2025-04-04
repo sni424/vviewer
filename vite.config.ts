@@ -6,7 +6,8 @@ import { defineConfig } from 'vite';
 export default defineConfig({
   plugins: [react()],
   server: {
-    allowedHosts: ['opmay-react.ngrok.app', "stan.ngrok.pizza"],
+    allowedHosts: ['opmay-react.ngrok.app', 'stan.ngrok.pizza'],
+    host:"0.0.0.0"
   },
   resolve: {
     alias: {

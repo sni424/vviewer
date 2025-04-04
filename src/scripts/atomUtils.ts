@@ -35,6 +35,12 @@ export type KTXApiResponse = {
   }[];
 };
 
+export type ResizeOption = {
+  doResize: boolean;
+  width: number;
+  height: number;
+};
+
 function isPointOnLineSegment(p: PointXZ, v1: PointXZ, v2: PointXZ): boolean {
   const crossProduct =
     (p.z - v1.z) * (v2.x - v1.x) - (p.x - v1.x) * (v2.z - v1.z);
@@ -124,10 +130,17 @@ export const uploadExrToKtx = async (
   return await res.json();
 };
 
-export const uploadPngToKtx = async (
+export const uploadImage = async (
   pngs: File | File[],
+  options?: {
+    compress?: boolean;
+    resize?: ResizeOption;
+  },
 ): Promise<KTXApiResponse> => {
-  const uploadUrl = import.meta.env.VITE_PNG_KTX_URL as string;
+  const uploadUrl =
+    options && options.compress
+      ? (import.meta.env.VITE_PNG_KTX_URL as string)
+      : (import.meta.env.VITE_UPLOAD_URL as string);
   if (!uploadUrl) {
     throw new Error('VITE_PNG_KTX_URL is not defined');
   }
@@ -166,7 +179,7 @@ export const loadJson = async <T>(name: string): Promise<T> => {
   return fetch(ENV.s3Base + name, {
     cache: 'no-store',
   }).then(res => res.json());
-}
+};
 
 export const loadHotspot = async () => {
   return fetch(ENV.s3Base + 'hotspots.json', {
@@ -215,7 +228,6 @@ export const loadClipping = async () => {
     cache: 'no-store',
   }).then(res => res.json());
 };
-
 
 export const loadPostProcessAndSet = async () => {
   return loadPostProcess().then(res => {
@@ -365,47 +377,45 @@ export const loadNavMesh = async () => {
 };
 
 export const verifyWalls = (walls: Walls) => {
-
   // 1. check keys
   if (!walls.walls || !walls.points || !walls.probes) {
-    console.error("@verifyWalls walls keys are not valid : ", walls);
+    console.error('@verifyWalls walls keys are not valid : ', walls);
     return false;
   }
 
   // 2. check every walls[0] and [1] index is valid
   const points = walls.points;
-  if (!walls.walls.every(
-    wall =>
-      Boolean(points[wall[0]]) &&
-      Boolean(points[wall[1]])
-  )) {
-    console.error("@verifyWalls walls points are not valid : ", walls);
+  if (
+    !walls.walls.every(
+      wall => Boolean(points[wall[0]]) && Boolean(points[wall[1]]),
+    )
+  ) {
+    console.error('@verifyWalls walls points are not valid : ', walls);
     return false;
   }
 
   // 3. check every probe index is valid
   const probes = walls.probes;
-  if (!walls.walls.every(
-    wall => wall[2] === -1 || Boolean(probes[wall[2]])
-  )) {
-    console.error("@verifyWalls walls probes are not valid : ", walls);
+  if (!walls.walls.every(wall => wall[2] === -1 || Boolean(probes[wall[2]]))) {
+    console.error('@verifyWalls walls probes are not valid : ', walls);
     return false;
   }
 
   return true;
-}
+};
 
-export const wallsToWallOption = (walls: Walls, probes?: ReflectionProbe[]): WallCreateOption => {
+export const wallsToWallOption = (
+  walls: Walls,
+  probes?: ReflectionProbe[],
+): WallCreateOption => {
   const targetProbes = probes ?? getAtomValue(ProbeAtom);
 
   const retval: WallCreateOption = {
-    points: walls.points.map((point) => ({
+    points: walls.points.map(point => ({
       id: v4(),
       point: new THREE.Vector2(point[0], point[1]),
       show: true,
-
-    }),
-    ),
+    })),
     walls: [],
     autoCreateWall: true,
   };
@@ -416,36 +426,54 @@ export const wallsToWallOption = (walls: Walls, probes?: ReflectionProbe[]): Wal
     end: retval.points[wall[1]].id,
     probeId: wall[2] === -1 ? undefined : walls.probes[wall[2]],
     show: true,
-  }))
+  }));
 
-  retval.walls.forEach(wall => ({
-    ...wall,
-    probeName: wall.probeId ? targetProbes.find(probe => probe.getId() === wall.probeId)?.getName() : undefined,
-  } as WallView))
+  retval.walls.forEach(
+    wall =>
+      ({
+        ...wall,
+        probeName: wall.probeId
+          ? targetProbes
+              .find(probe => probe.getId() === wall.probeId)
+              ?.getName()
+          : undefined,
+      }) as WallView,
+  );
 
   resetColor(retval.points);
   resetColor(retval.walls);
 
   return retval;
-}
+};
 
 // WallCreateOption으로부터 Walls를 만드는 함수
-export const wallOptionToWalls = (option?: WallCreateOption, probes?: ReflectionProbe[]): Walls => {
+export const wallOptionToWalls = (
+  option?: WallCreateOption,
+  probes?: ReflectionProbe[],
+): Walls => {
   const targetOption = option ?? getAtomValue(wallOptionAtom);
   const targetProbes = probes ?? getAtomValue(ProbeAtom);
 
   // 벽체들에서 사용된 프로브 아이디들
-  const usedProbes = Array.from(new Set(targetOption.walls.map(wall => wall.probeId).filter(Boolean) as string[]));
+  const usedProbes = Array.from(
+    new Set(
+      targetOption.walls.map(wall => wall.probeId).filter(Boolean) as string[],
+    ),
+  );
 
-  if (usedProbes.some(probeId => !targetProbes.find(probe => probe.getId() === probeId))) {
+  if (
+    usedProbes.some(
+      probeId => !targetProbes.find(probe => probe.getId() === probeId),
+    )
+  ) {
     // 벽에서 사용한 프로브가 프로브목록에서 발견되지 않음
     const probeNames = probes?.map(p => ({
       id: p.getId(),
       name: p.getName(),
-    }))
+    }));
     console.log({ probeNames, usedProbes });
 
-    console.warn("벽에서 사용한 프로브가 프로브목록에서 발견되지 않음");
+    console.warn('벽에서 사용한 프로브가 프로브목록에서 발견되지 않음');
   }
 
   const points = targetOption.points;
@@ -453,32 +481,40 @@ export const wallOptionToWalls = (option?: WallCreateOption, probes?: Reflection
   targetOption.walls.forEach(wall => {
     pointIdSet.add(wall.start);
     pointIdSet.add(wall.end);
-  })
+  });
 
-  const usedPoints = points.filter(point => pointIdSet.has(point.id)).map(point => ({ id: point.id, value: [point.point.x, point.point.y] } as {
-    id: string;
-    value: [number, number];
-  }));
+  const usedPoints = points
+    .filter(point => pointIdSet.has(point.id))
+    .map(
+      point =>
+        ({ id: point.id, value: [point.point.x, point.point.y] }) as {
+          id: string;
+          value: [number, number];
+        },
+    );
 
   // 벽들이 사용하는 포인트 찾아서 인덱스로 바꿔서 넘겨주기
-  const result = targetOption.walls.reduce((acc, wall) => {
-    const startIdx = usedPoints.findIndex(p => p.id === wall.start);
-    const endIdx = usedPoints.findIndex(p => p.id === wall.end);
-    const probeIdx = usedProbes.findIndex(p => p === wall.probeId);
-    acc.walls.push([startIdx, endIdx, probeIdx]);
-    return acc;
-  }, {
-    probes: usedProbes,
-    points: usedPoints.map(point => point.value),
-    walls: [],
-  } as Walls);
+  const result = targetOption.walls.reduce(
+    (acc, wall) => {
+      const startIdx = usedPoints.findIndex(p => p.id === wall.start);
+      const endIdx = usedPoints.findIndex(p => p.id === wall.end);
+      const probeIdx = usedProbes.findIndex(p => p === wall.probeId);
+      acc.walls.push([startIdx, endIdx, probeIdx]);
+      return acc;
+    },
+    {
+      probes: usedProbes,
+      points: usedPoints.map(point => point.value),
+      walls: [],
+    } as Walls,
+  );
 
   if (!verifyWalls(result)) {
     debugger;
   }
 
   return result;
-}
+};
 
 export const prepareWalls = (wallInfo?: WallCreateOption) => {
   const retval = [] as {
@@ -503,12 +539,11 @@ export const prepareWalls = (wallInfo?: WallCreateOption) => {
   return retval;
 };
 
-
 export async function fileToJson<T>(file: File): Promise<T> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
 
-    reader.onload = (event) => {
+    reader.onload = event => {
       try {
         const json = JSON.parse((event.target as any).result);
         resolve(json as T);
@@ -517,7 +552,7 @@ export async function fileToJson<T>(file: File): Promise<T> {
       }
     };
 
-    reader.onerror = (error) => reject(error);
+    reader.onerror = error => reject(error);
 
     reader.readAsText(file);
   });
@@ -530,7 +565,7 @@ export const recompile = () => {
   }
 
   const { gl, scene, camera } = t;
-  return gl.compile(scene, camera,);
+  return gl.compile(scene, camera);
 };
 
 export const recompileAsync = async () => {
@@ -540,5 +575,23 @@ export const recompileAsync = async () => {
   }
 
   const { gl, scene, camera } = t;
-  return gl.compileAsync(scene, camera);
-}
+  const visibleMap = new Map<string, boolean>();
+
+  scene.traverse(o => {
+    if (o.asMesh.isMesh) {
+      const mesh = o.asMesh;
+      mesh.frustumCulled = false;
+      visibleMap.set(mesh.uuid, mesh.visible);
+      mesh.visible = true;
+      mesh.matStandard.needsUpdate = true;
+    }
+  });
+  return gl.compileAsync(scene, camera).then(() => {
+    scene.traverse(o => {
+      if (o.asMesh.frustumCulled === false) {
+        o.frustumCulled = true;
+        o.asMesh.visible = visibleMap.get(o.uuid) ?? true;
+      }
+    });
+  });
+};

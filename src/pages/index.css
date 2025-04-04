@@ -41,7 +41,7 @@ button {
 
 input::-webkit-inner-spin-button,
 input::-webkit-outer-spin-button {
-    opacity: 1;
+  opacity: 1;
 }
 
 button:disabled,
@@ -93,40 +93,39 @@ button:active {
 }
 
 .rcp-field-input {
-    font-size: 11px;
-    padding: 2px 4px;
+  font-size: 11px;
+  padding: 2px 4px;
 }
 
 .rcp-field-label {
-    font-size: 10px;
+  font-size: 10px;
 }
 
 .rcp-fields-floor {
-    grid-template-columns:repeat(auto-fit, minmax(100px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
 }
 
 .rcp-hue {
-    height: 8px;
+  height: 8px;
 }
 
 .rcp-hue-cursor {
-    width: 16px;
-    height: 16px;
+  width: 16px;
+  height: 16px;
 }
 
 .rcp-saturation-cursor {
-    width: 16px;
-    height: 16px;
-    transform: translate(-5px, -5px)
+  width: 16px;
+  height: 16px;
+  transform: translate(-5px, -5px);
 }
 
 .rcp {
-    display: flex;
-    flex-direction: column;
+  display: flex;
+  flex-direction: column;
 }
 
 .rcp-body {
-    padding: 10px 10px;
-    gap: 10px;
+  padding: 10px 10px;
+  gap: 10px;
 }
-

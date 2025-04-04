@@ -107,9 +107,9 @@ const useLoad = () => {
 
               const order = ['px', 'nx', 'py', 'ny', 'pz', 'nz'];
 
-              const sortedTextures = textureUrls.sort((a, b) => {
+              const sortedTextures = textureUrls!.sort((a, b) => {
                 const getKey = (str: string) =>
-                  str.match(/_(px|nx|py|ny|pz|nz)\.ktx$/)[1];
+                  str.match(/_(px|nx|py|ny|pz|nz)\.ktx$/)![1];
                 return order.indexOf(getKey(a)) - order.indexOf(getKey(b));
               });
 

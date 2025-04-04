@@ -3,11 +3,9 @@ import { MoveActionOptions } from '../../types';
 import { moveTo } from '../utils.ts';
 
 declare module 'three' {
-
   interface Camera {
     moveTo(action: MoveActionOptions): void;
   }
-
 }
 
 THREE.Camera.prototype.moveTo = function (action: MoveActionOptions) {

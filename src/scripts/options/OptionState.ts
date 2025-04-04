@@ -26,14 +26,20 @@ export type FunctionEffectsBooleans = {
   changeWall: boolean;
   changeNav: boolean;
   changeFloor: boolean;
-}
+  changeProbe: boolean;
+};
 
 export type FunctionEffectsURLs = {
   minimap: string; // URL
   walls: string;
   nav: string;
   floor: string;
-}
+  probe: {
+    probeId: string;
+    stateId: string;
+    url: string;
+  }[];
+};
 
 export type FunctionEffectsJSON = Omit<FunctionEffects, 'objects'>;
 
@@ -43,13 +49,15 @@ const DEFAULT_FUNCTION_EFFECTS = {
     changeWall: false,
     changeNav: false,
     changeFloor: false,
+    changeProbe: false,
   },
   urls: {
     minimap: '', // URL
     walls: '',
     nav: '',
     floor: '',
-  }
+    probe: [],
+  },
 };
 
 export default class OptionState {
@@ -146,7 +154,7 @@ export default class OptionState {
       stateName: this.name,
       expanded: this.expanded,
       meshEffects: effectsToJSON,
-      functionEffects: { booleans, urls }
+      functionEffects: { booleans, urls },
     };
   }
 
@@ -172,7 +180,14 @@ export default class OptionState {
         effect,
       );
     });
-    this.functionEffects = state.functionEffects;
+    const functionEffects = {
+      ...this.functionEffects,
+      ...state.functionEffects,
+    };
+    if (functionEffects.urls.probe === undefined) {
+      functionEffects.urls.probe = [];
+    }
+    this.functionEffects = functionEffects;
     // TODO Object create from json
     return this;
   }

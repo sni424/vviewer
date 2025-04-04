@@ -9,9 +9,15 @@ import { TransformControls } from 'three-stdlib';
 import { EXRLoader, OrbitControls } from 'three/examples/jsm/Addons.js';
 import { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { v4 } from 'uuid';
-import { VUserData } from 'VTHREE';
 import { ENV, Layer } from '../Constants';
-import { FileInfo, MoveActionOptions, View, WallPoint, WallPointView, WallView } from '../types.ts';
+import {
+  FileInfo,
+  MoveActionOptions,
+  View,
+  WallPoint,
+  WallPointView,
+  WallView,
+} from '../types.ts';
 import {
   addPoints,
   BenchMark,
@@ -323,7 +329,7 @@ export const loadLatest = async ({
   addBenchmark?: (key: keyof BenchMark, value?: number) => void;
   closeToast?: () => void;
 }) => {
-  const addBenchMark = _addBenchmark ?? (() => { });
+  const addBenchMark = _addBenchmark ?? (() => {});
   const base = ENV.base;
   if (!base) {
     alert('.env에 환경변수를 설정해주세요, VITE_MODELS_URL');
@@ -645,7 +651,7 @@ const handlePathFindingMove = (
   initialPath: THREE.Vector3[],
   speed: number,
   quaternion?: THREE.Quaternion,
-  onComplete: gsap.Callback = () => { },
+  onComplete: gsap.Callback = () => {},
 ) => {
   // path없으면 동작x
   if (initialPath.length === 0) return;
@@ -735,7 +741,7 @@ const handleLinearMove = (
   quaternion: THREE.Quaternion,
   speed: number,
   cameraFov?: number,
-  onComplete: gsap.Callback = () => { },
+  onComplete: gsap.Callback = () => {},
 ) => {
   const startPosition = camera.position.clone();
   const timeline = gsap.timeline();
@@ -1012,6 +1018,68 @@ export const getModelArrangedScene = (scene: THREE.Scene) => {
   });
 
   return cloned;
+};
+
+export const getEXRLightMapsFromScene: (
+  scene: THREE.Scene,
+) => Promise<File[]> = async scene => {
+  const lightMapHashes: { [key in string]: THREE.Material[] } = {};
+  scene.traverseAll(async obj => {
+    if ((obj as THREE.Mesh).isMesh) {
+      const mesh = obj as THREE.Mesh;
+      const mat = mesh.matStandard;
+      const isEXR = (tex: THREE.Texture) =>
+        tex.vUserData.isExr !== undefined && tex.vUserData.isExr;
+      const isKTX = (tex: THREE.Texture) =>
+        tex.vUserData.mimeType === 'image/ktx2';
+
+      // Lightmap to HashMap
+      const addLightMapToHash = (hashKey: string, material: THREE.Material) => {
+        if (!lightMapHashes[hashKey]) {
+          lightMapHashes[hashKey] = [];
+        }
+        lightMapHashes[hashKey].push(material);
+      };
+
+      // 250110 추가
+      if (mat && mat.lightMap) {
+        const lightMap = mat.lightMap;
+
+        if (isEXR(lightMap) || isKTX(lightMap)) {
+          if (!mat.vUserData.lightMap && lightMap.vUserData.lightMap) {
+            mat.vUserData.lightMap = lightMap.vUserData.lightMap;
+          }
+
+          const lightMapHash = mat.vUserData.lightMap;
+          if (lightMapHash && lightMapHash.endsWith('.exr')) {
+            addLightMapToHash(lightMapHash, mat);
+          }
+        }
+        mat.vUserData.lightMapIntensity = mat.lightMapIntensity;
+
+        console.log('lightmap out : ', mat.vUserData);
+      }
+    }
+  });
+
+  const hashes = Object.keys(lightMapHashes);
+
+  const files: File[] = [];
+
+  await Promise.all(
+    hashes.map(async hash => {
+      console.log(hash);
+      const file = await get(hash);
+      if (file) {
+        files.push(file);
+      } else {
+        // 파일 임포트 시 idbkeyval에 exr파일이 저장되어있어야함
+        throw new Error();
+      }
+    }),
+  );
+
+  return files;
 };
 
 export const uploadExrLightmap = async (
@@ -1419,187 +1487,7 @@ export function getGLStatus(gl: THREE.WebGLRenderer) {
   return info.memory;
 }
 
-export function changeMeshVisibleWithTransition(
-  mesh: THREE.Mesh,
-  transitionDelay: number,
-  targetVisible: boolean,
-  timeLine: gsap.core.Timeline,
-) {
-  const mat = mesh.material as THREE.Material;
-  const originalRenderOrder = mesh.renderOrder;
-  const originalTransparent = mat.transparent;
-  // 메시의 바운딩 박스 계산
-  const box = new THREE.Box3().setFromObject(mesh);
-
-  // dissolveOrigin 설정: x는 minX, y는 중앙, z는 minZ
-  const minX = box.min.x; // 왼쪽 X 좌표
-  const centerY = (box.min.y + box.max.y) / 2; // Y 중앙
-  const minZ = box.min.z; // 가장 앞쪽 (액자의 왼쪽 테두리)
-
-  // dissolveOrigin을 Three.js Vector3로 설정
-  const dissolveOrigin = new THREE.Vector3(minX, centerY, minZ);
-
-  // 3D 거리 사용
-  mat.shader.uniforms.dissolveMaxDist.value = box.max.distanceTo(box.min);
-
-  // Shader Uniform에 dissolveOrigin 전달
-  mat.uniforms.dissolveOrigin = dissolveOrigin;
-  mat.shader.uniforms.dissolveDirection.value = targetVisible;
-  mat.shader.uniforms.progress.value = 0;
-
-  timeLine.to(
-    {
-      t: 0,
-    },
-    {
-      t: 1,
-      duration: transitionDelay,
-      ease: 'none',
-      onStart() {
-        mat.shader.uniforms.progress.value = 0.0001;
-        mat.transparent = true;
-        if (!targetVisible) {
-          mesh.renderOrder = 9999;
-        }
-        if (targetVisible) {
-          mesh.visible = true;
-        }
-        mat.useProgressiveAlpha = true;
-      },
-      onUpdate() {
-        mat.shader.uniforms.progress.value = this.targets()[0].t;
-      },
-      onComplete() {
-        mesh.visible = targetVisible;
-        mesh.renderOrder = originalRenderOrder;
-        mat.transparent = originalTransparent;
-        mat.useProgressiveAlpha = false; // needsUpdate = true 자동
-        mat.shader.uniforms.progress.value = 0.001;
-      },
-    },
-    0,
-  );
-}
-
-export function changeMeshLightMapWithTransition(
-  mesh: THREE.Mesh,
-  transitionDelay: number,
-  targetLightMap: THREE.Texture,
-  timeLine: gsap.core.Timeline,
-) {
-  const mat = mesh.material as THREE.Material;
-  const beforeLightMap = mat.lightMap;
-  if (!beforeLightMap) {
-    console.warn('No LightMap : ', mesh);
-    throw new Error('No LightMap Found in Material');
-  }
-  const cloned = mat.clone();
-
-  const LIGHTMAP_PROGRESS_SHADER = `
-  #if defined( RE_IndirectDiffuse )
-
-    #ifdef USE_LIGHTMAP
-  
-      vec4 lightMap1 = texture2D(texture1, vLightMapUv);
-      vec4 lightMap2 = texture2D(texture2, vLightMapUv);
-      vec4 lightMapTexel = mix(lightMap1, lightMap2, progress);
-      vec3 lightMapIrradiance = lightMapTexel.rgb * lightMapIntensity;
-  
-      irradiance += lightMapIrradiance;
-  
-    #endif
-  
-    #if defined( USE_ENVMAP ) && defined( STANDARD ) && defined( ENVMAP_TYPE_CUBE_UV )
-  
-      iblIrradiance += getIBLIrradiance( geometryNormal );
-  
-    #endif
-  
-  #endif
-  
-  #if defined( USE_ENVMAP ) && defined( RE_IndirectSpecular )
-  
-    #ifdef USE_ANISOTROPY
-  
-      radiance += getIBLAnisotropyRadiance( geometryViewDir, geometryNormal, material.roughness, material.anisotropyB, material.anisotropy );
-  
-    #else
-  
-      radiance += getIBLRadiance( geometryViewDir, geometryNormal, material.roughness );
-  
-    #endif
-  
-    #ifdef USE_CLEARCOAT
-  
-      clearcoatRadiance += getIBLRadiance( geometryViewDir, geometryClearcoatNormal, material.clearcoatRoughness );
-  
-    #endif
-  
-  #endif`;
-
-  cloned.onBeforeCompile = shader => {
-    // 유니폼 변수 설정
-    shader.uniforms.progress = { value: 0.0 };
-    shader.uniforms.texture1 = { value: beforeLightMap };
-    shader.uniforms.texture2 = { value: targetLightMap };
-
-    // 프래그먼트 쉐이더에 유니폼 변수 추가
-    shader.fragmentShader =
-      `uniform float progress;
-                 uniform sampler2D texture1;
-                 uniform sampler2D texture2;
-                 ` + shader.fragmentShader;
-
-    // lights_fragment_maps 부분 완전히 대체 (중요: 기존 lightMap 계산 무시)
-    shader.fragmentShader = shader.fragmentShader.replace(
-      '#include <lights_fragment_maps>',
-      LIGHTMAP_PROGRESS_SHADER,
-    );
-
-    cloned.vUserData.shader = shader;
-  };
-
-  timeLine.to(
-    {
-      t: 0,
-    },
-    {
-      t: 1,
-      duration: transitionDelay,
-      ease: 'none',
-      onStart() {
-        mesh.material = cloned;
-      },
-      onUpdate() {
-        const progress = this.targets()[0].t;
-        const shader = cloned.shader;
-        if (shader) {
-          shader.uniforms.progress.value = progress;
-          cloned.needsUpdate = true;
-        }
-      },
-      onComplete() {
-        mat.lightMap = targetLightMap;
-        mesh.material = mat;
-        mat.needsUpdate = true;
-        cloned.dispose();
-      },
-    },
-    0,
-  );
-}
-
-export function applyProbeOnMaterial(
-  material: THREE.Material,
-  probe: ReflectionProbe,
-) {
-  material.envMap = probe.getRenderTargetTexture();
-  material.updateEnvUniforms(probe.getCenter(), probe.getSize());
-  material.vUserData.probeId = probe.getId();
-  material.needsUpdate = true;
-}
-
-function getRandomColorWithComplementary() {
+export function getRandomColorWithComplementary() {
   // 1. 랜덤한 RGB 색상 생성
   const r = Math.floor(Math.random() * 256);
   const g = Math.floor(Math.random() * 256);
@@ -1618,7 +1506,6 @@ function getRandomColorWithComplementary() {
 
   return { randomColor, complementaryColor };
 }
-
 
 export function distSquaredFromLineToBox(
   p1: THREE.Vector2,
@@ -1689,7 +1576,6 @@ export function distSquaredFromLineToBox(
   return minDistSquared;
 }
 
-
 export function getWallPoint(indexOrId: number | string, points: WallPoint[]) {
   if (typeof indexOrId === 'number') {
     return points[indexOrId];
@@ -1698,7 +1584,11 @@ export function getWallPoint(indexOrId: number | string, points: WallPoint[]) {
   return points.find(point => point.id === indexOrId);
 }
 
-export const findClosestProbe = (points: WallPoint[], probes: ReflectionProbe[], wall: WallView) => {
+export const findClosestProbe = (
+  points: WallPoint[],
+  probes: ReflectionProbe[],
+  wall: WallView,
+) => {
   if (probes.length === 0) {
     return undefined;
   }
@@ -1738,7 +1628,6 @@ export const findClosestProbe = (points: WallPoint[], probes: ReflectionProbe[],
 };
 
 export function createWallFromPoints(points: WallPointView[]): WallView[] {
-
   const pointLength = points.length;
   if (pointLength < 2) {
     return [];
@@ -1747,13 +1636,14 @@ export function createWallFromPoints(points: WallPointView[]): WallView[] {
   const walls: WallView[] = [];
   const prevWalls = getWallOptionAtom()?.walls ?? [];
 
-
   for (let i = 0; i < pointLength; i++) {
     const startPoint = points[i];
     const endIndex = i + 1 === pointLength ? 0 : i + 1; // 끝점의 경우 시작과 잇는다
     const endPoint = points[endIndex];
 
-    const prevWall = prevWalls.find(w => w.start === startPoint.id && w.end === endPoint.id);
+    const prevWall = prevWalls.find(
+      w => w.start === startPoint.id && w.end === endPoint.id,
+    );
 
     const wall: WallView = {
       start: startPoint.id,
@@ -1772,36 +1662,42 @@ export function createWallFromPoints(points: WallPointView[]): WallView[] {
   return walls;
 }
 
-export function assignClosestProbeToWall(points: WallPointView[], walls: WallView[], probes: ReflectionProbe[]) {
+export function assignClosestProbeToWall(
+  points: WallPointView[],
+  walls: WallView[],
+  probes: ReflectionProbe[],
+) {
   walls.forEach(wall => {
     const closestProbe = findClosestProbe(points, probes, wall);
     if (closestProbe) {
       wall.probeId = closestProbe.getId();
       wall.probeName = closestProbe.getName();
     }
-  })
+  });
   return walls;
 }
 
 export function colorNumberToCSS(color: number, format = 'hex') {
   // Ensure color is an integer and mask to 24 bits (0xFFFFFF)
-  const hex = color & 0xFFFFFF;
+  const hex = color & 0xffffff;
 
   if (format === 'hex') {
     // Convert to hex string, pad to 6 digits, and prefix with #
     return `#${hex.toString(16).padStart(6, '0').toUpperCase()}`;
   } else if (format === 'rgb') {
     // Extract RGB components
-    const r = (hex >> 16) & 0xFF; // Red (first 8 bits)
-    const g = (hex >> 8) & 0xFF;  // Green (middle 8 bits)
-    const b = hex & 0xFF;         // Blue (last 8 bits)
+    const r = (hex >> 16) & 0xff; // Red (first 8 bits)
+    const g = (hex >> 8) & 0xff; // Green (middle 8 bits)
+    const b = hex & 0xff; // Blue (last 8 bits)
     return `rgb(${r}, ${g}, ${b})`;
   } else {
     throw new Error("Unsupported format. Use 'hex' or 'rgb'.");
   }
 }
 
-export const resetColor = <T extends { color?: number }>(coloredArray: T[]): T[] => {
+export const resetColor = <T extends { color?: number }>(
+  coloredArray: T[],
+): T[] => {
   coloredArray.forEach((el, i) => {
     const colorHsl = new THREE.Color();
     colorHsl.setHSL(i / coloredArray.length, 1, 0.5);
@@ -1812,23 +1708,27 @@ export const resetColor = <T extends { color?: number }>(coloredArray: T[]): T[]
 
 // 재질 주어졌을 때 해당 재질을 사용하는 모든 메시를 포함하는 바운딩 박스 계산
 // MESH_TRANSITION에서 사용
-export function computeBoundingBoxForMaterial(scene: THREE.Scene, targetMaterial: THREE.Material): THREE.Box3 | null {
+export function computeBoundingBoxForMaterial(
+  scene: THREE.Scene,
+  targetMaterial: THREE.Material,
+): THREE.Box3 | null {
   const resultBox = new THREE.Box3();
   let found = false;
 
-  scene.traverse((object) => {
+  scene.traverse(object => {
     if ((object as THREE.Mesh).isMesh) {
       const mesh = object as THREE.Mesh;
       if (!mesh.isMesh) {
         return;
       }
 
-      const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+      const materials = Array.isArray(mesh.material)
+        ? mesh.material
+        : [mesh.material];
       const materialsUuid = materials.map(m => m.uuid);
 
       // 이 mesh가 targetMaterial을 쓰는지 확인
       if (materialsUuid.includes(targetMaterial.uuid)) {
-
         resultBox.expandByObject(mesh);
 
         found = true;
@@ -1841,6 +1741,7 @@ export function computeBoundingBoxForMaterial(scene: THREE.Scene, targetMaterial
 
 import { ClassValue, clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import { VUserData } from './vthree/VTHREETypes.ts';
 
 // tailwind에 동적으로 클래스이름 할당할 때 필요
 export function cn(...inputs: ClassValue[]): string {

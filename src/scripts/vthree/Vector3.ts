@@ -1,7 +1,6 @@
 import * as THREE from 'three';
 
 declare module 'three' {
-
   interface Vector3 {
     screenPosition(
       camera: THREE.Camera,
@@ -33,10 +32,7 @@ declare module 'three' {
       raycasterInstance?: THREE.Raycaster,
     ): boolean;
   }
-
 }
-
-
 
 THREE.Vector3.prototype.screenPosition = function (
   camera,

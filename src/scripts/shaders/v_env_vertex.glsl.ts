@@ -9,9 +9,9 @@ const header = /* glsl */ `
 varying vec3 vWorldPos;
 
 #endif //!V_VERTEX_HEADER_GUARD
-`
+`;
 
-const contentTarget = /*glsl */`#include <worldpos_vertex>`;
+const contentTarget = /*glsl */ `#include <worldpos_vertex>`;
 const content = /* glsl */ `
 #ifndef V_VERTEX_CONTENT_GUARD
 #define V_VERTEX_CONTENT_GUARD
@@ -20,10 +20,9 @@ const content = /* glsl */ `
 #include <worldpos_vertex>
 
 #endif //!V_VERTEX_CONTENT_GUARD
-`
+`;
 
 export const patchVertex = (shader: Shader) => {
-
   // 1. header
   shader.vertexShader = header + shader.vertexShader;
 
@@ -31,10 +30,10 @@ export const patchVertex = (shader: Shader) => {
   shader.vertexShader = shader.vertexShader.replace(contentTarget, content);
 
   return shader;
-}
+};
 
 export const v_env_vertex_shaders = {
   header,
   content,
-  contentTarget
-}
+  contentTarget,
+};

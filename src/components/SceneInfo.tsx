@@ -3,6 +3,7 @@ import useFiles from '../scripts/useFiles';
 import {
   compressObjectToFile,
   formatNumber,
+  getEXRLightMapsFromScene,
   groupInfo,
   isProbeMesh,
   isTransformControlOrChild,
@@ -40,16 +41,17 @@ import {
   postprocessAtoms,
   ProbeAtom,
   selectedAtom,
+  testAtom,
   threeExportsAtom,
   uploadingAtom,
   useBenchmark,
   useEnvParams,
-  useModal,
-  useToast,
+  useToast
 } from '../scripts/atoms';
 import {
   loadPostProcessAndSet,
   prepareWalls,
+  recompileAsync,
   uploadJson,
 } from '../scripts/atomUtils.ts';
 import useFilelist from '../scripts/useFilelist';
@@ -65,6 +67,7 @@ import { HueSaturationOption } from './canvas/HueSaturation.tsx';
 import { SMAAOption } from './canvas/SMAA.tsx';
 import { ToneMappingOption } from './canvas/ToneMapping.tsx';
 import UploadPage from './UploadModal';
+import JSZip from 'jszip';
 
 const useEnvUrl = () => {
   const [envUrl, setEnvUrl] = useState<string | null>(null);
@@ -172,7 +175,6 @@ const CameraInfoSection = () => {
 
 const GeneralButtons = () => {
   const threeExports = useAtomValue(threeExportsAtom);
-  const { openModal, closeModal } = useModal();
   const { openToast, closeToast } = useToast();
   const navigate = useNavigate();
   const [dpcMode, setDPCMode] = useAtom(DPCModeAtom);
@@ -203,7 +205,7 @@ const GeneralButtons = () => {
     if (dpcModalRef.current) {
       const styleMode = styles['file'];
       Object.entries(styleMode).map(([key, value]) => {
-        dpcModalRef.current.style[key] = value;
+        (dpcModalRef.current as any).style[key] = value;
       });
     }
   }, [dpcModalRef.current, dpcMode]);
@@ -217,37 +219,78 @@ const GeneralButtons = () => {
     return null;
   }
 
-  const { scene, gl, camera } = threeExports;
-
-  // 임시 보관 (모델추가 & 업로드 버튼 로직)
-  function openModelUploadModal() {
-    openModal(() => (
-      <div
-        style={{
-          width: '80%',
-          maxHeight: '80%',
-          backgroundColor: '#ffffffcc',
-          padding: 16,
-          borderRadius: 8,
-          boxSizing: 'border-box',
-          position: 'relative',
-          overflowY: 'auto',
-        }}
-      >
-        <UploadPage></UploadPage>
-      </div>
-    ));
-  }
-
   async function uploadLightMaps(isMobile?: boolean) {
+    if (!confirm('라이트맵 업로드 하시겠습니까?')) {
+      return;
+    }
     openToast('라이트맵 업로드 중...', { autoClose: false });
     setUploading(true);
-    await uploadExrLightmap(threeExports.scene, isMobile);
+    await uploadExrLightmap(threeExports!.scene, isMobile);
     setUploading(false);
     closeToast();
   }
 
+  async function downloadSet() {
+    if (confirm('테스트 용입니다. 세트 다운로드 하시겠나여?')) {
+      openToast('라이트맵 준비 중..', { autoClose: false });
+      const lightMapFiles = await getEXRLightMapsFromScene(scene);
+      // before
+      scene.traverseAll(o => {
+        if (o.type === 'Mesh') {
+          const mesh = o as THREE.Mesh;
+          const mat = mesh.matStandard;
+          if (mat.vUserData.lightMap && mat.vUserData.lightMap.endsWith('.exr')) {
+            mat.vUserData.lightMap = "mobile/" + mat.vUserData.lightMap.replace('.exr', '.ktx');
+          }
+        }
+      })
+      openToast('GLB 준비 중..', { autoClose: false, override: true });
+      const glbArr = await new VGLTFExporter().parseAsync(scene, { binary: true });
+      if (glbArr instanceof ArrayBuffer) {
+        const blob = new Blob([glbArr], {
+          type: 'application/octet-stream',
+        });
+        const glbFile = new File([blob], 'latest.glb', {
+          type: 'model/gltf-binary',
+        });
+
+        const zip = new JSZip();
+        zip.file('model.glb', glbFile);
+
+        const lightMapFolder = zip.folder('lightMaps');
+        if (lightMapFolder) {
+          for (const file of lightMapFiles) {
+            const data = await file.arrayBuffer();
+            lightMapFolder.file(file.name, data);
+          }
+        }
+
+        const content = await zip.generateAsync({ type: 'blob' });
+        closeToast();
+        const url = URL.createObjectURL(content);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'scene.zip';
+        a.click();
+        URL.revokeObjectURL(url); // 메모리 해제
+
+        scene.traverseAll(o => {
+          if (o.type === 'Mesh') {
+            const mesh = o as THREE.Mesh;
+            const mat = mesh.matStandard;
+            if (mat.vUserData.lightMap && mat.vUserData.lightMap.endsWith('.ktx') && mat.vUserData.isExr) {
+              mat.vUserData.lightMap = mat.vUserData.lightMap.replace('.ktx', '.exr');
+            }
+          }
+        })
+      }
+    }
+  }
+
   async function uploadModels(lightMapUploaded?: boolean = false) {
+    if (!confirm('GLB 업로드 하시겠습니까?')) {
+      return;
+    }
     const uploadUrl = import.meta.env.VITE_UPLOAD_URL;
     if (!uploadUrl) {
       alert('.env에 환경변수를 설정해주세요, uploadUrl');
@@ -255,7 +298,7 @@ const GeneralButtons = () => {
     }
     openToast('GLB 업로드 중...', { autoClose: false, override: true });
     setUploading(true);
-    const scene = threeExports.scene;
+    const scene = threeExports!.scene;
     console.log(lightMapUploaded);
     if (!lightMapUploaded) {
       scene.traverse(o => {
@@ -269,7 +312,7 @@ const GeneralButtons = () => {
       });
     }
     new VGLTFExporter()
-      .parseAsync(threeExports.scene, { binary: true })
+      .parseAsync(threeExports!.scene, { binary: true })
       .then(glbArr => {
         if (glbArr instanceof ArrayBuffer) {
           console.log('before File Make');
@@ -318,6 +361,10 @@ const GeneralButtons = () => {
   }
 
   async function uploadMobileModels() {
+    if (!confirm('모바일 씬을 업로드 하시겠습니까?')) {
+      return;
+    }
+
     const uploadUrl = import.meta.env.VITE_UPLOAD_URL;
     if (!uploadUrl) {
       alert('.env에 환경변수를 설정해주세요, uploadUrl');
@@ -326,7 +373,7 @@ const GeneralButtons = () => {
     openToast('GLB 업로드 중...', { autoClose: false, override: true });
     setUploading(true);
     new VGLTFExporter()
-      .parseAsync(threeExports.scene, { binary: true })
+      .parseAsync(threeExports!.scene, { binary: true })
       .then(glbArr => {
         if (glbArr instanceof ArrayBuffer) {
           console.log('before File Make');
@@ -375,14 +422,18 @@ const GeneralButtons = () => {
   }
 
   async function uploadScene() {
-    await uploadLightMaps();
-    await uploadModels(true);
-    alert('씬 업로드 완료');
+    if (confirm('씬을 업로드 하시겠습니까?')) {
+      await uploadLightMaps();
+      await uploadModels(true);
+      alert('씬 업로드 완료');
+    }
   }
 
   async function mobileUpload() {
-    await uploadLightMaps(true);
-    await uploadMobileModels();
+    if (confirm('모바일 씬을 업로드 하시겠습니까?')) {
+      await uploadLightMaps(true);
+      await uploadMobileModels();
+    }
   }
 
   return (
@@ -396,7 +447,7 @@ const GeneralButtons = () => {
       <button disabled={isUploading} onClick={() => uploadModels()}>
         GLB 만 업로드
       </button>
-      <button disabled={isUploading} onClick={uploadLightMaps}>
+      <button disabled={isUploading} onClick={uploadLightMaps as any}>
         라이트맵만 업로드
       </button>
       <button
@@ -440,6 +491,8 @@ const GeneralButtons = () => {
         모바일 불러오기
       </button>
       <button onClick={handleResetSettings}>카메라 세팅 초기화</button>
+      <button onClick={recompileAsync}>리컴파일</button>
+      <button onClick={downloadSet}>세트 다운로드</button>
     </section>
   );
 };
@@ -635,8 +688,7 @@ const LightmapTransitionControl = () => {
   useEffect(() => {
     scene.traverse(o => {
       const mat = (o as THREE.Mesh).matStandard;
-      if (mat && mat.LIGHTMAP_TRANSITION) {
-        console.log('LIGHTMAP_TRANSITION prog', progress);
+      if (mat) {
         mat.progress = progress;
       }
     });
@@ -681,7 +733,10 @@ const LightmapTransitionControl = () => {
                 as: 'texture',
               }).then(t => {
                 mat.uniform.uLightMapTo.value = t;
-                mat.LIGHTMAP_TRANSITION = true;
+                mat.apply('lightmapTransition', {
+                  target: t,
+                  progress,
+                });
               });
             }
           });
@@ -729,7 +784,8 @@ const ProbeControl = () => {
 
   return (
     <section>
-      <strong>프로브</strong> <button onClick={addProbe}>프로브 추가</button>
+      <strong>프로브</strong>
+      <button onClick={addProbe}>프로브 추가</button>
       <button
         onClick={() => {
           const walls: {
@@ -774,12 +830,12 @@ const ProbeControl = () => {
             if (o.asMesh?.mat?.vUserData?.isVMaterial) {
               const mat = o.asMesh.mat!;
               if (mat.name === 'MI_TCE036S.003') {
-                mat.applyProbe({
+                mat.apply('probe', {
                   probes,
                   walls,
                 });
               } else {
-                mat.applyProbe({
+                mat.apply('probe', {
                   probes,
                 });
               }
@@ -828,9 +884,7 @@ const ProgressiveAlphaControl = () => {
       if (!mat) {
         return;
       }
-      if (mat.MESH_TRANSITION) {
-        mat.uniform!.uProgress.value = progress;
-      }
+      mat.uniform!.uProgress.value = progress;
     });
   }, [progress]);
 
@@ -850,7 +904,7 @@ const ProgressiveAlphaControl = () => {
       <button
         onClick={() => {
           scene.traverse(o => {
-            o.asMesh?.mat?.prepareMeshTransition?.({
+            o.asMesh?.mat?.apply?.('meshTransition', {
               direction: 'fadeOut',
               progress,
             });
@@ -862,7 +916,7 @@ const ProgressiveAlphaControl = () => {
       <button
         onClick={() => {
           scene.traverse(o => {
-            o.asMesh?.mat?.prepareMeshTransition?.({
+            o.asMesh?.mat?.apply?.('meshTransition', {
               direction: 'fadeIn',
               progress,
             });
@@ -874,7 +928,7 @@ const ProgressiveAlphaControl = () => {
       <button
         onClick={() => {
           scene.traverse(o => {
-            o.asMesh?.mat?.prepareMeshTransition?.({
+            o.asMesh?.mat?.apply?.('meshTransition', {
               direction: 'fadeOut',
             });
           });
@@ -904,7 +958,7 @@ const ProgressiveAlphaControl = () => {
       <button
         onClick={() => {
           scene.traverse(o => {
-            o.asMesh?.mat?.prepareMeshTransition?.({
+            o.asMesh?.mat?.apply?.('meshTransition', {
               direction: 'fadeIn',
             });
           });
@@ -939,7 +993,7 @@ const ProgressiveAlphaControl = () => {
               return;
             }
 
-            mat.MESH_TRANSITION = false;
+            mat.remove('meshTransition');
           });
         }}
       >
@@ -1104,9 +1158,9 @@ const GeneralPostProcessingControl = () => {
       <ColorTemperatureOption></ColorTemperatureOption>
       <BrightnessContrastOption></BrightnessContrastOption>
       <LightmapImageContrastControl></LightmapImageContrastControl>
-      <ProgressiveAlphaControl></ProgressiveAlphaControl>
-      <ProbeControl></ProbeControl>
-      <LightmapTransitionControl></LightmapTransitionControl>
+      {/* <ProgressiveAlphaControl></ProgressiveAlphaControl> */}
+      {/* <ProbeControl></ProbeControl> */}
+      {/* <LightmapTransitionControl></LightmapTransitionControl> */}
       <SRGBControl></SRGBControl>
       <BloomOption></BloomOption>
       <ColorLUTOption></ColorLUTOption>
@@ -1145,6 +1199,26 @@ const GeneralMinimapControl = () => {
             {index} 번 미니맵
           </button>
         ))}
+      </div>
+    </section>
+  );
+};
+
+const TestControl = () => {
+  const [test, setTest] = useAtom(testAtom);
+
+  return (
+    <section style={{ width: '100%' }}>
+      <strong>스카이박스</strong>
+      <div className="flex gap-x-1">
+        <span>보기</span>
+        <input
+          type="checkbox"
+          checked={test.useSkyBox}
+          onChange={e => {
+            setTest(pre => ({ ...pre, useSkyBox: !pre.useSkyBox }));
+          }}
+        />
       </div>
     </section>
   );
@@ -1866,6 +1940,7 @@ const SceneInfo = () => {
       <GeneralButtons></GeneralButtons>
       <GeneralMaterialControl></GeneralMaterialControl>
       <GeneralEnvironmentControl></GeneralEnvironmentControl>
+      <TestControl />
       <GeneralMinimapControl></GeneralMinimapControl>
       <AnisotropyControl></AnisotropyControl>
       <GeneralPostProcessingControl></GeneralPostProcessingControl>

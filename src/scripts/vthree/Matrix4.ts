@@ -1,5 +1,5 @@
 import { THREE } from 'VTHREE';
-import { Matrix4Array } from "../../types";
+import { Matrix4Array } from '../../types';
 
 declare module 'three' {
   interface Matrix4 {

@@ -3,7 +3,7 @@ import { TransformControls } from 'three-stdlib';
 import { v4 } from 'uuid';
 import * as THREE from 'VTHREE';
 import { ENV, Layer } from '../Constants.ts';
-import { uploadPngToKtx } from './atomUtils.ts';
+import { uploadImage } from './atomUtils.ts';
 import { getVKTX2Loader } from './loaders/VKTX2Loader.ts';
 import VTextureLoader from './loaders/VTextureLoader.ts';
 import { splitExtension } from './utils.ts';
@@ -187,14 +187,18 @@ export default class ReflectionProbe {
     // @ts-ignore
     translateControls.addEventListener('dragging-changed', event => {
       document.dispatchEvent(
-        new CustomEvent('control-dragged', { detail: { moving: (event as any).value } }),
+        new CustomEvent('control-dragged', {
+          detail: { moving: (event as any).value },
+        }),
       );
     });
 
     // @ts-ignore
     scaleControls.addEventListener('dragging-changed', event => {
       document.dispatchEvent(
-        new CustomEvent('control-dragged', { detail: { moving: (event as any).value } }),
+        new CustomEvent('control-dragged', {
+          detail: { moving: (event as any).value },
+        }),
       );
     });
 
@@ -257,7 +261,7 @@ export default class ReflectionProbe {
 
   private prepareQuad() {
     const quad = new THREE.Mesh(
-      new THREE.PlaneGeometry(1, 1),
+      new THREE.PlaneGeometry(4, 2),
       new THREE.RawShaderMaterial({
         uniforms: {
           // @ts-ignore
@@ -269,7 +273,6 @@ export default class ReflectionProbe {
         transparent: true,
       }),
     );
-    quad.scale.set(this.resolution / 2, this.resolution / 2, 1);
     this.quad = quad;
 
     // FOR Texture visualizing
@@ -414,7 +417,7 @@ export default class ReflectionProbe {
     } else {
       throw new Error(
         'ReflectionProbe.setFromObject() : Object Must Be Not null or undefined : ' +
-        object,
+          object,
       );
     }
   }
@@ -535,12 +538,14 @@ export default class ReflectionProbe {
     material.uniforms.map.value = this.cubeCamera.renderTarget.texture;
     const size = this.resolution;
     const renderer = this.renderer;
+    const width = size * 4;
+    const height = size * 2;
 
     const camera = new THREE.OrthographicCamera(
-      size / -4,
-      size / 4,
-      size / 4,
-      size / -4,
+      width / -4,
+      width / 4,
+      height / 4,
+      height / -4,
       -10000,
       10000,
     );
@@ -548,7 +553,7 @@ export default class ReflectionProbe {
     const scene = new THREE.Scene();
     scene.add(quad);
 
-    const newRenderTarget = new THREE.WebGLRenderTarget(size, size, {
+    const newRenderTarget = new THREE.WebGLRenderTarget(width, height, {
       minFilter: THREE.LinearFilter,
       magFilter: THREE.LinearFilter,
       wrapS: THREE.ClampToEdgeWrapping,
@@ -563,15 +568,28 @@ export default class ReflectionProbe {
       renderer.setRenderTarget(originalRenderTarget);
     }
 
-    const pixels = new Uint8Array(4 * size * size);
-    renderer.readRenderTargetPixels(newRenderTarget, 0, 0, size, size, pixels);
+    const pixels = new Uint8Array(4 * width * height);
+    renderer.readRenderTargetPixels(
+      newRenderTarget,
+      0,
+      0,
+      width,
+      height,
+      pixels,
+    );
 
-    const imageData = new ImageData(new Uint8ClampedArray(pixels), size, size);
+    const imageData = new ImageData(
+      new Uint8ClampedArray(pixels),
+      width,
+      height,
+    );
 
     this.imageData = imageData;
     const context = canvas.getContext('2d');
     if (context) {
       context.reset();
+      canvas.width = width;
+      canvas.height = height;
       context.putImageData(imageData, 0, 0);
     } else {
       alert('Canvas context를 생성할 수 없습니다.');
@@ -606,9 +624,6 @@ export default class ReflectionProbe {
     // console.log('probe Rendered : ' + this.serializedId);
     this.renderedTime = new Date().getTime();
     this.renderedTexture = this.generateTexture();
-    this.scene.traverse(o => {
-      ((o as THREE.Mesh).material as THREE.MeshStandardMaterial)?.updateMultiProbeTexture?.();
-    })
   }
 
   updateCameraPosition(
@@ -724,7 +739,7 @@ export default class ReflectionProbe {
         new File([blob], `probe_${this.serializedId}_${key}.png`),
     );
 
-    await uploadPngToKtx(files);
+    await uploadImage(files, {compress: true});
 
     this.textureUrls = files.map(file => {
       return ENV.base + splitExtension(file.name).name + '.ktx';
@@ -794,10 +809,10 @@ export default class ReflectionProbe {
       this.cubeCameraFar,
       this.renderTarget,
     );
-    // cubeCamera.layers.enableAll();
-    // CUBE_CAMERA_FILTER_LAYERS.forEach(layer => {
-    //   cubeCamera.layers.disable(layer);
-    // });
+    cubeCamera.layers.enableAll();
+    CUBE_CAMERA_FILTER_LAYERS.forEach(layer => {
+      cubeCamera.layers.disable(layer);
+    });
     this.cubeCamera = cubeCamera;
 
     this.boxMesh.vUserData.probeId = json.id;
@@ -1106,6 +1121,7 @@ function createProbeSphere() {
     envMapIntensity: 1.0,
   });
   const mesh = new THREE.Mesh(geometry, material);
+  mesh.layers.set(REFLECTION_BOX_LAYER);
   mesh.vUserData.isProbeMesh = true;
   mesh.vUserData.probeMeshType = 'sphere';
   return mesh;
@@ -1269,7 +1285,7 @@ varying vec2 vUv;
 
 void main()  {
 
-	vUv = vec2( 1.- uv.x, uv.y );
+	vUv = vec2(uv.x, uv.y);
 	gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
 
 }
@@ -1292,7 +1308,7 @@ void main()  {
 	float latitude = uv.y * M_PI;
 
 	vec3 dir = vec3(
-		- sin( longitude ) * sin( latitude ),
+		sin( longitude ) * sin( latitude ),
 		cos( latitude ),
 		- cos( longitude ) * sin( latitude )
 	);

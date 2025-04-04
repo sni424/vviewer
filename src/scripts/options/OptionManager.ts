@@ -6,24 +6,30 @@ import { ENV } from '../../Constants.ts';
 import { Walls } from '../../types.ts';
 import {
   animationDurationAtom,
-  getAtomValue, getWallCacheAtom,
+  getAtomValue,
+  getWallCacheAtom,
   lightMapAtom,
   minimapAtom,
   modelOptionClassAtom,
   optionProcessingAtom,
   optionSelectedAtom,
   ProbeAtom,
-  selectedAtom, setWallCacheAtom, setWallOptionAtom,
+  selectedAtom,
+  setWallCacheAtom,
+  setWallOptionAtom,
   threeExportsAtom,
   useToast,
 } from '../atoms.ts';
-import { loadJson, loadOption, uploadJson, wallsToWallOption } from '../atomUtils.ts';
+import {
+  loadJson,
+  loadOption,
+  uploadJson,
+  wallsToWallOption,
+} from '../atomUtils.ts';
 import { createLightmapCache } from '../loaders/VGLTFLoader.ts';
 import { getVKTX2Loader } from '../loaders/VKTX2Loader.ts';
 import { Effects, ModelOptionObject } from '../ModelOptionObject.ts';
-import {
-  isImage
-} from '../utils.ts';
+import { isImage } from '../utils.ts';
 import ModelOption from './ModelOption.ts';
 import OptionState, { FunctionEffects } from './OptionState.ts';
 
@@ -71,7 +77,7 @@ const useOptionManager = () => {
         const { changeMinimap, changeWall } = functionEffects.booleans;
         if (changeMinimap) {
           const minimap = functionEffects.urls.minimap;
-          if (await isImage(minimap) && !minimapsToLoad.includes(minimap))
+          if ((await isImage(minimap)) && !minimapsToLoad.includes(minimap))
             minimapsToLoad.push(functionEffects.urls.minimap);
         }
 
@@ -108,7 +114,10 @@ const useOptionManager = () => {
 
     if (wallsToLoad.length > 0) {
       const wallEntries = await Promise.all(
-        wallsToLoad.map(async url => [url, await loadJson<Walls>(url.replace(ENV.s3Base, ""))] as const)
+        wallsToLoad.map(
+          async url =>
+            [url, await loadJson<Walls>(url.replace(ENV.s3Base, ''))] as const,
+        ),
       );
 
       const cache: { [key: string]: Walls } = Object.fromEntries(wallEntries);
@@ -203,7 +212,6 @@ const useOptionManager = () => {
           }
 
           if (mesh.visible !== targetVisible) {
-
             // changeMeshVisibleWithTransition(
             //   mesh,
             //   animationDuration,
@@ -211,27 +219,29 @@ const useOptionManager = () => {
             //   timeLine,
             // );
             const transparency = mat.transparent;
-            timeLine.to({ progress: 0 }, {
-              progress: 1,
-              duration: animationDuration,
-              onStart() {
-                mat.prepareMeshTransition({
-                  direction: targetVisible ? "fadeIn" : "fadeOut",
-                })
-                mesh.visible = true;
-                mat.transparent = true;
+            timeLine.to(
+              { progress: 0 },
+              {
+                progress: 1,
+                duration: animationDuration,
+                onStart() {
+                  mat.apply('meshTransition', {
+                    direction: targetVisible ? 'fadeIn' : 'fadeOut',
+                  });
+                  mesh.visible = true;
+                  mat.transparent = true;
+                },
+                onUpdate() {
+                  const progressValue = this.targets()[0].progress;
+                  mat.progress = progressValue;
+                },
+                onComplete() {
+                  mesh.visible = targetVisible;
+                  mat.remove('meshTransition');
+                  mat.transparent = transparency;
+                },
               },
-              onUpdate() {
-                const progressValue = this.targets()[0].progress;
-                mat.progress = progressValue;
-              },
-              onComplete() {
-                mesh.visible = targetVisible;
-                mat.MESH_TRANSITION = false;
-                mat.transparent = transparency;
-              }
-            })
-
+            );
           }
         }
 
@@ -257,23 +267,26 @@ const useOptionManager = () => {
             //   texture,
             //   timeLine,
             // );
-            timeLine.to({ progress: 0 }, {
-              progress: 1,
-              duration: animationDuration,
-              onStart() {
-                mat.uniform.uLightMapTo.value = texture;
-                mat.uniform.uUseLightMapTransition.value = true;
-                mat.progress = 0;
+            timeLine.to(
+              { progress: 0 },
+              {
+                progress: 1,
+                duration: animationDuration,
+                onStart() {
+                  mat.uniform.uLightMapTo.value = texture;
+                  mat.uniform.uUseLightMapTransition.value = true;
+                  mat.progress = 0;
+                },
+                onUpdate() {
+                  const progressValue = this.targets()[0].progress;
+                  mat.progress = progressValue;
+                },
+                onComplete() {
+                  mat.lightMap = texture;
+                  mat.uniform.uUseLightMapTransition.value = false;
+                },
               },
-              onUpdate() {
-                const progressValue = this.targets()[0].progress;
-                mat.progress = progressValue;
-              },
-              onComplete() {
-                mat.lightMap = texture;
-                mat.uniform.uUseLightMapTransition.value = false;
-              }
-            })
+            );
           } else {
             // TODO fetch
           }
@@ -294,9 +307,7 @@ const useOptionManager = () => {
     });
     const functionResults = anlayzed.functionResult;
     console.log('fR : ', functionResults);
-    if (
-      functionResults.changeMinimap
-    ) {
+    if (functionResults.changeMinimap) {
       const minimapIndex = functionResults.minimap;
       if (minimapIndex !== undefined) {
         setMinimapInfo(pre => ({ ...pre, useIndex: minimapIndex }));

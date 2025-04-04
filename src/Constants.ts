@@ -45,6 +45,7 @@ export enum Layer {
   Room = 14,
   Hotspot = 15,
   Wall = 16,
+  SkyBox = 17,
 }
 
 export const AOMAP_INTENSITY_MAX = 2 as const;
@@ -57,32 +58,57 @@ export const ROOM_COLORS = [
 
 export const newROOM_COLORS = Array.from({ length: 200 }, (_, i) => {
   // Create a more varied color generation using multiple techniques
-  const hue = (i * 137.508) % 360;  // Golden angle method for color distribution
-  const saturation = 70 + (i % 30);  // Vary saturation
-  const lightness = 50 + (i % 20);   // Vary lightness
+  const hue = (i * 137.508) % 360; // Golden angle method for color distribution
+  const saturation = 70 + (i % 30); // Vary saturation
+  const lightness = 50 + (i % 20); // Vary lightness
 
   // Convert HSL to RGB
   const h = hue / 60;
   const c = (1 - Math.abs(2 * (lightness / 100) - 1)) * (saturation / 100);
-  const x = c * (1 - Math.abs(h % 2 - 1));
-  const m = (lightness / 100) - c / 2;
+  const x = c * (1 - Math.abs((h % 2) - 1));
+  const m = lightness / 100 - c / 2;
 
-  let r = 0, g = 0, b = 0;
-  if (h < 1) { r = c; g = x; b = 0; }
-  else if (h < 2) { r = x; g = c; b = 0; }
-  else if (h < 3) { r = 0; g = c; b = x; }
-  else if (h < 4) { r = 0; g = x; b = c; }
-  else if (h < 5) { r = x; g = 0; b = c; }
-  else { r = c; g = 0; b = x; }
+  let r = 0,
+    g = 0,
+    b = 0;
+  if (h < 1) {
+    r = c;
+    g = x;
+    b = 0;
+  } else if (h < 2) {
+    r = x;
+    g = c;
+    b = 0;
+  } else if (h < 3) {
+    r = 0;
+    g = c;
+    b = x;
+  } else if (h < 4) {
+    r = 0;
+    g = x;
+    b = c;
+  } else if (h < 5) {
+    r = x;
+    g = 0;
+    b = c;
+  } else {
+    r = c;
+    g = 0;
+    b = x;
+  }
 
-  return Math.round((r + m) * 255) * 65536 +
+  return (
+    Math.round((r + m) * 255) * 65536 +
     Math.round((g + m) * 255) * 256 +
-    Math.round((b + m) * 255);
+    Math.round((b + m) * 255)
+  );
 });
 
 export const newRoomColorString = (index: number) => {
-
-  return '#' + newROOM_COLORS[index % newROOM_COLORS.length].toString(16).padStart(6, '0');
+  return (
+    '#' +
+    newROOM_COLORS[index % newROOM_COLORS.length].toString(16).padStart(6, '0')
+  );
 };
 
 export const roomColor = (index: number) => {
@@ -91,10 +117,7 @@ export const roomColor = (index: number) => {
 
 export const roomColorString = (index: number) => {
   return '#' + roomColor(index).toString(16).padStart(6, '0');
-
 };
-
-
 
 const base: string = import.meta.env.VITE_MODELS_CLOUDFRONT_URL as string;
 const s3Base: string = import.meta.env.VITE_MODELS_URL as string;
@@ -194,7 +217,6 @@ export const DefaultCameraPositions: {
   },
 } as const;
 
-
 export const ViewName: { [key in View]: string } = {
   [View.Shared]: 'Shared',
   [View.Main]: 'Main',
@@ -207,26 +229,26 @@ export const ViewName: { [key in View]: string } = {
 } as const;
 
 export const TEXTURE_KEYS = [
-  "map",                  // 컬러 텍스처 (diffuse)
-  "alphaMap",             // 알파 투명도 텍스처
-  "aoMap",                // Ambient Occlusion
-  "bumpMap",              // Bump (흑백 높이맵 기반)
-  "displacementMap",      // Displacement (기하 변형)
-  "emissiveMap",          // Emissive 텍스처
-  "envMap",               // 환경 반사 텍스처 (큐브맵 등)
-  "lightMap",             // 추가적인 라이트 맵
-  "metalnessMap",         // 금속도 텍스처
-  "normalMap",            // 노멀 맵
-  "roughnessMap",         // 거칠기 텍스처
-  "clearcoatMap",         // 클리어코트 레벨
-  "clearcoatNormalMap",   // 클리어코트 노멀
-  "clearcoatRoughnessMap",// 클리어코트 거칠기
-  "iridescenceMap",       // iridescence 강도 맵
-  "iridescenceThicknessMap", // iridescence 두께 맵
-  "sheenColorMap",        // Sheen 색상
-  "sheenRoughnessMap",    // Sheen 거칠기
-  "specularIntensityMap", // Specular 강도
-  "specularColorMap",     // Specular 색상
-  "transmissionMap",      // 투명도 (Translucency)
-  "thicknessMap",         // 두께 맵 (볼륨 쉐이딩)
+  'map', // 컬러 텍스처 (diffuse)
+  'alphaMap', // 알파 투명도 텍스처
+  'aoMap', // Ambient Occlusion
+  'bumpMap', // Bump (흑백 높이맵 기반)
+  'displacementMap', // Displacement (기하 변형)
+  'emissiveMap', // Emissive 텍스처
+  'envMap', // 환경 반사 텍스처 (큐브맵 등)
+  'lightMap', // 추가적인 라이트 맵
+  'metalnessMap', // 금속도 텍스처
+  'normalMap', // 노멀 맵
+  'roughnessMap', // 거칠기 텍스처
+  'clearcoatMap', // 클리어코트 레벨
+  'clearcoatNormalMap', // 클리어코트 노멀
+  'clearcoatRoughnessMap', // 클리어코트 거칠기
+  'iridescenceMap', // iridescence 강도 맵
+  'iridescenceThicknessMap', // iridescence 두께 맵
+  'sheenColorMap', // Sheen 색상
+  'sheenRoughnessMap', // Sheen 거칠기
+  'specularIntensityMap', // Specular 강도
+  'specularColorMap', // Specular 색상
+  'transmissionMap', // 투명도 (Translucency)
+  'thicknessMap', // 두께 맵 (볼륨 쉐이딩)
 ];

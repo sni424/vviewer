@@ -79,7 +79,7 @@ class ModelOption {
   }
 
   get defaultSelected() {
-    return this._defaultSelected;
+    return this._defaultSelected!;
   }
 
   set defaultSelected(selected: string) {
@@ -99,7 +99,7 @@ class ModelOption {
               mesh: THREE.Mesh;
               effects: Effects;
             };
-          },
+          };
           functionEffects: FunctionEffects;
         };
       },

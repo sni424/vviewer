@@ -344,7 +344,7 @@ const UserDataSection = ({ mat }: { mat: THREE.Material }) => {
   );
 };
 
-const MapSection = ({ mat }: { mat: THREE.Material }) => {
+const MapSection = ({ mat }: { mat: THREE.MeshPhysicalMaterial }) => {
   const isPhysical = mat.type === 'MeshPhysicalMaterial';
   console.log('mat', mat);
   return (
@@ -464,7 +464,7 @@ const MapSection = ({ mat }: { mat: THREE.Material }) => {
   );
 };
 
-const ColorInfo = ({ mat }: { mat: THREE.Material }) => {
+const ColorInfo = ({ mat }: { mat: THREE.MeshPhysicalMaterial }) => {
   const [diffuseColor, setDiffuseColor] = useColor(
     `#${mat.color.getHexString()}`,
   );
@@ -680,33 +680,6 @@ function MaterialPanelContainer() {
     return null;
   }
 
-  const isStandard = mat.type === 'MeshStandardMaterial';
-
-  function standardToPhysical() {
-    if (mat && threeExports) {
-      const copiedMat = new THREE.MeshPhysicalMaterial({
-        ...mat,
-        type: 'MeshPhysicalMaterial',
-      });
-      const scene = threeExports.scene;
-
-      scene.traverse(o => {
-        if (o.type === 'Mesh') {
-          const mesh = o as THREE.Mesh;
-          const originalMaterial = mesh.material as THREE.Material;
-          if (originalMaterial.uuid === copiedMat.uuid) {
-            console.log('sameMaterial Found');
-            mesh.material = copiedMat;
-          }
-        }
-      });
-
-      copiedMat.needsUpdate = true;
-
-      setMat(copiedMat);
-    }
-  }
-
   return (
     <div
       style={{
@@ -740,7 +713,7 @@ function MaterialPanelContainer() {
       {/* <MaterialPanel style={{width:"100%"}} mat={mat}></MaterialPanel> */}
       <ProbeSelector material={mat}></ProbeSelector>
 
-      <MapSection mat={mat as THREE.Material} />
+      <MapSection mat={mat.physical} />
 
       <button
         onClick={() => {

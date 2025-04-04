@@ -6,9 +6,10 @@ export default class VKTX2Loader extends KTX2Loader {
   constructor(gl?: THREE.WebGLRenderer, manager?: THREE.LoadingManager) {
     super(manager);
     super.setTranscoderPath(
-      'https://cdn.jsdelivr.net/npm/three@0.171.0/examples/jsm/libs/basis/',
+      'https://vra-configurator-dev.s3.ap-northeast-2.amazonaws.com/static/basis/',
     );
-    super.setWorkerLimit(4);
+    const maxWorkers = navigator.hardwareConcurrency ?? 4;
+    super.setWorkerLimit(maxWorkers);
     if (gl) {
       super.detectSupport(gl);
     }

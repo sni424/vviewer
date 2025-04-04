@@ -1,5 +1,6 @@
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
+import 'VTHREE';
 // @ts-ignore
 import {
   type GLTF,
@@ -102,20 +103,6 @@ export default class VGLTFLoader extends GLTFLoader {
           if (vMaterialCache.has(originalMatID)) {
             mesh.material = vMaterialCache.get(originalMatID) as any;
           }
-          // else {
-          //   let vMat: VMaterial;
-          //   if (mat.type === 'MeshStandardMaterial') {
-          //     vMat = VMeshStandardMaterial.fromThree(mat);
-          //   } else if (mat.type === 'MeshPhysicalMaterial') {
-          //     vMat = VMeshPhysicalMaterial.fromThree(mat);
-          //   } else if (mat.type === 'MeshBasicMaterial') {
-          //     vMat = VMeshBasicMaterial.fromThree(mat);
-          //   } else {
-          //     console.warn('???', mat);
-          //   }
-          //   mesh.material = vMat;
-          //   vMaterialCache.set(originalMatID, vMat);
-          // }
         }
         getLightmap(object, lightMapSet);
       });
@@ -126,12 +113,16 @@ export default class VGLTFLoader extends GLTFLoader {
 
       const arr = [...lightMapSet];
       const promises = arr.map(async lmUrl => {
-        const texture = await VGLTFLoader.ktx2Loader.loadAsync(lmUrl);
-        texture.channel = 1;
-        texture.minFilter = THREE.LinearMipmapLinearFilter;
-        texture.magFilter = THREE.LinearFilter;
-        texture.vUserData.mimeType = 'image/ktx2';
-        lmMap.set(lmUrl, texture);
+        try {
+          const texture = await VGLTFLoader.ktx2Loader.loadAsync(lmUrl);
+          texture.channel = 1;
+          texture.minFilter = THREE.LinearMipmapLinearFilter;
+          texture.magFilter = THREE.LinearFilter;
+          texture.vUserData.mimeType = 'image/ktx2';
+          lmMap.set(lmUrl, texture);
+        } catch (e) {
+          console.warn('Failed To Load LightMap : ' + lmUrl, e);
+        }
       });
 
       await Promise.all(promises);
