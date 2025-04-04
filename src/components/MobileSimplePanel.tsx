@@ -73,9 +73,7 @@ const LMIntensityController = () => {
             }
           });
           allMeshes.forEach(mesh => {
-            (mesh.material as THREE.Material).lightMapIntensity = parseFloat(
-              e.target.value,
-            );
+            mesh.matStandard.lightMapIntensity = parseFloat(e.target.value);
           });
           setlmIntensityValue(parseFloat(e.target.value));
         }}
@@ -212,11 +210,14 @@ const CameraController = () => {
         <button
           className="w-full mt-2"
           onClick={() => {
-            if (threeExports.camera.type === 'PerspectiveCamera') {
-              camera.position.set(1, cameraSetting.cameraY, 1);
+            if (threeExports!.camera.type === 'PerspectiveCamera') {
+              camera!.position.set(1, cameraSetting.cameraY, 1);
               // 목표 방향 계산
               const target = new THREE.Vector3(1, cameraSetting.cameraY, 1);
-              const direction = target.clone().sub(camera.position).normalize();
+              const direction = target
+                .clone()
+                .sub(camera!.position)
+                .normalize();
 
               // 카메라의 "앞 방향"(`-Z`)을 목표 방향으로 회전
               const quaternion = new THREE.Quaternion().setFromUnitVectors(
@@ -225,9 +226,9 @@ const CameraController = () => {
               );
 
               // 카메라의 회전값 적용
-              camera.quaternion.copy(quaternion);
+              camera!.quaternion.copy(quaternion);
             } else {
-              threeExports.set(state => {
+              threeExports!.set(state => {
                 const perCam = new THREE.PerspectiveCamera(
                   75,
                   window.innerWidth / window.innerHeight,
@@ -251,7 +252,7 @@ const CameraController = () => {
                 // 카메라의 회전값 적용
                 perCam.quaternion.copy(quaternion);
                 perCam.updateProjectionMatrix();
-                threeExports.camera = perCam;
+                threeExports!.camera = perCam;
                 return {
                   ...state,
                   camera: perCam,

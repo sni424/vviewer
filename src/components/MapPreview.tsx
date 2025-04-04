@@ -7,10 +7,6 @@ import {
   ProbeAtom,
   useModal,
 } from '../scripts/atoms';
-import { threes, wallOptionToWalls } from '../scripts/atomUtils.ts';
-import { applyMultiProbe } from '../scripts/probeUtils.ts';
-import ReflectionProbe from '../scripts/ReflectionProbe.ts';
-import { WallCreateOption } from '../types.ts';
 
 export interface MapPreviewProps {
   material: THREE.Material;
@@ -316,110 +312,6 @@ const MapPreview: React.FC<MapPreviewProps> = ({
         ></canvas>
       )}
     </div>
-  );
-};
-
-const prepareWalls = (wallInfo: WallCreateOption) => {
-  const retval = [] as {
-    start: THREE.Vector3;
-    end: THREE.Vector3;
-    probeId: string;
-  }[];
-  const WALLS = wallOptionToWalls(wallInfo);
-  const points = WALLS.points;
-  const targetProbes = WALLS.probes;
-  WALLS.walls.forEach(wall => {
-    const startNumber = points[wall[0]];
-    const endNumber = points[wall[1]];
-    const start = new THREE.Vector3(startNumber[0], 0, startNumber[1]);
-    const end = new THREE.Vector3(endNumber[0], 0, endNumber[1]);
-
-    const probeId = targetProbes[wall[2]];
-
-    retval.push({ start, end, probeId });
-  });
-
-  return retval;
-};
-
-const applyMultiProbeOnMaterial = (
-  material: THREE.Material,
-  probes: ReflectionProbe[],
-  probeIds: string[],
-  walls?: { start: THREE.Vector3; end: THREE.Vector3; probeId: string }[],
-) => {
-  const filtered = probes.filter(p => probeIds.includes(p.getId()));
-
-  // 기존 싱글 프로브 제거
-  // if (material.envMap) {
-  //   material.vUserData.envMap = material.envMap;
-  // }
-  material.envMap = null;
-
-  applyMultiProbe(material, filtered, walls);
-  const { gl } = threes()!;
-  // console.log(gl.info.programs?.map(p => p.cacheKey));
-  material.needsUpdate = true;
-};
-
-function applySingleProbeOnMaterial(
-  material: THREE.Material,
-  probe: ReflectionProbe,
-) {
-  material.envMap = probe.getRenderTargetTexture();
-  material.updateEnvUniforms(probe.getCenter(), probe.getSize());
-  material.vUserData.probeId = probe.getId();
-  material.needsUpdate = true;
-
-  const prev = material.onBeforeCompile;
-  material.onBeforeCompile = (shader, gl) => {
-    prev(shader, gl);
-    delete shader.defines!['V_ENV_MAP'];
-    shader.defines!['BOX_PROJECTED_ENV_MAP'] = 1;
-  };
-}
-
-const SELECTING_PROBE = '__SELECTING_PROBE__';
-
-const SingleProbeSelector = ({ material }: { material: THREE.Material }) => {
-  const probes = useAtomValue(ProbeAtom);
-  const [value, setValue] = useState(material.vUserData.probeId ?? 'none');
-
-  useEffect(() => {
-    if (value === 'none') {
-      // Unreachable
-      return;
-    }
-    if (value === 'delete') {
-      // if (material.vUserData.envMap) {
-      //   material.envMap = material.vUserData.envMap;
-      // }
-      delete material.vUserData.probeId;
-      material.needsUpdate = true;
-    } else {
-      const probe = probes.find(probe => probe.getId() === value);
-      if (probe) {
-        applySingleProbeOnMaterial(material, probe);
-      }
-    }
-  }, [value]);
-
-  return (
-    <select
-      style={{ maxWidth: 120 }}
-      onChange={e => setValue(e.target.value)}
-      value={value}
-    >
-      <option defaultValue={value} value="none" style={{ display: 'none' }}>
-        프로브를 선택하세요.
-      </option>
-      {material.envMap && <option value="delete">ENV 삭제</option>}
-      {probes.map(probe => (
-        <option key={Math.random()} value={probe.getId()}>
-          {probe.getName()}
-        </option>
-      ))}
-    </select>
   );
 };
 

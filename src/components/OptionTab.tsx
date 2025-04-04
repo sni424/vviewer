@@ -1277,7 +1277,7 @@ const LightMapSelector = ({
             }
             onClick={() => setSelected(key)}
           >
-            <KTXPreview texture={texture} image={image} />
+            <KTXPreview texture={texture} image={image!} />
             <div>
               <p>{getNameFromURL(key)}</p>
               {meshLightMap === getNameFromURL(key) && (

@@ -357,12 +357,10 @@ export const lastCameraInfoAtom = atom<{
 export const cameraSettingAtom = atom<{
   moveSpeed: number;
   isoView: boolean;
-  topView: boolean;
   cameraY: number;
 }>({
   moveSpeed: 3,
   isoView: false,
-  topView: false,
   cameraY: 1.5,
 });
 

@@ -6,6 +6,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
+import { applyProbeReflectionProbe } from 'src/scripts/vthree/Material.ts';
 import { v4 } from 'uuid';
 import { THREE } from 'VTHREE';
 import {
@@ -24,15 +25,12 @@ import {
   prepareWalls,
   threes,
   uploadJson,
-  wallOptionToWalls,
 } from '../scripts/atomUtils.ts';
-import { applyMultiProbe } from '../scripts/probeUtils.ts';
 import ReflectionProbe, {
   ReflectionProbeJSON,
   ReflectionProbeResolutions,
 } from '../scripts/ReflectionProbe.ts';
 import {
-  applyProbeOnMaterial,
   listFilesFromDrop,
   loadHDRTexture,
   loadPNGAsENV,
@@ -203,7 +201,7 @@ const ProbeInfo = () => {
           const targetProbes = probes.filter(probe =>
             mat.vUserData.probeIds!.includes(probe.getId()),
           );
-          const params: Parameters<THREE.Material['applyProbe']>[0] = {
+          const params: applyProbeReflectionProbe = {
             probes: targetProbes,
             walls: probeType === 'multiWall' ? prepareWalls(walls) : undefined,
           };
@@ -229,27 +227,14 @@ const ProbeInfo = () => {
       if (o.type === 'Mesh') {
         const mesh = o as THREE.Mesh;
         const mat = mesh.material as THREE.Material;
+        const probeIds = mat.vUserData.probeIds;
         const probeType = mat.vUserData.probeType;
-        let obj: {
-          probeIds?: string[];
-          probeType?: ProbeTypes;
-        } | null = null;
-        if (probeType) {
-          obj = { probeType };
-          if (probeType === 'single') {
-            obj.probeIds = [mat.vUserData.probeId].filter(s => s !== undefined);
-          } else {
-            obj.probeIds = mat.vUserData.probeIds;
-          }
-        } else if (mat.vUserData.probeId) {
-          obj = {
-            probeType: 'single',
-            probeIds: [mat.vUserData.probeId],
-          };
-        }
 
-        if (obj) {
-          probeMap.set(mesh.name, obj);
+        if (probeIds && probeType) {
+          probeMap.set(mesh.name, {
+            probeIds,
+            probeType,
+          });
         }
       }
     });
@@ -304,7 +289,7 @@ const ProbeInfo = () => {
               probeIds.includes(probe.getId()),
             );
             if (probesToApply.length > 0) {
-              const params: Parameters<THREE.Material['applyProbe']>[0] = {
+              const params: applyProbeReflectionProbe = {
                 probes: probesToApply,
                 walls: probeType === 'multiWall' ? walls : undefined,
               };
@@ -328,7 +313,7 @@ const ProbeInfo = () => {
               probeIds.includes(probe.getId()),
             );
             if (probesToApply.length > 0) {
-              const params: Parameters<THREE.Material['applyProbe']>[0] = {
+              const params: applyProbeReflectionProbe = {
                 probes: probesToApply,
                 walls: probeType === 'multiWall' ? walls : undefined,
               };
@@ -597,7 +582,7 @@ export const ProbeComponent = ({ probe }: { probe: ReflectionProbe }) => {
       return;
     }
     canvas.toBlob(function (blob) {
-      const url = URL.createObjectURL(blob);
+      const url = URL.createObjectURL(blob!);
       const a = document.createElement('a');
       a.href = url;
       a.download = 'canvas-image.png';
