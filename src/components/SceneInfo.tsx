@@ -16,6 +16,7 @@ import gsap from 'gsap';
 import { get, set } from 'idb-keyval';
 import objectHash from 'object-hash';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { ColorPicker, useColor } from 'react-color-palette';
 import { useNavigate } from 'react-router-dom';
 import VTextureLoader from 'src/scripts/loaders/VTextureLoader.ts';
 import ReflectionProbe from 'src/scripts/ReflectionProbe.ts';
@@ -28,6 +29,7 @@ import {
 } from '../Constants';
 import { defaultSettings, loadSettings } from '../pages/useSettings.ts';
 import {
+  anisotropyAtom,
   cameraMatrixAtom,
   DPAtom,
   DPCModeAtom,
@@ -1833,6 +1835,84 @@ const GeneralStats = () => {
   );
 };
 
+const AnisotropyControl = () => {
+  const [anisotropyValue, setAnisotropyValue] = useAtom(anisotropyAtom);
+  return (
+    <div>
+      <span>anisotropy</span>
+      <input
+        type="range"
+        value={anisotropyValue}
+        step={1}
+        min={1}
+        max={16}
+        onChange={e => {
+          setAnisotropyValue(Number(e.target.value));
+        }}
+      />
+    </div>
+  );
+};
+
+const SceneBackColor = () => {
+  const threeExports = useAtomValue(threeExportsAtom);
+
+  if (!threeExports) {
+    return null;
+  }
+
+  const { scene } = threeExports;
+  const [diffuseColor, setDiffuseColor] = useColor(
+    scene.background ? `#${scene.background.getHexString()}` : '#ffffff',
+  );
+
+  return (
+    <div
+      key={`colorInfo-${scene.uuid}`}
+      style={{
+        fontSize: 11,
+        width: '100%',
+        boxSizing: 'border-box',
+      }}
+    >
+      <div className="flex gap-8">
+        <strong>색상</strong>
+        {/* <button
+          style={{ fontSize: 10 }}
+          onClick={() => {
+            const hex = `#${originalColor}`;
+            mat.emissive.set(hex);
+            setDiffuseColor({
+              hex: `#${originalColor}`,
+              rgb: ColorService.toRgb(hex),
+              hsv: ColorService.toHsv(hex),
+            });
+          }}
+        >
+          원래대로
+        </button> */}
+      </div>
+      <div className="flex gap-2">
+        <div
+          className="w-[60px] h-[60px] mt-2 cursor-pointer"
+          style={{ backgroundColor: diffuseColor.hex }}
+        ></div>
+        <div className="w-[120px] mt-2">
+          <ColorPicker
+            height={50} // 높이 px단위로 설정 (디폴트: 200)
+            hideAlpha={true} // 투명도 조절바 숨김 (디폴트: 안숨김)
+            color={diffuseColor} // 현재 지정된 컬러
+            onChange={color => {
+              scene.background = new THREE.Color(color.hex);
+              setDiffuseColor(color);
+            }} // 컬러 변경될 때마다 실행할 이벤트
+          />
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const SceneInfo = () => {
   // const [env, setEnv] = useAtom(envAtom);
   const threeExports = useAtomValue(threeExportsAtom);
@@ -1862,7 +1942,9 @@ const SceneInfo = () => {
       <GeneralEnvironmentControl></GeneralEnvironmentControl>
       <TestControl />
       <GeneralMinimapControl></GeneralMinimapControl>
+      <AnisotropyControl></AnisotropyControl>
       <GeneralPostProcessingControl></GeneralPostProcessingControl>
+      <SceneBackColor></SceneBackColor>
       <GeneralSceneInfo></GeneralSceneInfo>
 
       <CameraInfoSection></CameraInfoSection>

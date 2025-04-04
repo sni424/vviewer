@@ -45,6 +45,7 @@ import {
 import { View, WallCreateOption, WallPointView } from '../../types';
 import UnifiedCameraControls from '../camera/UnifiedCameraControls';
 import HotspotDialog from '../HotspotDialog';
+import Anisotropy from './Anisotropy.tsx';
 import MyEnvironment from './EnvironmentMap';
 import Grid from './Grid';
 import Hotspot from './Hotspot';
@@ -304,6 +305,7 @@ function Renderer() {
       <Walls></Walls>
       <MainGrid></MainGrid>
       <Hotspot></Hotspot>
+      <Anisotropy></Anisotropy>
       <SkyBoxMesh></SkyBoxMesh>
     </>
   );

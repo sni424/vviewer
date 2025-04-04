@@ -1,5 +1,6 @@
 import { useAtom } from 'jotai';
 import { useEffect, useRef, useState } from 'react';
+import { RGBELoader } from 'three/examples/jsm/Addons.js';
 import { THREE } from 'VTHREE';
 import { skyBoxAtom } from '../scripts/atoms';
 
@@ -70,6 +71,25 @@ const SkyBoxPanel = () => {
           texture: tex,
         }));
       });
+    } else {
+      if (file.name.includes('hdr')) {
+        const url = URL.createObjectURL(file);
+        const rgbeLoader = new RGBELoader();
+        rgbeLoader.load(url, texture => {
+          texture.mapping = THREE.EquirectangularReflectionMapping;
+          texture.minFilter = THREE.LinearFilter;
+          texture.magFilter = THREE.LinearFilter;
+          texture.generateMipmaps = false;
+          texture.colorSpace = THREE.SRGBColorSpace;
+          texture.flipY = true;
+          setSkyBoxInfo(prev => ({
+            ...prev,
+            texture: texture,
+          }));
+        });
+      } else {
+        window.alert('다른 타입');
+      }
     }
   };
 
