@@ -229,57 +229,59 @@ const GeneralButtons = () => {
   }
 
   async function downloadSet() {
-    openToast('라이트맵 준비 중..', { autoClose: false });
-    const lightMapFiles = await getEXRLightMapsFromScene(scene);
-    // before
-    scene.traverseAll(o => {
-      if (o.type === 'Mesh') {
-        const mesh = o as THREE.Mesh;
-        const mat = mesh.matStandard;
-        if (mat.vUserData.lightMap && mat.vUserData.lightMap.endsWith('.exr')) {
-          mat.vUserData.lightMap = "mobile/" + mat.vUserData.lightMap.replace('.exr', '.ktx');
-        }
-      }
-    })
-    openToast('GLB 준비 중..', { autoClose: false, override: true });
-    const glbArr = await new VGLTFExporter().parseAsync(scene, { binary: true });
-    if (glbArr instanceof ArrayBuffer) {
-      const blob = new Blob([glbArr], {
-        type: 'application/octet-stream',
-      });
-      const glbFile = new File([blob], 'latest.glb', {
-        type: 'model/gltf-binary',
-      });
-
-      const zip = new JSZip();
-      zip.file('model.glb', glbFile);
-
-      const lightMapFolder = zip.folder('lightMaps');
-      if (lightMapFolder) {
-        for (const file of lightMapFiles) {
-          const data = await file.arrayBuffer();
-          lightMapFolder.file(file.name, data);
-        }
-      }
-
-      const content = await zip.generateAsync({type : 'blob'});
-      closeToast();
-      const url = URL.createObjectURL(content);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'scene.zip';
-      a.click();
-      URL.revokeObjectURL(url); // 메모리 해제
-
+    if (confirm('테스트 용입니다. 세트 다운로드 하시겠나여?')) {
+      openToast('라이트맵 준비 중..', { autoClose: false });
+      const lightMapFiles = await getEXRLightMapsFromScene(scene);
+      // before
       scene.traverseAll(o => {
         if (o.type === 'Mesh') {
           const mesh = o as THREE.Mesh;
           const mat = mesh.matStandard;
-          if (mat.vUserData.lightMap && mat.vUserData.lightMap.endsWith('.ktx') && mat.vUserData.isExr) {
-            mat.vUserData.lightMap = mat.vUserData.lightMap.replace('.ktx', '.exr');
+          if (mat.vUserData.lightMap && mat.vUserData.lightMap.endsWith('.exr')) {
+            mat.vUserData.lightMap = "mobile/" + mat.vUserData.lightMap.replace('.exr', '.ktx');
           }
         }
       })
+      openToast('GLB 준비 중..', { autoClose: false, override: true });
+      const glbArr = await new VGLTFExporter().parseAsync(scene, { binary: true });
+      if (glbArr instanceof ArrayBuffer) {
+        const blob = new Blob([glbArr], {
+          type: 'application/octet-stream',
+        });
+        const glbFile = new File([blob], 'latest.glb', {
+          type: 'model/gltf-binary',
+        });
+
+        const zip = new JSZip();
+        zip.file('model.glb', glbFile);
+
+        const lightMapFolder = zip.folder('lightMaps');
+        if (lightMapFolder) {
+          for (const file of lightMapFiles) {
+            const data = await file.arrayBuffer();
+            lightMapFolder.file(file.name, data);
+          }
+        }
+
+        const content = await zip.generateAsync({ type: 'blob' });
+        closeToast();
+        const url = URL.createObjectURL(content);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'scene.zip';
+        a.click();
+        URL.revokeObjectURL(url); // 메모리 해제
+
+        scene.traverseAll(o => {
+          if (o.type === 'Mesh') {
+            const mesh = o as THREE.Mesh;
+            const mat = mesh.matStandard;
+            if (mat.vUserData.lightMap && mat.vUserData.lightMap.endsWith('.ktx') && mat.vUserData.isExr) {
+              mat.vUserData.lightMap = mat.vUserData.lightMap.replace('.ktx', '.exr');
+            }
+          }
+        })
+      }
     }
   }
 
