@@ -651,3 +651,6 @@ export const addPoints = (...points: DrawablePoint[]) => {
     return [...uniquePrev, ...points];
   });
 };
+
+
+export const anisotropyAtom = atom<number>(1)
