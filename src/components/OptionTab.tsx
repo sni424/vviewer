@@ -18,7 +18,7 @@ import {
   selectedAtom,
   useModal,
 } from '../scripts/atoms.ts';
-import { threes, uploadPngToKtx } from '../scripts/atomUtils.ts';
+import { threes, uploadImage } from '../scripts/atomUtils.ts';
 import { createLightmapCache } from '../scripts/loaders/VGLTFLoader.ts';
 import { getVKTX2Loader } from '../scripts/loaders/VKTX2Loader.ts';
 import MeshEffect from '../scripts/options/MeshEffect.ts';
@@ -559,11 +559,11 @@ const StateFunctionEffectModal = ({
 
   async function applyTextures() {
     const files = probeTextures.map(({ blob, name, id }) => {
-      const fileName = `${name}_${id}_equirectangular_${state.id}.png`;
+      const fileName = `${name}_${id}_equirectangular_${state.id}.jpg`;
       return new File([blob], fileName, { type: blob.type });
     });
 
-    const res = await uploadPngToKtx(files);
+    const res = await uploadImage(files);
     const fileUrls = res.data.map(f => decodeURI(f.fileUrl));
     const results = fileUrls.map(url => {
       const { probeId, stateId } = extractIDsFromURL(url);
@@ -572,14 +572,16 @@ const StateFunctionEffectModal = ({
     setValues(pre => {
       return { ...pre, probe: results };
     });
+    alert('완료');
   }
 
   function extractIDsFromURL(url: string) {
     const fileName = decodeURIComponent(url.split('/').pop() || '');
     const regex =
-      /_(\w{8}-\w{4}-\w{4}-\w{4}-\w{12})_equirectangular_(\w{8}-\w{4}-\w{4}-\w{4}-\w{12})\.ktx$/;
+      /_(\w{8}-\w{4}-\w{4}-\w{4}-\w{12})_equirectangular_(\w{8}-\w{4}-\w{4}-\w{4}-\w{12})\.jpg$/;
 
     const match = fileName.match(regex);
+    console.log(fileName);
     if (!match) {
       throw new Error('파일 이름 형식이 올바르지 않습니다.');
     }
@@ -590,7 +592,7 @@ const StateFunctionEffectModal = ({
 
   function canvasToBlobAsync(
     canvas: HTMLCanvasElement,
-    type = 'image/png',
+    type = 'image/jpeg',
   ): Promise<Blob> {
     return new Promise((resolve, reject) => {
       canvas.toBlob(blob => {

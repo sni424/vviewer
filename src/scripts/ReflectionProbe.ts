@@ -3,7 +3,7 @@ import { TransformControls } from 'three-stdlib';
 import { v4 } from 'uuid';
 import * as THREE from 'VTHREE';
 import { ENV, Layer } from '../Constants.ts';
-import { uploadPngToKtx } from './atomUtils.ts';
+import { uploadImage } from './atomUtils.ts';
 import { getVKTX2Loader } from './loaders/VKTX2Loader.ts';
 import VTextureLoader from './loaders/VTextureLoader.ts';
 import { splitExtension } from './utils.ts';
@@ -739,7 +739,7 @@ export default class ReflectionProbe {
         new File([blob], `probe_${this.serializedId}_${key}.png`),
     );
 
-    await uploadPngToKtx(files);
+    await uploadImage(files, {compress: true});
 
     this.textureUrls = files.map(file => {
       return ENV.base + splitExtension(file.name).name + '.ktx';
@@ -1285,7 +1285,7 @@ varying vec2 vUv;
 
 void main()  {
 
-	vUv = vec2( 1.- uv.x, uv.y );
+	vUv = vec2(uv.x, uv.y);
 	gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
 
 }
@@ -1308,7 +1308,7 @@ void main()  {
 	float latitude = uv.y * M_PI;
 
 	vec3 dir = vec3(
-		- sin( longitude ) * sin( latitude ),
+		sin( longitude ) * sin( latitude ),
 		cos( latitude ),
 		- cos( longitude ) * sin( latitude )
 	);
