@@ -1020,6 +1020,68 @@ export const getModelArrangedScene = (scene: THREE.Scene) => {
   return cloned;
 };
 
+export const getEXRLightMapsFromScene: (
+  scene: THREE.Scene,
+) => Promise<File[]> = async scene => {
+  const lightMapHashes: { [key in string]: THREE.Material[] } = {};
+  scene.traverseAll(async obj => {
+    if ((obj as THREE.Mesh).isMesh) {
+      const mesh = obj as THREE.Mesh;
+      const mat = mesh.matStandard;
+      const isEXR = (tex: THREE.Texture) =>
+        tex.vUserData.isExr !== undefined && tex.vUserData.isExr;
+      const isKTX = (tex: THREE.Texture) =>
+        tex.vUserData.mimeType === 'image/ktx2';
+
+      // Lightmap to HashMap
+      const addLightMapToHash = (hashKey: string, material: THREE.Material) => {
+        if (!lightMapHashes[hashKey]) {
+          lightMapHashes[hashKey] = [];
+        }
+        lightMapHashes[hashKey].push(material);
+      };
+
+      // 250110 추가
+      if (mat && mat.lightMap) {
+        const lightMap = mat.lightMap;
+
+        if (isEXR(lightMap) || isKTX(lightMap)) {
+          if (!mat.vUserData.lightMap && lightMap.vUserData.lightMap) {
+            mat.vUserData.lightMap = lightMap.vUserData.lightMap;
+          }
+
+          const lightMapHash = mat.vUserData.lightMap;
+          if (lightMapHash && lightMapHash.endsWith('.exr')) {
+            addLightMapToHash(lightMapHash, mat);
+          }
+        }
+        mat.vUserData.lightMapIntensity = mat.lightMapIntensity;
+
+        console.log('lightmap out : ', mat.vUserData);
+      }
+    }
+  });
+
+  const hashes = Object.keys(lightMapHashes);
+
+  const files: File[] = [];
+
+  await Promise.all(
+    hashes.map(async hash => {
+      console.log(hash);
+      const file = await get(hash);
+      if (file) {
+        files.push(file);
+      } else {
+        // 파일 임포트 시 idbkeyval에 exr파일이 저장되어있어야함
+        throw new Error();
+      }
+    }),
+  );
+
+  return files;
+};
+
 export const uploadExrLightmap = async (
   object: THREE.Object3D,
   isMobile?: boolean,

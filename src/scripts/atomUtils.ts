@@ -35,6 +35,12 @@ export type KTXApiResponse = {
   }[];
 };
 
+export type ResizeOption = {
+  doResize: boolean;
+  width: number;
+  height: number;
+};
+
 function isPointOnLineSegment(p: PointXZ, v1: PointXZ, v2: PointXZ): boolean {
   const crossProduct =
     (p.z - v1.z) * (v2.x - v1.x) - (p.x - v1.x) * (v2.z - v1.z);
@@ -124,10 +130,17 @@ export const uploadExrToKtx = async (
   return await res.json();
 };
 
-export const uploadPngToKtx = async (
+export const uploadImage = async (
   pngs: File | File[],
+  options?: {
+    compress?: boolean;
+    resize?: ResizeOption;
+  },
 ): Promise<KTXApiResponse> => {
-  const uploadUrl = import.meta.env.VITE_PNG_KTX_URL as string;
+  const uploadUrl =
+    options && options.compress
+      ? (import.meta.env.VITE_PNG_KTX_URL as string)
+      : (import.meta.env.VITE_UPLOAD_URL as string);
   if (!uploadUrl) {
     throw new Error('VITE_PNG_KTX_URL is not defined');
   }
