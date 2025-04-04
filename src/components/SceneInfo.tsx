@@ -219,6 +219,8 @@ const GeneralButtons = () => {
     return null;
   }
 
+  const {scene} = threeExports;
+
   async function uploadLightMaps(isMobile?: boolean) {
     if (!confirm('라이트맵 업로드 하시겠습니까?')) {
       return;
