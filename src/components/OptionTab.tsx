@@ -503,8 +503,8 @@ const StateFunctionEffectModal = ({
   const [values, setValues] = useState<FunctionEffectsURLs>(
     functionEffects.urls,
   );
+  const options = useAtomValue(modelOptionClassAtom);
 
-  console.log('values : ', values);
   const [probeTextures, setProbeTextures] = useState<
     { blob: Blob; url: string; name: string; id: string }[]
   >([]);
@@ -527,6 +527,27 @@ const StateFunctionEffectModal = ({
     } else {
       setPreviewMinimap({ show: true, error: true, url: minimapUrl });
     }
+  }
+
+  function getOtherModelOptionAndStates(): {
+    id: string;
+    name: string;
+    states: { state: OptionState; name: string; id: string }[];
+  }[] {
+    const parent = state.parent;
+    const otherOptions = options.filter(m => m.id !== parent.id);
+    return otherOptions.map(m => {
+      const states = m.states.map(s => ({
+        state: s,
+        name: s.name,
+        id: s.id,
+      }));
+      return {
+        name: m.name,
+        id: m.id,
+        states,
+      };
+    });
   }
 
   function confirm() {
@@ -557,28 +578,46 @@ const StateFunctionEffectModal = ({
     setProbeTextures(textures);
   }
 
-  async function applyTextures() {
+  async function applyTextures(targetStateId: string) {
     const files = probeTextures.map(({ blob, name, id }) => {
-      const fileName = `${name}_${id}_equirectangular_${state.id}.jpg`;
+      const fileName = `${name}_${id}_equirectangular_${state.id}_${targetStateId}.jpg`;
       return new File([blob], fileName, { type: blob.type });
     });
 
     const res = await uploadImage(files);
     const fileUrls = res.data.map(f => decodeURI(f.fileUrl));
     const results = fileUrls.map(url => {
-      const { probeId, stateId } = extractIDsFromURL(url);
-      return { probeId, stateId, url };
+      const { probeId, stateId, stateId2 } = extractIDsFromURL(url);
+      return { probeId, stateId, stateId2, url };
     });
     setValues(pre => {
-      return { ...pre, probe: results };
+      const preProbeMulti = pre.probeMulti;
+      preProbeMulti[targetStateId] = results;
+      const result = { ...pre, probeMulti: preProbeMulti };
+      console.log('result', result);
+      return result;
     });
+    // TODO targetState 쪽에도 동시 적용
+    let targetState: OptionState | undefined = undefined;
+    for (const option of options) {
+      const find = option.getStateById(targetStateId);
+      if (find) {
+        targetState = find;
+        break;
+      }
+    }
+
+    if (targetState) {
+      targetState.functionEffects.booleans.changeProbe = true;
+      targetState.functionEffects.urls.probeMulti[state.id] = results;
+    }
     alert('완료');
   }
 
   function extractIDsFromURL(url: string) {
     const fileName = decodeURIComponent(url.split('/').pop() || '');
     const regex =
-      /_(\w{8}-\w{4}-\w{4}-\w{4}-\w{12})_equirectangular_(\w{8}-\w{4}-\w{4}-\w{4}-\w{12})\.jpg$/;
+      /_(\w{8}-\w{4}-\w{4}-\w{4}-\w{12})_equirectangular_(\w{8}-\w{4}-\w{4}-\w{4}-\w{12})_(\w{8}-\w{4}-\w{4}-\w{4}-\w{12})\.jpg$/;
 
     const match = fileName.match(regex);
     console.log(fileName);
@@ -586,8 +625,8 @@ const StateFunctionEffectModal = ({
       throw new Error('파일 이름 형식이 올바르지 않습니다.');
     }
 
-    const [_, probeId, stateId] = match;
-    return { probeId, stateId };
+    const [_, probeId, stateId, stateId2] = match;
+    return { probeId, stateId, stateId2 };
   }
 
   function canvasToBlobAsync(
@@ -794,26 +833,33 @@ const StateFunctionEffectModal = ({
                 <button onClick={loadNowProbeTextures}>
                   현재 프로브 텍스쳐 띄우기
                 </button>
-                <button onClick={applyTextures}>해당 텍스쳐 할당</button>
                 {loading && (
                   <div className="w-full flex justify-center">로딩 중</div>
                 )}
                 <div className="grid mt-1 grid-cols-1 gap-y-1 gap-x-1 overflow-auto max-h-[300px] p-1">
-                  {values.probe.length > 0 &&
-                    values.probe.map(({ probeId, stateId, url }) => {
-                      return (
-                        <div className="w-full">
-                          <p className="mb-1">
-                            <strong>프로브 ID: </strong>
-                            {probeId}
-                          </p>
-                          <p className="mb-1">
-                            <strong>URL</strong>
-                            {url}
-                          </p>
-                        </div>
-                      );
-                    })}
+                  {getOtherModelOptionAndStates().map(option => (
+                    <div>
+                      <div>{option.name}</div>
+                      <div className="pl-2 flex flex-col gap-y-1 my-1">
+                        {option.states.map(stateObject => {
+                          const keys = Object.keys(values.probeMulti);
+                          const hasKey = keys.includes(stateObject.id);
+                          return (
+                            <div className="flex gap-x-1">
+                              <span>- {stateObject.name}</span>
+                              <button
+                                disabled={probeTextures.length === 0}
+                                onClick={() => applyTextures(stateObject.id)}
+                              >
+                                해당 텍스쳐 할당
+                              </button>
+                              <span>{hasKey ? '할당됨' : '할당안됨'}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
                   {probeTextures.length > 0 &&
                     probeTextures.map(({ url, name, id }) => {
                       return (

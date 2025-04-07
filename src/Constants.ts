@@ -126,6 +126,7 @@ export const ENV = {
   s3Base,
   latest: base + 'latest.glb',
   latestMobile: base + 'mobile/latest_mobile.glb',
+  testMobile: base + 'mobile/model_optimized.glb',
   latestHash: s3Base + 'latest-hash',
   fileList: s3Base + 'uploads.json',
   baseHash: s3Base + 'base-hash',
