@@ -124,6 +124,8 @@ declare module 'three' {
     // onBeforCompile이 불리는 시점에 유니폼들 삭제
     removeUniform(...key: MATERIAL_UNIFORM[]): this;
     _removeUniform: MATERIAL_UNIFORM[];
+
+    textures(): THREE.Texture[];
   }
 }
 
@@ -779,4 +781,17 @@ THREE.Material.prototype.remove = function <T extends keyof MaterialApplyType>(
   }
   this.needsUpdate = true;
   return this;
+};
+
+THREE.Material.prototype.textures = function () {
+  const textures: THREE.Texture[] = [];
+
+  for (const key in this) {
+    const value = (this as any)[key];
+    if ((value as THREE.Texture)?.isTexture) {
+      textures.push(value);
+    }
+  }
+
+  return textures;
 };

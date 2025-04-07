@@ -6,14 +6,13 @@ import * as THREE from 'VTHREE';
 import objectHash from 'object-hash';
 import pako from 'pako';
 import { TransformControls } from 'three-stdlib';
-import { EXRLoader, OrbitControls } from 'three/examples/jsm/Addons.js';
+import { EXRLoader } from 'three/examples/jsm/Addons.js';
 import { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { v4 } from 'uuid';
 import { ENV, Layer } from '../Constants';
 import {
   FileInfo,
   MoveActionOptions,
-  View,
   WallPoint,
   WallPointView,
   WallView,
@@ -26,7 +25,6 @@ import {
   getWallOptionAtom,
   lastCameraInfoAtom,
   pathfindingAtom,
-  selectedAtom,
   threeExportsAtom,
 } from './atoms';
 import { uploadExrToKtx } from './atomUtils.ts';
@@ -510,45 +508,6 @@ export const loadHDRTexture = (path: string): Promise<THREE.Texture> => {
       error => reject(error),
     );
   });
-};
-
-export const zoomToSelected = (obj?: THREE.Object3D) => {
-  // const three = getAtomValue(threeExportsAtom);
-  const three = window.getThree(View.Shared);
-  if (!three) {
-    return;
-  }
-  const { scene, camera, orbitControls } = three as typeof three & {
-    orbitControls?: OrbitControls;
-  };
-
-  let dst: THREE.Object3D = obj!;
-  if (!dst) {
-    const uuid = getAtomValue(selectedAtom)[0];
-    if (!uuid) {
-      return;
-    }
-    dst = scene.getObjectByProperty('uuid', uuid)!;
-    if (!dst) {
-      return;
-    }
-  }
-
-  const box = new THREE.Box3().setFromObject(dst);
-  const center = box.getCenter(new THREE.Vector3());
-
-  // zoom out to fit the box into view
-  const size = box.getSize(new THREE.Vector3()).length();
-  const dist = size;
-  const dir = camera.position.clone().sub(center).normalize();
-  dir.multiplyScalar(dist * 0.8);
-  camera.position.copy(center).add(dir);
-  camera.lookAt(center);
-  if (orbitControls instanceof OrbitControls) {
-    orbitControls.target = center;
-    orbitControls.update();
-  }
-  camera.updateProjectionMatrix();
 };
 
 //카메라 moveTo함수시 카메라 회전 함수
@@ -1684,4 +1643,37 @@ import { VUserData } from './vthree/VTHREETypes.ts';
 // tailwind에 동적으로 클래스이름 할당할 때 필요
 export function cn(...inputs: ClassValue[]): string {
   return twMerge(clsx(...inputs));
+}
+
+export function setThreeId(obj: { vUserData?: VUserData; uuid: string }) {
+  if (!obj) {
+    return;
+  }
+
+  if (obj.vUserData?.id) {
+    return;
+  }
+
+  if (!obj.vUserData) {
+    obj.vUserData = {};
+  }
+
+  obj.vUserData.id = obj.uuid;
+
+  if ((obj as THREE.Mesh).isMesh) {
+    const mesh = obj as THREE.Mesh;
+    const mat = mesh.matPhysical;
+    const geo = mesh.geometry as THREE.BufferGeometry;
+
+    setThreeId(mat);
+    setThreeId(geo);
+  }
+
+  if ((obj as THREE.Material).isMaterial) {
+    const mat = obj as THREE.Material;
+
+    mat.textures().forEach(setThreeId);
+  }
+
+  return obj;
 }

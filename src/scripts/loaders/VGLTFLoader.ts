@@ -9,6 +9,7 @@ import {
 import { KTX2Loader } from 'three/examples/jsm/loaders/KTX2Loader.js';
 import * as THREE from 'VTHREE';
 import { ENV, Layer } from '../../Constants.ts';
+import { setThreeId } from '../utils.ts';
 import { getVKTX2Loader } from './VKTX2Loader.ts';
 
 export default class VGLTFLoader extends GLTFLoader {
@@ -91,6 +92,8 @@ export default class VGLTFLoader extends GLTFLoader {
         if (object.type === 'Mesh') {
           const mesh = object as THREE.Mesh;
           const mat = mesh.material as THREE.MeshBasicMaterial;
+          setThreeId(mesh);
+
           if (object.name === '프레임') {
             mat.side = THREE.DoubleSide;
           }
@@ -103,20 +106,6 @@ export default class VGLTFLoader extends GLTFLoader {
           if (vMaterialCache.has(originalMatID)) {
             mesh.material = vMaterialCache.get(originalMatID) as any;
           }
-          // else {
-          //   let vMat: VMaterial;
-          //   if (mat.type === 'MeshStandardMaterial') {
-          //     vMat = VMeshStandardMaterial.fromThree(mat);
-          //   } else if (mat.type === 'MeshPhysicalMaterial') {
-          //     vMat = VMeshPhysicalMaterial.fromThree(mat);
-          //   } else if (mat.type === 'MeshBasicMaterial') {
-          //     vMat = VMeshBasicMaterial.fromThree(mat);
-          //   } else {
-          //     console.warn('???', mat);
-          //   }
-          //   mesh.material = vMat;
-          //   vMaterialCache.set(originalMatID, vMat);
-          // }
         }
         getLightmap(object, lightMapSet);
       });
@@ -179,16 +168,15 @@ export default class VGLTFLoader extends GLTFLoader {
   }
 
   async loadAsync(fileOrUrl: File | string) {
-    let url: string;
+    let retval: ReturnType<GLTFLoader['loadAsync']>;
+
     if (typeof fileOrUrl === 'string') {
-      url = fileOrUrl;
+      return super.loadAsync(fileOrUrl);
     } else {
-      url = URL.createObjectURL(fileOrUrl);
-      this.disposableURL.push(url);
+      return fileOrUrl
+        .arrayBuffer()
+        .then(arrayBuffer => super.parseAsync(arrayBuffer, fileOrUrl.name));
     }
-    return super.loadAsync(url).finally(() => {
-      // this.dispose();
-    });
   }
 }
 

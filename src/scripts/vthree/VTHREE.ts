@@ -10,6 +10,34 @@ declare global {
   }
 }
 
+export type VTextureMapKey = {
+  [K in keyof THREE.MeshPhysicalMaterial]: THREE.MeshPhysicalMaterial[K] extends THREE.Texture | null
+    ? K
+    : never;
+}[keyof THREE.MeshPhysicalMaterial];
+export const VTextureTypes: VTextureMapKey[] = [
+  'map',
+  'alphaMap',
+  'aoMap',
+  'bumpMap',
+  'displacementMap',
+  'emissiveMap',
+  'envMap',
+  'lightMap',
+  'metalnessMap',
+  'normalMap',
+  'roughnessMap',
+  'clearcoatMap',
+  'clearcoatNormalMap',
+  'clearcoatRoughnessMap',
+  'iridescenceMap',
+  'iridescenceThicknessMap',
+  'sheenColorMap',
+  'sheenRoughnessMap',
+  'transmissionMap',
+  'thicknessMap',
+];
+
 window.threeStore = {
   [View.Shared]: undefined,
   [View.Main]: undefined,
