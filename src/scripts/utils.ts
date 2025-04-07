@@ -335,7 +335,7 @@ export const loadLatest = async ({
     alert('.env에 환경변수를 설정해주세요, VITE_MODELS_URL');
     return;
   }
-  const latestUrl = mobile ? ENV.latestMobile : ENV.latest;
+  const latestUrl = mobile ? ENV.testMobile : ENV.latest;
   if (!threeExports) {
     alert('threeExports 분기 문제');
     return;
