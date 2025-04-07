@@ -6,6 +6,7 @@ import { defineConfig } from 'vite';
 export default defineConfig({
   plugins: [react()],
   server: {
+    host: '0.0.0.0', // 본인 IP로 명시
     allowedHosts: ['opmay-react.ngrok.app', 'stan.ngrok.pizza'],
   },
   resolve: {

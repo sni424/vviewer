@@ -1,6 +1,8 @@
 import { Canvas, RootState, useThree } from '@react-three/fiber';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import { useEffect, useRef } from 'react';
+import SkyBox from 'src/components/test/SkyBox.tsx';
+import { zoomToSelected } from 'src/scripts/atomUtils.ts';
 import { v4 } from 'uuid';
 import { THREE } from 'VTHREE';
 import { Layer } from '../../Constants';
@@ -34,13 +36,11 @@ import {
 } from '../../scripts/atoms';
 import VGLTFLoader from '../../scripts/loaders/VGLTFLoader.ts';
 import VTextureLoader from '../../scripts/loaders/VTextureLoader.ts';
-import { useSetThreeExports } from '../../scripts/useGetThreeExports.ts';
 import {
   createWallFromPoints,
   getIntersectLayer,
   getIntersects,
   resetColor,
-  zoomToSelected,
 } from '../../scripts/utils';
 import { View, WallCreateOption, WallPointView } from '../../types';
 import UnifiedCameraControls from '../camera/UnifiedCameraControls';
@@ -53,7 +53,6 @@ import Rooms from './Rooms';
 import SelectBox from './SelectBox';
 import SkyBoxMesh from './SkyBox.tsx';
 import Walls from './Walls.tsx';
-import SkyBox from 'src/components/test/SkyBox.tsx';
 
 const MainGrid = () => {
   const on = useAtomValue(viewGridAtom);
@@ -277,29 +276,15 @@ function Renderer() {
 
   const setThreeExportsAtom = useSetAtom(threeExportsAtom);
   // const setSharedExports = useSetAtom(sharedThreeAtom);
-  const setSharedExports = useSetThreeExports();
   const { scene, camera, gl } = threeExports;
   useLoadModel(threeExports);
   const setCameraAtom = useSetAtom(cameraMatrixAtom);
 
   useEffect(() => {
-    // scene.addEventListener('childadded', event => {
-    //   // Scene 에 Mesh 추가 시 윈도우 전체에 이벤트 발생.
-    //   if (event.child.layers.isEnabled(Layer.Model)) {
-    //     console.log('Added New Child Mesh on Scene');
-    //     window.dispatchEvent(new CustomEvent('scene-added'));
-    //     // Material shader 미리 컴파일
-    //     gl.compileAsync(scene, camera);
-    //   }
-    // });
-    // window.addEventListener('THREE.Material-cloned', () => {
-    //   gl.compileAsync(scene, camera);
-    // });
     setThreeExportsAtom(threeExports);
     camera.position.set(1, 1, 1);
     const mat = camera.matrix.clone();
     setCameraAtom(mat);
-    setSharedExports(threeExports);
   }, []);
 
   return (
@@ -664,7 +649,7 @@ const useKeyHandler = () => {
 
       // ctrl l
       if (e.ctrlKey && e.code === 'KeyL') {
-        e.preventDefault();
+        // e.preventDefault();
         // loadScene()
         //   .then(loaded => {
         //     if (loaded) {

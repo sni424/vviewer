@@ -148,6 +148,8 @@ export interface VUserData {
   isEmptyTexture?: boolean;
 
   isVMaterial?: boolean; // VGLTFLoader로 로드 한 재질
+
+  id?: string;
 }
 
 export const MATERIAL_DEFINES = [
