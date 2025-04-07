@@ -575,10 +575,16 @@ const OpacityPanel = ({ mat }: { mat: THREE.Material }) => {
   const [transparent, setTransparent] = useState(mat.transparent);
   const [depthWrite, setDepthWrite] = useState(mat.depthWrite);
   const [depthTest, setDepthTest] = useState(mat.depthTest);
+  const [transmissonValue, setTransmissonValue] = useState(
+    mat.transmission ?? 0,
+  );
+  const [thickNessValue, setThickNessValue] = useState(mat.thickness ?? 0);
 
   useEffect(() => {
     setTransparent(mat.transparent);
     setOpacity(mat.opacity);
+    setTransmissonValue(mat.transmission ?? 0);
+    setThickNessValue(mat.thickness ?? 0);
   }, [mat]);
 
   return (
@@ -661,11 +667,11 @@ const OpacityPanel = ({ mat }: { mat: THREE.Material }) => {
                   min={0}
                   max={1}
                   step={0.01}
-                  value={mat.transmission}
+                  value={transmissonValue}
                   onChange={e => {
                     const value = parseFloat(e.target.value);
-                    mat.opacity = value;
-
+                    setTransmissonValue(value);
+                    mat.transmission = value;
                     mat.needsUpdate = true;
                   }}
                 />
@@ -676,10 +682,52 @@ const OpacityPanel = ({ mat }: { mat: THREE.Material }) => {
                 min={0}
                 max={1}
                 step={0.01}
-                value={mat.transmission}
+                value={transmissonValue}
                 onChange={e => {
                   const value = parseFloat(e.target.value);
+                  setTransmissonValue(value);
                   mat.transmission = value;
+                  mat.needsUpdate = true;
+                }}
+              />
+            </div>
+
+            <strong>thickNess</strong>
+            <div style={{ display: 'flex', width: '100%', gap: 8 }}>
+              <div
+                style={{
+                  flex: 1,
+                  minWidth: 0,
+                }}
+              >
+                <input
+                  style={{
+                    width: '100%',
+                  }}
+                  type="range"
+                  min={-50}
+                  max={50}
+                  step={0.01}
+                  value={thickNessValue}
+                  onChange={e => {
+                    const value = parseFloat(e.target.value);
+                    setThickNessValue(value);
+                    mat.thickness = value;
+                    mat.needsUpdate = true;
+                  }}
+                />
+              </div>
+              <input
+                style={{ width: 35, borderRadius: 4 }}
+                type="number"
+                min={-50}
+                max={50}
+                step={0.01}
+                value={thickNessValue}
+                onChange={e => {
+                  const value = parseFloat(e.target.value);
+                  setThickNessValue(value);
+                  mat.thickness = value;
                   mat.needsUpdate = true;
                 }}
               />
