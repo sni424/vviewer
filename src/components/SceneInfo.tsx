@@ -1210,17 +1210,32 @@ const TestControl = () => {
   const [test, setTest] = useAtom(testAtom);
 
   return (
-    <section style={{ width: '100%' }}>
-      <strong>스카이박스</strong>
-      <div className="flex gap-x-1">
-        <span>보기</span>
-        <input
-          type="checkbox"
-          checked={test.useSkyBox}
-          onChange={e => {
-            setTest(pre => ({ ...pre, useSkyBox: !pre.useSkyBox }));
-          }}
-        />
+    <section className="w-full flex flex-col gap-y-2">
+      <div>
+        <strong>스카이박스</strong>
+        <div className="flex gap-x-1">
+          <span>보기</span>
+          <input
+            type="checkbox"
+            checked={test.useSkyBox}
+            onChange={e => {
+              setTest(pre => ({ ...pre, useSkyBox: !pre.useSkyBox }));
+            }}
+          />
+        </div>
+      </div>
+      <div>
+        <strong>Select Box</strong>
+        <div className="flex gap-x-1">
+          <span>보기</span>
+          <input
+            type="checkbox"
+            checked={test.showSelectBox}
+            onChange={e => {
+              setTest(pre => ({ ...pre, showSelectBox: !pre.showSelectBox }));
+            }}
+          />
+        </div>
       </div>
     </section>
   );

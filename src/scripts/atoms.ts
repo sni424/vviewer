@@ -621,8 +621,9 @@ export const lightMapAtom = atom<{
   };
 }>({});
 
-export const testAtom = atom<{ useSkyBox: boolean }>({
+export const testAtom = atom<{ useSkyBox: boolean; showSelectBox: boolean; }>({
   useSkyBox: false,
+  showSelectBox: true,
 });
 
 export const skyBoxAtom = atom<SkyBoxState>({
