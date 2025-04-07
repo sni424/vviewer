@@ -643,6 +643,50 @@ const OpacityPanel = ({ mat }: { mat: THREE.Material }) => {
             </div>
           </div>
         )}
+        {mat.type === 'MeshPhysicalMaterial' && (
+          <div className="">
+            <strong>transmission</strong>
+            <div style={{ display: 'flex', width: '100%', gap: 8 }}>
+              <div
+                style={{
+                  flex: 1,
+                  minWidth: 0,
+                }}
+              >
+                <input
+                  style={{
+                    width: '100%',
+                  }}
+                  type="range"
+                  min={0}
+                  max={1}
+                  step={0.01}
+                  value={mat.transmission}
+                  onChange={e => {
+                    const value = parseFloat(e.target.value);
+                    mat.opacity = value;
+
+                    mat.needsUpdate = true;
+                  }}
+                />
+              </div>
+              <input
+                style={{ width: 35, borderRadius: 4 }}
+                type="number"
+                min={0}
+                max={1}
+                step={0.01}
+                value={mat.transmission}
+                onChange={e => {
+                  const value = parseFloat(e.target.value);
+                  mat.transmission = value;
+                  mat.needsUpdate = true;
+                }}
+              />
+            </div>
+          </div>
+        )}
+
         <div className="flex items-center gap-x-2">
           <strong>depth Test</strong>
           <input

@@ -491,6 +491,18 @@ export default class ReflectionProbe {
       gl.localClippingEnabled = false;
     }
 
+    const transmissionChanges: { [key: string]: number } = {};
+
+    scene.traverse(o => {
+      if (o.type === 'Mesh') {
+        const mat = (o as THREE.Mesh).material as THREE.MeshPhysicalMaterial;
+        if (mat.type === 'MeshPhysicalMaterial') {
+          transmissionChanges[mat.uuid] = mat.transmission;
+          mat.transmission = 0;
+        }
+      }
+    });
+
     const filterCondition = (object: THREE.Object3D) => {
       return (
         (object.isTransformControl() || object.vUserData.isTransformControls) &&
@@ -508,6 +520,7 @@ export default class ReflectionProbe {
       filteredObjects,
       localClippingEnabled: isLocalClippingEnabled,
       originalClippedPlanes,
+      transmissionChanges,
     };
   }
 
@@ -515,10 +528,12 @@ export default class ReflectionProbe {
     filteredObjects,
     localClippingEnabled,
     originalClippedPlanes,
+    transmissionChanges,
   }: {
     filteredObjects: THREE.Object3D[];
     localClippingEnabled: boolean;
     originalClippedPlanes?: THREE.Plane[];
+    transmissionChanges: { [key: string]: number };
   }) {
     filteredObjects.forEach(child => {
       child.visible = true;
@@ -529,6 +544,17 @@ export default class ReflectionProbe {
     if (originalClippedPlanes) {
       gl.clippingPlanes = originalClippedPlanes;
     }
+
+    const keys = Object.keys(transmissionChanges);
+
+    this.scene.traverse(o => {
+      if (o.type === 'Mesh') {
+        const mat = (o as THREE.Mesh).material as THREE.MeshPhysicalMaterial;
+        if (mat.type === 'MeshPhysicalMaterial' && keys.includes(mat.uuid)) {
+          mat.transmission = transmissionChanges[mat.uuid];
+        }
+      }
+    });
   }
 
   applyTextureOnQuad() {
@@ -739,7 +765,7 @@ export default class ReflectionProbe {
         new File([blob], `probe_${this.serializedId}_${key}.png`),
     );
 
-    await uploadImage(files, {compress: true});
+    await uploadImage(files, { compress: true });
 
     this.textureUrls = files.map(file => {
       return ENV.base + splitExtension(file.name).name + '.ktx';
