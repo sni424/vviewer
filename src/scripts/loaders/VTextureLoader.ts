@@ -1,27 +1,52 @@
 import { set } from 'idb-keyval';
-import { EXRLoader } from 'three/examples/jsm/Addons.js';
-import { THREE } from 'VTHREE';
+import { EXRLoader, RGBELoader } from 'three/examples/jsm/Addons.js';
+import { DataTexture, THREE } from 'VTHREE';
 import { getVKTX2Loader } from './VKTX2Loader.ts';
 
 const dispoableUrls: string[] = [];
 const disposables: { dispose?: Function }[] = [];
 
 export type VTextureLoaderOption = {
-  flipY: boolean;
-  channel: number;
-  forceExrToJpg?: boolean; // exr로 입력되어도 jpg로 변환해서 처리
+  flipY?: boolean;
+  channel?: number;
   gl?: THREE.WebGLRenderer;
   saveAs?: string;
+  ext?: 'exr' | 'ktx';
 };
 
 const defaultOption: VTextureLoaderOption = {
   flipY: true,
   channel: 1,
-  forceExrToJpg: true,
 };
 
 const exrLoader = new EXRLoader();
+const rgbeLoader = new RGBELoader();
 const textureLoader = new THREE.TextureLoader();
+
+function exrToDataTexture(arrayBuffer: ArrayBuffer) {
+  const exr = exrLoader.parse(arrayBuffer);
+  const texture = new DataTexture(
+    exr.data,
+    exr.width,
+    exr.height,
+    exr.format,
+    exr.type,
+  );
+  texture.needsUpdate = true;
+  return texture;
+}
+
+function ktxToDataTexture(
+  arrayBuffer: ArrayBuffer,
+  gl: THREE.WebGLRenderer,
+): Promise<THREE.CompressedTexture> {
+  return new Promise((res, rej) => {
+    const ktxLoader = getVKTX2Loader(gl);
+    ktxLoader.parse(arrayBuffer, texture => {
+      res(texture);
+    });
+  });
+}
 
 export default class VTextureLoader {
   static dispose() {
@@ -30,6 +55,47 @@ export default class VTextureLoader {
     }
     for (const disposable of disposables) {
       disposable.dispose?.();
+    }
+  }
+
+  static parseAsync(
+    arrayBuffer: ArrayBuffer,
+    option?: Partial<VTextureLoaderOption>,
+  ): Promise<THREE.Texture>;
+  static parseAsync(
+    url: string,
+    option?: Partial<VTextureLoaderOption>,
+  ): Promise<THREE.Texture>;
+  static parseAsync(
+    file: File,
+    option?: Partial<VTextureLoaderOption>,
+  ): Promise<THREE.Texture>;
+  static parseAsync(
+    param: File | string | ArrayBuffer,
+    option?: Partial<VTextureLoaderOption>,
+  ): Promise<THREE.Texture> {
+    if (param instanceof ArrayBuffer) {
+      if (!option?.ext) {
+        throw new Error('ext is required when using ArrayBuffer');
+      }
+
+      if (option?.ext === 'exr') {
+        return new Promise((res, rej) => {
+          console.log('exrToDataTexture', param);
+          res(exrToDataTexture(param));
+        });
+      }
+
+      if (option?.ext === 'ktx') {
+        if (!option?.gl) {
+          throw new Error('gl is required when using ktx');
+        }
+        return ktxToDataTexture(param, option.gl);
+      }
+
+      throw new Error('Unknown ext');
+    } else {
+      return VTextureLoader.loadAsync(param, option);
     }
   }
 
@@ -62,8 +128,12 @@ export default class VTextureLoader {
     }
     return loader.loadAsync(url).then(_texture => {
       const texture = _texture as THREE.Texture;
-      texture.channel = inputOption.channel;
-      texture.flipY = inputOption.flipY;
+      if (typeof inputOption.channel !== 'undefined') {
+        texture.channel = inputOption.channel;
+      }
+      if (typeof inputOption.flipY !== 'undefined') {
+        texture.flipY = inputOption.flipY;
+      }
       if (isExr) {
         texture.vUserData.isExr = true;
         if (isFile) {
@@ -97,17 +167,24 @@ export default class VTextureLoader {
 
       texture.needsUpdate = true;
 
-      return texture.hash.then(hash => {
-        if (!texture.vUserData) {
-          texture.vUserData = {};
-        }
+      const setHash = false;
+      if (setHash) {
+        return texture.hash.then(() => {
+          if (!texture.vUserData) {
+            texture.vUserData = {};
+          }
 
-        // path
-        const filename = (isFile ? fileOrUrl.name : fileOrUrl).split('/').pop();
-        texture.vUserData.path = filename;
+          // path
+          const filename = (isFile ? fileOrUrl.name : fileOrUrl)
+            .split('/')
+            .pop();
+          texture.vUserData.path = filename;
 
+          return texture;
+        });
+      } else {
         return texture;
-      });
+      }
     });
   }
 }

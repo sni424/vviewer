@@ -37,6 +37,7 @@ export const VTextureTypes: VTextureMapKey[] = [
   'transmissionMap',
   'thicknessMap',
 ];
+export type VTextureType = (typeof VTextureTypes)[number];
 
 window.threeStore = {
   [View.Shared]: undefined,

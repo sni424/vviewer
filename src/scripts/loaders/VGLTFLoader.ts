@@ -166,10 +166,15 @@ export default class VGLTFLoader extends GLTFLoader {
       //   setAtomValue(lightMapAtom, toLightMapObj);
       // }
 
-      // 최상단 scene을 부르면 하위를 돌면서 재귀로 hash
-      gltf.scene.hash.then(() => {
+      const setHash = false;
+      if (setHash) {
+        // 최상단 scene을 부르면 하위를 돌면서 재귀로 hash
+        gltf.scene.hash.then(() => {
+          onLoad(gltf);
+        });
+      } else {
         onLoad(gltf);
-      });
+      }
     }
 
     super.parse(data, path, customOnLoad, onError);
@@ -268,3 +273,6 @@ function getVUserDataLightMapURL(lightMap: string, isMobile?: boolean) {
     ? lightMap
     : `${ENV.base}` + ((isMobile ? 'mobile/' : '') + lightMap);
 }
+
+// 한 번 불러야 instance 생성
+new VGLTFLoader();
