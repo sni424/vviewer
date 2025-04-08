@@ -357,14 +357,14 @@ export default class Asset {
 
     const cached = localFileCache.get(fileId);
     if (cached) {
-      console.log('local cache hit', fileId, cached.state);
+      // console.log('local cache hit', fileId, cached.state);
       if (cached.state === 'pending') {
         return cached.data as Promise<T>;
       } else {
         return cached.data as T;
       }
     } else {
-      console.log('local cache miss', fileId);
+      // console.log('local cache miss', fileId);
     }
 
     const fname = file.name.toLowerCase();
@@ -399,13 +399,16 @@ export default class Asset {
         // scene을 돌면서 mesh, geometry, material, texture을 캐시에 등록
         registerLocalCache(scene);
 
-        localFileCache.set(fileId, {
-          state: 'loaded',
-          file,
-          data: scene,
-          type: 'glb',
+        const fname = file.name.split('/').pop();
+        return scene.updateHash(fname).then(() => {
+          localFileCache.set(fileId, {
+            state: 'loaded',
+            file,
+            data: scene,
+            type: 'glb',
+          });
+          return scene;
         });
-        return scene;
       });
       localFileCache.set(fileId, {
         state: 'pending',
@@ -427,13 +430,20 @@ export default class Asset {
     if (isMap) {
       const ext = fname.split('.').pop();
       const prom = VTextureLoader.loadAsync(file).then(texture => {
-        localFileCache.set(fileId, {
-          state: 'loaded',
-          file,
-          data: texture,
-          type: ext as LocalCacheType,
+        const hashStart = performance.now();
+
+        return texture.hash.then(() => {
+          const hashEnd = performance.now();
+          console.log('inner hash time', hashEnd - hashStart);
+
+          localFileCache.set(fileId, {
+            state: 'loaded',
+            file,
+            data: texture,
+            type: ext as LocalCacheType,
+          });
+          return texture;
         });
-        return texture;
       });
       localFileCache.set(fileId, {
         state: 'pending',

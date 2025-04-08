@@ -72,7 +72,7 @@ const useTestModelDragAndDrop = () => {
             return;
           }
 
-          setFiles(filteredFiles);
+          setFiles(prev => [...prev, ...filteredFiles]);
         })
         .finally(() => {
           event.dataTransfer.clearData();

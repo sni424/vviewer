@@ -21,27 +21,7 @@ const defaultOption: VTextureLoaderOption = {
 };
 
 const exrLoader = new EXRLoader();
-const imgLoader = new THREE.TextureLoader();
-const getLoader = (name: string, option: { gl?: THREE.WebGLRenderer }) => {
-  const ext = name.split('.').pop();
-  const isExr = ext === 'exr';
-  const isKtx = ext === 'ktx';
-  const isJpg = ext === 'jpg' || ext === 'jpeg';
-  const isPng = ext === 'png';
-
-  let loader: THREE.Loader;
-  if (isExr) {
-    loader = exrLoader;
-  } else if (isKtx) {
-    loader = getVKTX2Loader(option.gl);
-  } else if (isJpg || isPng) {
-    loader = imgLoader;
-  } else {
-    console.error('Invalid file type', name);
-    throw new Error('Invalid file type');
-  }
-  return loader! as THREE.Loader;
-};
+const textureLoader = new THREE.TextureLoader();
 
 export default class VTextureLoader {
   static dispose() {
@@ -74,11 +54,11 @@ export default class VTextureLoader {
       (isFile && fileOrUrl.name.toLowerCase().endsWith('.ktx')) ||
       (!isFile && (fileOrUrl as string).toLowerCase().endsWith('.ktx'));
     if (isExr) {
-      loader = new EXRLoader();
+      loader = exrLoader;
     } else if (isKtx) {
       loader = getVKTX2Loader(inputOption.gl);
     } else {
-      loader = new THREE.TextureLoader();
+      loader = textureLoader;
     }
     return loader.loadAsync(url).then(_texture => {
       const texture = _texture as THREE.Texture;
@@ -116,7 +96,18 @@ export default class VTextureLoader {
       }
 
       texture.needsUpdate = true;
-      return texture;
+
+      return texture.hash.then(hash => {
+        if (!texture.vUserData) {
+          texture.vUserData = {};
+        }
+
+        // path
+        const filename = (isFile ? fileOrUrl.name : fileOrUrl).split('/').pop();
+        texture.vUserData.path = filename;
+
+        return texture;
+      });
     });
   }
 }

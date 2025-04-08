@@ -83,6 +83,9 @@ THREE.BufferGeometry.prototype.updateHash = async function (): Promise<string> {
       this.vUserData = {};
     }
     this.vUserData.hash = hash;
+    if (!this.vUserData.id) {
+      this.vUserData.id = hash;
+    }
     return hash;
   });
 };

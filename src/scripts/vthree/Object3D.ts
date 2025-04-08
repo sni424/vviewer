@@ -48,7 +48,7 @@ declare module 'three' {
     get parentPath(): string;
 
     get hash(): Promise<string>;
-    updateHash(): Promise<string>;
+    updateHash(path?: string): Promise<string>;
   }
 }
 
@@ -191,8 +191,8 @@ THREE.Object3D.prototype.isSystemGenerated = function () {
   return this.isBoxHelper() || this.isXYZGizmo() || this.isTransformControl();
 };
 
-if (!Object.getOwnPropertyDescriptor(THREE.Mesh.prototype, 'hash')) {
-  Object.defineProperty(THREE.Mesh.prototype, 'hash', {
+if (!Object.getOwnPropertyDescriptor(THREE.Object3D.prototype, 'hash')) {
+  Object.defineProperty(THREE.Object3D.prototype, 'hash', {
     get: async function (): Promise<string> {
       if (this.userData.hash) {
         return Promise.resolve(this.userData.hash);
@@ -210,48 +210,57 @@ THREE.Object3D.prototype.updateHash = async function (
     this.userData = {};
   }
 
-  const geoHash = this.asMesh.geometry?.hash;
-  const matHash = this.asMesh.matPhysical?.hash;
+  // 자신에 대해 하기 전에 자식들을 다 돈다
+  const childrenHashes = this.children.map(child => child.updateHash(path));
 
-  return Promise.all([geoHash, matHash]).then(() => {
-    const excludes = ['uuid', 'id'];
-    const rawKeys = Object.keys(this) as (keyof THREE.MeshPhysicalMaterial)[];
+  return Promise.all(childrenHashes).then(() => {
+    const geoHash = this.asMesh.geometry?.hash;
+    const matHash = this.asMesh.matPhysical?.hash;
 
-    const filteredKeys = rawKeys
-      .filter(key => !excludes.includes(key))
-      .filter(key => !key.startsWith('_'));
+    return Promise.all([geoHash, matHash]).then(() => {
+      const excludes = ['uuid', 'id'];
+      const rawKeys = Object.keys(this) as (keyof THREE.MeshPhysicalMaterial)[];
 
-    type Primitive = string | number | boolean | null | undefined;
+      const filteredKeys = rawKeys
+        .filter(key => !excludes.includes(key))
+        .filter(key => !key.startsWith('_'));
 
-    const hashMap: Record<string, Primitive> = {};
+      type Primitive = string | number | boolean | null | undefined;
 
-    // 기본 정보
-    const resolvedPath = path + this.parentPath;
-    const fileName = this.vUserData?.fileName ?? '';
-    hashMap.path = resolvedPath;
-    hashMap.fileName = fileName;
+      const hashMap: Record<string, Primitive> = {};
 
-    filteredKeys.forEach(key => {
-      const value = (this as any)[key];
-      const typeofValue = typeof value;
-      if (
-        typeofValue === 'string' ||
-        typeofValue === 'number' ||
-        typeofValue === 'boolean' ||
-        typeofValue === 'undefined' ||
-        value === null
-      ) {
-        hashMap[key] = value;
-      } else if (
-        (value as THREE.BufferGeometry).isBufferGeometry ||
-        (value as THREE.Material).isMaterial
-      ) {
-        hashMap[key] = value.vUserData.hash;
+      // 기본 정보
+      const resolvedPath = path + this.parentPath;
+      const fileName = this.vUserData?.fileName ?? '';
+      hashMap.path = resolvedPath;
+      hashMap.fileName = fileName;
+
+      filteredKeys.forEach(key => {
+        const value = (this as any)[key];
+        const typeofValue = typeof value;
+        if (
+          typeofValue === 'string' ||
+          typeofValue === 'number' ||
+          typeofValue === 'boolean' ||
+          typeofValue === 'undefined' ||
+          value === null
+        ) {
+          hashMap[key] = value;
+        } else if (
+          (value as THREE.BufferGeometry).isBufferGeometry ||
+          (value as THREE.Material).isMaterial
+        ) {
+          hashMap[key] = value.vUserData.hash;
+        }
+      });
+
+      const hash = objectHash(hashMap);
+      this.vUserData.hash = hash;
+      if (!this.vUserData.id) {
+        this.vUserData.id = hash;
       }
-    });
 
-    const hash = objectHash(hashMap);
-    this.vUserData.hash = hash;
-    return hash;
+      return hash;
+    });
   });
 };

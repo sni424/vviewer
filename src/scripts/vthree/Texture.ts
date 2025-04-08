@@ -52,6 +52,9 @@ THREE.Texture.prototype.updateHash = async function (): Promise<string> {
   if ((this as THREE.DataTexture).isDataTexture) {
     return hashDataTexture(this as THREE.DataTexture).then(hash => {
       this.vUserData.hash = hash;
+      if (!this.vUserData.id) {
+        this.vUserData.id = hash;
+      }
       return hash;
     });
   }
@@ -59,12 +62,18 @@ THREE.Texture.prototype.updateHash = async function (): Promise<string> {
   if (Boolean(this.image)) {
     return hashImageData(this.image).then(hash => {
       this.vUserData.hash = hash;
+      if (!this.vUserData.id) {
+        this.vUserData.id = hash;
+      }
       return hash;
     });
   }
 
   const hash = objectHash(this);
   this.vUserData.hash = hash;
+  if (!this.vUserData.id) {
+    this.vUserData.id = hash;
+  }
   console.warn('이 텍스쳐는 해시할 수 없음, objectHash 이용함', this, hash);
   return hash;
 };

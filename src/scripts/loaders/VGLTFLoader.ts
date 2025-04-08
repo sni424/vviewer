@@ -1,3 +1,6 @@
+// 최상단 임포트
+import * as THREE from 'VTHREE';
+
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
 import 'VTHREE';
@@ -7,9 +10,7 @@ import {
   GLTFLoader,
 } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { KTX2Loader } from 'three/examples/jsm/loaders/KTX2Loader.js';
-import * as THREE from 'VTHREE';
 import { ENV, Layer } from '../../Constants.ts';
-import { setThreeId } from '../utils.ts';
 import { getVKTX2Loader } from './VKTX2Loader.ts';
 
 export default class VGLTFLoader extends GLTFLoader {
@@ -92,7 +93,7 @@ export default class VGLTFLoader extends GLTFLoader {
         if (object.type === 'Mesh') {
           const mesh = object as THREE.Mesh;
           const mat = mesh.material as THREE.MeshBasicMaterial;
-          setThreeId(mesh);
+          // setThreeId(mesh);
 
           const fileAndParentPath = path + object.parentPath + object.name;
           object.vUserData.path = fileAndParentPath;
@@ -165,15 +166,16 @@ export default class VGLTFLoader extends GLTFLoader {
       //   setAtomValue(lightMapAtom, toLightMapObj);
       // }
 
-      onLoad(gltf);
+      // 최상단 scene을 부르면 하위를 돌면서 재귀로 hash
+      gltf.scene.hash.then(() => {
+        onLoad(gltf);
+      });
     }
 
     super.parse(data, path, customOnLoad, onError);
   }
 
   async loadAsync(fileOrUrl: File | string) {
-    let retval: ReturnType<GLTFLoader['loadAsync']>;
-
     if (typeof fileOrUrl === 'string') {
       return super.loadAsync(fileOrUrl);
     } else {

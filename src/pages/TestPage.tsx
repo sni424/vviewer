@@ -54,8 +54,6 @@ const mesh2Asset: VRemoteAsset = {
   material: matAsset,
 };
 
-function useModelDragAndDrop() {}
-
 function TestPage() {
   const sceneRef = useRef<THREE.Scene>(new THREE.Scene());
   const [asset, setAsset] = useState<Asset[]>([]);
@@ -97,7 +95,13 @@ function TestPage() {
               print('Asset:', asset, proms);
               Promise.all(proms)
                 .then(loadedAssets => {
-                  print(loadedAssets);
+                  const hashStart = performance.now();
+                  Promise.all(loadedAssets.map(a => a.vUserData.hash)).then(
+                    hash => {
+                      const hashEnd = performance.now();
+                      print('Hash:', hash, hashEnd - hashStart, 'ms');
+                    },
+                  );
                   setLoaded(loadedAssets);
                   // debugger;
                 })

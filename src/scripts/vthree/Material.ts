@@ -181,6 +181,9 @@ THREE.Material.prototype.updateHash = async function (): Promise<string> {
 
     const hash = objectHash(hashMap);
     this.vUserData.hash = hash;
+    if (!this.vUserData.id) {
+      this.vUserData.id = hash;
+    }
     return hash;
   });
 };
