@@ -63,12 +63,21 @@ import './Object3D.ts';
 
 // 구현체 임포트
 import './Camera.ts';
-import './Material.ts';
 import './Matrix4.ts';
-import './Mesh.ts';
 import './Shader.ts';
-import './Texture.ts';
 import './Vector3.ts';
+
+// 하위 개념부터 임포트 - texture
+import './Texture.ts';
+
+// material
+import './Material.ts';
+
+// geometry
+import './BufferGeometry.ts';
+
+//mesh
+import './Mesh.ts';
 
 export * from 'three';
 export { THREE };

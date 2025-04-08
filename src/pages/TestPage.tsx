@@ -131,6 +131,44 @@ function TestPage() {
           >
             업로드
           </button>
+          <button
+            onClick={() => {
+              const scene = sceneRef.current;
+              const proms: Promise<any>[] = [];
+              const start = performance.now();
+              scene.traverse(o => {
+                console.log(o.name);
+                if (o.asMesh.isMesh) {
+                  proms.push(o.asMesh.hash);
+                }
+              });
+              Promise.all(proms).then(hashes => {
+                const end = performance.now();
+                console.log('해시 완료', hashes, end - start, 'ms');
+                scene.traverse(o => {
+                  if (o.asMesh.isMesh) {
+                    console.log('filename', o.vUserData?.fileName);
+                    const mesh = o.asMesh;
+                    const geo = mesh.geometry;
+                    const mat = mesh.matPhysical;
+                    const tex = mat.textures();
+                    const printHash = async () => {
+                      print(mesh.name, await mesh.hash);
+                      print('  - ', geo.name, await geo.hash);
+                      print('  - ', mat.name, await mat.hash);
+                      tex.forEach(async t => {
+                        print('    - ', t.name, await t.hash);
+                      });
+                    };
+                    printHash();
+                    print('해시 완료', mesh, geo, mat, tex);
+                  }
+                });
+              });
+            }}
+          >
+            해시
+          </button>
         </div>
         <ObjectViewer data={asset}></ObjectViewer>
       </div>

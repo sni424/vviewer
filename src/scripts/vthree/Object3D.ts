@@ -1,4 +1,5 @@
 import { RootState } from '@react-three/fiber';
+import objectHash from 'object-hash';
 import * as THREE from 'three';
 import type { TransformControlsPlane } from 'three/examples/jsm/controls/TransformControls.js';
 import { Layer } from '../../Constants';
@@ -41,6 +42,13 @@ declare module 'three' {
     materials(): THREE.Material[];
 
     updateAllMaterials(threeExports?: RootState): void;
+
+    // 부모를 순회하면서 이름을 가져옴
+    // ex) 'parent1/parent2/parent3'
+    get parentPath(): string;
+
+    get hash(): Promise<string>;
+    updateHash(): Promise<string>;
   }
 }
 
@@ -51,6 +59,19 @@ if (!Object.getOwnPropertyDescriptor(THREE.Object3D.prototype, 'asMesh')) {
     },
     set: function () {
       throw new Error('asMesh is read-only');
+    },
+  });
+}
+
+if (!Object.getOwnPropertyDescriptor(THREE.Object3D.prototype, 'parentPath')) {
+  Object.defineProperty(THREE.Object3D.prototype, 'parentPath', {
+    get: function () {
+      const path: string[] = [];
+      this.traverseAncestors((parent: THREE.Object3D) => {
+        path.push(parent.name);
+      });
+      path.reverse();
+      return path.join('/');
     },
   });
 }
@@ -168,4 +189,69 @@ THREE.Object3D.prototype.isXYZGizmo = function () {
 
 THREE.Object3D.prototype.isSystemGenerated = function () {
   return this.isBoxHelper() || this.isXYZGizmo() || this.isTransformControl();
+};
+
+if (!Object.getOwnPropertyDescriptor(THREE.Mesh.prototype, 'hash')) {
+  Object.defineProperty(THREE.Mesh.prototype, 'hash', {
+    get: async function (): Promise<string> {
+      if (this.userData.hash) {
+        return Promise.resolve(this.userData.hash);
+      }
+
+      return this.updateHash();
+    },
+  });
+}
+
+THREE.Object3D.prototype.updateHash = async function (
+  path = '',
+): Promise<string> {
+  if (!this.userData) {
+    this.userData = {};
+  }
+
+  const geoHash = this.asMesh.geometry?.hash;
+  const matHash = this.asMesh.matPhysical?.hash;
+
+  return Promise.all([geoHash, matHash]).then(() => {
+    const excludes = ['uuid', 'id'];
+    const rawKeys = Object.keys(this) as (keyof THREE.MeshPhysicalMaterial)[];
+
+    const filteredKeys = rawKeys
+      .filter(key => !excludes.includes(key))
+      .filter(key => !key.startsWith('_'));
+
+    type Primitive = string | number | boolean | null | undefined;
+
+    const hashMap: Record<string, Primitive> = {};
+
+    // 기본 정보
+    const resolvedPath = path + this.parentPath;
+    const fileName = this.vUserData?.fileName ?? '';
+    hashMap.path = resolvedPath;
+    hashMap.fileName = fileName;
+
+    filteredKeys.forEach(key => {
+      const value = (this as any)[key];
+      const typeofValue = typeof value;
+      if (
+        typeofValue === 'string' ||
+        typeofValue === 'number' ||
+        typeofValue === 'boolean' ||
+        typeofValue === 'undefined' ||
+        value === null
+      ) {
+        hashMap[key] = value;
+      } else if (
+        (value as THREE.BufferGeometry).isBufferGeometry ||
+        (value as THREE.Material).isMaterial
+      ) {
+        hashMap[key] = value.vUserData.hash;
+      }
+    });
+
+    const hash = objectHash(hashMap);
+    this.vUserData.hash = hash;
+    return hash;
+  });
 };

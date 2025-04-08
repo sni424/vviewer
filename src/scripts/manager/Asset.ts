@@ -1,12 +1,11 @@
 import objectHash from 'object-hash';
+import { v5 } from 'uuid';
 import { THREE, VTextureTypes } from 'VTHREE';
 import VGLTFLoader from '../loaders/VGLTFLoader';
 import VTextureLoader from '../loaders/VTextureLoader';
-import { v5 } from 'uuid';
 
-const NAMESPACE = "ASSET_TEST";
-const hashString = (str:string)=>v5(str, NAMESPACE);
-
+const NAMESPACE = 'ASSET_TEST';
+const hashString = (str: string) => v5(str, NAMESPACE);
 
 export const VRemoteAssetTypes = [
   'mesh',
@@ -27,6 +26,8 @@ export type VTextureType = (typeof VTextureTypes)[number];
 //   target?:VTextureType;
 // };
 
+// !TODO : GLB 로드 시 같은 경로의 메시/지오/머티리얼/텍스쳐인 경우 같은 식별자를 가질 수 있도록.
+// 노트 참조
 
 export type VRemoteAssetMesh = {
   id: string;
@@ -392,8 +393,7 @@ export default class Asset {
     // case 1. glb
     if (fname.endsWith('.glb')) {
       new VGLTFLoader();
-      const url = URL.createObjectURL(file);
-      const prom = VGLTFLoader.instance.loadAsync(url).then(glb => {
+      const prom = VGLTFLoader.instance.loadAsync(file).then(glb => {
         const scene = glb.scene;
 
         // scene을 돌면서 mesh, geometry, material, texture을 캐시에 등록
@@ -405,7 +405,6 @@ export default class Asset {
           data: scene,
           type: 'glb',
         });
-        URL.revokeObjectURL(url);
         return scene;
       });
       localFileCache.set(fileId, {

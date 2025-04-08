@@ -1,4 +1,6 @@
+import objectHash from 'object-hash';
 import * as THREE from 'three';
+import { VTextureTypes } from 'VTHREE';
 import {
   DEFAULT_MATERIAL_SHADER,
   defaultUniforms,
@@ -126,8 +128,62 @@ declare module 'three' {
     _removeUniform: MATERIAL_UNIFORM[];
 
     textures(): THREE.Texture[];
+
+    get hash(): Promise<string>;
+    updateHash(): Promise<string>;
   }
 }
+
+if (!Object.prototype.hasOwnProperty.call(THREE.Material.prototype, 'hash')) {
+  Object.defineProperty(THREE.Material.prototype, 'hash', {
+    get: async function (): Promise<string> {
+      if (this.vUserData?.hash) {
+        return Promise.resolve(this.vUserData.hash);
+      }
+
+      return this.updateHash();
+    },
+  });
+}
+
+THREE.Material.prototype.updateHash = async function (): Promise<string> {
+  if (!this.vUserData) {
+    this.vUserData = {};
+  }
+
+  return Promise.all(this.textures().map(texture => texture.hash)).then(() => {
+    const excludes = [...VTextureTypes, 'uuid', 'id'];
+    const rawKeys = Object.keys(this) as (keyof THREE.MeshPhysicalMaterial)[];
+
+    const filteredKeys = rawKeys
+      .filter(key => !excludes.includes(key))
+      .filter(key => !key.startsWith('_'));
+
+    type Primitive = string | number | boolean | null | undefined;
+
+    const hashMap: Record<string, Primitive> = {};
+
+    filteredKeys.forEach(key => {
+      const value = (this as any)[key];
+      const typeofValue = typeof value;
+      if (
+        typeofValue === 'string' ||
+        typeofValue === 'number' ||
+        typeofValue === 'boolean' ||
+        typeofValue === 'undefined' ||
+        value === null
+      ) {
+        hashMap[key] = value;
+      } else if ((value as THREE.Texture).isTexture && value.vUserData?.hash) {
+        hashMap[key] = (value as THREE.Texture).vUserData.hash;
+      }
+    });
+
+    const hash = objectHash(hashMap);
+    this.vUserData.hash = hash;
+    return hash;
+  });
+};
 
 THREE.Material.prototype.removeUniform = function (...key: MATERIAL_UNIFORM[]) {
   if (!this._removeUniform) {

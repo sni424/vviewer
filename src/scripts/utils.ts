@@ -1677,3 +1677,54 @@ export function setThreeId(obj: { vUserData?: VUserData; uuid: string }) {
 
   return obj;
 }
+
+export function getImageData(image: HTMLImageElement | ImageBitmap): ImageData {
+  const canvas = document.createElement('canvas');
+  canvas.width = image.width;
+  canvas.height = image.height;
+
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('Canvas context not available');
+
+  ctx.drawImage(image, 0, 0);
+
+  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+  canvas.remove();
+
+  return imageData;
+}
+
+// three.js의 텍스쳐.image를 받음
+export async function hashImageData(
+  image: HTMLImageElement | ImageBitmap,
+): Promise<string> {
+  const imageData = getImageData(image).data;
+
+  return crypto.subtle.digest('SHA-256', imageData.buffer).then(hashBuffer => {
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  });
+}
+
+export async function hashDataTexture(texture: THREE.DataTexture) {
+  const data = (texture.image as { data: ArrayBufferView }).data;
+  const buffer = data.buffer.slice(
+    data.byteOffset,
+    data.byteOffset + data.byteLength,
+  );
+
+  return crypto.subtle.digest('SHA-256', buffer).then(hashBuffer => {
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  });
+}
+
+export function getParentPath(o: THREE.Object3D): string {
+  const path: string[] = [];
+  o.traverseAncestors(parent => {
+    path.push(parent.name);
+  });
+  path.reverse();
+  return path.join('/');
+}

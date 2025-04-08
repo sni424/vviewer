@@ -94,6 +94,10 @@ export default class VGLTFLoader extends GLTFLoader {
           const mat = mesh.material as THREE.MeshBasicMaterial;
           setThreeId(mesh);
 
+          const fileAndParentPath = path + object.parentPath + object.name;
+          object.vUserData.path = fileAndParentPath;
+          object.vUserData.fileName = path?.split('/').pop() ?? '';
+
           if (object.name === '프레임') {
             mat.side = THREE.DoubleSide;
           }
