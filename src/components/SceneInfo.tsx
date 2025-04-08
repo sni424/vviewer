@@ -46,7 +46,7 @@ import {
   uploadingAtom,
   useBenchmark,
   useEnvParams,
-  useToast
+  useToast,
 } from '../scripts/atoms';
 import {
   loadPostProcessAndSet,
@@ -219,11 +219,13 @@ const GeneralButtons = () => {
     return null;
   }
 
-  const {scene} = threeExports;
+  const { scene } = threeExports;
 
-  async function uploadLightMaps(isMobile?: boolean) {
-    if (!confirm('라이트맵 업로드 하시겠습니까?')) {
-      return;
+  async function uploadLightMaps(isSceneUpload: boolean, isMobile?: boolean) {
+    if (!isSceneUpload) {
+      if (!confirm('라이트맵 업로드 하시겠습니까?')) {
+        return;
+      }
     }
     openToast('라이트맵 업로드 중...', { autoClose: false });
     setUploading(true);
@@ -241,13 +243,19 @@ const GeneralButtons = () => {
         if (o.type === 'Mesh') {
           const mesh = o as THREE.Mesh;
           const mat = mesh.matStandard;
-          if (mat.vUserData.lightMap && mat.vUserData.lightMap.endsWith('.exr')) {
-            mat.vUserData.lightMap = "mobile/" + mat.vUserData.lightMap.replace('.exr', '.ktx');
+          if (
+            mat.vUserData.lightMap &&
+            mat.vUserData.lightMap.endsWith('.exr')
+          ) {
+            mat.vUserData.lightMap =
+              'mobile/' + mat.vUserData.lightMap.replace('.exr', '.ktx');
           }
         }
-      })
+      });
       openToast('GLB 준비 중..', { autoClose: false, override: true });
-      const glbArr = await new VGLTFExporter().parseAsync(scene, { binary: true });
+      const glbArr = await new VGLTFExporter().parseAsync(scene, {
+        binary: true,
+      });
       if (glbArr instanceof ArrayBuffer) {
         const blob = new Blob([glbArr], {
           type: 'application/octet-stream',
@@ -280,11 +288,18 @@ const GeneralButtons = () => {
           if (o.type === 'Mesh') {
             const mesh = o as THREE.Mesh;
             const mat = mesh.matStandard;
-            if (mat.vUserData.lightMap && mat.vUserData.lightMap.endsWith('.ktx') && mat.vUserData.isExr) {
-              mat.vUserData.lightMap = mat.vUserData.lightMap.replace('.ktx', '.exr');
+            if (
+              mat.vUserData.lightMap &&
+              mat.vUserData.lightMap.endsWith('.ktx') &&
+              mat.vUserData.isExr
+            ) {
+              mat.vUserData.lightMap = mat.vUserData.lightMap.replace(
+                '.ktx',
+                '.exr',
+              );
             }
           }
-        })
+        });
       }
     }
   }
@@ -425,7 +440,7 @@ const GeneralButtons = () => {
 
   async function uploadScene() {
     if (confirm('씬을 업로드 하시겠습니까?')) {
-      await uploadLightMaps();
+      await uploadLightMaps(true);
       await uploadModels(true);
       alert('씬 업로드 완료');
     }
@@ -433,7 +448,7 @@ const GeneralButtons = () => {
 
   async function mobileUpload() {
     if (confirm('모바일 씬을 업로드 하시겠습니까?')) {
-      await uploadLightMaps(true);
+      await uploadLightMaps(true, true);
       await uploadMobileModels();
     }
   }
@@ -449,7 +464,7 @@ const GeneralButtons = () => {
       <button disabled={isUploading} onClick={() => uploadModels()}>
         GLB 만 업로드
       </button>
-      <button disabled={isUploading} onClick={uploadLightMaps as any}>
+      <button disabled={isUploading} onClick={() => uploadLightMaps(false)}>
         라이트맵만 업로드
       </button>
       <button
