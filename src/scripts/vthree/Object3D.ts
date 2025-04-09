@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import type { TransformControlsPlane } from 'three/examples/jsm/controls/TransformControls.js';
 import { Layer } from '../../Constants';
 import { resetGL } from '../utils';
+import './Object3DSerialize';
 import { type VUserData } from './VTHREETypes';
 
 declare module 'three' {
@@ -40,6 +41,8 @@ declare module 'three' {
     meshes(): THREE.Mesh[];
 
     materials(): THREE.Material[];
+
+    geometries(): THREE.BufferGeometry[];
 
     updateAllMaterials(threeExports?: RootState): void;
 
@@ -111,6 +114,16 @@ THREE.Object3D.prototype.materials = function () {
   this.traverse(node => {
     if (node instanceof THREE.Mesh && node.material) {
       result.push(node.material);
+    }
+  });
+  return result;
+};
+
+THREE.Object3D.prototype.geometries = function () {
+  const result: THREE.BufferGeometry[] = [];
+  this.traverse(node => {
+    if (node instanceof THREE.Mesh && node.geometry) {
+      result.push(node.geometry);
     }
   });
   return result;

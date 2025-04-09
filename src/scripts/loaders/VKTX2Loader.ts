@@ -19,11 +19,50 @@ export default class VKTX2Loader extends KTX2Loader {
 
     return this;
   }
+
+  parse(
+    buffer: ArrayBuffer,
+    onLoad?: (texture: THREE.CompressedTexture) => void,
+    onError?: (err: unknown) => void,
+  ): void {
+    const copied = buffer.slice(0);
+    const onLoadIntercepter: (
+      texture: THREE.CompressedTexture,
+    ) => void = texture => {
+      if (!texture.vUserData) {
+        texture.vUserData = {};
+      }
+      texture.vUserData.ktx2Buffer = copied;
+
+      return onLoad?.(texture);
+    };
+    super.parse(buffer, onLoadIntercepter, onError);
+  }
 }
 
 export function getVKTX2Loader(gl?: THREE.WebGLRenderer) {
   if (!VKTX2Loader.instance) {
-    new VKTX2Loader(gl);
+    let renderer = gl;
+    if (!gl) {
+      // throw new Error('WebGLRenderer is required');
+      const canvas = document.createElement('canvas');
+      canvas.width = 1;
+      canvas.height = 1;
+      const ctx = canvas.getContext('webgl2');
+      if (!ctx) {
+        throw new Error('WebGL2 not supported');
+      }
+
+      renderer = new THREE.WebGLRenderer({
+        canvas,
+        alpha: true,
+        antialias: true,
+        powerPreference: 'high-performance',
+        context: ctx,
+      });
+    }
+
+    new VKTX2Loader(renderer);
   }
   return VKTX2Loader.instance;
 }

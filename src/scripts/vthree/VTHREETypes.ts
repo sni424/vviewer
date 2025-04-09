@@ -154,6 +154,8 @@ export interface VUserData {
 
   path?: string; // glb파일-그룹-...-메시까지의 경로를 로드 시 스트링으로 가짐
   fileName?: string; // 파일로부터 로드됐으면 파일이름. 디렉토리경로는 떼고 파일 이름만
+
+  ktx2Buffer?: ArrayBuffer; // ktx2 텍스쳐 로드 시 데이터 저장해두는 곳
 }
 
 export const MATERIAL_DEFINES = [

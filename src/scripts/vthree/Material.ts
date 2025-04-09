@@ -843,14 +843,15 @@ THREE.Material.prototype.remove = function <T extends keyof MaterialApplyType>(
 };
 
 THREE.Material.prototype.textures = function () {
-  const textures: THREE.Texture[] = [];
+  const textures: Set<THREE.Texture> = new Set();
 
   for (const key in this) {
     const value = (this as any)[key];
     if ((value as THREE.Texture)?.isTexture) {
-      textures.push(value);
+      // textures.push(value);
+      textures.add(value);
     }
   }
 
-  return textures;
+  return Array.from(textures);
 };

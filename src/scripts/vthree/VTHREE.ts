@@ -59,9 +59,6 @@ window.getThree = (view: View = View.Shared) => {
   return window.threeStore[view];
 };
 
-// traverse때문에 먼저 임포트
-import './Object3D.ts';
-
 // 구현체 임포트
 import './Camera.ts';
 import './Matrix4.ts';
@@ -76,6 +73,8 @@ import './Material.ts';
 
 // geometry
 import './BufferGeometry.ts';
+
+import './Object3D.ts';
 
 //mesh
 import './Mesh.ts';

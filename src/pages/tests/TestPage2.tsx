@@ -176,6 +176,25 @@ function TestPage() {
           >
             해시
           </button>
+          <button
+            onClick={() => {
+              const geo = sceneRef.current.geometries();
+              console.log(geo);
+              geo.forEach(g => {
+                console.log(g, g.toJSON());
+              });
+
+              const mats = sceneRef.current.materials();
+              mats.forEach(m => {
+                if (m.standard.map) {
+                  m.standard.map.anisotropy = 5000;
+                }
+                console.log(m, m.toJSON());
+              });
+            }}
+          >
+            Geo
+          </button>
         </div>
         <ObjectViewer data={asset}></ObjectViewer>
       </div>

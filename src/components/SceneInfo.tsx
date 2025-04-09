@@ -43,7 +43,7 @@ import {
   uploadingAtom,
   useBenchmark,
   useEnvParams,
-  useToast
+  useToast,
 } from '../scripts/atoms';
 import {
   loadPostProcessAndSet,
@@ -430,6 +430,41 @@ const GeneralButtons = () => {
       </button>
       <button onClick={handleResetSettings}>카메라 세팅 초기화</button>
       <button onClick={recompileAsync}>리컴파일</button>
+      <button
+        onClick={() => {
+          const ktxs = threeExports
+            .scene!.meshes()
+            .find(mesh => mesh.name === '침실2_DP3002_4')!
+            .matStandard!.textures()
+            .map((t, i) =>
+              t.vUserData.ktx2Buffer
+                ? {
+                    name: i,
+                    buffer: t.vUserData.ktx2Buffer,
+                  }
+                : undefined,
+            )
+            .filter(Boolean);
+          ktxs.forEach(({ name, buffer }) => {
+            // download as ktx file
+            name = name + '.ktx';
+            const blob = new Blob([buffer], {
+              type: 'application/octet-stream',
+            });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+
+            a.href = url;
+            a.download = name;
+            a.click();
+            URL.revokeObjectURL(url);
+
+            document.body.removeChild(a);
+          });
+        }}
+      >
+        ktx다운로드
+      </button>
     </section>
   );
 };

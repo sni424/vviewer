@@ -1,10 +1,7 @@
 import { THREE } from 'VTHREE';
-import { Matrix4Array } from '../../types';
 
 declare module 'three' {
   interface Matrix4 {
-    toArray(): Matrix4Array;
-
     decomposed(): [Vector3, THREE.Quaternion, Vector3];
   }
 }
