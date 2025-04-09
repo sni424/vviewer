@@ -1,6 +1,6 @@
 import { useAtom } from 'jotai';
 import { useEffect, useRef, useState } from 'react';
-import { RGBELoader } from 'three/examples/jsm/Addons.js';
+import { EXRLoader, RGBELoader } from 'three/examples/jsm/Addons.js';
 import { THREE } from 'VTHREE';
 import { skyBoxAtom } from '../scripts/atoms';
 
@@ -64,7 +64,6 @@ const SkyBoxPanel = () => {
         tex.magFilter = THREE.LinearFilter;
         tex.generateMipmaps = false;
         tex.colorSpace = THREE.SRGBColorSpace;
-        tex.flipY = true;
 
         setSkyBoxInfo(prev => ({
           ...prev,
@@ -81,7 +80,20 @@ const SkyBoxPanel = () => {
           texture.magFilter = THREE.LinearFilter;
           texture.generateMipmaps = false;
           texture.colorSpace = THREE.SRGBColorSpace;
-          texture.flipY = true;
+
+          setSkyBoxInfo(prev => ({
+            ...prev,
+            texture: texture,
+          }));
+        });
+      } else if (file.name.includes('.exr')) {
+        const url = URL.createObjectURL(file);
+        new EXRLoader().load(url, function (texture, textureData) {
+          texture.mapping = THREE.EquirectangularReflectionMapping;
+          texture.minFilter = THREE.LinearFilter;
+          texture.magFilter = THREE.LinearFilter;
+          texture.generateMipmaps = false;
+          texture.colorSpace = THREE.SRGBColorSpace;
           setSkyBoxInfo(prev => ({
             ...prev,
             texture: texture,
@@ -213,7 +225,18 @@ const SkyBoxPanel = () => {
                 </div>
               </div>
             )}
-
+            <div>
+              <label>flipY</label>
+              <input
+                type="checkbox"
+                id="isoView"
+                name="isoView"
+                checked={skyBoxInfo.flipY}
+                onChange={e => {
+                  setSkyBoxInfo(prev => ({ ...prev, flipY: !prev.flipY }));
+                }}
+              />
+            </div>
             {/* 공통 속성: 강도 */}
             <SliderInput
               label="강도"
