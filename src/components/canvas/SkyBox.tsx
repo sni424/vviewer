@@ -1,5 +1,5 @@
 import { useThree } from '@react-three/fiber';
-import { useAtomValue } from 'jotai';
+import { useAtom } from 'jotai';
 import { useEffect, useRef } from 'react';
 import { THREE } from 'VTHREE';
 import { skyBoxAtom } from '../../scripts/atoms';
@@ -7,7 +7,7 @@ import { skyBoxAtom } from '../../scripts/atoms';
 const SkyBoxMesh = () => {
   const { scene } = useThree();
   const meshRef = useRef<THREE.Mesh>(null);
-  const skyBoxInfo = useAtomValue(skyBoxAtom);
+  const [skyBoxInfo, setSkyBoxAtom] = useAtom(skyBoxAtom);
 
   // 한 번만 생성하도록 useMemo 사용
 
@@ -37,20 +37,16 @@ const SkyBoxMesh = () => {
   ]);
 
   useEffect(() => {
-    if (meshRef.current && skyBoxInfo.texture) {
-      // meshRef.current.material는 Material 또는 Material[]일 수 있음
-      const { material } = meshRef.current;
-      if (Array.isArray(material)) {
-        material.forEach(mat => {
-          // 배열일 경우 각각의 material에 대해 needsUpdate를 true로 설정
-          mat.needsUpdate = true;
-        });
-      } else {
-        // 단일 material인 경우 바로 needsUpdate 설정
-        material.needsUpdate = true;
-      }
+    if (skyBoxInfo.texture) {
+      const cloned = skyBoxInfo.texture.clone();
+      cloned.flipY = !skyBoxInfo.flipY;
+      setSkyBoxAtom(pre => ({
+        ...pre,
+        texture: cloned,
+      }));
+      cloned.needsUpdate = true;
     }
-  }, [skyBoxInfo.texture]);
+  }, [skyBoxInfo.flipY]);
 
   return (
     <>
