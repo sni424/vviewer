@@ -177,38 +177,8 @@ const GeneralButtons = () => {
   const threeExports = useAtomValue(threeExportsAtom);
   const { openToast, closeToast } = useToast();
   const navigate = useNavigate();
-  const [dpcMode, setDPCMode] = useAtom(DPCModeAtom);
-  const dpcModalRef = useRef(null);
-  const [dp, setDP] = useAtom(DPAtom);
   const { addBenchmark } = useBenchmark();
   const [isUploading, setUploading] = useAtom(uploadingAtom);
-
-  // DPC Modal 모드에 따라 사이즈 변경
-  useEffect(() => {
-    const styles = {
-      tree: {
-        width: '20%',
-        marginLeft: 'auto',
-        marginBottom: 'auto',
-      },
-      file: {
-        width: '80%',
-        marginLeft: 0,
-        marginBottom: 0,
-      },
-      select: {
-        width: '35%',
-        marginLeft: 0,
-        marginBottom: 0,
-      },
-    };
-    if (dpcModalRef.current) {
-      const styleMode = styles['file'];
-      Object.entries(styleMode).map(([key, value]) => {
-        (dpcModalRef.current as any).style[key] = value;
-      });
-    }
-  }, [dpcModalRef.current, dpcMode]);
 
   const handleResetSettings = async () => {
     await defaultSettings();

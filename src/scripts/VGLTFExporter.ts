@@ -63,8 +63,16 @@ export default class VGLTFExporter extends GLTFExporter {
     onError: (error: ErrorEvent) => void,
     options?: GLTFExporterOptions,
   ): void {
-    const cloned = this.onBeforeParse(input);
+    const cloned = this.onBeforeParse(input) as THREE.Object3D;
     console.log('onBeforeParse Done');
+    cloned.traverseAll(o => {
+      if (o.type === 'Mesh') {
+        const mat = (o as THREE.Mesh).matPhysical;
+        if (mat.type === 'MeshPhysicalMaterial') {
+          mat.vUserData.transmission = mat.transmission;
+        }
+      }
+    })
     super.parse(cloned, onDone, onError, options);
   }
 
