@@ -18,9 +18,9 @@ const SkyBoxMesh = ({ texture }: { texture: THREE.Texture }) => {
         >
           <sphereGeometry args={[15, 32, 32]} />
           <meshStandardMaterial
-            emissive="white"
+            emissive="#e6faff"
             emissiveMap={texture}
-            emissiveIntensity={1}
+            emissiveIntensity={4}
             side={THREE.DoubleSide}
             clippingPlanes={[]}
           />

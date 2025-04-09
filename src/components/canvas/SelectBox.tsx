@@ -3,11 +3,12 @@ import { useAtomValue } from 'jotai';
 import { useRef } from 'react';
 import { THREE } from 'VTHREE';
 import { Layer } from '../../Constants';
-import { selectedAtom, treeScrollToAtom } from '../../scripts/atoms';
+import { selectedAtom, testAtom, treeScrollToAtom } from '../../scripts/atoms';
 
 const SelectBox = () => {
   const { scene } = useThree();
   const selecteds = useAtomValue(selectedAtom);
+  const {showSelectBox} = useAtomValue(testAtom);
   const scrollSelected = useAtomValue(treeScrollToAtom);
   const objects = selecteds
     .map(uuid => scene.getObjectByProperty('uuid', uuid))
@@ -51,7 +52,7 @@ const SelectBox = () => {
 
   return (
     <>
-      {meshes.map((mesh, i) => {
+      {showSelectBox && meshes.map((mesh, i) => {
         const cloned = mesh.clone();
         if (scrollSelected === mesh.uuid) {
           cloned.material = orangeMatRef.current;

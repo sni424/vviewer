@@ -496,8 +496,11 @@ export default class ReflectionProbe {
     scene.traverse(o => {
       if (o.type === 'Mesh') {
         const mat = (o as THREE.Mesh).material as THREE.MeshPhysicalMaterial;
-        if (mat.type === 'MeshPhysicalMaterial') {
+        if (mat.type === 'MeshPhysicalMaterial' && mat.transmission > 0) {
+          // Transmission > 0 일 때 opacity => 0.2 로 설정 후 촬영
           transmissionChanges[mat.uuid] = mat.transmission;
+          mat.transparent = true;
+          mat.opacity = 0.2;
           mat.transmission = 0;
         }
       }
@@ -552,6 +555,8 @@ export default class ReflectionProbe {
         const mat = (o as THREE.Mesh).material as THREE.MeshPhysicalMaterial;
         if (mat.type === 'MeshPhysicalMaterial' && keys.includes(mat.uuid)) {
           mat.transmission = transmissionChanges[mat.uuid];
+          mat.transparent = false;
+          mat.opacity = 1;
         }
       }
     });

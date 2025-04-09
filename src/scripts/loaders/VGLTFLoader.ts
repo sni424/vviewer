@@ -152,6 +152,10 @@ export default class VGLTFLoader extends GLTFLoader {
               }
             }
           }
+
+          if (mat.type === 'MeshPhysicalMaterial' && mat.vUserData.transmission) {
+            (mat as THREE.MeshPhysicalMaterial).transmission = mat.vUserData.transmission || 0;
+          }
         }
       });
 
