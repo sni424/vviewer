@@ -121,12 +121,16 @@ export default class VGLTFLoader extends GLTFLoader {
 
       const arr = [...lightMapSet];
       const promises = arr.map(async lmUrl => {
-        const texture = await VGLTFLoader.ktx2Loader.loadAsync(lmUrl);
-        texture.channel = 1;
-        texture.minFilter = THREE.LinearMipmapLinearFilter;
-        texture.magFilter = THREE.LinearFilter;
-        texture.vUserData.mimeType = 'image/ktx2';
-        lmMap.set(lmUrl, texture);
+        try {
+          const texture = await VGLTFLoader.ktx2Loader.loadAsync(lmUrl);
+          texture.channel = 1;
+          texture.minFilter = THREE.LinearMipmapLinearFilter;
+          texture.magFilter = THREE.LinearFilter;
+          texture.vUserData.mimeType = 'image/ktx2';
+          lmMap.set(lmUrl, texture);
+        } catch (e) {
+          console.warn('Failed To Load LightMap : ' + lmUrl, e);
+        }
       });
 
       await Promise.all(promises);
@@ -155,6 +159,10 @@ export default class VGLTFLoader extends GLTFLoader {
                 console.warn('No Texture Found : ', lmKey);
               }
             }
+          }
+
+          if (mat.type === 'MeshPhysicalMaterial' && mat.vUserData.transmission) {
+            (mat as THREE.MeshPhysicalMaterial).transmission = mat.vUserData.transmission || 0;
           }
         }
       });

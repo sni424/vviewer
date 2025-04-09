@@ -476,6 +476,7 @@ export interface SkyBoxState {
   texture?: THREE.Texture;
   scene: SceneSkyBox;
   mesh: MeshSkyBox;
+  flipY: boolean;
 }
 
 export type ProbeTypes = 'multi' | 'multiWall';

@@ -120,8 +120,13 @@ export const roomColorString = (index: number) => {
 };
 
 const base: string = import.meta.env.VITE_MODELS_CLOUDFRONT_URL as string;
+const baseVietnam: string = import.meta.env
+  .VITE_MODELS_CLOUDFRONT_URL_VIETNAM as string;
 const s3Base: string = import.meta.env.VITE_MODELS_URL as string;
+const s3BaseVietnam: string = import.meta.env.VITE_MODELS_URL_VIETNAM as string;
+
 export const ENV = {
+  region: 'korea',
   base,
   s3Base,
   latest: base + 'latest.glb',
@@ -135,6 +140,36 @@ export const ENV = {
   lut: base.replace('models/', '') + 'static/lut',
   navMesh: base + 'nav.glb',
   modelUpload: import.meta.env.VITE_UPLOAD_URL as string,
+};
+
+export const setENV = (region: 'korea' | 'vietnam') => {
+  if (ENV.region === region) {
+    return;
+  }
+
+  const targetBase = region === 'korea' ? base : baseVietnam;
+  const targetS3Base = region === 'korea' ? s3Base : s3BaseVietnam;
+
+  const fromBase = region === 'korea' ? baseVietnam : base;
+  const fromS3Base = region === 'korea' ? s3BaseVietnam : s3Base;
+
+  ENV.region = region;
+
+  Object.entries(ENV).forEach(([key, value], i) => {
+    if (value.includes(fromBase)) {
+      ENV[key as keyof typeof ENV] = (value as string).replace(
+        fromBase,
+        targetBase,
+      );
+    }
+
+    if (value.includes(fromS3Base)) {
+      ENV[key as keyof typeof ENV] = (value as string).replace(
+        fromS3Base,
+        targetS3Base,
+      );
+    }
+  });
 };
 
 export const HotspotIcon = {

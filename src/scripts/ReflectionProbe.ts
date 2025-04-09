@@ -3,7 +3,7 @@ import { TransformControls } from 'three-stdlib';
 import { v4 } from 'uuid';
 import * as THREE from 'VTHREE';
 import { ENV, Layer } from '../Constants.ts';
-import { uploadPngToKtx } from './atomUtils.ts';
+import { uploadImage } from './atomUtils.ts';
 import { getVKTX2Loader } from './loaders/VKTX2Loader.ts';
 import VTextureLoader from './loaders/VTextureLoader.ts';
 import { splitExtension } from './utils.ts';
@@ -491,6 +491,21 @@ export default class ReflectionProbe {
       gl.localClippingEnabled = false;
     }
 
+    const transmissionChanges: { [key: string]: number } = {};
+
+    scene.traverse(o => {
+      if (o.type === 'Mesh') {
+        const mat = (o as THREE.Mesh).material as THREE.MeshPhysicalMaterial;
+        if (mat.type === 'MeshPhysicalMaterial' && mat.transmission > 0) {
+          // Transmission > 0 일 때 opacity => 0.2 로 설정 후 촬영
+          transmissionChanges[mat.uuid] = mat.transmission;
+          mat.transparent = true;
+          mat.opacity = 0.2;
+          mat.transmission = 0;
+        }
+      }
+    });
+
     const filterCondition = (object: THREE.Object3D) => {
       return (
         (object.isTransformControl() || object.vUserData.isTransformControls) &&
@@ -508,6 +523,7 @@ export default class ReflectionProbe {
       filteredObjects,
       localClippingEnabled: isLocalClippingEnabled,
       originalClippedPlanes,
+      transmissionChanges,
     };
   }
 
@@ -515,10 +531,12 @@ export default class ReflectionProbe {
     filteredObjects,
     localClippingEnabled,
     originalClippedPlanes,
+    transmissionChanges,
   }: {
     filteredObjects: THREE.Object3D[];
     localClippingEnabled: boolean;
     originalClippedPlanes?: THREE.Plane[];
+    transmissionChanges: { [key: string]: number };
   }) {
     filteredObjects.forEach(child => {
       child.visible = true;
@@ -529,6 +547,19 @@ export default class ReflectionProbe {
     if (originalClippedPlanes) {
       gl.clippingPlanes = originalClippedPlanes;
     }
+
+    const keys = Object.keys(transmissionChanges);
+
+    this.scene.traverse(o => {
+      if (o.type === 'Mesh') {
+        const mat = (o as THREE.Mesh).material as THREE.MeshPhysicalMaterial;
+        if (mat.type === 'MeshPhysicalMaterial' && keys.includes(mat.uuid)) {
+          mat.transmission = transmissionChanges[mat.uuid];
+          mat.transparent = false;
+          mat.opacity = 1;
+        }
+      }
+    });
   }
 
   applyTextureOnQuad() {
@@ -739,7 +770,7 @@ export default class ReflectionProbe {
         new File([blob], `probe_${this.serializedId}_${key}.png`),
     );
 
-    await uploadPngToKtx(files);
+    await uploadImage(files, { compress: true });
 
     this.textureUrls = files.map(file => {
       return ENV.base + splitExtension(file.name).name + '.ktx';
@@ -1285,7 +1316,7 @@ varying vec2 vUv;
 
 void main()  {
 
-	vUv = vec2( 1.- uv.x, uv.y );
+	vUv = vec2(uv.x, uv.y);
 	gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
 
 }
@@ -1308,7 +1339,7 @@ void main()  {
 	float latitude = uv.y * M_PI;
 
 	vec3 dir = vec3(
-		- sin( longitude ) * sin( latitude ),
+		sin( longitude ) * sin( latitude ),
 		cos( latitude ),
 		- cos( longitude ) * sin( latitude )
 	);

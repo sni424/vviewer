@@ -149,6 +149,8 @@ export interface VUserData {
 
   isVMaterial?: boolean; // VGLTFLoader로 로드 한 재질
 
+  transmission?: number;
+
   id?: string;
   hash?: string;
 

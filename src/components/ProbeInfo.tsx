@@ -103,6 +103,7 @@ const ProbeInfo = () => {
       });
 
       setAtomValue(ProbeAtom, probes);
+
       closeToast();
     });
   };
@@ -615,7 +616,32 @@ export const ProbeComponent = ({ probe }: { probe: ReflectionProbe }) => {
           >
             {name}
           </span>
-          <div className="flex gap-x-3">
+          <div className="flex gap-x-1">
+            <button
+              style={{ fontSize: 10 }}
+              onClick={() => {
+                probe.updateCameraPosition(probe.getBoxMesh().position, true);
+                setImageData(probe.getImageData());
+              }}
+            >
+              업데이트
+            </button>
+            <button
+              style={{
+                fontSize: 10,
+              }}
+              onClick={copyProbe}
+            >
+              복제
+            </button>
+            <button
+              style={{
+                fontSize: 10,
+              }}
+              onClick={exportEqui}
+            >
+              이미지 추출
+            </button>
             <button
               onClick={() => {
                 openModal(() => <ProbeNameEditor probe={probe} />);
@@ -700,57 +726,6 @@ export const ProbeComponent = ({ probe }: { probe: ReflectionProbe }) => {
           />
         </div>
       </div>
-      <div className="probe" style={{ marginTop: '8px' }}>
-        <button
-          style={{ fontSize: 12, padding: '4px 8px', cursor: 'pointer' }}
-          onClick={() => {
-            probe.updateCameraPosition(probe.getBoxMesh().position, true);
-            setImageData(probe.getImageData());
-          }}
-        >
-          업데이트
-        </button>
-        <button
-          style={{
-            fontSize: 12,
-            padding: '4px 8px',
-            cursor: 'pointer',
-          }}
-          onClick={copyProbe}
-        >
-          복제
-        </button>
-        <button
-          style={{
-            fontSize: 12,
-            padding: '4px 8px',
-            cursor: 'pointer',
-          }}
-          onClick={exportProbe}
-        >
-          toJSON
-        </button>
-        <button
-          style={{
-            fontSize: 12,
-            padding: '4px 8px',
-            cursor: 'pointer',
-          }}
-          onClick={exportEqui}
-        >
-          추출
-        </button>
-        <button
-          style={{
-            fontSize: 12,
-            padding: '4px 8px',
-            cursor: 'pointer',
-          }}
-          onClick={changeResolution}
-        >
-          해상도 변경
-        </button>
-      </div>
       <div className="probe-detail">
         <div
           style={{
@@ -759,9 +734,9 @@ export const ProbeComponent = ({ probe }: { probe: ReflectionProbe }) => {
             padding: '0 4',
             display: 'flex',
             alignItems: 'center',
+            justifyContent: 'center',
           }}
         >
-          <span>env Image : </span>
           {isCustom ? (
             <span>커스텀 텍스쳐</span>
           ) : imageData ? (
@@ -870,10 +845,10 @@ export const ProbeMeshInfo = ({ mesh }: { mesh: THREE.Mesh }) => {
           }}
           style={{
             border: '1px solid gray',
-            padding: '2px 6px',
+            padding: '2px',
             width: '50px',
             marginLeft: '0',
-            fontSize: '12px',
+            fontSize: '10px',
             textAlign: 'right',
           }}
         />
@@ -886,10 +861,10 @@ export const ProbeMeshInfo = ({ mesh }: { mesh: THREE.Mesh }) => {
           }}
           style={{
             border: '1px solid gray',
-            padding: '2px 0px',
+            padding: '2px',
             width: '50px',
             marginLeft: 8,
-            fontSize: '12px',
+            fontSize: '10px',
             textAlign: 'right',
           }}
         />
@@ -902,10 +877,10 @@ export const ProbeMeshInfo = ({ mesh }: { mesh: THREE.Mesh }) => {
           }}
           style={{
             border: '1px solid gray',
-            padding: '2px 6px',
+            padding: '2px',
             width: '50px',
             marginLeft: 8,
-            fontSize: '12px',
+            fontSize: '10px',
             textAlign: 'right',
           }}
         />
@@ -930,10 +905,10 @@ export const ProbeMeshInfo = ({ mesh }: { mesh: THREE.Mesh }) => {
           }}
           style={{
             border: '1px solid gray',
-            padding: '2px 6px',
+            padding: '2px',
             width: '50px',
             marginLeft: '0',
-            fontSize: '12px',
+            fontSize: '10px',
             textAlign: 'right',
           }}
         />
@@ -951,10 +926,10 @@ export const ProbeMeshInfo = ({ mesh }: { mesh: THREE.Mesh }) => {
           }}
           style={{
             border: '1px solid gray',
-            padding: '2px 0px',
+            padding: '2px',
             width: '50px',
             marginLeft: 8,
-            fontSize: '12px',
+            fontSize: '10px',
             textAlign: 'right',
           }}
         />
@@ -972,10 +947,10 @@ export const ProbeMeshInfo = ({ mesh }: { mesh: THREE.Mesh }) => {
           }}
           style={{
             border: '1px solid gray',
-            padding: '2px 6px',
+            padding: '2px',
             width: '50px',
             marginLeft: 8,
-            fontSize: '12px',
+            fontSize: '10px',
             textAlign: 'right',
           }}
         />
@@ -993,7 +968,7 @@ const DocumentElementContainer = ({ probe }: { probe: ReflectionProbe }) => {
       if (canvasRef.current) {
         canvasRef.current
           .getContext('2d')
-          ?.drawImage(probe.getCanvas()!, 0, 0, 60, 60);
+          ?.drawImage(probe.getCanvas()!, 0, 0, 200, 100);
       }
     });
 
@@ -1004,11 +979,11 @@ const DocumentElementContainer = ({ probe }: { probe: ReflectionProbe }) => {
 
   useEffect(() => {
     if (canvasRef.current) {
-      canvasRef.current.width = 60;
-      canvasRef.current.height = 60;
+      canvasRef.current.width = 200;
+      canvasRef.current.height = 100;
       canvasRef.current
         .getContext('2d')
-        ?.drawImage(probe.getCanvas()!, 0, 0, 60, 60);
+        ?.drawImage(probe.getCanvas()!, 0, 0, 200, 100);
     }
   }, [probe]);
 
@@ -1018,7 +993,7 @@ const DocumentElementContainer = ({ probe }: { probe: ReflectionProbe }) => {
       onClick={() => {
         openModal(() => <ModalCanvasContainer probe={probe} />);
       }}
-      className="w-[60px] h-[60px]"
+      className="w-[200px] h-[100px]"
     >
       <canvas
         className="w-full h-full cursor-pointer bg-white"

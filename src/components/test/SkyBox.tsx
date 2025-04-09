@@ -14,7 +14,7 @@ const SkyBox = () => {
   useEffect(() => {
     const ktx2Loader = getVKTX2Loader(gl);
     ktx2Loader.load(
-      'https://vra-configurator-dev.s3.ap-northeast-2.amazonaws.com/models/%EC%9E%A0%EC%8B%A4%EC%9A%B0%EC%84%B1_100m.ktx',
+      'https://vra-configurator-dev.s3.ap-northeast-2.amazonaws.com/models/kloppenheim_03_puresky_2k.ktx',
       function (loadedTexture) {
         loadedTexture.mapping = THREE.EquirectangularReflectionMapping;
         loadedTexture.minFilter = THREE.LinearFilter;

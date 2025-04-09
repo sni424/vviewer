@@ -621,13 +621,15 @@ export const lightMapAtom = atom<{
   };
 }>({});
 
-export const testAtom = atom<{ useSkyBox: boolean }>({
+export const testAtom = atom<{ useSkyBox: boolean; showSelectBox: boolean; }>({
   useSkyBox: false,
+  showSelectBox: true,
 });
 
 export const skyBoxAtom = atom<SkyBoxState>({
   isSkyBox: false,
   type: 'mesh',
+  flipY: false,
   scene: {
     intensity: 1,
     rotation: { x: 0, y: 0, z: 0 },
@@ -652,3 +654,5 @@ export const addPoints = (...points: DrawablePoint[]) => {
     return [...uniquePrev, ...points];
   });
 };
+
+export const anisotropyAtom = atom<number>(1);

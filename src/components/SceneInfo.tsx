@@ -3,6 +3,7 @@ import useFiles from '../scripts/useFiles';
 import {
   compressObjectToFile,
   formatNumber,
+  getEXRLightMapsFromScene,
   groupInfo,
   isProbeMesh,
   isTransformControlOrChild,
@@ -15,6 +16,7 @@ import gsap from 'gsap';
 import { get, set } from 'idb-keyval';
 import objectHash from 'object-hash';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { ColorPicker, useColor } from 'react-color-palette';
 import { useNavigate } from 'react-router-dom';
 import VTextureLoader from 'src/scripts/loaders/VTextureLoader.ts';
 import ReflectionProbe from 'src/scripts/ReflectionProbe.ts';
@@ -27,6 +29,7 @@ import {
 } from '../Constants';
 import { defaultSettings, loadSettings } from '../pages/useSettings.ts';
 import {
+  anisotropyAtom,
   cameraMatrixAtom,
   DPAtom,
   DPCModeAtom,
@@ -63,6 +66,8 @@ import { FXAAOption } from './canvas/FXAA.tsx';
 import { HueSaturationOption } from './canvas/HueSaturation.tsx';
 import { SMAAOption } from './canvas/SMAA.tsx';
 import { ToneMappingOption } from './canvas/ToneMapping.tsx';
+import UploadPage from './UploadModal';
+import JSZip from 'jszip';
 
 const useEnvUrl = () => {
   const [envUrl, setEnvUrl] = useState<string | null>(null);
@@ -172,38 +177,8 @@ const GeneralButtons = () => {
   const threeExports = useAtomValue(threeExportsAtom);
   const { openToast, closeToast } = useToast();
   const navigate = useNavigate();
-  const [dpcMode, setDPCMode] = useAtom(DPCModeAtom);
-  const dpcModalRef = useRef(null);
-  const [dp, setDP] = useAtom(DPAtom);
   const { addBenchmark } = useBenchmark();
   const [isUploading, setUploading] = useAtom(uploadingAtom);
-
-  // DPC Modal 모드에 따라 사이즈 변경
-  useEffect(() => {
-    const styles = {
-      tree: {
-        width: '20%',
-        marginLeft: 'auto',
-        marginBottom: 'auto',
-      },
-      file: {
-        width: '80%',
-        marginLeft: 0,
-        marginBottom: 0,
-      },
-      select: {
-        width: '35%',
-        marginLeft: 0,
-        marginBottom: 0,
-      },
-    };
-    if (dpcModalRef.current) {
-      const styleMode = styles['file'];
-      Object.entries(styleMode).map(([key, value]) => {
-        (dpcModalRef.current as any).style[key] = value;
-      });
-    }
-  }, [dpcModalRef.current, dpcMode]);
 
   const handleResetSettings = async () => {
     await defaultSettings();
@@ -214,9 +189,13 @@ const GeneralButtons = () => {
     return null;
   }
 
-  async function uploadLightMaps(isMobile?: boolean) {
-    if (!confirm('라이트맵 업로드 하시겠습니까?')) {
-      return;
+  const { scene } = threeExports;
+
+  async function uploadLightMaps(isSceneUpload: boolean, isMobile?: boolean) {
+    if (!isSceneUpload) {
+      if (!confirm('라이트맵 업로드 하시겠습니까?')) {
+        return;
+      }
     }
     openToast('라이트맵 업로드 중...', { autoClose: false });
     setUploading(true);
@@ -225,7 +204,77 @@ const GeneralButtons = () => {
     closeToast();
   }
 
-  async function uploadModels(lightMapUploaded: boolean = false) {
+  async function downloadSet() {
+    if (confirm('테스트 용입니다. 세트 다운로드 하시겠나여?')) {
+      openToast('라이트맵 준비 중..', { autoClose: false });
+      const lightMapFiles = await getEXRLightMapsFromScene(scene);
+      // before
+      scene.traverseAll(o => {
+        if (o.type === 'Mesh') {
+          const mesh = o as THREE.Mesh;
+          const mat = mesh.matStandard;
+          if (
+            mat.vUserData.lightMap &&
+            mat.vUserData.lightMap.endsWith('.exr')
+          ) {
+            mat.vUserData.lightMap =
+              'mobile/' + mat.vUserData.lightMap.replace('.exr', '.ktx');
+          }
+        }
+      });
+      openToast('GLB 준비 중..', { autoClose: false, override: true });
+      const glbArr = await new VGLTFExporter().parseAsync(scene, {
+        binary: true,
+      });
+      if (glbArr instanceof ArrayBuffer) {
+        const blob = new Blob([glbArr], {
+          type: 'application/octet-stream',
+        });
+        const glbFile = new File([blob], 'latest.glb', {
+          type: 'model/gltf-binary',
+        });
+
+        const zip = new JSZip();
+        zip.file('model.glb', glbFile);
+
+        const lightMapFolder = zip.folder('lightMaps');
+        if (lightMapFolder) {
+          for (const file of lightMapFiles) {
+            const data = await file.arrayBuffer();
+            lightMapFolder.file(file.name, data);
+          }
+        }
+
+        const content = await zip.generateAsync({ type: 'blob' });
+        closeToast();
+        const url = URL.createObjectURL(content);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'scene.zip';
+        a.click();
+        URL.revokeObjectURL(url); // 메모리 해제
+
+        scene.traverseAll(o => {
+          if (o.type === 'Mesh') {
+            const mesh = o as THREE.Mesh;
+            const mat = mesh.matStandard;
+            if (
+              mat.vUserData.lightMap &&
+              mat.vUserData.lightMap.endsWith('.ktx') &&
+              mat.vUserData.isExr
+            ) {
+              mat.vUserData.lightMap = mat.vUserData.lightMap.replace(
+                '.ktx',
+                '.exr',
+              );
+            }
+          }
+        });
+      }
+    }
+  }
+
+  async function uploadModels(lightMapUploaded?: boolean = false) {
     if (!confirm('GLB 업로드 하시겠습니까?')) {
       return;
     }
@@ -361,7 +410,7 @@ const GeneralButtons = () => {
 
   async function uploadScene() {
     if (confirm('씬을 업로드 하시겠습니까?')) {
-      await uploadLightMaps();
+      await uploadLightMaps(true);
       await uploadModels(true);
       alert('씬 업로드 완료');
     }
@@ -369,7 +418,7 @@ const GeneralButtons = () => {
 
   async function mobileUpload() {
     if (confirm('모바일 씬을 업로드 하시겠습니까?')) {
-      await uploadLightMaps(true);
+      await uploadLightMaps(true, true);
       await uploadMobileModels();
     }
   }
@@ -385,7 +434,7 @@ const GeneralButtons = () => {
       <button disabled={isUploading} onClick={() => uploadModels()}>
         GLB 만 업로드
       </button>
-      <button disabled={isUploading} onClick={uploadLightMaps as any}>
+      <button disabled={isUploading} onClick={() => uploadLightMaps(false)}>
         라이트맵만 업로드
       </button>
       <button
@@ -465,6 +514,7 @@ const GeneralButtons = () => {
       >
         ktx다운로드
       </button>
+      <button onClick={downloadSet}>세트 다운로드</button>
     </section>
   );
 };
@@ -756,7 +806,8 @@ const ProbeControl = () => {
 
   return (
     <section>
-      <strong>프로브</strong> <button onClick={addProbe}>프로브 추가</button>
+      <strong>프로브</strong>
+      <button onClick={addProbe}>프로브 추가</button>
       <button
         onClick={() => {
           const walls: {
@@ -1179,17 +1230,32 @@ const TestControl = () => {
   const [test, setTest] = useAtom(testAtom);
 
   return (
-    <section style={{ width: '100%' }}>
-      <strong>스카이박스</strong>
-      <div className="flex gap-x-1">
-        <span>보기</span>
-        <input
-          type="checkbox"
-          checked={test.useSkyBox}
-          onChange={e => {
-            setTest(pre => ({ ...pre, useSkyBox: !pre.useSkyBox }));
-          }}
-        />
+    <section className="w-full flex flex-col gap-y-2">
+      <div>
+        <strong>스카이박스</strong>
+        <div className="flex gap-x-1">
+          <span>보기</span>
+          <input
+            type="checkbox"
+            checked={test.useSkyBox}
+            onChange={e => {
+              setTest(pre => ({ ...pre, useSkyBox: !pre.useSkyBox }));
+            }}
+          />
+        </div>
+      </div>
+      <div>
+        <strong>Select Box</strong>
+        <div className="flex gap-x-1">
+          <span>보기</span>
+          <input
+            type="checkbox"
+            checked={test.showSelectBox}
+            onChange={e => {
+              setTest(pre => ({ ...pre, showSelectBox: !pre.showSelectBox }));
+            }}
+          />
+        </div>
       </div>
     </section>
   );
@@ -1806,6 +1872,84 @@ const GeneralStats = () => {
   );
 };
 
+const AnisotropyControl = () => {
+  const [anisotropyValue, setAnisotropyValue] = useAtom(anisotropyAtom);
+  return (
+    <div>
+      <span>anisotropy</span>
+      <input
+        type="range"
+        value={anisotropyValue}
+        step={1}
+        min={1}
+        max={16}
+        onChange={e => {
+          setAnisotropyValue(Number(e.target.value));
+        }}
+      />
+    </div>
+  );
+};
+
+const SceneBackColor = () => {
+  const threeExports = useAtomValue(threeExportsAtom);
+
+  if (!threeExports) {
+    return null;
+  }
+
+  const { scene } = threeExports;
+  const [diffuseColor, setDiffuseColor] = useColor(
+    scene.background ? `#${scene.background.getHexString()}` : '#ffffff',
+  );
+
+  return (
+    <div
+      key={`colorInfo-${scene.uuid}`}
+      style={{
+        fontSize: 11,
+        width: '100%',
+        boxSizing: 'border-box',
+      }}
+    >
+      <div className="flex gap-8">
+        <strong>색상</strong>
+        {/* <button
+          style={{ fontSize: 10 }}
+          onClick={() => {
+            const hex = `#${originalColor}`;
+            mat.emissive.set(hex);
+            setDiffuseColor({
+              hex: `#${originalColor}`,
+              rgb: ColorService.toRgb(hex),
+              hsv: ColorService.toHsv(hex),
+            });
+          }}
+        >
+          원래대로
+        </button> */}
+      </div>
+      <div className="flex gap-2">
+        <div
+          className="w-[60px] h-[60px] mt-2 cursor-pointer"
+          style={{ backgroundColor: diffuseColor.hex }}
+        ></div>
+        <div className="w-[120px] mt-2">
+          <ColorPicker
+            height={50} // 높이 px단위로 설정 (디폴트: 200)
+            hideAlpha={true} // 투명도 조절바 숨김 (디폴트: 안숨김)
+            color={diffuseColor} // 현재 지정된 컬러
+            onChange={color => {
+              scene.background = new THREE.Color(color.hex);
+              setDiffuseColor(color);
+            }} // 컬러 변경될 때마다 실행할 이벤트
+          />
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const SceneInfo = () => {
   // const [env, setEnv] = useAtom(envAtom);
   const threeExports = useAtomValue(threeExportsAtom);
@@ -1835,7 +1979,9 @@ const SceneInfo = () => {
       <GeneralEnvironmentControl></GeneralEnvironmentControl>
       <TestControl />
       <GeneralMinimapControl></GeneralMinimapControl>
+      <AnisotropyControl></AnisotropyControl>
       <GeneralPostProcessingControl></GeneralPostProcessingControl>
+      <SceneBackColor></SceneBackColor>
       <GeneralSceneInfo></GeneralSceneInfo>
 
       <CameraInfoSection></CameraInfoSection>

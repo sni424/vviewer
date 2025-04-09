@@ -21,6 +21,13 @@ export type FunctionEffects = {
   };
 };
 
+export type FunctionEffectsProbes = {
+  probeId: string;
+  stateId: string;
+  stateId2: string;
+  url: string;
+};
+
 export type FunctionEffectsBooleans = {
   changeMinimap: boolean;
   changeWall: boolean;
@@ -34,11 +41,10 @@ export type FunctionEffectsURLs = {
   walls: string;
   nav: string;
   floor: string;
-  probe: {
-    probeId: string;
-    stateId: string;
-    url: string;
-  }[];
+  probe: FunctionEffectsProbes[];
+  probeMulti: {
+    [key: string]: FunctionEffectsProbes[];
+  };
 };
 
 export type FunctionEffectsJSON = Omit<FunctionEffects, 'objects'>;
@@ -57,6 +63,7 @@ const DEFAULT_FUNCTION_EFFECTS = {
     nav: '',
     floor: '',
     probe: [],
+    probeMulti: {},
   },
 };
 
@@ -186,6 +193,10 @@ export default class OptionState {
     };
     if (functionEffects.urls.probe === undefined) {
       functionEffects.urls.probe = [];
+    }
+
+    if (functionEffects.urls.probeMulti === undefined) {
+      functionEffects.urls.probeMulti = {};
     }
     this.functionEffects = functionEffects;
     // TODO Object create from json

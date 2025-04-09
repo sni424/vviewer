@@ -11,6 +11,7 @@ export default defineConfig({
   server: {
     host: '0.0.0.0', // 본인 IP로 명시
     allowedHosts: ['opmay-react.ngrok.app', 'stan.ngrok.pizza'],
+    host:"0.0.0.0"
   },
   resolve: {
     alias: {

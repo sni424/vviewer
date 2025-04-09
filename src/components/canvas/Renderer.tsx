@@ -2,7 +2,7 @@ import { Canvas, RootState, useThree } from '@react-three/fiber';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import { useEffect, useRef } from 'react';
 import SkyBox from 'src/components/test/SkyBox.tsx';
-import { zoomToSelected } from 'src/scripts/atomUtils.ts';
+import { recompileAsync, zoomToSelected } from 'src/scripts/atomUtils.ts';
 import { v4 } from 'uuid';
 import { THREE } from 'VTHREE';
 import { Layer } from '../../Constants';
@@ -45,6 +45,7 @@ import {
 import { View, WallCreateOption, WallPointView } from '../../types';
 import UnifiedCameraControls from '../camera/UnifiedCameraControls';
 import HotspotDialog from '../HotspotDialog';
+import Anisotropy from './Anisotropy.tsx';
 import MyEnvironment from './EnvironmentMap';
 import Grid from './Grid';
 import Hotspot from './Hotspot';
@@ -281,6 +282,9 @@ function Renderer() {
   const setCameraAtom = useSetAtom(cameraMatrixAtom);
 
   useEffect(() => {
+    scene.addEventListener('childadded', event => {
+      recompileAsync();
+    });
     setThreeExportsAtom(threeExports);
     camera.position.set(1, 1, 1);
     const mat = camera.matrix.clone();
@@ -297,6 +301,7 @@ function Renderer() {
       <Walls></Walls>
       <MainGrid></MainGrid>
       <Hotspot></Hotspot>
+      <Anisotropy></Anisotropy>
       <SkyBoxMesh></SkyBoxMesh>
     </>
   );

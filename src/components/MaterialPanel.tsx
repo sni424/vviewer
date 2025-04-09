@@ -346,7 +346,7 @@ const UserDataSection = ({ mat }: { mat: THREE.Material }) => {
 
 const MapSection = ({ mat }: { mat: THREE.MeshPhysicalMaterial }) => {
   const isPhysical = mat.type === 'MeshPhysicalMaterial';
-
+  console.log('mat', mat);
   return (
     <section
       className="relative"
@@ -454,8 +454,10 @@ const MapSection = ({ mat }: { mat: THREE.MeshPhysicalMaterial }) => {
           {isPhysical && (
             <MaterialPhysicalPanels mat={mat as THREE.MeshPhysicalMaterial} />
           )}
+
           <ColorInfo mat={mat} />
           <OpacityPanel mat={mat} />
+          <EmissiveInfo mat={mat} />
         </div>
       </div>
     </section>
@@ -515,15 +517,74 @@ const ColorInfo = ({ mat }: { mat: THREE.MeshPhysicalMaterial }) => {
   );
 };
 
+const EmissiveInfo = ({ mat }: { mat: THREE.Material }) => {
+  const [diffuseColor, setDiffuseColor] = useColor(
+    `#${mat.emissive.getHexString()}`,
+  );
+  // const originalColor = mat.vUserData.originalColor;
+
+  return (
+    <div
+      key={`colorInfo-${mat.uuid}`}
+      style={{
+        fontSize: 11,
+        width: '100%',
+        boxSizing: 'border-box',
+      }}
+    >
+      <div className="flex gap-8">
+        <strong>emissive색상</strong>
+        {/* <button
+          style={{ fontSize: 10 }}
+          onClick={() => {
+            const hex = `#${originalColor}`;
+            mat.emissive.set(hex);
+            setDiffuseColor({
+              hex: `#${originalColor}`,
+              rgb: ColorService.toRgb(hex),
+              hsv: ColorService.toHsv(hex),
+            });
+          }}
+        >
+          원래대로
+        </button> */}
+      </div>
+      <div className="flex gap-2">
+        <div
+          className="w-[60px] h-[60px] mt-2 cursor-pointer"
+          style={{ backgroundColor: diffuseColor.hex }}
+        ></div>
+        <div className="w-[120px] mt-2">
+          <ColorPicker
+            height={50} // 높이 px단위로 설정 (디폴트: 200)
+            hideAlpha={true} // 투명도 조절바 숨김 (디폴트: 안숨김)
+            color={diffuseColor} // 현재 지정된 컬러
+            onChange={color => {
+              mat.emissive.set(color.hex);
+              setDiffuseColor(color);
+            }} // 컬러 변경될 때마다 실행할 이벤트
+          />
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const OpacityPanel = ({ mat }: { mat: THREE.Material }) => {
   const [opacity, setOpacity] = useState(mat.opacity);
   const [transparent, setTransparent] = useState(mat.transparent);
   const [depthWrite, setDepthWrite] = useState(mat.depthWrite);
   const [depthTest, setDepthTest] = useState(mat.depthTest);
+  const [transmissonValue, setTransmissonValue] = useState(
+    mat.transmission ?? 0,
+  );
+  const [thickNessValue, setThickNessValue] = useState(mat.thickness ?? 0);
 
   useEffect(() => {
     setTransparent(mat.transparent);
     setOpacity(mat.opacity);
+    setTransmissonValue(mat.transmission ?? 0);
+    setThickNessValue(mat.thickness ?? 0);
   }, [mat]);
 
   return (
@@ -588,6 +649,92 @@ const OpacityPanel = ({ mat }: { mat: THREE.Material }) => {
             </div>
           </div>
         )}
+        {mat.type === 'MeshPhysicalMaterial' && (
+          <div className="">
+            <strong>transmission</strong>
+            <div style={{ display: 'flex', width: '100%', gap: 8 }}>
+              <div
+                style={{
+                  flex: 1,
+                  minWidth: 0,
+                }}
+              >
+                <input
+                  style={{
+                    width: '100%',
+                  }}
+                  type="range"
+                  min={0}
+                  max={1}
+                  step={0.01}
+                  value={transmissonValue}
+                  onChange={e => {
+                    const value = parseFloat(e.target.value);
+                    setTransmissonValue(value);
+                    mat.transmission = value;
+                    mat.needsUpdate = true;
+                  }}
+                />
+              </div>
+              <input
+                style={{ width: 35, borderRadius: 4 }}
+                type="number"
+                min={0}
+                max={1}
+                step={0.01}
+                value={transmissonValue}
+                onChange={e => {
+                  const value = parseFloat(e.target.value);
+                  setTransmissonValue(value);
+                  mat.transmission = value;
+                  mat.needsUpdate = true;
+                }}
+              />
+            </div>
+
+            <strong>thickNess</strong>
+            <div style={{ display: 'flex', width: '100%', gap: 8 }}>
+              <div
+                style={{
+                  flex: 1,
+                  minWidth: 0,
+                }}
+              >
+                <input
+                  style={{
+                    width: '100%',
+                  }}
+                  type="range"
+                  min={-50}
+                  max={50}
+                  step={0.01}
+                  value={thickNessValue}
+                  onChange={e => {
+                    const value = parseFloat(e.target.value);
+                    setThickNessValue(value);
+                    mat.thickness = value;
+                    mat.needsUpdate = true;
+                  }}
+                />
+              </div>
+              <input
+                style={{ width: 35, borderRadius: 4 }}
+                type="number"
+                min={-50}
+                max={50}
+                step={0.01}
+                value={thickNessValue}
+                onChange={e => {
+                  const value = parseFloat(e.target.value);
+                  setThickNessValue(value);
+                  mat.thickness = value;
+                  mat.needsUpdate = true;
+                }}
+              />
+            </div>
+          </div>
+        )}
+
         <div className="flex items-center gap-x-2">
           <strong>depth Test</strong>
           <input
