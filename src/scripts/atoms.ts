@@ -112,6 +112,10 @@ export const loadHistoryAtom = atom<
 >(new Map());
 export const threeExportsAtom = atom<RootState>();
 export const orbitControlAtom = atom<OrbitControls>();
+export const sharpenAtom = atom<{use: boolean; value: number}>({
+  use: false,
+  value: 2.0
+})
 
 export type Env = {
   select: 'none' | 'preset' | 'custom' | 'url';

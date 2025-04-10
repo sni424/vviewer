@@ -41,7 +41,7 @@ import {
   minimapAtom,
   postprocessAtoms,
   ProbeAtom,
-  selectedAtom,
+  selectedAtom, sharpenAtom,
   testAtom,
   threeExportsAtom,
   uploadingAtom,
@@ -1197,6 +1197,7 @@ const TestControl = () => {
   }
   const [test, setTest] = useAtom(testAtom);
   const [hBurn, setHBurn] = useAtom(highlightBurnAtom);
+  const [sharpen, setSharpen] = useAtom(sharpenAtom);
   const { scene } = threeExports;
 
   return (
@@ -1278,7 +1279,38 @@ const TestControl = () => {
             </div>
           )}
         </div>
-
+      </div>
+      <div>
+        <strong>sharpen</strong>
+        <div>
+          <div className="flex gap-x-1">
+            <span>사용</span>
+            <input
+              type="checkbox"
+              checked={sharpen.use}
+              onChange={e => {
+                setSharpen(pre => {
+                  return { ...pre, use: !pre.use };
+                });
+              }}
+            />
+          </div>
+          {sharpen.use && (
+            <div className="flex gap-x-1">
+              <input
+                type="range"
+                min={0}
+                max={4}
+                step={0.01}
+                value={sharpen.value}
+                onChange={e => {
+                  setSharpen(pre => ({ ...pre, value: parseFloat(e.target.value) }));
+                }}
+              ></input>
+              <span>{sharpen.value}</span>
+            </div>
+          )}
+        </div>
       </div>
     </section>
   );
