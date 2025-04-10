@@ -19,6 +19,9 @@ const defines = /* glsl */ `
 
 // MAX_PROBE_COUNT_REPLACE
 
+uniform float highlightBurnFactor;
+uniform bool uUseHighlightBurn;
+
 uniform bool uUseLightMapTransition;
 uniform bool uUseMeshTransition;
 
@@ -37,6 +40,15 @@ float progressiveAlpha(float progress, float x, float xMin, float xMax) {
   float mid = mix(xMin, xMax, 0.5); // Midpoint of xMin and xMax
   float factor = abs(x - mid) / max(xMax - mid, 0.0001); // 0으로 나누는 문제 방지
   return clamp(1.0 - 4.0 * progress * factor, 0.0, 1.0);
+}
+
+vec3 adjustHB(vec3 color) {
+  float a = 1.0 / max(highlightBurnFactor, 0.001);
+  return (color * (vec3(1.0) + color / (a * a))) / (vec3(1.0) + color);
+}
+
+vec4 adjustHighlightBurn(vec4 inputColor) {
+  return vec4(adjustHB(inputColor.rgb), inputColor.a);
 }
 
 // 라이트맵대비는 라이트맵을 사용할 때만 정의됨
@@ -691,6 +703,11 @@ const debugging = /* glsl */ `
 // if(uUseLightMapTransition){
 //   gl_FragColor = texture2D(lightMapTo, vLightMapUv);
 // }
+
+if (uUseHighlightBurn) {
+  vec4 adjusted = adjustHighlightBurn(gl_FragColor);
+  gl_FragColor = mix(gl_FragColor, adjusted, 1.0);
+}
 //END_OF_FRAG
 `;
 

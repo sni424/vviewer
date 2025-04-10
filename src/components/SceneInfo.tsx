@@ -32,7 +32,9 @@ import { defaultSettings, loadSettings } from '../pages/useSettings.ts';
 import {
   anisotropyAtom,
   cameraMatrixAtom,
-  getAtomValue,
+  DPAtom,
+  DPCModeAtom,
+  getAtomValue, highlightBurnAtom,
   lightMapAtom,
   lightMapContrastAtom,
   materialSettingAtom,
@@ -1189,7 +1191,13 @@ const GeneralMinimapControl = () => {
 };
 
 const TestControl = () => {
+  const threeExports = getAtomValue(threeExportsAtom);
+  if (!threeExports) {
+    return null;
+  }
   const [test, setTest] = useAtom(testAtom);
+  const [hBurn, setHBurn] = useAtom(highlightBurnAtom);
+  const { scene } = threeExports;
 
   return (
     <section className="w-full flex flex-col gap-y-2">
@@ -1218,6 +1226,59 @@ const TestControl = () => {
             }}
           />
         </div>
+      </div>
+      <div>
+        <strong>highlight Burn</strong>
+        <div>
+          <div className="flex gap-x-1">
+            <span>사용</span>
+            <input
+              type="checkbox"
+              checked={hBurn.use}
+              onChange={e => {
+                setHBurn(pre => {
+                  const target = !pre.use;
+                  scene.traverseAll((o) => {
+                    if (o.type === 'Mesh') {
+                      const mat = (o as THREE.Mesh).mat;
+                      mat.apply('highlightBurn', {
+                        useHighlightBurn: target,
+                        highlightBurnFactor: pre.value
+                      })
+                    }
+                  })
+                  return { ...pre, use: target };
+                });
+              }}
+            />
+          </div>
+          {hBurn.use && (
+            <div className="flex gap-x-1">
+              <input
+                type="range"
+                min={0.001}
+                max={1}
+                step={0.001}
+                value={hBurn.value}
+                onChange={e => {
+                  const value = parseFloat(e.target.value);
+                  scene.traverseAll((o) => {
+                    if (o.type === 'Mesh') {
+                      const mat = (o as THREE.Mesh).mat;
+                      mat.apply('highlightBurn', {
+                        useHighlightBurn: hBurn.use,
+                        highlightBurnFactor: value
+                      })
+                    }
+                  })
+                  setHBurn(pre => ({ ...pre, value: value }));
+                }}
+              ></input>
+              <span>{hBurn.value}</span>
+            </div>
+          )}
+        </div>
+
       </div>
     </section>
   );
