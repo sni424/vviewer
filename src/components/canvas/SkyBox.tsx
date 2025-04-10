@@ -53,7 +53,9 @@ const SkyBoxMesh = () => {
       {skyBoxInfo.type === 'mesh' && skyBoxInfo.isSkyBox && (
         <mesh
           ref={meshRef}
+          name="skyBoxMesh"
           frustumCulled={false}
+          visible={skyBoxInfo.visible}
           rotation={[
             skyBoxInfo.mesh.rotation.x,
             skyBoxInfo.mesh.rotation.y,

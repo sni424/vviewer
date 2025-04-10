@@ -621,7 +621,7 @@ export const lightMapAtom = atom<{
   };
 }>({});
 
-export const testAtom = atom<{ useSkyBox: boolean; showSelectBox: boolean; }>({
+export const testAtom = atom<{ useSkyBox: boolean; showSelectBox: boolean }>({
   useSkyBox: false,
   showSelectBox: true,
 });
@@ -630,6 +630,7 @@ export const skyBoxAtom = atom<SkyBoxState>({
   isSkyBox: false,
   type: 'mesh',
   flipY: false,
+  visible: true,
   scene: {
     intensity: 1,
     rotation: { x: 0, y: 0, z: 0 },

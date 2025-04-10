@@ -477,6 +477,7 @@ export interface SkyBoxState {
   scene: SceneSkyBox;
   mesh: MeshSkyBox;
   flipY: boolean;
+  visible: boolean;
 }
 
 export type ProbeTypes = 'multi' | 'multiWall';
