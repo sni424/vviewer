@@ -1,6 +1,8 @@
 import { Canvas, RootState, useThree } from '@react-three/fiber';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import { useEffect, useRef } from 'react';
+import SkyBox from 'src/components/test/SkyBox.tsx';
+import { recompileAsync } from 'src/scripts/atomUtils.ts';
 import { v4 } from 'uuid';
 import { THREE } from 'VTHREE';
 import { Layer } from '../../Constants';
@@ -54,8 +56,6 @@ import Rooms from './Rooms';
 import SelectBox from './SelectBox';
 import SkyBoxMesh from './SkyBox.tsx';
 import Walls from './Walls.tsx';
-import SkyBox from 'src/components/test/SkyBox.tsx';
-import { recompileAsync } from 'src/scripts/atomUtils.ts';
 
 const MainGrid = () => {
   const on = useAtomValue(viewGridAtom);
@@ -501,6 +501,9 @@ const useMouseHandler = () => {
 
     const { intersects, mesh } = getIntersects(e, threeExports);
     if (intersects.length > 0) {
+      if (intersects[0].object.name === 'skyBoxMesh') {
+        return console.warn('intersects is skyBoxMesh');
+      }
       // console.log(intersects[0].object.uuid);
       if (isSettingHotspot) {
         const position = intersects[0].point;

@@ -237,6 +237,18 @@ const SkyBoxPanel = () => {
                 }}
               />
             </div>
+            <div>
+              <label>보기</label>
+              <input
+                type="checkbox"
+                id="isoView"
+                name="isoView"
+                checked={skyBoxInfo.visible}
+                onChange={e => {
+                  setSkyBoxInfo(prev => ({ ...prev, visible: !prev.visible }));
+                }}
+              />
+            </div>
             {/* 공통 속성: 강도 */}
             <SliderInput
               label="강도"
