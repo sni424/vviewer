@@ -457,7 +457,11 @@ const MapSection = ({ mat }: { mat: THREE.MeshPhysicalMaterial }) => {
 
           <ColorInfo mat={mat} />
           <OpacityPanel mat={mat} />
-          <EmissiveInfo mat={mat} />
+          {
+            mat.emissive !== undefined && (
+              <EmissiveInfo mat={mat} />
+            )
+          }
         </div>
       </div>
     </section>

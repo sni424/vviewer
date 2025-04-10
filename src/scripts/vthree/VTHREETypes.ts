@@ -93,6 +93,18 @@ export type MATERIAL_SHADER = {
     };
     defines: {};
   };
+  HIGHLIGHT_BURN: {
+    type: 'HIGHLIGHT_BURN';
+    uniforms: {
+      uUseHighlightBurn: {
+        value: boolean;
+      };
+      highlightBurnFactor: {
+        value: number;
+      }
+    };
+    defines: {};
+  }
 };
 
 export type MATERIAL_UNIFORM_VALUE<K extends string> = {
@@ -228,6 +240,15 @@ export const DEFAULT_MATERIAL_SHADER: MATERIAL_SHADER = {
     },
     defines: {},
   },
+
+  HIGHLIGHT_BURN: {
+    type: 'HIGHLIGHT_BURN',
+    uniforms: {
+      uUseHighlightBurn: { value: false },
+      highlightBurnFactor: { value: 0.001 },
+    },
+    defines: {}
+  }
 };
 
 export const defaultUniforms: {

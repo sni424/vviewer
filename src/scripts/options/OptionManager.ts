@@ -7,7 +7,7 @@ import { Walls } from '../../types.ts';
 import {
   animationDurationAtom,
   getAtomValue,
-  getWallCacheAtom,
+  getWallCacheAtom, getWallOptionAtom,
   lightMapAtom,
   minimapAtom,
   modelOptionClassAtom,
@@ -22,7 +22,7 @@ import {
 } from '../atoms.ts';
 import {
   loadJson,
-  loadOption,
+  loadOption, prepareWalls, recompileAsync,
   uploadJson,
   wallsToWallOption,
 } from '../atomUtils.ts';
@@ -32,6 +32,7 @@ import { Effects, ModelOptionObject } from '../ModelOptionObject.ts';
 import { isImage } from '../utils.ts';
 import ModelOption from './ModelOption.ts';
 import OptionState, { FunctionEffects } from './OptionState.ts';
+import { applyProbeReflectionProbe } from 'src/scripts/vthree/Material.ts';
 
 const useOptionManager = () => {
   const threeExports = useAtomValue(threeExportsAtom);
@@ -192,7 +193,6 @@ const useOptionManager = () => {
     setOptionSelected(nowSelected);
     setProcessing(true);
     const meshEffects = state.meshEffects;
-    const probesToRender: string[] = [];
     const anlayzed = analyze(nowSelected);
     const timeLines: gsap.core.Timeline[] = [];
     meshEffects.forEach(meshEffect => {
@@ -204,103 +204,118 @@ const useOptionManager = () => {
         const mesh = object as THREE.Mesh;
         const effects = meshEffect.effect;
         const mat = mesh.matStandard;
-        // Visible Control
-        if (effects.useVisible) {
-          const targetVisible = anlayzed.meshResult[mesh.name].visible;
-          if (targetVisible === undefined) {
-            throw new Error('targetVisible set Error');
+        const meshResult = anlayzed.meshResult[mesh.name];
+        if (!meshResult) {
+          console.warn(
+            'mesH REsult Not Found : ',
+            anlayzed,
+            meshResult,
+            mesh,
+            effects,
+          );
+        } else {
+          // Visible Control
+          if (effects.useVisible) {
+            const targetVisible = meshResult.visible;
+            if (targetVisible === undefined) {
+              console.log('targetVisible undefined : ', meshResult, mesh.name);
+              throw new Error('targetVisible set Error : ');
+            }
+
+            if (mesh.visible !== targetVisible) {
+              // changeMeshVisibleWithTransition(
+              //   mesh,
+              //   animationDuration,
+              //   targetVisible,
+              //   timeLine,
+              // );
+              const transparency = mat.transparent;
+              const depthWrite = mat.depthWrite;
+              const depthTest = mat.depthTest;
+              const renderOrder = mesh.renderOrder;
+              const depthFunc = mat.depthFunc;
+              timeLine.to(
+                { progress: 0 },
+                {
+                  progress: 1,
+                  duration: animationDuration,
+                  onStart() {
+                    mat.apply('meshTransition', {
+                      direction: targetVisible ? 'fadeIn' : 'fadeOut',
+                    });
+                    mesh.visible = true;
+                    mat.transparent = true;
+                    if (!targetVisible && (mesh.name.toLowerCase().includes('base') || mesh.name.includes('에어컨'))) {
+                      mat.depthWrite = false;
+                    }
+                  },
+                  onUpdate() {
+                    const progressValue = this.targets()[0].progress;
+                    mat.progress = progressValue;
+                  },
+                  onComplete() {
+                    mesh.visible = targetVisible;
+                    mat.remove('meshTransition');
+                    mat.transparent = transparency;
+                    if (!targetVisible && (mesh.name.toLowerCase().includes('base') || mesh.name.includes('에어컨'))) {
+                      mat.depthWrite = depthWrite;
+                    }
+                      // mesh.renderOrder = renderOrder;
+                  },
+                },
+              );
+            }
           }
 
-          if (mesh.visible !== targetVisible) {
-            // changeMeshVisibleWithTransition(
-            //   mesh,
-            //   animationDuration,
-            //   targetVisible,
-            //   timeLine,
-            // );
-            const transparency = mat.transparent;
-            timeLine.to(
-              { progress: 0 },
-              {
-                progress: 1,
-                duration: animationDuration,
-                onStart() {
-                  mat.apply('meshTransition', {
-                    direction: targetVisible ? 'fadeIn' : 'fadeOut',
-                  });
-                  mesh.visible = true;
-                  mat.transparent = true;
+          // LightMap control
+          if (effects.useLightMap) {
+            const lightMapCache = getAtomValue(lightMapAtom);
+            const keys = Object.keys(lightMapCache);
+            let target = meshResult.lightMap;
+
+            if (target && !target.startsWith('https')) {
+              target = ENV.base + target;
+            }
+
+            if (!target) {
+              console.log('lightMap Setting null : ', mat, mesh);
+              mat.lightMap = null;
+            } else if (keys.includes(target)) {
+              const { texture } = lightMapCache[target];
+              texture.flipY = false;
+              // changeMeshLightMapWithTransition(
+              //   mesh,
+              //   animationDuration,
+              //   texture,
+              //   timeLine,
+              // );
+              timeLine.to(
+                { progress: 0 },
+                {
+                  progress: 1,
+                  duration: animationDuration,
+                  onStart() {
+                    mat.uniform.uLightMapTo.value = texture;
+                    mat.uniform.uUseLightMapTransition.value = true;
+                    mat.progress = 0;
+                  },
+                  onUpdate() {
+                    const progressValue = this.targets()[0].progress;
+                    mat.progress = progressValue;
+                  },
+                  onComplete() {
+                    mat.lightMap = texture;
+                    mat.uniform.uUseLightMapTransition.value = false;
+                  },
                 },
-                onUpdate() {
-                  const progressValue = this.targets()[0].progress;
-                  mat.progress = progressValue;
-                },
-                onComplete() {
-                  mesh.visible = targetVisible;
-                  mat.remove('meshTransition');
-                  mat.transparent = transparency;
-                },
-              },
-            );
+              );
+            } else {
+              // TODO fetch
+            }
           }
+
+          timeLines.push(timeLine);
         }
-
-        // LightMap control
-        if (effects.useLightMap) {
-          const lightMapCache = getAtomValue(lightMapAtom);
-          const keys = Object.keys(lightMapCache);
-          let target = anlayzed.meshResult[mesh.name].lightMap;
-
-          if (target && !target.startsWith('https')) {
-            target = ENV.base + target;
-          }
-
-          if (!target) {
-            console.log('lightMap Setting null : ', mat, mesh);
-            mat.lightMap = null;
-          } else if (keys.includes(target)) {
-            const { texture } = lightMapCache[target];
-            texture.flipY = false;
-            // changeMeshLightMapWithTransition(
-            //   mesh,
-            //   animationDuration,
-            //   texture,
-            //   timeLine,
-            // );
-            timeLine.to(
-              { progress: 0 },
-              {
-                progress: 1,
-                duration: animationDuration,
-                onStart() {
-                  mat.uniform.uLightMapTo.value = texture;
-                  mat.uniform.uUseLightMapTransition.value = true;
-                  mat.progress = 0;
-                },
-                onUpdate() {
-                  const progressValue = this.targets()[0].progress;
-                  mat.progress = progressValue;
-                },
-                onComplete() {
-                  mat.lightMap = texture;
-                  mat.uniform.uUseLightMapTransition.value = false;
-                },
-              },
-            );
-          } else {
-            // TODO fetch
-          }
-        }
-
-        const probeId = mat.vUserData.probeId;
-        if (probeId) {
-          // 그냥 해당 프로브 리렌더
-          if (!probesToRender.includes(probeId)) {
-            probesToRender.push(probeId);
-          }
-        }
-
-        timeLines.push(timeLine);
       } else {
         console.warn('no Mesh Found On state, passing By : ', meshEffect.name);
       }
@@ -326,7 +341,32 @@ const useOptionManager = () => {
       probes.forEach(probe => {
         probe.renderCamera(true);
       });
+
+      const walls = getWallOptionAtom();
+      scene?.traverse(o => {
+        if (o.type === 'Mesh') {
+          const mesh = o as THREE.Mesh;
+          const mat = mesh.matStandard;
+          if (hasProbe(mat)) {
+            const probeType = mat.vUserData.probeType!;
+            const targetProbes = probes.filter(probe =>
+              mat.vUserData.probeIds!.includes(probe.getId()),
+            );
+            const params: applyProbeReflectionProbe = {
+              probes: targetProbes,
+              walls: probeType === 'multiWall' ? prepareWalls(walls) : undefined,
+            };
+            mat.applyProbe(params);
+          }
+        }
+      });
+
+      recompileAsync();
       setProcessing(false);
+    }
+
+    function hasProbe(material: THREE.Material) {
+      return material.vUserData.probeIds && material.vUserData.probeType;
     }
 
     openToast('애니메이션 실행됨', {
@@ -410,13 +450,25 @@ const useOptionManager = () => {
         const originalValue:
           | { visible?: boolean; lightMap?: string }
           | undefined = meshResult[meshName];
-        if (originalValue) {
-          originalValue.visible = originalValue.visible && effects.visibleValue;
-        } else {
-          meshResult[meshName] = { visible: effects.visibleValue };
+
+        if (effects.useVisible) {
+          if (originalValue) {
+            if (originalValue.visible === undefined) {
+              originalValue.visible = effects.visibleValue;
+            } else {
+              originalValue.visible =
+                originalValue.visible && effects.visibleValue;
+            }
+          } else {
+            meshResult[meshName] = { visible: effects.visibleValue };
+          }
         }
 
         if (effects.useLightMap) {
+          const originalValue = meshResult[meshName];
+          if (!originalValue) {
+            meshResult[meshName] = {};
+          }
           const optionId = Object.keys(selectedInfo);
           const lmValues = effects.lightMapValues;
           const lmValuesKeys = Object.keys(lmValues!!);
@@ -427,6 +479,8 @@ const useOptionManager = () => {
         }
       });
     });
+
+    console.log('meshREsult : ', meshResult);
 
     return { meshResult, functionResult };
   }

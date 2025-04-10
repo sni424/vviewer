@@ -626,6 +626,11 @@ export const testAtom = atom<{ useSkyBox: boolean; showSelectBox: boolean; }>({
   showSelectBox: true,
 });
 
+export const highlightBurnAtom = atom<{use:boolean; value: number}>({
+  use: false,
+  value: 0.001,
+})
+
 export const skyBoxAtom = atom<SkyBoxState>({
   isSkyBox: false,
   type: 'mesh',

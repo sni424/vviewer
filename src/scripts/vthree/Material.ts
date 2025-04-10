@@ -69,6 +69,10 @@ export type MaterialApplyType = {
   probe: applyProbeReflectionProbe | applyProbeGeneral;
   lightmapContrast: number;
   progress: number;
+  highlightBurn: {
+    useHighlightBurn: boolean;
+    highlightBurnFactor: number;
+  }
 };
 
 declare module 'three' {
@@ -359,9 +363,12 @@ THREE.Material.prototype.prepareMeshTransition = function (params: {
     const minX = box.min.x; // 왼쪽 X 좌표
     const centerY = (box.min.y + box.max.y) / 2; // Y 중앙
     const minZ = box.min.z; // 가장 앞쪽 (액자의 왼쪽 테두리)
+    const maxX = box.max.x;
+    const maxZ = box.max.z;
 
     // dissolveOrigin을 Three.js Vector3로 설정
-    const dissolveOrigin = new THREE.Vector3(minX, centerY, minZ);
+    // const dissolveOrigin = direction === 'fadeIn' ?  new THREE.Vector3(minX, centerY, minZ) : new THREE.Vector3(maxX, centerY, maxZ);
+    const dissolveOrigin = direction === 'fadeIn' ?  new THREE.Vector3(minX, centerY, minZ) : new THREE.Vector3(maxX, centerY, maxZ);
 
     const dissolveMaxDist = box.max.distanceTo(box.min);
 
@@ -739,6 +746,10 @@ THREE.Material.prototype.apply = function <T extends keyof MaterialApplyType>(
         this.uniform.uProgress.value = params as number;
       }
       break;
+    case 'highlightBurn':
+      const ph = params as MaterialApplyType['highlightBurn'];
+      this.upsertUniform('uUseHighlightBurn', ph.useHighlightBurn);
+      this.upsertUniform('highlightBurnFactor', ph.highlightBurnFactor);
   }
 };
 

@@ -74,17 +74,17 @@ export default class VGLTFLoader extends GLTFLoader {
       const vMaterialCache = new Map<string, THREE.Material>();
 
       // Material의 Transmission 관련 값이 Probe CubeCamera의 렌더에 버그가 있어서, 모든 transmission 관련 값 초기화
-      gltf.scene.traverseAll(o => {
-        const mat = o.asMesh?.matPhysical;
-        if (mat) {
-          if (mat['transmissionMap']) {
-            mat['transmissionMap'] = null;
-          }
-          if (mat['transmission']) {
-            mat['transmission'] = 0;
-          }
-        }
-      });
+      // gltf.scene.traverseAll(o => {
+      //   const mat = o.asMesh?.matPhysical;
+      //   if (mat) {
+      //     if (mat['transmissionMap']) {
+      //       mat['transmissionMap'] = null;
+      //     }
+      //     if (mat['transmission']) {
+      //       mat['transmission'] = 0;
+      //     }
+      //   }
+      // });
 
       gltf.scene.traverseAll(async (object: THREE.Object3D) => {
         object.layers.enable(Layer.Model);
@@ -153,9 +153,9 @@ export default class VGLTFLoader extends GLTFLoader {
             }
           }
 
-          if (mat.type === 'MeshPhysicalMaterial' && mat.vUserData.transmission) {
-            (mat as THREE.MeshPhysicalMaterial).transmission = mat.vUserData.transmission || 0;
-          }
+          // if (mat.type === 'MeshPhysicalMaterial' && mat.vUserData.transmission) {
+          //   (mat as THREE.MeshPhysicalMaterial).transmission = mat.vUserData.transmission || 0;
+          // }
         }
       });
 
