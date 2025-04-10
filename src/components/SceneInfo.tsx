@@ -14,8 +14,9 @@ import {
 
 import gsap from 'gsap';
 import { get, set } from 'idb-keyval';
+import JSZip from 'jszip';
 import objectHash from 'object-hash';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ColorPicker, useColor } from 'react-color-palette';
 import { useNavigate } from 'react-router-dom';
 import VTextureLoader from 'src/scripts/loaders/VTextureLoader.ts';
@@ -66,8 +67,6 @@ import { FXAAOption } from './canvas/FXAA.tsx';
 import { HueSaturationOption } from './canvas/HueSaturation.tsx';
 import { SMAAOption } from './canvas/SMAA.tsx';
 import { ToneMappingOption } from './canvas/ToneMapping.tsx';
-import UploadPage from './UploadModal';
-import JSZip from 'jszip';
 
 const useEnvUrl = () => {
   const [envUrl, setEnvUrl] = useState<string | null>(null);
@@ -1923,8 +1922,13 @@ const SceneBackColor = () => {
   }
 
   const { scene } = threeExports;
+
+  console.log('scene', scene);
+
   const [diffuseColor, setDiffuseColor] = useColor(
-    scene.background ? `#${scene.background.getHexString()}` : '#ffffff',
+    scene.background && scene.background instanceof THREE.Color
+      ? `#${scene.background.getHexString()}`
+      : '#ffffff',
   );
 
   return (
