@@ -89,3 +89,5 @@ THREE.BufferGeometry.prototype.updateHash = async function (): Promise<string> {
     return hash;
   });
 };
+
+import './BufferGeometryToAsset';

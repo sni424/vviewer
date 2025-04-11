@@ -15,41 +15,6 @@ const HEADER = 'VRAPOINT';
 
 const encoder = new TextEncoder();
 
-async function fetchIntoArrayBuffer(url: string): Promise<ArrayBuffer> {
-  const response = await fetch(url);
-  if (!response.ok) throw new Error('Fetch failed');
-
-  // Get total size from headers (if available)
-  const contentLength = response.headers.get('Content-Length');
-  if (!contentLength) throw new Error('Content-Length not provided');
-  const totalSize = parseInt(contentLength, 10);
-
-  // Pre-allocate the ArrayBuffer
-  const buffer = new ArrayBuffer(totalSize);
-  const view = new Uint8Array(buffer);
-  let offset = 0;
-
-  // Read stream chunks
-  const reader = response.body!.getReader();
-  while (true) {
-    const { done, value } = await reader.read(); // value is Uint8Array
-    if (done) break;
-
-    if (offset + value.length > totalSize) {
-      throw new Error('Received more data than expected');
-    }
-
-    view.set(value, offset); // Copy chunk into pre-allocated buffer
-    offset += value.length;
-  }
-
-  if (offset !== totalSize) {
-    throw new Error('Received less data than expected');
-  }
-
-  return buffer;
-}
-
 // Helper class for binary serialization (similar to C++ binary streams)
 class BinarySerializer {
   private buffer: ArrayBuffer;
@@ -82,6 +47,7 @@ class BinarySerializer {
 
   writeArrayBuffer(buffer: ArrayBuffer) {
     this.writeUint32(buffer.byteLength);
+    // 전체 버퍼(this.buffer)에 input 버퍼를 할당
     new Uint8Array(this.buffer, this.offset, buffer.byteLength).set(
       new Uint8Array(buffer),
     );
@@ -264,7 +230,7 @@ self.onmessage = async (event: MessageEvent<WorkerMessage>) => {
       // Fetch the URL
 
       // const response = await fetch(event.data.url);
-      const arrayBuffer = await fetchIntoArrayBuffer(event.data.url);
+      const arrayBuffer = await fetchArrayBuffer(event.data.url);
       const obj = deserializeObject(arrayBuffer);
 
       // // Use your custom module

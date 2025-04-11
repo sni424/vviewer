@@ -3,6 +3,10 @@ import { Canvas } from '@react-three/fiber';
 import { useEffect, useRef, useState } from 'react';
 import ObjectViewer from 'src/components/ObjectViewer';
 import Asset, { VRemoteAsset } from 'src/scripts/manager/Asset';
+import {
+  AssetMgr,
+  VBufferGeometryFile,
+} from 'src/scripts/vthree/BufferGeometryToAsset';
 import { THREE } from 'VTHREE';
 import useTestModelDragAndDrop from './useTestModelDragAndDrop';
 
@@ -131,8 +135,26 @@ function TestPage() {
           </button>
           <button
             onClick={() => {
-              Promise.all(asset.map(a => a.upload())).then(data => {
-                console.log('업로드 완료', data);
+              const proms: Promise<VBufferGeometryFile>[] = [];
+              sceneRef.current.traverse(o => {
+                if (o.asMesh.isMesh) {
+                  o.geometries().forEach(g => {
+                    proms.push(g.toAsset());
+                  });
+                }
+              });
+              Promise.all(proms).then(async res => {
+                const arrayId = res[0].data.data!.index!.array;
+
+                const ab = await AssetMgr.getRawFile(arrayId);
+
+                console.log(
+                  'geometries',
+                  arrayId,
+                  res,
+                  ab,
+                  AssetMgr.rawFileCache.keys(),
+                );
               });
             }}
           >

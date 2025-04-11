@@ -159,29 +159,124 @@ export const uploadImage = async (
   return await res.json();
 };
 
+// 메모리를 아끼는 함수
+// fetch().then(res=>res.arrayBuffer())을 사용하면 arrayBuffer할 때 복사해서 메모리사용량 커짐
+export async function fetchArrayBuffer(
+  ...params: Parameters<typeof fetch>
+): Promise<ArrayBuffer> {
+  const response = await fetch(...params);
+  if (!response.ok) throw new Error('Fetch failed');
+
+  // Get total size from headers (if available)
+  const contentLength = response.headers.get('Content-Length');
+  if (!contentLength) {
+    console.warn('Content-Length not provided', params);
+    return response.arrayBuffer(); // Fallback to default behavior
+  }
+
+  const totalSize = parseInt(contentLength, 10);
+
+  // Pre-allocate the ArrayBuffer
+  const buffer = new ArrayBuffer(totalSize);
+  const view = new Uint8Array(buffer);
+  let offset = 0;
+
+  // Read stream chunks
+  const reader = response.body!.getReader();
+  while (true) {
+    const { done, value } = await reader.read(); // value is Uint8Array
+    if (done) break;
+
+    if (offset + value.length > totalSize) {
+      throw new Error('Received more data than expected');
+    }
+
+    view.set(value, offset); // Copy chunk into pre-allocated buffer
+    offset += value.length;
+  }
+
+  if (offset !== totalSize) {
+    throw new Error('Received less data than expected');
+  }
+
+  return buffer;
+}
+
+const DEFAULT_FETCH_PARAMS: Partial<RequestInit> = {
+  cache: 'no-store',
+};
+
+// JSON 업로드
 export const uploadJson = (
   name: string,
   value: Record<string, any> | string,
+  params?: RequestInit,
 ) => {
-  let jsonName: string = name;
-  if (!jsonName.endsWith('.json')) {
-    jsonName += '.json';
-  }
+  let jsonName = name.endsWith('.json') ? name : `${name}.json`;
   const json = typeof value === 'string' ? value : JSON.stringify(value);
 
   const fd = new FormData();
   fd.append('files', new Blob([json], { type: 'application/json' }), jsonName);
+
   return fetch(import.meta.env.VITE_UPLOAD_URL as string, {
     method: 'POST',
     body: fd,
+    ...params,
   });
 };
 
-export const loadJson = async <T>(name: string): Promise<T> => {
+export const uploadBinary = (
+  name: string,
+  buffer: ArrayBuffer,
+  params?: RequestInit,
+) => {
+  const fd = new FormData();
+  fd.append('files', new Blob([buffer]), name);
+  return fetch(import.meta.env.VITE_UPLOAD_URL as string, {
+    method: 'POST',
+    body: fd,
+    ...params,
+  });
+};
+
+export const loadJson = async <T>(
+  name: string,
+  params?: RequestInit,
+): Promise<T> => {
   return fetch(ENV.s3Base + name, {
-    cache: 'no-store',
+    ...DEFAULT_FETCH_PARAMS,
+    ...params,
   }).then(res => res.json());
 };
+
+export const loadBinary = async (
+  name: string,
+  params?: RequestInit,
+): Promise<ArrayBuffer> => {
+  return fetchArrayBuffer(ENV.s3Base + name, {
+    ...DEFAULT_FETCH_PARAMS,
+    ...params,
+  });
+};
+
+export function createUploadPair<T = any>(name: string) {
+  const isJson = name.endsWith('.json');
+
+  if (isJson) {
+    return {
+      upload: (value: T, params?: RequestInit) =>
+        uploadJson(name, value as any, params),
+      download: (params?: RequestInit) => loadJson(name, params) as Promise<T>,
+    };
+  } else {
+    return {
+      upload: (value: T, params?: RequestInit) =>
+        uploadBinary(name, value as any, params),
+      download: (params?: RequestInit) =>
+        loadBinary(name, params) as Promise<T>,
+    };
+  }
+}
 
 export const loadHotspot = async () => {
   return fetch(ENV.s3Base + 'hotspots.json', {
