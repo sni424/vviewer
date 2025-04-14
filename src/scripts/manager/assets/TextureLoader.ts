@@ -41,49 +41,83 @@ async function createDataTexture(data: VTexture): Promise<THREE.DataTexture> {
   return retval;
 }
 
-function setImageFromArrayBuffer(
+async function imageBufferToHTMLImgElement(
   buffer: ArrayBuffer,
   mimeType: string = 'image/png',
-) {
+): Promise<HTMLImageElement> {
   const img = document.createElement('img');
   const blob = new Blob([buffer], { type: mimeType });
   const url = URL.createObjectURL(blob);
 
   img.src = url;
-
-  // Optional: Revoke URL after image loads
-  img.onload = () => {
-    URL.revokeObjectURL(url);
-  };
-
-  return img;
+  return new Promise(
+    res =>
+      (img.onload = () => {
+        URL.revokeObjectURL(url);
+        res(img);
+      }),
+  );
 }
 
 async function createCommonTexture(data: VTexture): Promise<THREE.Texture> {
-  return AssetMgr.get(data.image).then(async arrayBuffer => {
-    const texture = new THREE.Texture();
-    texture.source = new THREE.Source(setImageFromArrayBuffer(arrayBuffer));
+  return AssetMgr.get(data.image)
+    .then(arrayBuffer => imageBufferToHTMLImgElement(arrayBuffer))
+    .then(img => {
+      const texture = new THREE.Texture();
+      texture.source = new THREE.Source(img);
 
-    for (const key of TEXTURE_ASSIGN_KEYS) {
-      if (key in data) {
-        const value = (data as any)[key];
-        console.log('Assigning key:', key, value);
-        if (Array.isArray(value)) {
-          if (key === 'wrap') {
-            texture.wrapS = value[0];
-            texture.wrapT = value[1];
-          } else {
-            (texture as any)[key] = new THREE.Vector2(...value);
-          }
-        } else {
-          (texture as any)[key] = value;
-        }
+      // for (const key of TEXTURE_ASSIGN_KEYS) {
+      //   if (key in data) {
+      //     const value = (data as any)[key];
+      //     if (Array.isArray(value)) {
+      //       if (key === 'wrap') {
+      //         texture.wrapS = value[0];
+      //         texture.wrapT = value[1];
+      //       } else {
+      //         (texture as any)[key] = new THREE.Vector2(...value);
+      //       }
+      //     } else {
+      //       (texture as any)[key] = value;
+      //     }
+      //   }
+      // }
+
+      // avoid clever code
+      if (data.uuid) texture.uuid = data.uuid;
+      if (data.name) texture.name = data.name;
+      if (data.type) texture.type = data.type;
+
+      if (data.mapping) texture.mapping = data.mapping;
+      if (data.channel) texture.channel = data.channel;
+
+      if (data.repeat) texture.repeat.set(data.repeat[0], data.repeat[1]);
+      if (data.offset) texture.offset.set(data.offset[0], data.offset[1]);
+      if (data.center) texture.center.set(data.center[0], data.center[1]);
+      if (data.rotation) texture.rotation = data.rotation;
+
+      if (data.wrap) {
+        texture.wrapS = data.wrap[0] as THREE.Wrapping;
+        texture.wrapT = data.wrap[1] as THREE.Wrapping;
       }
-    }
+      if (data.format) texture.format = data.format;
+      if (data.internalFormat) texture.internalFormat = data.internalFormat;
+      if (data.colorSpace) texture.colorSpace = data.colorSpace;
 
-    texture.needsUpdate = true;
-    return texture;
-  });
+      if (data.minFilter) texture.minFilter = data.minFilter;
+      if (data.magFilter) texture.magFilter = data.magFilter;
+      if (data.anisotropy) texture.anisotropy = data.anisotropy;
+
+      if (data.flipY) texture.flipY = data.flipY;
+
+      if (data.generateMipmaps) texture.generateMipmaps = data.generateMipmaps;
+      if (data.premultiplyAlpha)
+        texture.premultiplyAlpha = data.premultiplyAlpha;
+      if (data.unpackAlignment) texture.unpackAlignment = data.unpackAlignment;
+      if (data.userData) texture.userData = data.userData;
+
+      texture.needsUpdate = true;
+      return texture;
+    });
 }
 
 export default async function (

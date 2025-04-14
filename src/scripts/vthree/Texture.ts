@@ -139,8 +139,6 @@ THREE.Texture.prototype.toAsset = async function () {
   if (Object.keys(this.vUserData).length > 0)
     output.userData = this.vUserData as any;
 
-  debugger;
-
   const retval: VFile<VTexture> = {
     id: this.hash,
     type: 'VTexture',
