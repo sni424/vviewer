@@ -2,13 +2,130 @@ import { Buffer } from 'buffer';
 import fs from 'fs';
 import * as pako from 'pako';
 
+type VObjectRemote = {
+  id: string;
+  format: 'json' | 'binary';
+};
+
 // Define the type
 type VObject = {
   version: number;
   id: string;
-  type: 'mesh' | 'material' | 'texture' | 'geometry';
+  type:
+    | 'object3d' // object3d, mesh, group
+    | 'material' // material
+    | 'texture' // jpg, png
+    | 'datatexture' // exr
+    | 'compressedtexture' // ktx
+    | 'geometry' // buffergeometry
+    | 'json';
   meta: Record<string, any>;
-  data?: ArrayBuffer;
+  // data?: Record<string, ArrayBuffer>;
+};
+
+const mesh2: VObject = {
+  version: 1,
+  id: 'mesh2',
+  type: 'mesh',
+  meta: {
+    name: 'cube',
+    vertices: 8,
+    children: [],
+  },
+};
+const mesh2Remote: VObjectRemote = {
+  id: 'mesh2',
+  format: 'json',
+};
+
+const lightMapRemote: VObjectRemote = {
+  id: 'lightMap',
+  format: 'binary',
+};
+
+const mapRemote: VObjectRemote = {
+  id: 'map',
+  format: 'binary',
+};
+
+const tex1: VObject = {
+  version: 1,
+  id: 'texture1',
+  type: 'texture',
+  meta: {
+    name: 'mapTexture',
+    img: mapRemote,
+  },
+};
+
+const tex1Remote: VObjectRemote = {
+  id: 'texture1',
+  format: 'json',
+};
+
+const tex2: VObject = {
+  version: 1,
+  id: 'texture2',
+  type: 'texture',
+  meta: {
+    name: 'lightMapTexture',
+    img: lightMapRemote,
+  },
+};
+
+const tex2Remote: VObjectRemote = {
+  id: 'texture2',
+  format: 'json',
+};
+
+const mat: VObject = {
+  version: 1,
+  id: 'material1',
+  type: 'material',
+  meta: {
+    name: 'material1',
+    map: tex1Remote,
+    lightMap: tex2Remote,
+  },
+};
+const matRemote = {
+  id: 'material1',
+  format: 'json',
+};
+
+const get = async (object: VObjectRemote) => {
+  if (object === mesh2Remote) {
+    return mesh2;
+  }
+  if (object === tex1Remote) {
+    return tex1;
+  }
+  if (object === tex2Remote) {
+    return tex2;
+  }
+  if (object === lightMapRemote) {
+    return lightMapRemote;
+  }
+  if (object === mapRemote) {
+    return mapRemote;
+  }
+  if (object === matRemote) {
+    return mat;
+  }
+
+  throw new Error(`Unknown object: ${object.id}`);
+};
+
+const mesh1: VObject = {
+  version: 1,
+  id: 'mesh1',
+  type: 'object3d',
+  meta: {
+    name: 'cube',
+    vertices: 8,
+    children: [mesh2Remote],
+    material: matRemote,
+  },
 };
 
 const HEADER = 'VRAPOINT';
@@ -54,7 +171,13 @@ class BinarySerializer {
   }
 
   getBuffer() {
-    return this.buffer.slice(0, this.offset);
+    if (this.buffer.byteLength !== this.offset) {
+      throw new Error(
+        `Buffer size mismatch: expected ${this.buffer.byteLength}, got ${this.offset}`,
+      );
+    }
+    return this.buffer;
+    // return this.buffer.slice(0, this.offset);
   }
 }
 
@@ -108,7 +231,12 @@ export function serializeObject(obj: VObject): Uint8Array {
 
   // Data if present
   if (obj.data) {
-    size += 4 + obj.data.byteLength; // length + data
+    size += 4; // length of data object
+    for (const key in obj.data) {
+      const dataBuffer = obj.data[key];
+      size += 4 + key.length; // key (length + string)
+      size += 4 + dataBuffer.byteLength; // length of ArrayBuffer + ArrayBuffer size
+    }
   }
 
   const serializer = new BinarySerializer(size);
@@ -121,7 +249,14 @@ export function serializeObject(obj: VObject): Uint8Array {
   serializer.writeString(metaString);
 
   if (obj.data) {
-    serializer.writeArrayBuffer(obj.data);
+    const leng = Object.keys(obj.data).length;
+    serializer.writeUint32(leng); // length of data object
+    // serializer.writeArrayBuffer(obj.data);
+    for (const key in obj.data) {
+      const dataBuffer = obj.data[key];
+      serializer.writeString(key); // key (length + string)
+      serializer.writeArrayBuffer(dataBuffer); // length of ArrayBuffer + ArrayBuffer size
+    }
   }
 
   const buffer = serializer.getBuffer();

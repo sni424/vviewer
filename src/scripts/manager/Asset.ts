@@ -3,18 +3,13 @@ import { v5 } from 'uuid';
 import { THREE, VTextureTypes } from 'VTHREE';
 import VGLTFLoader from '../loaders/VGLTFLoader';
 import VTextureLoader from '../loaders/VTextureLoader';
+import { VFileLocal } from '../vthree/BufferGeometryToAsset';
+import { VAssetTypes } from './assets/AssetTypes';
+import { VFile } from './assets/VFile';
+import Ext from './Ext';
 
 const NAMESPACE = 'ASSET_TEST';
 const hashString = (str: string) => v5(str, NAMESPACE);
-
-export const VRemoteAssetTypes = [
-  'mesh',
-  'material',
-  'geometry',
-  'texture',
-] as const;
-
-export type VRemoteAssetType = (typeof VRemoteAssetTypes)[number];
 
 // export type VRemoteAsset = {
 //   id: string;
@@ -63,7 +58,7 @@ export type VRemoteAsset =
 //   material?: VRemoteAssetMaterial;  // compatibility
 // };
 
-export type RemoteAssetType = VRemoteAsset;
+export type RemoteAssetType = VFile;
 export type LocalAssetType = File;
 export type AssetType =
   | THREE.Group // glb
@@ -74,10 +69,11 @@ export type AssetType =
 export type LoadableAssetType = RemoteAssetType | LocalAssetType;
 
 export type VMeta = {}; // json으로 로드한 파일
-export default class Asset {
+export default class Asset<T extends Record<any, any> = any> {
   id!: string; // 로컬의 경우 objectHash(File)한 값
   inputAsset?: LoadableAssetType;
   arrayBuffer?: Promise<ArrayBuffer>; // local file인 경우 set하면 생성됨
+  vfile?: VFileLocal<T>;
 
   // 하단의 Asset.create()을 이용할 것
   private constructor(asset?: LoadableAssetType, id?: string) {
@@ -133,6 +129,12 @@ export default class Asset {
     }
   }
 
+  get isUploadable() {
+    return Boolean(
+      this.vfile && this.vfile.isVFile && this.vfile.state === 'loaded',
+    );
+  }
+
   get isLocal() {
     return this.inputAsset instanceof File;
   }
@@ -141,7 +143,7 @@ export default class Asset {
     return (
       this.inputAsset !== undefined &&
       !this.isLocal &&
-      VRemoteAssetTypes.includes(this.inputAsset?.type as any)
+      VAssetTypes.includes(this.inputAsset?.type as any)
     );
   }
 
@@ -277,7 +279,7 @@ export default class Asset {
   }
 
   setAsset(asset: LoadableAssetType, id?: string) {
-    if (VRemoteAssetTypes.includes((asset as RemoteAssetType).type)) {
+    if (VAssetTypes.includes((asset as RemoteAssetType).type)) {
       this.setRemoteAsset(asset as RemoteAssetType, id);
     } else {
       this.setLocalAsset(asset as LocalAssetType, id);
@@ -300,16 +302,16 @@ export default class Asset {
   }
 
   static fileType(file: File) {
-    const fname = file.name.toLowerCase();
+    const fileExt = new Ext(file);
     const mapExts = ['.jpg', '.jpeg', '.png', '.exr', '.ktx', '.ktx2'];
     const modelExts = ['.gltf', '.glb'];
     const jsonExts = ['.json'];
 
-    if (modelExts.some(ext => fname.endsWith(ext))) {
+    if (modelExts.some(ext => fileExt.same(ext))) {
       return 'glb';
-    } else if (mapExts.some(ext => fname.endsWith(ext))) {
+    } else if (mapExts.some(ext => fileExt.same(ext))) {
       return 'map';
-    } else if (jsonExts.some(ext => fname.endsWith(ext))) {
+    } else if (jsonExts.some(ext => fileExt.same(ext))) {
       return 'json';
     }
 
@@ -492,7 +494,7 @@ export default class Asset {
     }
 
     // case 1. texture
-    if (asset.type === 'texture') {
+    if (asset.type === 'VTexture') {
       const prom = fetch(url)
         .then(res => res.arrayBuffer())
         .then(arrayBuffer => {
@@ -517,7 +519,7 @@ export default class Asset {
     }
 
     // case 2. geometry
-    if (asset.type === 'geometry') {
+    if (asset.type === 'VBufferGeometry') {
       const prom = fetch(url)
         .then(res => res.arrayBuffer())
         .then(arrayBuffer => {
@@ -540,7 +542,7 @@ export default class Asset {
     }
 
     // case 3. material
-    if (asset.type === 'material') {
+    if (asset.type === 'VMaterial') {
       const prom = fetch(url)
         .then(res => res.arrayBuffer())
         .then(arrayBuffer => {
@@ -571,7 +573,7 @@ export default class Asset {
     }
 
     // case 4. mesh
-    if (asset.type === 'mesh') {
+    if (asset.type === 'VObject3D') {
       const prom = fetch(url)
         .then(res => res.arrayBuffer())
         .then(arrayBuffer => {

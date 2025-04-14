@@ -1,35 +1,22 @@
-import objectHash from 'object-hash';
 import * as THREE from 'three';
-import { FileID, FileUrl, VAssetType } from '../manager/assets/AssetTypes';
-
-type CommonObject = Record<string, any>;
-
-// json객체
-type VFile<T extends Record<any, any> = any> = {
-  id: FileID; // json url : workspace/project/files/[id] <- json파일
-  type: VAssetType;
-  data: T; // json객체
-  references?: Record<FileID, VFile<any>>; // 이 파일을 로드하기 위해 필요한 VFile들. ex) Material 하위의 Texture
-  rawFiles?: Record<FileID, FileUrl>; // RawFile Url, geometry의 경우 여러 개 필요해서 배열
-} & {
-  // 업로드 시 제외, json로드 시 자동으로 할당
-  isVFile: true; // always true,
-  state: 'loadable' | 'loading' | 'loaded';
-};
+import { AssetMgr } from '../manager/assets/AssetMgr';
+import { FileID, FileUrl } from '../manager/assets/AssetTypes';
+import { awaitAll } from '../manager/assets/AssetUtils';
+import { VFile, VFileRemote } from '../manager/assets/VFile';
 
 // BufferAttributeJSON
-type VBufferAttribute = {
+export type VBufferAttribute = {
   itemSize: number;
   type: string;
   // array: number[];
-  array: FileID;
+  array: VFileRemote;
   normalized: boolean;
 
   name?: string;
   usage?: THREE.Usage;
 };
 
-type VBufferGeometry = {
+export type VBufferGeometry = {
   name?: string;
   userData?: Record<string, unknown>;
 
@@ -37,7 +24,7 @@ type VBufferGeometry = {
     attributes: Record<string, VBufferAttribute>;
 
     // index?: { type: string; array: number[] };
-    index?: { type: string; array: FileID };
+    index?: { type: string; array: VFileRemote };
 
     morphAttributes?: Record<string, VBufferAttribute[]>;
     morphTargetsRelative?: boolean;
@@ -64,63 +51,25 @@ declare module 'three' {
   }
 }
 
-const hashObject = objectHash;
-
-const hashArrayBuffer = async (arrayBuffer: ArrayBuffer): Promise<string> => {
-  const hashBuffer = await crypto.subtle.digest('SHA-1', arrayBuffer);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  const hashHex = hashArray
-    .map(b => ('00' + b.toString(16)).slice(-2))
-    .join('');
-  return hashHex;
-};
-
-export class AssetMgr {
-  static cache: Map<FileID, VFile> = new Map();
-  static rawFileCache = new Map<FileID, ArrayBuffer | CommonObject>();
-
-  static async getRawFile<T>(id: string) {
-    return this.rawFileCache.get(id) as T;
-  }
-
-  static rawFileUrl(id: FileID): FileUrl {
-    return id;
-  }
-  static async uploadRawFile(
-    rawData: CommonObject | ArrayBuffer,
-    id?: string,
-  ): Promise<FileID> {
-    const cacher = this.rawFileCache;
-    const hasher =
-      rawData instanceof ArrayBuffer ? hashArrayBuffer : hashObject;
-
-    const hash = id ?? (await hasher(rawData as any));
-    const cached = cacher.get(hash);
-    if (!cached) {
-      cacher.set(hash, rawData);
-    }
-    return hash;
-  }
-}
-
 declare module 'three' {
   interface BufferAttribute {
-    toAsset: (
-      attrArray: (Promise<string> | string)[],
-    ) => Promise<VBufferAttribute>;
+    toAsset: (attrArray: (Promise<string> | string)[]) => VBufferAttribute;
   }
 }
 
 THREE.BufferAttribute.prototype.toAsset = function (
   attrArray: (Promise<string> | string)[],
 ) {
-  const arrayData = AssetMgr.uploadRawFile(this.array);
-  attrArray.push(arrayData);
+  const arrayId = AssetMgr.set(this.array);
+  attrArray.push(arrayId);
 
   const attributeData: VBufferAttribute = {
     itemSize: this.itemSize,
     type: this.array.constructor.name,
-    array: arrayData as unknown as string,
+    array: {
+      id: arrayId,
+      format: 'binary',
+    },
     normalized: this.normalized,
   };
 
@@ -128,10 +77,7 @@ THREE.BufferAttribute.prototype.toAsset = function (
   if ((this as any).usage !== THREE.StaticDrawUsage)
     attributeData.usage = (this as any).usage;
 
-  return arrayData.then(id => {
-    attributeData.array = id;
-    return attributeData;
-  });
+  return attributeData;
 };
 
 THREE.BufferGeometry.prototype.toAsset = function () {
@@ -148,7 +94,7 @@ THREE.BufferGeometry.prototype.toAsset = function () {
   };
 
   if (this.index !== null) {
-    proms['indexFileId'] = AssetMgr.uploadRawFile(
+    proms['indexFileId'] = AssetMgr.set(
       Array.prototype.slice.call(this.index.array),
     );
   }
@@ -188,7 +134,7 @@ THREE.BufferGeometry.prototype.toAsset = function () {
       if (index !== null) {
         data.data.index = {
           type: index.array.constructor.name,
-          array: proms.indexFileId as FileID,
+          array: { id: proms.indexFileId as FileID, format: 'binary' },
         };
       }
 
@@ -259,32 +205,9 @@ THREE.BufferGeometry.prototype.toAsset = function () {
         id: proms.hash as string,
         type: 'VBufferGeometry',
         data: data,
-        isVFile: true,
-        state: 'loaded',
       };
 
       return awaitAll(retval);
     },
   );
 };
-
-// 재귀적으로 모든 promise를 기다린다
-export async function awaitAll<T>(input: T): Promise<T> {
-  if (input instanceof Promise) {
-    return awaitAll(await input);
-  }
-
-  if (Array.isArray(input)) {
-    return Promise.all(input.map(awaitAll)) as Promise<any> as Promise<T>;
-  }
-
-  if (typeof input === 'object' && input !== null) {
-    const result: any = Array.isArray(input) ? [] : {};
-    for (const key of Object.keys(input)) {
-      result[key] = await awaitAll((input as any)[key]);
-    }
-    return result;
-  }
-
-  return input;
-}

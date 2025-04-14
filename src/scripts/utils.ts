@@ -1700,6 +1700,7 @@ export function computeBoundingBoxForMaterial(
 
 import { ClassValue, clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import { hashArrayBuffer } from './manager/assets/AssetUtils.ts';
 import { VUserData } from './vthree/VTHREETypes.ts';
 
 // tailwind에 동적으로 클래스이름 할당할 때 필요
@@ -1758,28 +1759,14 @@ export function getImageData(image: HTMLImageElement | ImageBitmap): ImageData {
 }
 
 // three.js의 텍스쳐.image를 받음
-export async function hashImageData(
-  image: HTMLImageElement | ImageBitmap,
-): Promise<string> {
+export function hashImageData(image: HTMLImageElement | ImageBitmap): string {
   const imageData = getImageData(image).data;
-
-  return crypto.subtle.digest('SHA-256', imageData.buffer).then(hashBuffer => {
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-  });
+  return hashArrayBuffer(imageData);
 }
 
-export async function hashDataTexture(texture: THREE.DataTexture) {
+export function hashDataTexture(texture: THREE.DataTexture) {
   const data = (texture.image as { data: ArrayBufferView }).data;
-  const buffer = data.buffer.slice(
-    data.byteOffset,
-    data.byteOffset + data.byteLength,
-  );
-
-  return crypto.subtle.digest('SHA-256', buffer).then(hashBuffer => {
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-  });
+  return hashArrayBuffer(data.buffer);
 }
 
 export function getParentPath(o: THREE.Object3D): string {

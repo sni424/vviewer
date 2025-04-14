@@ -1,5 +1,8 @@
 import objectHash from 'object-hash';
 import * as THREE from 'three';
+import { AssetMgr } from '../manager/assets/AssetMgr';
+import { VFile, VFileRemote } from '../manager/assets/VFile';
+import { VTexture } from '../manager/assets/VTexture';
 import { hashDataTexture, hashImageData } from '../utils';
 import { type VUserData } from './VTHREETypes';
 
@@ -9,13 +12,17 @@ declare module 'three' {
   }
 
   interface Texture {
+    get asData(): THREE.DataTexture;
+    get asCompressed(): THREE.CompressedTexture;
+
     get vUserData(): VUserData;
 
     set vUserData(userData: Partial<VUserData>);
 
     // vUserData.hash가 있으면 리턴, 없으면 계산 후 vUserData.hash에 저장
-    get hash(): Promise<string>;
-    updateHash(): Promise<string>;
+    get hash(): string;
+    updateHash(): string;
+    toAsset(): Promise<VFile<VTexture>>;
   }
 }
 
@@ -24,6 +31,9 @@ if (
 ) {
   Object.defineProperty(THREE.Texture.prototype, 'vUserData', {
     get: function () {
+      if (!this.userData) {
+        this.userData = {};
+      }
       return this.userData as VUserData;
     },
     set: function (userData: Partial<VUserData>) {
@@ -32,11 +42,29 @@ if (
   });
 }
 
+if (!Object.prototype.hasOwnProperty.call(THREE.Texture.prototype, 'asData')) {
+  Object.defineProperty(THREE.Texture.prototype, 'asData', {
+    get: function () {
+      return this as THREE.DataTexture;
+    },
+  });
+}
+
+if (
+  !Object.prototype.hasOwnProperty.call(THREE.Texture.prototype, 'asCompressed')
+) {
+  Object.defineProperty(THREE.Texture.prototype, 'asCompressed', {
+    get: function () {
+      return this as THREE.CompressedTexture;
+    },
+  });
+}
+
 if (!Object.prototype.hasOwnProperty.call(THREE.Texture.prototype, 'hash')) {
   Object.defineProperty(THREE.Texture.prototype, 'hash', {
-    get: async function (): Promise<string> {
+    get: function (): string {
       if (this.vUserData?.hash) {
-        return Promise.resolve(this.vUserData.hash);
+        return this.vUserData.hash;
       }
 
       return this.updateHash();
@@ -44,29 +72,105 @@ if (!Object.prototype.hasOwnProperty.call(THREE.Texture.prototype, 'hash')) {
   });
 }
 
-THREE.Texture.prototype.updateHash = async function (): Promise<string> {
+THREE.Texture.prototype.toAsset = async function () {
+  const handleImageData = async (
+    texture: THREE.Texture,
+  ): Promise<VFileRemote> => {
+    if ((texture as THREE.CompressedTexture).isCompressedTexture) {
+      if (!texture.vUserData.ktx2Buffer) {
+        console.log(texture);
+        debugger;
+        throw new Error('KTX2 Buffer가 없음');
+      }
+      const hash = AssetMgr.set(texture.vUserData.ktx2Buffer);
+      return {
+        id: hash,
+        format: 'binary',
+      } as VFileRemote;
+    } else if ((texture as THREE.DataTexture).isDataTexture) {
+      // exr임
+      const ab = texture.image.data.buffer;
+      const hash = AssetMgr.set(ab);
+      return {
+        id: hash,
+        format: 'binary',
+      } as VFileRemote;
+    } else {
+      // 일반 이미지포맷
+      return texture.source.toAsset();
+    }
+  };
+
+  const output: VTexture = {
+    // uuid: this.uuid,
+    uuid: this.hash,
+    name: this.name,
+
+    image: await handleImageData(this),
+
+    // imageData: await handleImageData(this),
+
+    mapping: this.mapping,
+    channel: this.channel,
+
+    repeat: [this.repeat.x, this.repeat.y],
+    offset: [this.offset.x, this.offset.y],
+    center: [this.center.x, this.center.y],
+    rotation: this.rotation,
+
+    wrap: [this.wrapS, this.wrapT],
+
+    format: this.format,
+    internalFormat: this.internalFormat,
+    type: this.type,
+    colorSpace: this.colorSpace,
+
+    minFilter: this.minFilter,
+    magFilter: this.magFilter,
+    anisotropy: this.anisotropy,
+
+    flipY: this.flipY,
+
+    generateMipmaps: this.generateMipmaps,
+    premultiplyAlpha: this.premultiplyAlpha,
+    unpackAlignment: this.unpackAlignment,
+  };
+
+  if (Object.keys(this.vUserData).length > 0)
+    output.userData = this.vUserData as any;
+
+  debugger;
+
+  const retval: VFile<VTexture> = {
+    id: this.hash,
+    type: 'VTexture',
+    data: output,
+  };
+
+  return retval;
+};
+
+THREE.Texture.prototype.updateHash = function (): string {
   if (!this.vUserData) {
     this.vUserData = {};
   }
 
   if ((this as THREE.DataTexture).isDataTexture) {
-    return hashDataTexture(this as THREE.DataTexture).then(hash => {
-      this.vUserData.hash = hash;
-      if (!this.vUserData.id) {
-        this.vUserData.id = hash;
-      }
-      return hash;
-    });
+    const hash = hashDataTexture(this as THREE.DataTexture);
+    this.vUserData.hash = hash;
+    if (!this.vUserData.id) {
+      this.vUserData.id = hash;
+    }
+    return hash;
   }
 
   if (Boolean(this.image)) {
-    return hashImageData(this.image).then(hash => {
-      this.vUserData.hash = hash;
-      if (!this.vUserData.id) {
-        this.vUserData.id = hash;
-      }
-      return hash;
-    });
+    const hash = hashImageData(this.image);
+    this.vUserData.hash = hash;
+    if (!this.vUserData.id) {
+      this.vUserData.id = hash;
+    }
+    return hash;
   }
 
   const hash = objectHash(this);

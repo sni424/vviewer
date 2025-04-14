@@ -66,6 +66,7 @@ import './Shader.ts';
 import './Vector3.ts';
 
 // 하위 개념부터 임포트 - texture
+import './Source.ts';
 import './Texture.ts';
 
 // material

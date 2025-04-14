@@ -3,10 +3,8 @@ import { Canvas } from '@react-three/fiber';
 import { useEffect, useRef, useState } from 'react';
 import ObjectViewer from 'src/components/ObjectViewer';
 import Asset, { VRemoteAsset } from 'src/scripts/manager/Asset';
-import {
-  AssetMgr,
-  VBufferGeometryFile,
-} from 'src/scripts/vthree/BufferGeometryToAsset';
+import TextureLoader from 'src/scripts/manager/assets/TextureLoader';
+import { VFile } from 'src/scripts/manager/assets/VFile';
 import { THREE } from 'VTHREE';
 import useTestModelDragAndDrop from './useTestModelDragAndDrop';
 
@@ -135,25 +133,46 @@ function TestPage() {
           </button>
           <button
             onClick={() => {
-              const proms: Promise<VBufferGeometryFile>[] = [];
+              const proms: Promise<VFile>[] = [];
+              const vfiles: VFile[] = [];
               sceneRef.current.traverse(o => {
                 if (o.asMesh.isMesh) {
                   o.geometries().forEach(g => {
                     proms.push(g.toAsset());
                   });
+                  o.asMesh.matStandard.textures().forEach(t => {
+                    proms.push(t.toAsset());
+                  });
                 }
               });
+              console.log('Textures:', vfiles);
+
               Promise.all(proms).then(async res => {
+                TextureLoader(res[1]).then(loaded => {
+                  console.log('loaded', loaded);
+                  loaded.flipY = false;
+
+                  // add new box to the scene
+                  const material = new THREE.MeshStandardMaterial({
+                    map: loaded,
+                  });
+                  const box = new THREE.Mesh(
+                    new THREE.BoxGeometry(1, 1, 1),
+                    material,
+                  );
+                  sceneRef.current.add(box);
+                });
+
                 const arrayId = res[0].data.data!.index!.array;
 
-                const ab = await AssetMgr.getRawFile(arrayId);
+                // const ab = await AssetMgr.get(arrayId);
 
                 console.log(
                   'geometries',
                   arrayId,
                   res,
-                  ab,
-                  AssetMgr.rawFileCache.keys(),
+                  // ab,
+                  // AssetMgr.cache.keys(),
                 );
               });
             }}
