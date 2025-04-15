@@ -4,7 +4,7 @@
 // constants.d.ts
 
 import { type THREE } from 'VTHREE';
-import { VFileRemote } from './VFile';
+import { VRemoteFile } from './VFile';
 
 interface GeometryGroup {
   /**
@@ -48,7 +48,7 @@ export type VBufferAttributeUsage =
 export interface VBufferAttribute {
   itemSize: number;
   type: string;
-  array: VFileRemote;
+  array: VRemoteFile;
   normalized: boolean;
 
   name?: string;
@@ -73,7 +73,7 @@ export interface VBufferGeometry {
   data: {
     attributes: Record<string, VBufferAttribute | VInterleavedBufferAttribute>;
 
-    index?: { type: string; array: VFileRemote };
+    index?: { type: string; array: VRemoteFile };
 
     morphAttributes?: Record<
       string,
@@ -89,7 +89,7 @@ export interface VBufferGeometry {
 
 export interface VInterleavedBuffer {
   uuid: string;
-  buffer: VFileRemote;
+  buffer: VRemoteFile;
   type: string; //arraytype
   stride: number;
 }

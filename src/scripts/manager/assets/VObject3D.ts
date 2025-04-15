@@ -1,11 +1,41 @@
-import { VAssetType } from './AssetTypes';
-import Loadable from './Loadable';
+import { type THREE } from 'VTHREE';
+import { VBufferAttribute } from './VBufferGeometry';
+import { VFile, VRemoteFile } from './VFile';
 
-interface VObject3DData {}
+type VLoadable = VFile | VRemoteFile;
 
-export default class VObject3D extends Loadable<VObject3DData> {
-  type = 'VObject3D' as VAssetType;
-  parse() {
-    return Promise.resolve({} as VObject3DData);
-  }
+export interface VObject3D {
+  uuid: string;
+  type: string;
+
+  name?: string;
+  castShadow?: boolean;
+  receiveShadow?: boolean;
+  visible?: boolean;
+  frustumCulled?: boolean;
+  renderOrder?: number;
+  userData?: Record<string, unknown>;
+
+  layers: number;
+  matrix: THREE.Matrix4Tuple;
+  up: THREE.Vector3Tuple;
+
+  matrixAutoUpdate?: boolean;
+
+  children?: VLoadable[];
+
+  animations?: string[];
+
+  //mesh
+  geometry?: VLoadable;
+  material?: VLoadable;
+
+  // instanced
+  count?: number;
+  instanceMatrix?: VBufferAttribute;
+  instanceColor?: VBufferAttribute;
+
+  // batched
+  // perObjectFrustumCulled?: boolean;
+  // sortObjects?: boolean;
 }

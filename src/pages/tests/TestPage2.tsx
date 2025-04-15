@@ -141,6 +141,10 @@ function TestPage() {
                 .map(a => a.get<THREE.Group>())
                 .forEach(a => {
                   a.then(a => {
+                    a.toAsset().then(vfile => {
+                      console.log({ object3d: vfile });
+                    });
+
                     if (texes.length > 0) {
                       a.meshes().forEach(m => {
                         texes[0].channel = 1;
@@ -148,7 +152,8 @@ function TestPage() {
                       });
                     }
                     sceneRef.current.add(a);
-                    a.meshes().forEach(m => {
+                    a.meshes().forEach(async m => {
+                      console.log({ mesh: await m.toAsset() });
                       Promise.all([
                         m.geometry.toAsset(),
                         m.matStandard.toAsset(),
@@ -293,63 +298,6 @@ function TestPage() {
               재질적용
             </button>
           )}
-          <button
-            onClick={() => {
-              const scene = sceneRef.current;
-              const proms: Promise<any>[] = [];
-              const start = performance.now();
-              scene.traverse(o => {
-                console.log(o.name);
-                if (o.asMesh.isMesh) {
-                  proms.push(o.asMesh.hash);
-                }
-              });
-              Promise.all(proms).then(hashes => {
-                const end = performance.now();
-                console.log('해시 완료', hashes, end - start, 'ms');
-                scene.traverse(o => {
-                  if (o.asMesh.isMesh) {
-                    console.log('filename', o.vUserData?.fileName);
-                    const mesh = o.asMesh;
-                    const geo = mesh.geometry;
-                    const mat = mesh.matPhysical;
-                    const tex = mat.textures();
-                    const printHash = async () => {
-                      print(mesh.name, await mesh.hash);
-                      print('  - ', geo.name, await geo.hash);
-                      print('  - ', mat.name, await mat.hash);
-                      tex.forEach(async t => {
-                        print('    - ', t.name, await t.hash);
-                      });
-                    };
-                    printHash();
-                    print('해시 완료', mesh, geo, mat, tex);
-                  }
-                });
-              });
-            }}
-          >
-            해시
-          </button>
-          <button
-            onClick={() => {
-              const geo = sceneRef.current.geometries();
-              console.log(geo);
-              geo.forEach(g => {
-                console.log(g, g.toJSON());
-              });
-
-              const mats = sceneRef.current.materials();
-              mats.forEach(m => {
-                if (m.standard.map) {
-                  m.standard.map.anisotropy = 5000;
-                }
-                console.log(m, m.toJSON());
-              });
-            }}
-          >
-            Geo
-          </button>
         </div>
         <ObjectViewer data={asset}></ObjectViewer>
       </div>

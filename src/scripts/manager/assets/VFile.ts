@@ -1,7 +1,7 @@
 import { FileID, VAssetType, VAssetTypes } from './AssetTypes';
 
 // VFile대신 원격(또는 캐시)에 있는 파일을 레퍼런스로 사용할 때
-export type VFileRemote = {
+export type VRemoteFile = {
   id: FileID;
   format: 'json' | 'binary';
   hint?: 'jpg' | 'png' | 'Uint8Array' | 'Uint16Array' | 'Float32Array' | string;

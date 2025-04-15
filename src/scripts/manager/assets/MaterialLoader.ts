@@ -4,7 +4,7 @@ import '../../vthree/Material';
 import { AssetMgr } from './AssetMgr';
 import { awaitAll } from './AssetUtils';
 import TextureLoader from './TextureLoader';
-import { isVFile, VFile, VFileRemote } from './VFile';
+import { isVFile, VFile, VRemoteFile } from './VFile';
 import VMaterial from './VMaterial';
 import { isVTextureFile } from './VTexture';
 
@@ -33,7 +33,7 @@ function createMaterialFromType(type: string) {
   return new (materialLib as any)[type]();
 }
 
-export default async function (file: VFile | VFileRemote) {
+export default async function (file: VFile | VRemoteFile) {
   return AssetMgr.get<VFile<VMaterial>>(file as any).then(async vfile => {
     if (!isVFile(vfile)) {
       throw new Error('file이 VFile도 아닙니다');

@@ -1,7 +1,7 @@
 import { fetchArrayBuffer } from 'src/scripts/atomUtils';
 import { CommonObject, FileID, FileUrl } from './AssetTypes';
 import { awaitAll, hashArrayBuffer, hashObject } from './AssetUtils';
-import { isVFile, isVFileRemote, VFile, VFileRemote } from './VFile';
+import { isVFile, isVFileRemote, VFile, VRemoteFile } from './VFile';
 
 type Callback = (value: any, path: string[]) => void;
 
@@ -42,19 +42,19 @@ export class AssetMgr {
 
   static async get<T extends AssetCacheType = any>(vfile: VFile): Promise<T>;
   static async get<T extends AssetCacheType = any>(
-    remoteFile: VFileRemote,
+    remoteFile: VRemoteFile,
   ): Promise<T>;
   static async get<T extends AssetCacheType = any>(
     id: string,
     hint?: 'json' | 'binary',
   ): Promise<T>;
   static async get<T extends AssetCacheType = any>(
-    idOrRemoteFile: string | VFileRemote | VFile,
+    idOrRemoteFile: string | VRemoteFile | VFile,
     hint?: 'json' | 'binary',
   ) {
     if (typeof idOrRemoteFile === 'object') {
       if (isVFileRemote(idOrRemoteFile)) {
-        const remoteFile = idOrRemoteFile as VFileRemote;
+        const remoteFile = idOrRemoteFile as VRemoteFile;
         const id = remoteFile.id;
         const hint = remoteFile.format;
         return this.get<T>(id, hint);
@@ -88,7 +88,7 @@ export class AssetMgr {
             completedJson,
             isVFileRemote,
             (obj, path) => {
-              const file = obj as VFileRemote;
+              const file = obj as VRemoteFile;
               childrenProms.push(AssetMgr.get(file.id, file.format));
             },
           );
@@ -154,9 +154,9 @@ export class AssetMgr {
     iterateObjectWithPredicate(
       copied,
       isVFileRemote,
-      async (val: VFileRemote, path: string[]) => {
+      async (val: VRemoteFile, path: string[]) => {
         console.log({ val });
-        const file = val as VFileRemote;
+        const file = val as VRemoteFile;
 
         const prom = AssetMgr.get(file).then(replacer => {
           // VFileRemote인 현재의 키값을 대체

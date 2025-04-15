@@ -3,7 +3,7 @@ import { EXRLoader } from 'three/examples/jsm/Addons.js';
 import { THREE } from 'VTHREE';
 import { AssetMgr } from './AssetMgr';
 import { getTypedArray } from './AssetUtils';
-import { VFile, VFileRemote } from './VFile';
+import { VFile, VRemoteFile } from './VFile';
 import { VTexture } from './VTexture';
 
 const TEXTURE_KEYS = ['VTexture', 'VDataTexture', 'VCompressedTexture'];
@@ -226,7 +226,7 @@ async function createCommonTexture(data: VTexture): Promise<THREE.Texture> {
 }
 
 export default async function (
-  file: VFile | VFileRemote,
+  file: VFile | VRemoteFile,
 ): Promise<THREE.Texture> {
   return AssetMgr.get<VFile<VTexture>>(file as any).then(async textureFile => {
     if (!TEXTURE_KEYS.includes(textureFile.type)) {

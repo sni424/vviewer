@@ -3,6 +3,8 @@ import objectHash from 'object-hash';
 import * as THREE from 'three';
 import type { TransformControlsPlane } from 'three/examples/jsm/controls/TransformControls.js';
 import { Layer } from '../../Constants';
+import { VFile } from '../manager/assets/VFile';
+import { VObject3D } from '../manager/assets/VObject3D';
 import { resetGL } from '../utils';
 import './Object3DSerialize';
 import { type VUserData } from './VTHREETypes';
@@ -50,8 +52,10 @@ declare module 'three' {
     // ex) 'parent1/parent2/parent3'
     get parentPath(): string;
 
-    get hash(): Promise<string>;
-    updateHash(path?: string): Promise<string>;
+    get hash(): string;
+    updateHash(path?: string): string;
+
+    toAsset(): Promise<VFile<VObject3D>>;
   }
 }
 
@@ -206,9 +210,9 @@ THREE.Object3D.prototype.isSystemGenerated = function () {
 
 if (!Object.getOwnPropertyDescriptor(THREE.Object3D.prototype, 'hash')) {
   Object.defineProperty(THREE.Object3D.prototype, 'hash', {
-    get: async function (): Promise<string> {
+    get: function (): string {
       if (this.userData.hash) {
-        return Promise.resolve(this.userData.hash);
+        return this.userData.hash;
       }
 
       return this.updateHash();
@@ -216,9 +220,7 @@ if (!Object.getOwnPropertyDescriptor(THREE.Object3D.prototype, 'hash')) {
   });
 }
 
-THREE.Object3D.prototype.updateHash = async function (
-  path = '',
-): Promise<string> {
+THREE.Object3D.prototype.updateHash = function (path = ''): string {
   if (!this.userData) {
     this.userData = {};
   }
@@ -226,54 +228,254 @@ THREE.Object3D.prototype.updateHash = async function (
   // 자신에 대해 하기 전에 자식들을 다 돈다
   const childrenHashes = this.children.map(child => child.updateHash(path));
 
-  return Promise.all(childrenHashes).then(() => {
-    const geoHash = this.asMesh.geometry?.hash;
-    const matHash = this.asMesh.matPhysical?.hash;
+  const excludes = ['uuid', 'id'];
+  const rawKeys = Object.keys(this) as (keyof THREE.MeshPhysicalMaterial)[];
 
-    return Promise.all([geoHash, matHash]).then(() => {
-      const excludes = ['uuid', 'id'];
-      const rawKeys = Object.keys(this) as (keyof THREE.MeshPhysicalMaterial)[];
+  const filteredKeys = rawKeys
+    .filter(key => !excludes.includes(key))
+    .filter(key => !key.startsWith('_'));
 
-      const filteredKeys = rawKeys
-        .filter(key => !excludes.includes(key))
-        .filter(key => !key.startsWith('_'));
+  // type Primitive = string | number | boolean | null | undefined;
 
-      type Primitive = string | number | boolean | null | undefined;
+  const hashMap: Record<string, any> = { childrenHashes };
 
-      const hashMap: Record<string, Primitive> = {};
+  // 기본 정보
+  const resolvedPath = path + this.parentPath;
+  const fileName = this.vUserData?.fileName ?? '';
+  hashMap.path = resolvedPath;
+  hashMap.fileName = fileName;
 
-      // 기본 정보
-      const resolvedPath = path + this.parentPath;
-      const fileName = this.vUserData?.fileName ?? '';
-      hashMap.path = resolvedPath;
-      hashMap.fileName = fileName;
-
-      filteredKeys.forEach(key => {
-        const value = (this as any)[key];
-        const typeofValue = typeof value;
-        if (
-          typeofValue === 'string' ||
-          typeofValue === 'number' ||
-          typeofValue === 'boolean' ||
-          typeofValue === 'undefined' ||
-          value === null
-        ) {
-          hashMap[key] = value;
-        } else if (
-          (value as THREE.BufferGeometry).isBufferGeometry ||
-          (value as THREE.Material).isMaterial
-        ) {
-          hashMap[key] = value.vUserData.hash;
-        }
-      });
-
-      const hash = objectHash(hashMap);
-      this.vUserData.hash = hash;
-      if (!this.vUserData.id) {
-        this.vUserData.id = hash;
+  filteredKeys.forEach(key => {
+    const value = (this as any)[key];
+    const typeofValue = typeof value;
+    if (
+      typeofValue === 'string' ||
+      typeofValue === 'number' ||
+      typeofValue === 'boolean' ||
+      typeofValue === 'undefined' ||
+      value === null
+    ) {
+      hashMap[key] = value;
+    } else if (
+      (value as THREE.BufferGeometry).isBufferGeometry ||
+      (value as THREE.Material).isMaterial
+    ) {
+      if (!value.vUserData) {
+        debugger;
       }
-
-      return hash;
-    });
+      hashMap[key] = value.vUserData.hash;
+    }
   });
+
+  const hash = objectHash(hashMap);
+  this.vUserData.hash = hash;
+  if (!this.vUserData.id) {
+    this.vUserData.id = hash;
+  }
+
+  return hash;
+};
+
+THREE.Object3D.prototype.toAsset = async function () {
+  const object: Partial<VObject3D> = {};
+
+  const o3 = this as THREE.Object3D;
+  const mesh = o3 as THREE.Mesh;
+  const group = o3 as THREE.Group;
+  const instanced = o3 as THREE.InstancedMesh;
+  const batched = o3 as THREE.BatchedMesh;
+  const scene = o3 as THREE.Scene;
+  const line = o3 as THREE.Line;
+  const points = o3 as THREE.Points;
+
+  object.uuid = this.uuid;
+  object.type = this.type;
+
+  if (this.name !== '') object.name = this.name;
+  if (this.castShadow === true) object.castShadow = true;
+  if (this.receiveShadow === true) object.receiveShadow = true;
+  if (this.visible === false) object.visible = false;
+  if (this.frustumCulled === false) object.frustumCulled = false;
+  if (this.renderOrder !== 0) object.renderOrder = this.renderOrder;
+  if (Object.keys(this.userData).length > 0) object.userData = this.userData;
+
+  object.layers = this.layers.mask;
+  object.matrix = this.matrix.toArray();
+  object.up = this.up.toArray();
+
+  if (this.matrixAutoUpdate === false) object.matrixAutoUpdate = false;
+
+  // object specific properties
+
+  if (instanced.isInstancedMesh) {
+    throw new Error('InstancedMesh is not supported yet');
+    // object.type = 'InstancedMesh';
+    // object.count = instanced.count;
+    // object.instanceMatrix = instanced.instanceMatrix.toAsset();
+    // if (instanced.instanceColor !== null)
+    //   object.instanceColor = instanced.instanceColor.toAsset();
+  }
+
+  if (batched.isBatchedMesh) {
+    throw new Error('BatchedMesh is not supported yet');
+    // object.type = 'BatchedMesh';
+    // object.perObjectFrustumCulled = batched.perObjectFrustumCulled;
+    // object.sortObjects = batched.sortObjects;
+
+    // object.drawRanges = batched._drawRanges;
+    // object.reservedRanges = batched._reservedRanges;
+
+    // object.visibility = batched._visibility;
+    // object.active = batched._active;
+    // object.bounds = batched._bounds.map(bound => ({
+    //   boxInitialized: bound.boxInitialized,
+    //   boxMin: bound.box.min.toArray(),
+    //   boxMax: bound.box.max.toArray(),
+
+    //   sphereInitialized: bound.sphereInitialized,
+    //   sphereRadius: bound.sphere.radius,
+    //   sphereCenter: bound.sphere.center.toArray(),
+    // }));
+
+    // object.maxInstanceCount = this._maxInstanceCount;
+    // object.maxVertexCount = this._maxVertexCount;
+    // object.maxIndexCount = this._maxIndexCount;
+
+    // object.geometryInitialized = this._geometryInitialized;
+    // object.geometryCount = this._geometryCount;
+
+    // object.matricesTexture = this._matricesTexture.toJSON(meta);
+
+    // if (this._colorsTexture !== null)
+    //   object.colorsTexture = this._colorsTexture.toJSON(meta);
+
+    // if (this.boundingSphere !== null) {
+    //   object.boundingSphere = {
+    //     center: object.boundingSphere.center.toArray(),
+    //     radius: object.boundingSphere.radius,
+    //   };
+    // }
+
+    // if (this.boundingBox !== null) {
+    //   object.boundingBox = {
+    //     min: object.boundingBox.min.toArray(),
+    //     max: object.boundingBox.max.toArray(),
+    //   };
+    // }
+  }
+
+  //
+
+  // function serialize(library, element) {
+  //   if (library[element.uuid] === undefined) {
+  //     library[element.uuid] = element.toJSON(meta);
+  //   }
+
+  //   return element.uuid;
+  // }
+
+  if (scene.isScene) {
+    if (scene.background) {
+      throw new Error('Scene background is not supported yet');
+      // if (scene.background.isColor) {
+      //   object.background = scene.background.toJSON();
+      // } else if (scene.background.isTexture) {
+      //   object.background = scene.background.toJSON(meta).uuid;
+      // }
+    }
+
+    if (
+      scene.environment &&
+      scene.environment.isTexture &&
+      scene.environment.isRenderTargetTexture !== true
+    ) {
+      throw new Error('Scene environment is not supported yet');
+      // object.environment = scene.environment.toJSON(meta).uuid;
+    }
+  } else if (mesh.isMesh || line.isLine || points.isPoints) {
+    // object.geometry = serialize(meta.geometries, mesh.geometry);
+    object.geometry = await mesh.geometry.toAsset();
+
+    const parameters = (mesh.geometry as any).parameters;
+
+    if (parameters !== undefined && parameters.shapes !== undefined) {
+      throw new Error('Geometry shapes is not supported yet');
+      // const shapes = parameters.shapes;
+
+      // if (Array.isArray(shapes)) {
+      //   for (let i = 0, l = shapes.length; i < l; i++) {
+      //     const shape = shapes[i];
+
+      //     serialize(meta.shapes, shape);
+      //   }
+      // } else {
+      //   serialize(meta.shapes, shapes);
+      // }
+    }
+  }
+
+  if ((this as any).isSkinnedMesh) {
+    throw new Error('SkinnedMesh is not supported yet');
+    // object.bindMode = this.bindMode;
+    // object.bindMatrix = this.bindMatrix.toArray();
+
+    // if (this.skeleton !== undefined) {
+    //   serialize(meta.skeletons, this.skeleton);
+
+    //   object.skeleton = this.skeleton.uuid;
+    // }
+  }
+
+  if (mesh.material !== undefined) {
+    object.material = await mesh.matStandard.toAsset();
+  }
+
+  //
+
+  if (this.children.length > 0) {
+    object.children = await Promise.all(
+      this.children.map(child => child.toAsset()),
+    );
+  }
+
+  //
+
+  if (this.animations.length > 0) {
+    throw new Error('Object3D animations is not supported yet');
+    // object.animations = [];
+
+    // for (let i = 0; i < this.animations.length; i++) {
+    //   const animation = this.animations[i];
+
+    //   object.animations.push(serialize(meta.animations, animation));
+    // }
+  }
+
+  // if (isRootObject) {
+  //   const geometries = extractFromCache(meta.geometries);
+  //   const materials = extractFromCache(meta.materials);
+  //   const textures = extractFromCache(meta.textures);
+  //   const images = extractFromCache(meta.images);
+  //   const shapes = extractFromCache(meta.shapes);
+  //   const skeletons = extractFromCache(meta.skeletons);
+  //   const animations = extractFromCache(meta.animations);
+  //   const nodes = extractFromCache(meta.nodes);
+
+  //   if (geometries.length > 0) output.geometries = geometries;
+  //   if (materials.length > 0) output.materials = materials;
+  //   if (textures.length > 0) output.textures = textures;
+  //   if (images.length > 0) output.images = images;
+  //   if (shapes.length > 0) output.shapes = shapes;
+  //   if (skeletons.length > 0) output.skeletons = skeletons;
+  //   if (animations.length > 0) output.animations = animations;
+  //   if (nodes.length > 0) output.nodes = nodes;
+  // }
+
+  const retval: VFile<VObject3D> = {
+    id: this.hash,
+    type: 'VObject3D',
+    data: object as VObject3D,
+  };
+
+  return retval;
 };

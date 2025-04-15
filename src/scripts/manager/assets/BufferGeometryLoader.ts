@@ -7,10 +7,10 @@ import {
   VInterleavedBuffer,
   VInterleavedBufferAttribute,
 } from './VBufferGeometry';
-import { VFile, VFileRemote } from './VFile';
+import { VFile, VRemoteFile } from './VFile';
 
 export default async function BufferGeometryLoader(
-  vfile: VFile | VFileRemote,
+  vfile: VFile | VRemoteFile,
 ): Promise<THREE.BufferGeometry> {
   return AssetMgr.get<VFile<VBufferGeometry>>(vfile as any).then(
     async geometryFile => {

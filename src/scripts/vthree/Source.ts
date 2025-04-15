@@ -1,11 +1,11 @@
 import * as THREE from 'three';
 import { AssetMgr } from '../manager/assets/AssetMgr';
-import { VFileRemote } from '../manager/assets/VFile';
+import { VRemoteFile } from '../manager/assets/VFile';
 import { type VUserData } from './VTHREETypes';
 
 declare module 'three' {
   interface Source {
-    toAsset(): Promise<VFileRemote>;
+    toAsset(): Promise<VRemoteFile>;
 
     get vUserData(): VUserData;
     set vUserData(userData: Partial<VUserData>);
@@ -180,7 +180,7 @@ async function serializeImage(
   }
 }
 
-THREE.Source.prototype.toAsset = async function (): Promise<VFileRemote> {
+THREE.Source.prototype.toAsset = async function (): Promise<VRemoteFile> {
   const data = this.data;
 
   if (data !== null) {
@@ -207,7 +207,7 @@ THREE.Source.prototype.toAsset = async function (): Promise<VFileRemote> {
       this.vUserData.id = hash;
     }
 
-    const output: VFileRemote = {
+    const output: VRemoteFile = {
       id: hash,
       format: 'binary',
       hint: type,

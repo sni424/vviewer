@@ -1,12 +1,12 @@
 import { type THREE } from 'VTHREE';
-import { isVFile, type VFileRemote } from './VFile';
+import { isVFile, type VRemoteFile } from './VFile';
 
 // TextureJSON에서 image만 변경
 export interface VTexture {
   uuid: string;
   name: string;
 
-  image: VFileRemote;
+  image: VRemoteFile;
   width?: number; // VDataTexture에서 사용
   height?: number; // VDataTexture에서 사용
   arrayType?: string; // VDataTexture에서 사용

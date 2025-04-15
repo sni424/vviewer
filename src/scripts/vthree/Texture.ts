@@ -2,7 +2,7 @@ import objectHash from 'object-hash';
 import * as THREE from 'three';
 import { AssetMgr } from '../manager/assets/AssetMgr';
 import { hashArrayBuffer } from '../manager/assets/AssetUtils';
-import { VFile, VFileRemote } from '../manager/assets/VFile';
+import { VFile, VRemoteFile } from '../manager/assets/VFile';
 import { VTexture } from '../manager/assets/VTexture';
 import { hashDataTexture, hashImageData } from '../utils';
 import { type VUserData } from './VTHREETypes';
@@ -75,7 +75,7 @@ if (!Object.prototype.hasOwnProperty.call(THREE.Texture.prototype, 'hash')) {
 
 const handleImageData = async (
   texture: THREE.Texture,
-): Promise<VFileRemote> => {
+): Promise<VRemoteFile> => {
   if ((texture as THREE.CompressedTexture).isCompressedTexture) {
     if (!texture.vUserData.ktx2Buffer) {
       console.log(texture);
@@ -86,7 +86,7 @@ const handleImageData = async (
     return {
       id: hash,
       format: 'binary',
-    } as VFileRemote;
+    } as VRemoteFile;
   } else if ((texture as THREE.DataTexture).isDataTexture) {
     // exr임
     const ab = texture.image.data.buffer;
@@ -94,7 +94,7 @@ const handleImageData = async (
     return {
       id: hash,
       format: 'binary',
-    } as VFileRemote;
+    } as VRemoteFile;
   } else {
     // 일반 이미지포맷
     return texture.source.toAsset();

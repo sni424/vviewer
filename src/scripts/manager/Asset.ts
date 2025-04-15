@@ -677,29 +677,18 @@ export default class Asset<T extends Record<any, any> = any> {
           .parseAsync(arrayBuffer, file.name)
           .then(glb => {
             const scene = glb.scene;
-            console.log(scene);
-
-            // scene을 돌면서 mesh, geometry, material, texture을 캐시에 등록
-            // registerLocalCache(scene);
-
-            const start = performance.now();
-            const fname = file.name.split('/').pop();
-            return scene.updateHash(fname).then(() => {
-              const end = performance.now();
-              console.log('GLB hash time', fname, end - start);
-              localFileCache.set(fileId, {
-                state: 'loaded',
-                file,
-                data: scene,
-                type: 'glb',
-                asset: this,
-              });
-
-              this.onLoaded?.(this, scene);
-              this.onStateChange?.(this, 'loaded', 'loading');
-
-              return scene;
+            localFileCache.set(fileId, {
+              state: 'loaded',
+              file,
+              data: scene,
+              type: 'glb',
+              asset: this,
             });
+
+            this.onLoaded?.(this, scene);
+            this.onStateChange?.(this, 'loaded', 'loading');
+
+            return scene as T;
           });
       });
 
