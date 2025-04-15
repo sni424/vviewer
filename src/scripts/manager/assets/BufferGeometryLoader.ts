@@ -14,7 +14,7 @@ export default async function BufferGeometryLoader(
 ): Promise<THREE.BufferGeometry> {
   return AssetMgr.get<VFile<VBufferGeometry>>(vfile as any).then(
     async geometryFile => {
-      const { id, type, data: json } = geometryFile;
+      const { id, type, data } = geometryFile;
       if (type !== 'VBufferGeometry') {
         throw new Error('VBufferGeometry가 아닙니다');
       }
@@ -27,11 +27,11 @@ export default async function BufferGeometryLoader(
         return ib;
       }
 
-      const geometry = json.isInstancedBufferGeometry
+      const geometry = (data as any).isInstancedBufferGeometry
         ? new THREE.InstancedBufferGeometry()
         : new THREE.BufferGeometry();
 
-      const index = json.data!.index;
+      const index = data.data!.index;
 
       if (index !== undefined) {
         const typedArray = getTypedArray(
@@ -41,7 +41,7 @@ export default async function BufferGeometryLoader(
         geometry.setIndex(new THREE.BufferAttribute(typedArray, 1));
       }
 
-      const attributes = json.data.attributes;
+      const attributes = data.data.attributes;
 
       for (const key in attributes) {
         const attribute = attributes[key];
@@ -65,7 +65,7 @@ export default async function BufferGeometryLoader(
             attr.type,
             await AssetMgr.get(attr.array),
           );
-          const bufferAttributeConstr = attr.isInstancedBufferAttribute
+          const bufferAttributeConstr = (attr as any).isInstancedBufferAttribute
             ? THREE.InstancedBufferAttribute
             : THREE.BufferAttribute;
           bufferAttribute = new bufferAttributeConstr(
@@ -75,14 +75,15 @@ export default async function BufferGeometryLoader(
           );
         }
 
-        if (attribute.name !== undefined) bufferAttribute.name = attribute.name;
-        if (attribute.usage !== undefined)
-          (bufferAttribute as any).setUsage?.(attribute.usage);
+        if ((attribute as any).name !== undefined)
+          bufferAttribute.name = (attribute as any).name;
+        if ((attribute as any).usage !== undefined)
+          (bufferAttribute as any).setUsage?.((attribute as any).usage);
 
         geometry.setAttribute(key, bufferAttribute);
       }
 
-      const morphAttributes = json.data.morphAttributes;
+      const morphAttributes = data.data.morphAttributes;
 
       if (morphAttributes) {
         for (const key in morphAttributes) {
@@ -118,8 +119,8 @@ export default async function BufferGeometryLoader(
               );
             }
 
-            if (attribute.name !== undefined)
-              bufferAttribute.name = attribute.name;
+            if ((attribute as any).name !== undefined)
+              bufferAttribute.name = (attribute as any).name;
             array.push(bufferAttribute);
           }
 
@@ -127,14 +128,16 @@ export default async function BufferGeometryLoader(
         }
       }
 
-      const morphTargetsRelative = json.data.morphTargetsRelative;
+      const morphTargetsRelative = data.data.morphTargetsRelative;
 
       if (morphTargetsRelative) {
         geometry.morphTargetsRelative = true;
       }
 
       const groups =
-        json.data.groups || json.data.drawcalls || json.data.offsets;
+        data.data.groups ||
+        (data.data as any).drawcalls ||
+        (data as any).data.offsets;
 
       if (groups !== undefined) {
         for (let i = 0, n = groups.length; i !== n; ++i) {
@@ -144,7 +147,7 @@ export default async function BufferGeometryLoader(
         }
       }
 
-      const boundingSphere = json.data.boundingSphere;
+      const boundingSphere = data.data.boundingSphere;
 
       if (boundingSphere !== undefined) {
         const center = new THREE.Vector3();
@@ -159,8 +162,8 @@ export default async function BufferGeometryLoader(
         );
       }
 
-      if (json.name) geometry.name = json.name;
-      if (json.userData) geometry.userData = json.userData;
+      if (data.name) geometry.name = data.name;
+      if (data.userData) geometry.userData = data.userData;
 
       return geometry;
     },
