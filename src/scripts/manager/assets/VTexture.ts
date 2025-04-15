@@ -7,6 +7,9 @@ export interface VTexture {
   name: string;
 
   image: VFileRemote;
+  width?: number; // VDataTexture에서 사용
+  height?: number; // VDataTexture에서 사용
+  arrayType?: string; // VDataTexture에서 사용
 
   mapping: THREE.AnyMapping;
   channel: number;

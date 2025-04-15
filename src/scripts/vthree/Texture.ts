@@ -1,6 +1,7 @@
 import objectHash from 'object-hash';
 import * as THREE from 'three';
 import { AssetMgr } from '../manager/assets/AssetMgr';
+import { hashArrayBuffer } from '../manager/assets/AssetUtils';
 import { VFile, VFileRemote } from '../manager/assets/VFile';
 import { VTexture } from '../manager/assets/VTexture';
 import { hashDataTexture, hashImageData } from '../utils';
@@ -72,35 +73,35 @@ if (!Object.prototype.hasOwnProperty.call(THREE.Texture.prototype, 'hash')) {
   });
 }
 
-THREE.Texture.prototype.toAsset = async function () {
-  const handleImageData = async (
-    texture: THREE.Texture,
-  ): Promise<VFileRemote> => {
-    if ((texture as THREE.CompressedTexture).isCompressedTexture) {
-      if (!texture.vUserData.ktx2Buffer) {
-        console.log(texture);
-        debugger;
-        throw new Error('KTX2 Buffer가 없음');
-      }
-      const hash = AssetMgr.set(texture.vUserData.ktx2Buffer);
-      return {
-        id: hash,
-        format: 'binary',
-      } as VFileRemote;
-    } else if ((texture as THREE.DataTexture).isDataTexture) {
-      // exr임
-      const ab = texture.image.data.buffer;
-      const hash = AssetMgr.set(ab);
-      return {
-        id: hash,
-        format: 'binary',
-      } as VFileRemote;
-    } else {
-      // 일반 이미지포맷
-      return texture.source.toAsset();
+const handleImageData = async (
+  texture: THREE.Texture,
+): Promise<VFileRemote> => {
+  if ((texture as THREE.CompressedTexture).isCompressedTexture) {
+    if (!texture.vUserData.ktx2Buffer) {
+      console.log(texture);
+      debugger;
+      throw new Error('KTX2 Buffer가 없음');
     }
-  };
+    const hash = AssetMgr.set(texture.vUserData.ktx2Buffer);
+    return {
+      id: hash,
+      format: 'binary',
+    } as VFileRemote;
+  } else if ((texture as THREE.DataTexture).isDataTexture) {
+    // exr임
+    const ab = texture.image.data.buffer;
+    const hash = AssetMgr.set(ab);
+    return {
+      id: hash,
+      format: 'binary',
+    } as VFileRemote;
+  } else {
+    // 일반 이미지포맷
+    return texture.source.toAsset();
+  }
+};
 
+THREE.Texture.prototype.toAsset = async function () {
   const output: VTexture = {
     // uuid: this.uuid,
     uuid: this.hash,
@@ -139,9 +140,21 @@ THREE.Texture.prototype.toAsset = async function () {
   if (Object.keys(this.vUserData).length > 0)
     output.userData = this.vUserData as any;
 
+  const type = (this as THREE.CompressedTexture).isCompressedTexture
+    ? 'VCompressedTexture'
+    : (this as THREE.DataTexture).isDataTexture
+      ? 'VDataTexture'
+      : 'VTexture';
+
+  if (type === 'VDataTexture') {
+    output.width = this.image.width;
+    output.height = this.image.height;
+    output.arrayType = this.image.data.constructor.name;
+  }
+
   const retval: VFile<VTexture> = {
     id: this.hash,
-    type: 'VTexture',
+    type,
     data: output,
   };
 
@@ -151,6 +164,18 @@ THREE.Texture.prototype.toAsset = async function () {
 THREE.Texture.prototype.updateHash = function (): string {
   if (!this.vUserData) {
     this.vUserData = {};
+  }
+
+  if ((this as THREE.CompressedTexture).isCompressedTexture) {
+    if (!this.vUserData.ktx2Buffer) {
+      throw new Error('KTX2 Buffer가 없음');
+    }
+    const hash = hashArrayBuffer(this.vUserData.ktx2Buffer);
+    this.vUserData.hash = hash;
+    if (!this.vUserData.id) {
+      this.vUserData.id = hash;
+    }
+    return hash;
   }
 
   if ((this as THREE.DataTexture).isDataTexture) {

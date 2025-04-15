@@ -30,6 +30,7 @@ export default class VGLTFLoader extends GLTFLoader {
 
   constructor(gl?: THREE.WebGLRenderer, manager?: THREE.LoadingManager) {
     if (gl) {
+      console.log('GLed');
       VGLTFLoader.gl = gl;
     }
 
@@ -161,8 +162,12 @@ export default class VGLTFLoader extends GLTFLoader {
             }
           }
 
-          if (mat.type === 'MeshPhysicalMaterial' && mat.vUserData.transmission) {
-            (mat as THREE.MeshPhysicalMaterial).transmission = mat.vUserData.transmission || 0;
+          if (
+            mat.type === 'MeshPhysicalMaterial' &&
+            mat.vUserData.transmission
+          ) {
+            (mat as THREE.MeshPhysicalMaterial).transmission =
+              mat.vUserData.transmission || 0;
           }
         }
       });
@@ -283,4 +288,3 @@ function getVUserDataLightMapURL(lightMap: string, isMobile?: boolean) {
 }
 
 // 한 번 불러야 instance 생성
-new VGLTFLoader();

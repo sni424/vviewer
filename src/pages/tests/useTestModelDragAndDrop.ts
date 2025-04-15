@@ -72,6 +72,15 @@ const useTestModelDragAndDrop = () => {
             return;
           }
 
+          // filteredFiles
+          //   .filter(f => f.name.endsWith('.exr'))
+          //   .map(file =>
+          //     file.arrayBuffer().then(ab => {
+          //       const exr = new EXRLoader().parse(ab);
+          //       debugger;
+          //     }),
+          //   );
+
           setFiles(prev => [...prev, ...filteredFiles]);
         })
         .finally(() => {

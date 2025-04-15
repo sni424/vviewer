@@ -33,10 +33,8 @@ function createMaterialFromType(type: string) {
   return new (materialLib as any)[type]();
 }
 
-const getTexture = TextureLoader;
-
 export default async function (file: VFile | VFileRemote) {
-  return AssetMgr.get<VFile<VMaterial>>(file as any).then(vfile => {
+  return AssetMgr.get<VFile<VMaterial>>(file as any).then(async vfile => {
     if (!isVFile(vfile)) {
       throw new Error('file이 VFile도 아닙니다');
     }
@@ -52,7 +50,7 @@ export default async function (file: VFile | VFileRemote) {
     for (const key in awaitData) {
       const value = (awaitData as any)[key];
       if (isVTextureFile(value)) {
-        (awaitData as any)[key] = getTexture(value);
+        (awaitData as any)[key] = await TextureLoader(value);
       } else {
         (awaitData as any)[key] = value;
       }

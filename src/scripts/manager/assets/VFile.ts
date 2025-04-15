@@ -4,6 +4,7 @@ import { FileID, VAssetType, VAssetTypes } from './AssetTypes';
 export type VFileRemote = {
   id: FileID;
   format: 'json' | 'binary';
+  hint?: 'jpg' | 'png' | 'Uint8Array' | 'Uint16Array' | 'Float32Array' | string;
 };
 
 // json객체

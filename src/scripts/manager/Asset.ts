@@ -677,6 +677,7 @@ export default class Asset<T extends Record<any, any> = any> {
           .parseAsync(arrayBuffer, file.name)
           .then(glb => {
             const scene = glb.scene;
+            console.log(scene);
 
             // scene을 돌면서 mesh, geometry, material, texture을 캐시에 등록
             // registerLocalCache(scene);
@@ -730,25 +731,18 @@ export default class Asset<T extends Record<any, any> = any> {
         return VTextureLoader.parseAsync(arrayBuffer, {
           ext: ext as any,
         }).then(texture => {
-          const hashStart = performance.now();
-
-          return texture.hash.then(() => {
-            const hashEnd = performance.now();
-            console.log('Texture hash time', fname, hashEnd - hashStart);
-
-            localFileCache.set(fileId, {
-              state: 'loaded',
-              file,
-              data: texture,
-              type: ext as LocalCacheType,
-              asset: this,
-            });
-
-            this.onLoaded?.(this, texture);
-            this.onStateChange?.(this, 'loaded', 'loading');
-
-            return texture;
+          localFileCache.set(fileId, {
+            state: 'loaded',
+            file,
+            data: texture,
+            type: ext as LocalCacheType,
+            asset: this,
           });
+
+          this.onLoaded?.(this, texture);
+          this.onStateChange?.(this, 'loaded', 'loading');
+
+          return texture;
         });
       });
       localFileCache.set(fileId, {

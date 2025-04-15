@@ -125,8 +125,21 @@ class ImageUtils {
 }
 
 async function serializeImage(
-  image: THREE.Texture | THREE.DataTexture | THREE.CompressedTexture,
-): Promise<ArrayBuffer> {
+  image:
+    | HTMLImageElement
+    | HTMLCanvasElement
+    | ImageBitmap
+    | {
+        data: Uint16Array | Float32Array;
+        width: number;
+        height: number;
+      },
+): Promise<{
+  data: ArrayBufferLike;
+  type: 'png' | 'Float32Array' | 'Uint16Array' | string;
+  width?: number;
+  height?: number;
+}> {
   if (!_canvas) {
     _canvas = document.createElement('canvas');
   }
@@ -139,10 +152,32 @@ async function serializeImage(
     (typeof ImageBitmap !== 'undefined' && image instanceof ImageBitmap)
   ) {
     // default images
-    return ImageUtils.getArrayBuffer(image as any);
+    return ImageUtils.getArrayBuffer(image as any).then(ab => {
+      return {
+        data: ab,
+        type: 'png',
+      };
+    });
+  } else {
+    // exr
+    const exrData = image as {
+      data: Uint16Array | Float32Array;
+      width: number;
+      height: number;
+    };
+    if (exrData.data) {
+      const ab = exrData.data.buffer;
+      return {
+        data: ab,
+        width: exrData.width,
+        height: exrData.height,
+        type: exrData.data.constructor.name,
+      };
+    } else {
+      console.error(image);
+      throw new Error('Not supported source');
+    }
   }
-
-  throw new Error('THREE.ImageUtils.serializeImage: Unsupported image type');
 }
 
 THREE.Source.prototype.toAsset = async function (): Promise<VFileRemote> {
@@ -164,8 +199,8 @@ THREE.Source.prototype.toAsset = async function (): Promise<VFileRemote> {
       // }
     }
 
-    const arrayBuffer = await serializeImage(data);
-    const hash = AssetMgr.set(arrayBuffer);
+    const { data: ab, type, width, height } = await serializeImage(data);
+    const hash = AssetMgr.set(ab);
 
     this.vUserData.hash = hash;
     if (!this.vUserData.id) {
@@ -175,6 +210,7 @@ THREE.Source.prototype.toAsset = async function (): Promise<VFileRemote> {
     const output: VFileRemote = {
       id: hash,
       format: 'binary',
+      hint: type,
     };
 
     return output;

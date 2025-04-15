@@ -60,25 +60,26 @@ window.getThree = (view: View = View.Shared) => {
 };
 
 // 구현체 임포트
-import './Camera.ts';
-import './Matrix4.ts';
-import './Shader.ts';
-import './Vector3.ts';
-
-// 하위 개념부터 임포트 - texture
-import './Source.ts';
-import './Texture.ts';
-
-// material
-import './Material.ts';
+import './Matrix4';
+import './Shader';
+import './Vector3';
 
 // geometry
-import './BufferGeometry.ts';
+import './BufferAttribute';
+import './BufferGeometry';
 
-import './Object3D.ts';
+// 하위 개념부터 임포트 - texture
+import './Source';
+import './Texture';
+
+// material
+import './Material';
+
+import './Camera';
+import './Object3D';
 
 //mesh
-import './Mesh.ts';
+import './Mesh';
 
 export * from 'three';
 export { THREE };

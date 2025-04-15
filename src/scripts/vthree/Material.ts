@@ -283,7 +283,6 @@ const upsert = (uniform: any, key: string, value: any) => {
   }
 };
 
-console.log('onBeforeCompile decl');
 THREE.Material.prototype.onBeforeCompile = function (
   shader: THREE.WebGLProgramParametersWithUniforms,
   renderer: THREE.WebGLRenderer,

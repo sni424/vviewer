@@ -1,14 +1,23 @@
 import { Environment, OrbitControls } from '@react-three/drei';
-import { Canvas } from '@react-three/fiber';
+import { Canvas, useThree } from '@react-three/fiber';
 import { useEffect, useRef, useState } from 'react';
 import ObjectViewer from 'src/components/ObjectViewer';
+import VGLTFLoader from 'src/scripts/loaders/VGLTFLoader';
 import Asset, { VRemoteAsset } from 'src/scripts/manager/Asset';
+import BufferGeometryLoader from 'src/scripts/manager/assets/BufferGeometryLoader';
 import MaterialLoader from 'src/scripts/manager/assets/MaterialLoader';
 import { VFile } from 'src/scripts/manager/assets/VFile';
 import { THREE } from 'VTHREE';
 import useTestModelDragAndDrop from './useTestModelDragAndDrop';
 
 const print = console.log;
+
+function CallLoader() {
+  const { gl } = useThree();
+  const ref = useRef(new VGLTFLoader(gl));
+
+  return <></>;
+}
 
 function useEffectOnce(effect: () => void | (() => void)) {
   const calledRef = useRef(false);
@@ -57,6 +66,7 @@ const mesh2Asset: VRemoteAsset = {
 };
 
 function TestPage() {
+  const [loadedMat, setLoadedMat] = useState<THREE.Material>();
   const sceneRef = useRef<THREE.Scene>(new THREE.Scene());
   const [asset, setAsset] = useState<Asset[]>([]);
   const { files, isDragging, handleDragOver, handleDragLeave, handleDrop } =
@@ -116,15 +126,61 @@ function TestPage() {
             로드
           </button>
           <button
-            onClick={() => {
+            onClick={async () => {
+              const texes = await Promise.all(
+                asset.filter(a => a.isTexture).map(a => a.get<THREE.Texture>()),
+              );
+              // texes.then(texes => {
+              //   if (texes.length === 0) {
+              //     return;
+              //   }
+
+              // });
               asset
                 .filter(a => a.isGlb)
+                .map(a => a.get<THREE.Group>())
                 .forEach(a => {
-                  a.onLoaded = (a, d) => {
-                    console.log('onLoaded', a.id, d);
-                  };
-                  a.get<THREE.Mesh>().then(o => {
-                    sceneRef.current.add(o);
+                  a.then(a => {
+                    if (texes.length > 0) {
+                      a.meshes().forEach(m => {
+                        texes[0].channel = 1;
+                        m.matStandard.lightMap = texes[0];
+                      });
+                    }
+                    sceneRef.current.add(a);
+                    a.meshes().forEach(m => {
+                      Promise.all([
+                        m.geometry.toAsset(),
+                        m.matStandard.toAsset(),
+                      ]).then(([geoAsset, matAsset]) => {
+                        Promise.all([
+                          BufferGeometryLoader(geoAsset),
+                          MaterialLoader(matAsset),
+                        ]).then(([geo, mat]) => {
+                          const newMesh = new THREE.Mesh(geo, mat);
+                          newMesh.position.add(new THREE.Vector3(0, 3, 0));
+                          sceneRef.current.add(newMesh);
+                        });
+                      });
+                    });
+
+                    // texes.then(tex => {
+                    //   if (tex.length === 0) {
+                    //     return;
+                    //   }
+                    //   a.traverse(o => {
+                    //     if (o.asMesh.isMesh) {
+                    //       tex[0].channel = 1;
+                    //       o.asMesh.matStandard.lightMap = tex[0];
+                    //       debugger;
+                    //       o.asMesh.geometry.toAsset().then(geo => {
+                    //         BufferGeometryLoader(geo).then(loaded => {
+                    //           console.log({ geo, loaded });
+                    //         });
+                    //       });
+                    //     }
+                    //   });
+                    // });
                   });
                 });
             }}
@@ -135,63 +191,108 @@ function TestPage() {
             onClick={() => {
               const proms: Promise<VFile>[] = [];
               const vfiles: VFile[] = [];
+              // sceneRef.current.traverse(o => {
+              //   if (o.asMesh.isMesh) {
+              //     o.geometries().forEach(g => {
+              //       proms.push(g.toAsset());
+              //     });
+              //     o.asMesh.matStandard.textures().forEach(t => {
+              //       proms.push(t.toAsset());
+              //     });
+
+              //     o.asMesh.matStandard.toAsset().then(mat => {
+              //       console.log({ mat });
+              //       // MaterialLoader(mat).then(loaded => {
+              //       //   debugger;
+              //       //   console.log({ loaded });
+              //       //   // // debugger;
+              //       //   // const box = new THREE.Mesh(
+              //       //   //   new THREE.BoxGeometry(1, 1, 1),
+              //       //   //   loaded,
+              //       //   // );
+              //       //   // sceneRef.current.add(box);
+              //       //   sceneRef.current.traverse(o => {
+              //       //     if (o.asMesh.isMesh) {
+              //       //       o.asMesh.material = loaded;
+              //       //     }
+              //       //   });
+              //       // });
+              //     });
+              //   }
+              // });
+
               sceneRef.current.traverse(o => {
                 if (o.asMesh.isMesh) {
-                  o.geometries().forEach(g => {
-                    proms.push(g.toAsset());
-                  });
-                  o.asMesh.matStandard.textures().forEach(t => {
-                    proms.push(t.toAsset());
-                  });
-
-                  o.asMesh.matStandard.toAsset().then(mat => {
-                    console.log({ mat });
-                    MaterialLoader(mat).then(loaded => {
-                      console.log({ loaded });
-                      // debugger;
-                      const box = new THREE.Mesh(
-                        new THREE.BoxGeometry(1, 1, 1),
-                        loaded,
-                      );
-                      sceneRef.current.add(box);
-                    });
+                  const mesh = o.asMesh;
+                  const mat = mesh.matStandard;
+                  mat.toAsset().then(vfile => {
+                    MaterialLoader(vfile).then(setLoadedMat);
                   });
                 }
               });
+
               console.log('Textures:', vfiles);
 
-              Promise.all(proms).then(async res => {
-                // TextureLoader(res[1]).then(loaded => {
-                //   console.log('loaded', loaded);
-                //   loaded.flipY = false;
+              // Promise.all(proms).then(async res => {
+              //   // TextureLoader(res[1]).then(loaded => {
+              //   //   console.log('loaded', loaded);
+              //   //   loaded.flipY = false;
 
-                //   // add new box to the scene
-                //   const material = new THREE.MeshStandardMaterial({
-                //     map: loaded,
-                //   });
-                //   const box = new THREE.Mesh(
-                //     new THREE.BoxGeometry(1, 1, 1),
-                //     material,
-                //   );
-                //   sceneRef.current.add(box);
-                // });
+              //   //   // add new box to the scene
+              //   //   const material = new THREE.MeshStandardMaterial({
+              //   //     map: loaded,
+              //   //   });
+              //   //   const box = new THREE.Mesh(
+              //   //     new THREE.BoxGeometry(1, 1, 1),
+              //   //     material,
+              //   //   );
+              //   //   sceneRef.current.add(box);
+              //   // });
 
-                const arrayId = res[0].data.data!.index!.array;
+              //   const arrayId = res[0].data.data!.index!.array;
 
-                // const ab = await AssetMgr.get(arrayId);
+              //   // const ab = await AssetMgr.get(arrayId);
 
-                console.log(
-                  'geometries',
-                  arrayId,
-                  res,
-                  // ab,
-                  // AssetMgr.cache.keys(),
-                );
-              });
+              //   console.log(
+              //     'geometries',
+              //     arrayId,
+              //     res,
+              //     // ab,
+              //     // AssetMgr.cache.keys(),
+              //   );
+              // });
             }}
           >
             업로드
           </button>
+          {loadedMat && (
+            <button
+              onClick={() => {
+                sceneRef.current.traverse(o => {
+                  if (o.asMesh.isMesh) {
+                    console.log('org:', o.asMesh.matStandard.map);
+                    // console.log('new:', loadedMat.map);
+                    // o.asMesh.material = loadedMat;
+
+                    //box
+                    const newmesh = new THREE.Mesh(
+                      new THREE.BoxGeometry(1, 1, 1),
+                      loadedMat,
+                    );
+                    newmesh.position.set(1, 0, 0);
+                    sceneRef.current.add(newmesh);
+
+                    const newer = o.clone() as THREE.Mesh;
+                    newer.position.add(new THREE.Vector3(0, 0, 10));
+                    newer.material = loadedMat;
+                    sceneRef.current.add(newer);
+                  }
+                });
+              }}
+            >
+              재질적용
+            </button>
+          )}
           <button
             onClick={() => {
               const scene = sceneRef.current;
@@ -254,6 +355,7 @@ function TestPage() {
       </div>
       <div className="flex-1 h-full">
         <Canvas scene={sceneRef.current}>
+          <CallLoader></CallLoader>
           <OrbitControls></OrbitControls>
           <Environment preset="apartment"></Environment>
         </Canvas>
