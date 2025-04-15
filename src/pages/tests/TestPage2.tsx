@@ -3,7 +3,7 @@ import { Canvas } from '@react-three/fiber';
 import { useEffect, useRef, useState } from 'react';
 import ObjectViewer from 'src/components/ObjectViewer';
 import Asset, { VRemoteAsset } from 'src/scripts/manager/Asset';
-import TextureLoader from 'src/scripts/manager/assets/TextureLoader';
+import MaterialLoader from 'src/scripts/manager/assets/MaterialLoader';
 import { VFile } from 'src/scripts/manager/assets/VFile';
 import { THREE } from 'VTHREE';
 import useTestModelDragAndDrop from './useTestModelDragAndDrop';
@@ -143,25 +143,38 @@ function TestPage() {
                   o.asMesh.matStandard.textures().forEach(t => {
                     proms.push(t.toAsset());
                   });
+
+                  o.asMesh.matStandard.toAsset().then(mat => {
+                    console.log({ mat });
+                    MaterialLoader(mat).then(loaded => {
+                      console.log({ loaded });
+                      // debugger;
+                      const box = new THREE.Mesh(
+                        new THREE.BoxGeometry(1, 1, 1),
+                        loaded,
+                      );
+                      sceneRef.current.add(box);
+                    });
+                  });
                 }
               });
               console.log('Textures:', vfiles);
 
               Promise.all(proms).then(async res => {
-                TextureLoader(res[1]).then(loaded => {
-                  console.log('loaded', loaded);
-                  loaded.flipY = false;
+                // TextureLoader(res[1]).then(loaded => {
+                //   console.log('loaded', loaded);
+                //   loaded.flipY = false;
 
-                  // add new box to the scene
-                  const material = new THREE.MeshStandardMaterial({
-                    map: loaded,
-                  });
-                  const box = new THREE.Mesh(
-                    new THREE.BoxGeometry(1, 1, 1),
-                    material,
-                  );
-                  sceneRef.current.add(box);
-                });
+                //   // add new box to the scene
+                //   const material = new THREE.MeshStandardMaterial({
+                //     map: loaded,
+                //   });
+                //   const box = new THREE.Mesh(
+                //     new THREE.BoxGeometry(1, 1, 1),
+                //     material,
+                //   );
+                //   sceneRef.current.add(box);
+                // });
 
                 const arrayId = res[0].data.data!.index!.array;
 

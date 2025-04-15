@@ -63,13 +63,13 @@ export interface VTexture
     }
   > {}
 
-export interface VMaterial
-  extends VFile<
-    'VMaterial',
-    {
-      textures: VTexture[];
-    }
-  > {}
+// export interface VMaterial
+//   extends VFile<
+//     'VMaterial',
+//     {
+//       textures: VTexture[];
+//     }
+//   > {}
 
 export interface VBufferGeometry
   extends VFile<

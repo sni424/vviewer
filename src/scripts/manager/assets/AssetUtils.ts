@@ -8,15 +8,30 @@ export async function awaitAll<T>(input: T): Promise<T> {
   }
 
   if (Array.isArray(input)) {
-    return Promise.all(input.map(awaitAll)) as Promise<any> as Promise<T>;
+    const resolved = await Promise.all(input.map(awaitAll));
+    return resolved as any as T;
   }
 
-  if (typeof input === 'object' && input !== null) {
-    const result: any = Array.isArray(input) ? [] : {};
-    for (const key of Object.keys(input)) {
-      result[key] = await awaitAll((input as any)[key]);
+  if (input !== null && typeof input === 'object') {
+    // 클래스 인스턴스인지 확인
+    const proto = Object.getPrototypeOf(input);
+    const isPlainObject = proto === Object.prototype || proto === null;
+
+    if (!isPlainObject) {
+      // 클래스 인스턴스: 그대로 유지하고, 필드만 재귀 처리
+      const clone = input as any;
+      for (const key of Object.keys(clone)) {
+        clone[key] = await awaitAll(clone[key]);
+      }
+      return clone;
+    } else {
+      // 일반 객체: 새 객체 생성
+      const result: any = {};
+      for (const key of Object.keys(input)) {
+        result[key] = await awaitAll((input as any)[key]);
+      }
+      return result;
     }
-    return result;
   }
 
   return input;

@@ -1,7 +1,7 @@
-import { THREE } from 'VTHREE';
-import { VFileRemote } from './VFile';
+import { type THREE } from 'VTHREE';
+import { isVFile, type VFileRemote } from './VFile';
 
-// TextureJSON
+// TextureJSON에서 image만 변경
 export interface VTexture {
   uuid: string;
   name: string;
@@ -37,3 +37,13 @@ export interface VTexture {
 
   // imageData: VFileRemote;
 }
+
+const VTextureTypes: string[] = [
+  'VTexture',
+  'VDataTexture',
+  'VCompressedTexture',
+];
+
+export const isVTextureFile = (file?: any): boolean => {
+  return isVFile(file) && VTextureTypes.includes(file?.type);
+};

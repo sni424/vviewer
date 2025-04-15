@@ -30,7 +30,6 @@ import {
 import { uploadExrToKtx } from './atomUtils.ts';
 import VGLTFLoader from './loaders/VGLTFLoader.ts';
 import ReflectionProbe from './ReflectionProbe.ts';
-import VGLTFExporter from './VGLTFExporter.ts';
 
 export const groupInfo = (
   group: THREE.Group | { scene: THREE.Group } | THREE.Scene | THREE.Object3D,
@@ -169,26 +168,6 @@ export const getIntersects = (
   return { intersects, mesh };
 };
 
-export const saveScene = async (scene: THREE.Scene) => {
-  return new Promise(async (resolve, reject) => {
-    const glbArr = (await new VGLTFExporter().parseAsync(scene, {
-      binary: true,
-    })) as ArrayBuffer;
-    const blob = new Blob([glbArr], { type: 'application/octet-stream' });
-    const key = 'savedScene';
-
-    set(key, blob)
-      .then(() => {
-        resolve(true);
-        return true;
-      })
-      .catch(e => {
-        console.error(e);
-        reject(false);
-      });
-  });
-};
-
 // Object 가 TransformControls 의 객체 중 일부인지?
 export const isTransformControlOrChild = (object: THREE.Object3D) => {
   let current = object;
@@ -208,29 +187,6 @@ export const isTransformControlOrChild = (object: THREE.Object3D) => {
 // Object 가 Probe 의 Mesh 인지?
 export const isProbeMesh = (object: THREE.Object3D) => {
   return object.vUserData.isProbeMesh !== undefined;
-};
-
-export const loadScene = async (): Promise<THREE.Object3D | undefined> => {
-  return new Promise(async (resolve, reject) => {
-    const key = 'savedScene';
-    get(key)
-      .then(async blob => {
-        if (!blob) {
-          reject(undefined);
-          return;
-        }
-        // const loader = new THREE.ObjectLoader();
-        // const scene = loader.parse(json);
-        const loader = VGLTFLoader.instance;
-        const url = URL.createObjectURL(blob);
-        const gltf = await loader.loadAsync(url);
-        resolve(gltf.scene);
-      })
-      .catch(e => {
-        console.error(e);
-        reject(undefined);
-      });
-  });
 };
 
 export function compressObjectToFile(obj: object, fileName: string): File {

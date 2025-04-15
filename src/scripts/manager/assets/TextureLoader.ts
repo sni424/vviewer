@@ -123,7 +123,7 @@ async function createCommonTexture(data: VTexture): Promise<THREE.Texture> {
 export default async function (
   file: VFile | VFileRemote,
 ): Promise<THREE.Texture> {
-  return AssetMgr.get<VFile<VTexture>>(file as any).then(textureFile => {
+  return AssetMgr.get<VFile<VTexture>>(file as any).then(async textureFile => {
     if (!TEXTURE_KEYS.includes(textureFile.type)) {
       throw new Error('VTexture가 아닙니다');
     }

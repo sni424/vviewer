@@ -1,6 +1,5 @@
 import { useEffect } from 'react';
 import { Route, Routes, useNavigate } from 'react-router-dom';
-import { ENV } from 'src/Constants';
 import { useRegion } from 'src/scripts/useRegion';
 import { useEnvParams } from '../scripts/atoms';
 import MobilePage from './MobilePage';
@@ -57,7 +56,7 @@ function App() {
   const region = useRegion();
 
   if (region !== 'unknown') {
-    console.log(region, ENV.base);
+    // console.log(region, ENV.base);
 
     return <AppWithRegion />;
   }

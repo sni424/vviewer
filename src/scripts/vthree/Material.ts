@@ -129,16 +129,16 @@ declare module 'three' {
 
     textures(): THREE.Texture[];
 
-    get hash(): Promise<string>;
-    updateHash(): Promise<string>;
+    get hash(): string;
+    updateHash(): string;
   }
 }
 
 if (!Object.prototype.hasOwnProperty.call(THREE.Material.prototype, 'hash')) {
   Object.defineProperty(THREE.Material.prototype, 'hash', {
-    get: async function (): Promise<string> {
+    get: function (): string {
       if (this.vUserData?.hash) {
-        return Promise.resolve(this.vUserData.hash);
+        return this.vUserData.hash;
       }
 
       return this.updateHash();
@@ -146,46 +146,46 @@ if (!Object.prototype.hasOwnProperty.call(THREE.Material.prototype, 'hash')) {
   });
 }
 
-THREE.Material.prototype.updateHash = async function (): Promise<string> {
+THREE.Material.prototype.updateHash = function (): string {
   if (!this.vUserData) {
     this.vUserData = {};
   }
 
-  return Promise.all(this.textures().map(texture => texture.hash)).then(() => {
-    const excludes = [...VTextureTypes, 'uuid', 'id'];
-    const rawKeys = Object.keys(this) as (keyof THREE.MeshPhysicalMaterial)[];
+  const textureHashes = this.textures().map(texture => texture.hash);
 
-    const filteredKeys = rawKeys
-      .filter(key => !excludes.includes(key))
-      .filter(key => !key.startsWith('_'));
+  const excludes = [...VTextureTypes, 'uuid', 'id'];
+  const rawKeys = Object.keys(this) as (keyof THREE.MeshPhysicalMaterial)[];
 
-    type Primitive = string | number | boolean | null | undefined;
+  const filteredKeys = rawKeys
+    .filter(key => !excludes.includes(key))
+    .filter(key => !key.startsWith('_'));
 
-    const hashMap: Record<string, Primitive> = {};
+  // type Primitive = string | number | boolean | null | undefined;
 
-    filteredKeys.forEach(key => {
-      const value = (this as any)[key];
-      const typeofValue = typeof value;
-      if (
-        typeofValue === 'string' ||
-        typeofValue === 'number' ||
-        typeofValue === 'boolean' ||
-        typeofValue === 'undefined' ||
-        value === null
-      ) {
-        hashMap[key] = value;
-      } else if ((value as THREE.Texture).isTexture && value.vUserData?.hash) {
-        hashMap[key] = (value as THREE.Texture).vUserData.hash;
-      }
-    });
+  const hashMap: Record<string, any> = { textureHashes: textureHashes };
 
-    const hash = objectHash(hashMap);
-    this.vUserData.hash = hash;
-    if (!this.vUserData.id) {
-      this.vUserData.id = hash;
+  filteredKeys.forEach(key => {
+    const value = (this as any)[key];
+    const typeofValue = typeof value;
+    if (
+      typeofValue === 'string' ||
+      typeofValue === 'number' ||
+      typeofValue === 'boolean' ||
+      typeofValue === 'undefined' ||
+      value === null
+    ) {
+      hashMap[key] = value;
+    } else if ((value as THREE.Texture).isTexture && value.vUserData?.hash) {
+      hashMap[key] = (value as THREE.Texture).vUserData.hash;
     }
-    return hash;
   });
+
+  const hash = objectHash(hashMap);
+  this.vUserData.hash = hash;
+  if (!this.vUserData.id) {
+    this.vUserData.id = hash;
+  }
+  return hash;
 };
 
 THREE.Material.prototype.removeUniform = function (...key: MATERIAL_UNIFORM[]) {
@@ -283,6 +283,7 @@ const upsert = (uniform: any, key: string, value: any) => {
   }
 };
 
+console.log('onBeforeCompile decl');
 THREE.Material.prototype.onBeforeCompile = function (
   shader: THREE.WebGLProgramParametersWithUniforms,
   renderer: THREE.WebGLRenderer,
@@ -855,3 +856,6 @@ THREE.Material.prototype.textures = function () {
 
   return Array.from(textures);
 };
+
+// 마지막에 임포트
+import './MaterialToAsset';
