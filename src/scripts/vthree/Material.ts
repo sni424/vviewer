@@ -147,16 +147,15 @@ if (!Object.prototype.hasOwnProperty.call(THREE.Material.prototype, 'hash')) {
 }
 
 THREE.Material.prototype.updateHash = function (): string {
-  if (!this.vUserData) {
-    this.vUserData = {};
-  }
-
   const textureHashes = this.textures().map(texture => texture.hash);
 
   const excludes = [...VTextureTypes, 'uuid', 'id'];
   const rawKeys = Object.keys(this) as (keyof THREE.MeshPhysicalMaterial)[];
 
+  const scope = this as any;
   const filteredKeys = rawKeys
+    .filter(key => scope[key] !== undefined && scope[key] !== null)
+    .filter(key => typeof scope[key] !== 'function')
     .filter(key => !excludes.includes(key))
     .filter(key => !key.startsWith('_'));
 
@@ -165,7 +164,7 @@ THREE.Material.prototype.updateHash = function (): string {
   const hashMap: Record<string, any> = { textureHashes: textureHashes };
 
   filteredKeys.forEach(key => {
-    const value = (this as any)[key];
+    const value = scope[key];
     const typeofValue = typeof value;
     if (
       typeofValue === 'string' ||
@@ -175,8 +174,11 @@ THREE.Material.prototype.updateHash = function (): string {
       value === null
     ) {
       hashMap[key] = value;
-    } else if ((value as THREE.Texture).isTexture && value.vUserData?.hash) {
-      hashMap[key] = (value as THREE.Texture).vUserData.hash;
+    } else if (scope[key].toArray && typeof scope[key].toArray === 'function') {
+      // vec2, vec3, vec4, quat 등등
+      hashMap[key] = scope[key].toArray();
+    } else if ((value as THREE.Texture).isTexture) {
+      hashMap[key] = (value as THREE.Texture).hash;
     }
   });
 
@@ -379,6 +381,9 @@ if (
 ) {
   Object.defineProperty(THREE.Material.prototype, 'vUserData', {
     get: function () {
+      if (!this.userData) {
+        this.userData = {};
+      }
       return this.userData as VUserData;
     },
     set: function (userData: Partial<VUserData>) {

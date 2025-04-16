@@ -1,5 +1,5 @@
 import type * as THREE from 'three';
-import { type VFile } from './VFile';
+import { isVFile, VLoadable } from './VFile';
 import { type VTexture } from './VTexture';
 // MaterialJSON
 export default interface VMaterial {
@@ -24,9 +24,9 @@ export default interface VMaterial {
   shininess?: number;
   clearcoat?: number;
   clearcoatRoughness?: number;
-  clearcoatMap?: VFile<VTexture>;
-  clearcoatRoughnessMap?: VFile<VTexture>;
-  clearcoatNormalMap?: VFile<VTexture>;
+  clearcoatMap?: VLoadable<VTexture>;
+  clearcoatRoughnessMap?: VLoadable<VTexture>;
+  clearcoatNormalMap?: VLoadable<VTexture>;
   clearcoatNormalScale?: THREE.Vector2Tuple;
 
   dispersion?: number;
@@ -34,43 +34,43 @@ export default interface VMaterial {
   iridescence?: number;
   iridescenceIOR?: number;
   iridescenceThicknessRange?: number;
-  iridescenceMap?: VFile<VTexture>;
-  iridescenceThicknessMap?: VFile<VTexture>;
+  iridescenceMap?: VLoadable<VTexture>;
+  iridescenceThicknessMap?: VLoadable<VTexture>;
 
   anisotropy?: number;
   anisotropyRotation?: number;
-  anisotropyMap?: VFile<VTexture>;
+  anisotropyMap?: VLoadable<VTexture>;
 
-  map?: VFile<VTexture>;
-  matcap?: VFile<VTexture>;
-  alphaMap?: VFile<VTexture>;
+  map?: VLoadable<VTexture>;
+  matcap?: VLoadable<VTexture>;
+  alphaMap?: VLoadable<VTexture>;
 
-  lightMap?: VFile<VTexture>;
+  lightMap?: VLoadable<VTexture>;
   lightMapIntensity?: number;
 
-  aoMap?: VFile<VTexture>;
+  aoMap?: VLoadable<VTexture>;
   aoMapIntensity?: number;
 
-  bumpMap?: VFile<VTexture>;
+  bumpMap?: VLoadable<VTexture>;
   bumpScale?: number;
 
-  normalMap?: VFile<VTexture>;
+  normalMap?: VLoadable<VTexture>;
   normalMapType?: THREE.NormalMapTypes;
   normalScale?: THREE.Vector2Tuple;
 
-  displacementMap?: VFile<VTexture>;
+  displacementMap?: VLoadable<VTexture>;
   displacementScale?: number;
   displacementBias?: number;
 
-  roughnessMap?: VFile<VTexture>;
-  metalnessMap?: VFile<VTexture>;
+  roughnessMap?: VLoadable<VTexture>;
+  metalnessMap?: VLoadable<VTexture>;
 
-  emissiveMap?: VFile<VTexture>;
-  specularMap?: VFile<VTexture>;
-  specularIntensityMap?: VFile<VTexture>;
-  specularColorMap?: VFile<VTexture>;
+  emissiveMap?: VLoadable<VTexture>;
+  specularMap?: VLoadable<VTexture>;
+  specularIntensityMap?: VLoadable<VTexture>;
+  specularColorMap?: VLoadable<VTexture>;
 
-  envMap?: VFile<VTexture>;
+  envMap?: VLoadable<VTexture>;
   combine?: THREE.Combine;
 
   envMapRotation?: THREE.EulerTuple;
@@ -78,12 +78,12 @@ export default interface VMaterial {
   reflectivity?: number;
   refractionRatio?: number;
 
-  gradientMap?: VFile<VTexture>;
+  gradientMap?: VLoadable<VTexture>;
 
   transmission?: number;
-  transmissionMap?: VFile<VTexture>;
+  transmissionMap?: VLoadable<VTexture>;
   thickness?: number;
-  thicknessMap?: VFile<VTexture>;
+  thicknessMap?: VLoadable<VTexture>;
   attenuationDistance?: number;
   attenuationColor?: number;
 
@@ -154,8 +154,8 @@ export default interface VMaterial {
   fog?: boolean;
 
   userData?: Record<string, unknown>;
-
-  // textures?: Array<VFile<VTexture>>;
-  // textures?: Array<Omit<TextureJSON, 'metadata'>>;
-  // images?: SourceJSON[];
 }
+
+export const isVMaterialFile = (file?: any): boolean => {
+  return isVFile(file) && file.type === 'VMaterial';
+};

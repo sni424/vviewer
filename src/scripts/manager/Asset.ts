@@ -1,15 +1,26 @@
 import objectHash from 'object-hash';
-import { v5 } from 'uuid';
 import { THREE, VTextureTypes } from 'VTHREE';
 import VGLTFLoader from '../loaders/VGLTFLoader';
 import VTextureLoader from '../loaders/VTextureLoader';
-import { VFileLocal } from '../vthree/BufferGeometryToAsset';
-import { VAssetTypes } from './assets/AssetTypes';
-import { VFile } from './assets/VFile';
+import { AssetMgr } from './assets/AssetMgr';
+import BufferGeometryLoader from './assets/BufferGeometryLoader';
+import MaterialLoader from './assets/MaterialLoader';
+import ObjectLoader from './assets/ObjectLoader';
+import TextureLoader from './assets/TextureLoader';
+import { isVGeometryFile } from './assets/VBufferGeometry';
+import {
+  isVFile,
+  isVRemoteFile,
+  VFile,
+  VLoadable,
+  VRemoteFile,
+} from './assets/VFile';
+import { isVMaterialFile } from './assets/VMaterial';
+import { isVMeshFile, isVObject3DFile } from './assets/VObject3D';
+import { isVTextureFile } from './assets/VTexture';
 import Ext from './Ext';
 
 const NAMESPACE = 'ASSET_TEST';
-const hashString = (str: string) => v5(str, NAMESPACE);
 
 // export type VRemoteAsset = {
 //   id: string;
@@ -58,7 +69,7 @@ export type VRemoteAsset =
 //   material?: VRemoteAssetMaterial;  // compatibility
 // };
 
-export type RemoteAssetType = VFile;
+export type RemoteAssetType = VLoadable;
 export type LocalAssetType = File;
 export type AssetType =
   | THREE.Group // glb
@@ -69,11 +80,10 @@ export type AssetType =
 export type LoadableAssetType = RemoteAssetType | LocalAssetType;
 
 export type VMeta = {}; // json으로 로드한 파일
-export default class Asset<T extends Record<any, any> = any> {
-  id!: string; // 로컬의 경우 objectHash(File)한 값
+export default class Asset {
+  id?: string; // 로컬의 경우 업로드 전까지 id(해시)가 없다
   inputAsset?: LoadableAssetType;
   arrayBuffer?: Promise<ArrayBuffer>; // local file인 경우 set하면 생성됨
-  vfile?: VFileLocal<T>;
 
   // 하단의 Asset.create()을 이용할 것
   private constructor(asset?: LoadableAssetType, id?: string) {
@@ -129,22 +139,12 @@ export default class Asset<T extends Record<any, any> = any> {
     }
   }
 
-  get isUploadable() {
-    return Boolean(
-      this.vfile && this.vfile.isVFile && this.vfile.state === 'loaded',
-    );
-  }
-
   get isLocal() {
     return this.inputAsset instanceof File;
   }
 
   get isRemote() {
-    return (
-      this.inputAsset !== undefined &&
-      !this.isLocal &&
-      VAssetTypes.includes(this.inputAsset?.type as any)
-    );
+    return isVFile(this.inputAsset);
   }
 
   get isGlb() {
@@ -167,7 +167,7 @@ export default class Asset<T extends Record<any, any> = any> {
     }
 
     if (this.isRemote) {
-      return this.inputAsset!.type === 'texture';
+      return isVTextureFile(this.inputAsset);
     }
 
     return false;
@@ -183,7 +183,7 @@ export default class Asset<T extends Record<any, any> = any> {
 
   get isMesh() {
     if (this.isRemote) {
-      return this.inputAsset!.type === 'mesh';
+      return isVMeshFile(this.inputAsset);
     }
 
     return false;
@@ -191,7 +191,7 @@ export default class Asset<T extends Record<any, any> = any> {
 
   get isMaterial() {
     if (this.isRemote) {
-      return this.inputAsset!.type === 'material';
+      return isVMaterialFile(this.inputAsset);
     }
 
     return false;
@@ -199,7 +199,7 @@ export default class Asset<T extends Record<any, any> = any> {
 
   get isGeometry() {
     if (this.isRemote) {
-      return this.inputAsset!.type === 'geometry';
+      return isVGeometryFile(this.inputAsset);
     }
 
     return false;
@@ -279,7 +279,7 @@ export default class Asset<T extends Record<any, any> = any> {
   }
 
   setAsset(asset: LoadableAssetType, id?: string) {
-    if (VAssetTypes.includes((asset as RemoteAssetType).type)) {
+    if (isVRemoteFile(asset)) {
       this.setRemoteAsset(asset as RemoteAssetType, id);
     } else {
       this.setLocalAsset(asset as LocalAssetType, id);
@@ -472,16 +472,20 @@ export default class Asset<T extends Record<any, any> = any> {
       throw new Error('Remote asset is not set');
     }
 
-    const asset = this.inputAsset as RemoteAssetType;
+    let asset: VFile<T> = this.inputAsset as VFile<T>;
+    if (isVRemoteFile(this.inputAsset)) {
+      asset = await AssetMgr.get(this.inputAsset as VRemoteFile);
+    }
 
-    const baseUrl = '';
-    const url = baseUrl + '/' + asset.type + '/' + asset.id;
+    if (!isVFile(asset)) {
+      throw new Error('원격 에셋은 VLoadable의 형태여야 합니다');
+    }
 
     const cached = remoteCache.get(asset.id);
 
     // debugger;
 
-    // cache hit
+    // case 1. cache hit
     if (cached && (cached as { data?: any }).data) {
       console.log('cache hit', asset.id, cached.state);
       if (cached.state === 'loading') {
@@ -493,122 +497,38 @@ export default class Asset<T extends Record<any, any> = any> {
       console.log('cache miss', asset.id);
     }
 
-    // case 1. texture
-    if (asset.type === 'VTexture') {
-      const prom = fetch(url)
-        .then(res => res.arrayBuffer())
-        .then(arrayBuffer => {
-          const texture = new THREE.Texture();
-          // texture.image = new Image();
-          // texture.image.src = url;
-          // texture.needsUpdate = true;
-          remoteCache.set(asset.id, {
-            state: 'loaded',
-            data: texture,
-            asset: this,
-          });
+    // case 2. 원격에서 받아오는 경우
 
-          this.onLoaded?.(this, texture);
-          this.onStateChange?.(this, 'loaded', 'loading');
-          return texture as T;
-        });
-      remoteCache.set(asset.id, { state: 'loading', data: prom, asset: this });
-      this.onLoading?.(this);
-      this.onStateChange?.(this, 'loading', 'loadable');
-      return prom;
+    let loader: (param: any) => Promise<any>;
+
+    if (isVTextureFile(asset)) {
+      loader = TextureLoader;
+    } else if (isVGeometryFile(asset)) {
+      loader = BufferGeometryLoader;
+    } else if (isVMaterialFile(asset)) {
+      loader = MaterialLoader;
+    } else if (isVObject3DFile(asset)) {
+      loader = ObjectLoader;
+    } else {
+      console.error(this);
+      throw new Error('Unknown asset type');
     }
 
-    // case 2. geometry
-    if (asset.type === 'VBufferGeometry') {
-      const prom = fetch(url)
-        .then(res => res.arrayBuffer())
-        .then(arrayBuffer => {
-          const geometry = new THREE.BufferGeometry();
-          // geometry.fromArrayBuffer(arrayBuffer);
-          remoteCache.set(asset.id, {
-            state: 'loaded',
-            data: geometry,
-            asset: this,
-          });
+    const prom = loader(asset).then(loaded => {
+      remoteCache.set(asset.id, {
+        state: 'loaded',
+        data: loaded,
+        asset: this,
+      });
 
-          this.onLoaded?.(this, geometry);
-          this.onStateChange?.(this, 'loaded', 'loading');
-          return geometry as T;
-        });
-      remoteCache.set(asset.id, { state: 'loading', data: prom, asset: this });
-      this.onLoading?.(this);
-      this.onStateChange?.(this, 'loading', 'loadable');
-      return prom;
-    }
-
-    // case 3. material
-    if (asset.type === 'VMaterial') {
-      const prom = fetch(url)
-        .then(res => res.arrayBuffer())
-        .then(arrayBuffer => {
-          const textures: Promise<THREE.Texture>[] = [];
-          asset.textures.forEach(tex => {
-            const texture = new Asset(tex).get<THREE.Texture>();
-            textures.push(texture);
-          });
-
-          return Promise.all(textures).then(textures => {
-            const material = new THREE.MeshStandardMaterial();
-
-            remoteCache.set(asset.id, {
-              state: 'loaded',
-              data: material,
-              asset: this,
-            });
-
-            this.onLoaded?.(this, material);
-            this.onStateChange?.(this, 'loaded', 'loading');
-            return material as THREE.Material as T;
-          });
-        });
-      remoteCache.set(asset.id, { state: 'loading', data: prom, asset: this });
-      this.onLoading?.(this);
-      this.onStateChange?.(this, 'loading', 'loadable');
-      return prom as Promise<T>;
-    }
-
-    // case 4. mesh
-    if (asset.type === 'VObject3D') {
-      const prom = fetch(url)
-        .then(res => res.arrayBuffer())
-        .then(arrayBuffer => {
-          const geometry = new Asset(
-            asset.geometry,
-          ).get<THREE.BufferGeometry>();
-          const material = new Asset(asset.material).get<THREE.Material>();
-
-          return Promise.all([geometry, material]).then(
-            ([geometry, material]) => {
-              const mesh = new THREE.Mesh(geometry, material);
-
-              remoteCache.set(asset.id, {
-                state: 'loaded',
-                data: mesh,
-                asset: this,
-              });
-
-              this.onLoaded?.(this, mesh);
-              this.onStateChange?.(this, 'loaded', 'loading');
-
-              return mesh as T;
-            },
-          );
-        });
-      remoteCache.set(asset.id, { state: 'loading', data: prom, asset: this });
-
-      this.onLoading?.(this);
-      this.onStateChange?.(this, 'loading', 'loadable');
-
-      return prom as Promise<T>;
-    }
-
-    console.error(this);
-    throw new Error('Unknown asset type');
+      this.onLoaded?.(this, loaded);
+      this.onStateChange?.(this, 'loaded', 'loading');
+      return loaded as T;
+    });
+    remoteCache.set(asset.id, { state: 'loading', data: prom, asset: this });
+    this.onLoading?.(this);
+    this.onStateChange?.(this, 'loading', 'loadable');
+    return prom;
   }
 
   async getLocalAsset<T extends AssetType | VMeta>(): Promise<T> {
@@ -751,6 +671,13 @@ export default class Asset<T extends Record<any, any> = any> {
     debugger;
     throw new Error('Unknown file type');
   }
+
+  get file() {
+    if (this.isLocal) {
+      return this.inputAsset as File;
+    }
+    return undefined;
+  }
 }
 
 const remoteCacheDefault: [string, RemoteCacheData][] = [
@@ -829,55 +756,6 @@ function registerLocalCache(scene: THREE.Group) {
       }
     }
   });
-}
-
-function serializeBufferGeometry(geometry: THREE.BufferGeometry): ArrayBuffer {
-  const data = {
-    attributes: {},
-    index: null as null | { array: number[]; itemSize: number },
-  };
-
-  for (const [key, attr] of Object.entries(geometry.attributes)) {
-    (data.attributes as any)[key] = {
-      array: Array.from(attr.array),
-      itemSize: attr.itemSize,
-    };
-  }
-
-  if (geometry.index) {
-    data.index = {
-      array: Array.from(geometry.index.array),
-      itemSize: 1,
-    };
-  }
-
-  // 직렬화 → ArrayBuffer
-  const json = JSON.stringify(data);
-  const encoder = new TextEncoder();
-  return encoder.encode(json).buffer;
-}
-
-function deserializeBufferGeometry(buffer: ArrayBuffer): THREE.BufferGeometry {
-  const decoder = new TextDecoder();
-  const json = decoder.decode(buffer);
-  const data = JSON.parse(json);
-
-  const geometry = new THREE.BufferGeometry();
-
-  for (const [key, attr] of Object.entries(data.attributes)) {
-    const array = new Float32Array((attr as any).array);
-    geometry.setAttribute(
-      key,
-      new THREE.BufferAttribute(array, (attr as any).itemSize),
-    );
-  }
-
-  if (data.index) {
-    const indexArray = new Uint16Array(data.index.array);
-    geometry.setIndex(new THREE.BufferAttribute(indexArray, 1));
-  }
-
-  return geometry;
 }
 
 function flattenGLTFScene(scene: THREE.Group): THREE.Mesh[] {

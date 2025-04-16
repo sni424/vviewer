@@ -37,9 +37,7 @@ async function loadCompressedTexture(
 ): Promise<THREE.CompressedTexture> {
   return new Promise((resolve, reject) => {
     try {
-      console.log('loadCompressedTexture');
-      const texture = getVKTX2Loader().parse(arrayBuffer, tex => {
-        console.log('loadCompressedTexture resolved');
+      getVKTX2Loader().parse(arrayBuffer, tex => {
         resolve(tex as THREE.CompressedTexture);
       });
     } catch (e) {
@@ -225,7 +223,7 @@ async function createCommonTexture(data: VTexture): Promise<THREE.Texture> {
     });
 }
 
-export default async function (
+export default async function TextureLoader(
   file: VFile | VRemoteFile,
 ): Promise<THREE.Texture> {
   return AssetMgr.get<VFile<VTexture>>(file as any).then(async textureFile => {

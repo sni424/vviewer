@@ -4,8 +4,9 @@ import { useEffect, useRef, useState } from 'react';
 import ObjectViewer from 'src/components/ObjectViewer';
 import VGLTFLoader from 'src/scripts/loaders/VGLTFLoader';
 import Asset, { VRemoteAsset } from 'src/scripts/manager/Asset';
-import BufferGeometryLoader from 'src/scripts/manager/assets/BufferGeometryLoader';
+import Fetcher from 'src/scripts/manager/assets/Fetcher';
 import MaterialLoader from 'src/scripts/manager/assets/MaterialLoader';
+import ObjectLoader from 'src/scripts/manager/assets/ObjectLoader';
 import { VFile } from 'src/scripts/manager/assets/VFile';
 import { THREE } from 'VTHREE';
 import useTestModelDragAndDrop from './useTestModelDragAndDrop';
@@ -127,9 +128,9 @@ function TestPage() {
           </button>
           <button
             onClick={async () => {
-              const texes = await Promise.all(
-                asset.filter(a => a.isTexture).map(a => a.get<THREE.Texture>()),
-              );
+              // const texes = await Promise.all(
+              //   asset.filter(a => a.isTexture).map(a => a.get<THREE.Texture>()),
+              // );
               // texes.then(texes => {
               //   if (texes.length === 0) {
               //     return;
@@ -138,59 +139,73 @@ function TestPage() {
               // });
               asset
                 .filter(a => a.isGlb)
-                .map(a => a.get<THREE.Group>())
-                .forEach(a => {
-                  a.then(a => {
-                    a.toAsset().then(vfile => {
-                      console.log({ object3d: vfile });
-                    });
-
-                    if (texes.length > 0) {
-                      a.meshes().forEach(m => {
-                        texes[0].channel = 1;
-                        m.matStandard.lightMap = texes[0];
-                      });
-                    }
+                .forEach(a =>
+                  a.get<THREE.Group>().then(a => {
                     sceneRef.current.add(a);
-                    a.meshes().forEach(async m => {
-                      console.log({ mesh: await m.toAsset() });
-                      Promise.all([
-                        m.geometry.toAsset(),
-                        m.matStandard.toAsset(),
-                      ]).then(([geoAsset, matAsset]) => {
-                        Promise.all([
-                          BufferGeometryLoader(geoAsset),
-                          MaterialLoader(matAsset),
-                        ]).then(([geo, mat]) => {
-                          const newMesh = new THREE.Mesh(geo, mat);
-                          newMesh.position.add(new THREE.Vector3(0, 3, 0));
-                          sceneRef.current.add(newMesh);
-                        });
-                      });
-                    });
-
-                    // texes.then(tex => {
-                    //   if (tex.length === 0) {
-                    //     return;
-                    //   }
-                    //   a.traverse(o => {
-                    //     if (o.asMesh.isMesh) {
-                    //       tex[0].channel = 1;
-                    //       o.asMesh.matStandard.lightMap = tex[0];
-                    //       debugger;
-                    //       o.asMesh.geometry.toAsset().then(geo => {
-                    //         BufferGeometryLoader(geo).then(loaded => {
-                    //           console.log({ geo, loaded });
-                    //         });
-                    //       });
-                    //     }
-                    //   });
-                    // });
-                  });
-                });
+                  }),
+                );
             }}
           >
             화면에 추가
+          </button>
+          <button
+            onClick={() => {
+              function clearScene(scene: THREE.Scene) {
+                scene.traverse(object => {
+                  if ((object as THREE.Mesh).geometry) {
+                    (object as THREE.Mesh).geometry.dispose();
+                  }
+                  if ((object as THREE.Mesh).material) {
+                    const material = (object as THREE.Mesh).material;
+                    if (Array.isArray(material)) {
+                      material.forEach(m => m.dispose());
+                    } else {
+                      material.dispose();
+                    }
+                  }
+                  if ((object as THREE.Mesh).type === 'Mesh') {
+                    // dispose texture도 여기에 추가 가능
+                  }
+                });
+
+                while (scene.children.length > 0) {
+                  scene.remove(scene.children[0]);
+                }
+              }
+
+              clearScene(sceneRef.current);
+            }}
+          >
+            씬 삭제
+          </button>
+          <button
+            onClick={async () => {
+              const texs = await Promise.all(
+                asset.filter(a => a.isMap).map(a => a.get<THREE.Texture>()),
+              );
+              asset
+                .filter(a => a.isGlb)
+                .forEach(a =>
+                  a.get<THREE.Group>().then(a => {
+                    a.toAsset().then(vfile => {
+                      ObjectLoader(vfile).then(loaded => {
+                        if (texs.length > 0) {
+                          const tex = texs[0];
+                          console.log(tex.vUserData);
+                          tex.channel = 1;
+                          loaded.meshes().forEach(m => {
+                            m.matStandard.lightMap = tex;
+                          });
+                        }
+
+                        sceneRef.current.add(loaded);
+                      });
+                    });
+                  }),
+                );
+            }}
+          >
+            씬 에셋화
           </button>
           <button
             onClick={() => {
@@ -270,34 +285,17 @@ function TestPage() {
           >
             업로드
           </button>
-          {loadedMat && (
-            <button
-              onClick={() => {
-                sceneRef.current.traverse(o => {
-                  if (o.asMesh.isMesh) {
-                    console.log('org:', o.asMesh.matStandard.map);
-                    // console.log('new:', loadedMat.map);
-                    // o.asMesh.material = loadedMat;
-
-                    //box
-                    const newmesh = new THREE.Mesh(
-                      new THREE.BoxGeometry(1, 1, 1),
-                      loadedMat,
-                    );
-                    newmesh.position.set(1, 0, 0);
-                    sceneRef.current.add(newmesh);
-
-                    const newer = o.clone() as THREE.Mesh;
-                    newer.position.add(new THREE.Vector3(0, 0, 10));
-                    newer.material = loadedMat;
-                    sceneRef.current.add(newer);
-                  }
-                });
-              }}
-            >
-              재질적용
-            </button>
-          )}
+          <button
+            onClick={() => {
+              const url =
+                'https://cdn.jsdelivr.net/gh/mrdoob/three.js@r128/examples/models/gltf/DamagedHelmet/glTF/DamagedHelmet.gltf';
+              for (let i = 0; i < 100; ++i) {
+                Fetcher.fetch(url + '?' + i, false);
+              }
+            }}
+          >
+            Fetcher pool 테스트
+          </button>
         </div>
         <ObjectViewer data={asset}></ObjectViewer>
       </div>

@@ -1,7 +1,7 @@
 import { fetchArrayBuffer } from 'src/scripts/atomUtils';
 import { CommonObject, FileID, FileUrl } from './AssetTypes';
 import { awaitAll, hashArrayBuffer, hashObject } from './AssetUtils';
-import { isVFile, isVFileRemote, VFile, VRemoteFile } from './VFile';
+import { isVFile, isVRemoteFile, VLoadable, VRemoteFile } from './VFile';
 
 type Callback = (value: any, path: string[]) => void;
 
@@ -40,20 +40,23 @@ export class AssetMgr {
     | { id: FileID; state: 'loaded'; data: AssetCacheType }
   > = new Map();
 
-  static async get<T extends AssetCacheType = any>(vfile: VFile): Promise<T>;
   static async get<T extends AssetCacheType = any>(
-    remoteFile: VRemoteFile,
+    vfile: VLoadable,
+  ): Promise<T>;
+  static async get<T extends AssetCacheType = any>(
+    url: string,
+    hint?: 'json' | 'binary',
   ): Promise<T>;
   static async get<T extends AssetCacheType = any>(
     id: string,
     hint?: 'json' | 'binary',
   ): Promise<T>;
   static async get<T extends AssetCacheType = any>(
-    idOrRemoteFile: string | VRemoteFile | VFile,
+    idOrRemoteFile: string | VLoadable,
     hint?: 'json' | 'binary',
   ) {
     if (typeof idOrRemoteFile === 'object') {
-      if (isVFileRemote(idOrRemoteFile)) {
+      if (isVRemoteFile(idOrRemoteFile)) {
         const remoteFile = idOrRemoteFile as VRemoteFile;
         const id = remoteFile.id;
         const hint = remoteFile.format;
@@ -65,10 +68,34 @@ export class AssetMgr {
       }
     }
 
+    const url = idOrRemoteFile as string;
+    if (url.startsWith('http') || url.startsWith('/')) {
+      // handle url
+      throw new Error('아직 url을 직접 로드하는건 지원하지 않음');
+    }
+
     const id = idOrRemoteFile as string;
     const cached = this.cache.get(id);
     if (cached) {
-      return cached.data as Promise<T>;
+      if (cached.state === 'loading') {
+        return cached.data.then(data => {
+          if (data instanceof ArrayBuffer) {
+            // 캐시에 있는 버퍼를 그대로 리턴하면
+            // 밖에서 내용이 수정되었을 때 (detach될 때) 캐시 사용 불가
+            return data.copied();
+          }
+          return data;
+        });
+      }
+
+      // 이미 로딩 끝
+      if (cached.data instanceof ArrayBuffer) {
+        // 캐시에 있는 버퍼를 그대로 리턴하면
+        // 밖에서 내용이 수정되었을 때 (detach될 때) 캐시 사용 불가
+        return cached.data.copied();
+      }
+
+      return cached.data;
     }
 
     if (!hint) {
@@ -86,7 +113,7 @@ export class AssetMgr {
           const childrenProms: Promise<any>[] = [];
           iterateObjectWithPredicate(
             completedJson,
-            isVFileRemote,
+            isVRemoteFile,
             (obj, path) => {
               const file = obj as VRemoteFile;
               childrenProms.push(AssetMgr.get(file.id, file.format));
@@ -133,6 +160,10 @@ export class AssetMgr {
 
   // return cache id
   static set(rawData: AssetCacheType, id?: string): FileID {
+    if (rawData instanceof ArrayBuffer && rawData.isDetached()) {
+      debugger;
+    }
+
     const cacher = this.cache;
     const hasher =
       rawData instanceof ArrayBuffer ? hashArrayBuffer : hashObject;
@@ -153,7 +184,7 @@ export class AssetMgr {
 
     iterateObjectWithPredicate(
       copied,
-      isVFileRemote,
+      isVRemoteFile,
       async (val: VRemoteFile, path: string[]) => {
         console.log({ val });
         const file = val as VRemoteFile;

@@ -82,6 +82,7 @@ const handleImageData = async (
       debugger;
       throw new Error('KTX2 Buffer가 없음');
     }
+    console.log('called');
     const hash = AssetMgr.set(texture.vUserData.ktx2Buffer);
     return {
       id: hash,
@@ -162,45 +163,61 @@ THREE.Texture.prototype.toAsset = async function () {
 };
 
 THREE.Texture.prototype.updateHash = function (): string {
-  if (!this.vUserData) {
-    this.vUserData = {};
-  }
+  const excludes = ['uuid', 'id'];
+  const rawKeys = Object.keys(this) as (keyof THREE.MeshPhysicalMaterial)[];
+
+  // 우선 이미지데이터를 해싱
+  let imageHash: string | undefined = undefined;
 
   if ((this as THREE.CompressedTexture).isCompressedTexture) {
     if (!this.vUserData.ktx2Buffer) {
       throw new Error('KTX2 Buffer가 없음');
     }
-    const hash = hashArrayBuffer(this.vUserData.ktx2Buffer);
-    this.vUserData.hash = hash;
-    if (!this.vUserData.id) {
-      this.vUserData.id = hash;
-    }
-    return hash;
+    imageHash = hashArrayBuffer(this.vUserData.ktx2Buffer);
   }
 
   if ((this as THREE.DataTexture).isDataTexture) {
-    const hash = hashDataTexture(this as THREE.DataTexture);
-    this.vUserData.hash = hash;
-    if (!this.vUserData.id) {
-      this.vUserData.id = hash;
-    }
-    return hash;
+    imageHash = hashDataTexture(this as THREE.DataTexture);
   }
 
   if (Boolean(this.image)) {
-    const hash = hashImageData(this.image);
-    this.vUserData.hash = hash;
-    if (!this.vUserData.id) {
-      this.vUserData.id = hash;
-    }
-    return hash;
+    imageHash = hashImageData(this.image);
   }
 
-  const hash = objectHash(this);
+  // 이미지해시 + 기타 들어가있는 value값들 해시를 모아서 다시 해시
+
+  const hashMap: Record<string, any> = {
+    imageHash,
+  };
+
+  const scope = this as any;
+  const filteredKeys = rawKeys
+    .filter(key => scope[key] !== undefined && scope[key] !== null)
+    .filter(key => typeof scope[key] !== 'function')
+    .filter(key => !excludes.includes(key))
+    .filter(key => !key.startsWith('_'));
+
+  filteredKeys.forEach(key => {
+    const value = scope[key];
+    const typeofValue = typeof value;
+    if (
+      typeofValue === 'string' ||
+      typeofValue === 'number' ||
+      typeofValue === 'boolean' ||
+      typeofValue === 'undefined' ||
+      value === null
+    ) {
+      hashMap[key] = value;
+    } else if (scope[key].toArray && typeof scope[key].toArray === 'function') {
+      // vec2, vec3, vec4, quat 등등
+      hashMap[key] = scope[key].toArray();
+    }
+  });
+
+  const hash = objectHash(hashMap);
   this.vUserData.hash = hash;
   if (!this.vUserData.id) {
     this.vUserData.id = hash;
   }
-  console.warn('이 텍스쳐는 해시할 수 없음, objectHash 이용함', this, hash);
   return hash;
 };

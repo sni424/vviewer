@@ -4,7 +4,7 @@
 // constants.d.ts
 
 import { type THREE } from 'VTHREE';
-import { VRemoteFile } from './VFile';
+import { isVFile, VRemoteFile } from './VFile';
 
 interface GeometryGroup {
   /**
@@ -93,3 +93,8 @@ export interface VInterleavedBuffer {
   type: string; //arraytype
   stride: number;
 }
+
+export const isVGeometryFile = (file?: any): boolean => {
+  return isVFile(file) && file.type === 'VBufferGeometry';
+};
+export const isVBufferGeometryFile = isVGeometryFile;

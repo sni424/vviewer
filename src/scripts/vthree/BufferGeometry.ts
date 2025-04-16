@@ -23,6 +23,9 @@ if (
 ) {
   Object.defineProperty(THREE.Material.prototype, 'vUserData', {
     get: function () {
+      if (!this.userData) {
+        this.userData = {};
+      }
       return this.userData as VUserData;
     },
     set: function (userData: Partial<VUserData>) {

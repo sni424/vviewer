@@ -4,7 +4,7 @@ import * as THREE from 'three';
 import type { TransformControlsPlane } from 'three/examples/jsm/controls/TransformControls.js';
 import { Layer } from '../../Constants';
 import { VFile } from '../manager/assets/VFile';
-import { VObject3D } from '../manager/assets/VObject3D';
+import { VObject3D, VObject3DType } from '../manager/assets/VObject3D';
 import { resetGL } from '../utils';
 import './Object3DSerialize';
 import { type VUserData } from './VTHREETypes';
@@ -176,6 +176,9 @@ if (
 ) {
   Object.defineProperty(THREE.Object3D.prototype, 'vUserData', {
     get: function () {
+      if (!this.userData) {
+        this.userData = {};
+      }
       return this.userData as VUserData;
     },
     set: function (userData: Partial<VUserData>) {
@@ -260,10 +263,7 @@ THREE.Object3D.prototype.updateHash = function (path = ''): string {
       (value as THREE.BufferGeometry).isBufferGeometry ||
       (value as THREE.Material).isMaterial
     ) {
-      if (!value.vUserData) {
-        debugger;
-      }
-      hashMap[key] = value.vUserData.hash;
+      hashMap[key] = value.hash;
     }
   });
 
@@ -274,6 +274,23 @@ THREE.Object3D.prototype.updateHash = function (path = ''): string {
   }
 
   return hash;
+};
+
+const getVObjectType = (type: string | THREE.Object3D): VObject3DType => {
+  if (typeof type === 'string') {
+    if (type === 'Mesh') {
+      return 'VMesh';
+    } else {
+      return 'VObject3D';
+    }
+  } else {
+    // THREE>Object3D
+    if (type.asMesh.isMesh) {
+      return 'VMesh';
+    } else {
+      return 'VObject3D';
+    }
+  }
 };
 
 THREE.Object3D.prototype.toAsset = async function () {
@@ -288,8 +305,8 @@ THREE.Object3D.prototype.toAsset = async function () {
   const line = o3 as THREE.Line;
   const points = o3 as THREE.Points;
 
-  object.uuid = this.uuid;
-  object.type = this.type;
+  object.uuid = this.hash;
+  object.type = getVObjectType(this.type);
 
   if (this.name !== '') object.name = this.name;
   if (this.castShadow === true) object.castShadow = true;
@@ -389,8 +406,9 @@ THREE.Object3D.prototype.toAsset = async function () {
       scene.environment.isTexture &&
       scene.environment.isRenderTargetTexture !== true
     ) {
-      throw new Error('Scene environment is not supported yet');
+      // throw new Error('Scene environment is not supported yet');
       // object.environment = scene.environment.toJSON(meta).uuid;
+      object.environment = await scene.environment.toAsset();
     }
   } else if (mesh.isMesh || line.isLine || points.isPoints) {
     // object.geometry = serialize(meta.geometries, mesh.geometry);

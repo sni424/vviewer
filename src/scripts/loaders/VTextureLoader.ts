@@ -167,24 +167,7 @@ export default class VTextureLoader {
 
       texture.needsUpdate = true;
 
-      const setHash = false;
-      if (setHash) {
-        return texture.hash.then(() => {
-          if (!texture.vUserData) {
-            texture.vUserData = {};
-          }
-
-          // path
-          const filename = (isFile ? fileOrUrl.name : fileOrUrl)
-            .split('/')
-            .pop();
-          texture.vUserData.path = filename;
-
-          return texture;
-        });
-      } else {
-        return texture;
-      }
+      return texture;
     });
   }
 }

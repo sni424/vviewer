@@ -1,6 +1,28 @@
 import { sha1 } from 'js-sha1';
 import objectHash from 'object-hash';
 
+declare global {
+  interface ArrayBuffer {
+    copied(): ArrayBuffer;
+    isDetached(): boolean;
+  }
+}
+
+ArrayBuffer.prototype.copied = function () {
+  const copy = new ArrayBuffer(this.byteLength);
+  new Uint8Array(copy).set(new Uint8Array(this));
+  return copy;
+};
+
+ArrayBuffer.prototype.isDetached = function () {
+  try {
+    new Uint8Array(this, 0, 1);
+    return false;
+  } catch {
+    return true;
+  }
+};
+
 // 재귀적으로 모든 promise를 기다린다
 export async function awaitAll<T>(
   input: T,
@@ -65,9 +87,32 @@ export async function awaitAll<T>(
 
 export const hashObject = objectHash;
 
-export const hashArrayBuffer = (arrayBuffer: ArrayBuffer): string => {
-  const uint8Array = new Uint8Array(arrayBuffer);
-  return sha1(uint8Array);
+export type TypedArray =
+  | Int8Array
+  | Uint8Array
+  | Uint8ClampedArray
+  | Int16Array
+  | Uint16Array
+  | Int32Array
+  | Uint32Array
+  | Float32Array
+  | Float64Array;
+
+const hashCache: Map<ArrayBuffer | TypedArray, string> = new Map();
+export const hashArrayBuffer = (input: ArrayBuffer | TypedArray): string => {
+  if (hashCache.has(input)) {
+    return hashCache.get(input) as string;
+  }
+
+  if (ArrayBuffer.isView(input)) {
+    const hash = sha1(input as any);
+    hashCache.set(input, hash);
+    return hash;
+  } else {
+    const hash = sha1(new Uint8Array(input));
+    hashCache.set(input, hash);
+    return hash;
+  }
 };
 
 export const TYPED_ARRAYS = {
@@ -84,4 +129,10 @@ export const TYPED_ARRAYS = {
 
 export function getTypedArray(type: string, buffer: ArrayBuffer) {
   return new (TYPED_ARRAYS as any)[type](buffer);
+}
+
+export function cloneArrayBuffer(buffer: ArrayBuffer): ArrayBuffer {
+  const copy = new ArrayBuffer(buffer.byteLength);
+  new Uint8Array(copy).set(new Uint8Array(buffer));
+  return copy;
 }

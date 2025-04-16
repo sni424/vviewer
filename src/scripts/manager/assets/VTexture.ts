@@ -1,12 +1,13 @@
 import { type THREE } from 'VTHREE';
-import { isVFile, type VRemoteFile } from './VFile';
+import { VAssetType } from './AssetTypes';
+import { isVFile, VLoadable } from './VFile';
 
 // TextureJSON에서 image만 변경
 export interface VTexture {
   uuid: string;
   name: string;
 
-  image: VRemoteFile;
+  image: VLoadable;
   width?: number; // VDataTexture에서 사용
   height?: number; // VDataTexture에서 사용
   arrayType?: string; // VDataTexture에서 사용
@@ -41,7 +42,7 @@ export interface VTexture {
   // imageData: VFileRemote;
 }
 
-const VTextureTypes: string[] = [
+export const VTextureTypes: VAssetType[] = [
   'VTexture',
   'VDataTexture',
   'VCompressedTexture',
