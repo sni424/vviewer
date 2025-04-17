@@ -78,6 +78,8 @@ const SkyBoxMesh = () => {
             emissiveMap={skyBoxInfo.texture}
             emissiveIntensity={skyBoxInfo.mesh.intensity ?? 1}
             side={THREE.DoubleSide}
+            transparent={skyBoxInfo.mesh.transparent}
+            opacity={skyBoxInfo.mesh.opacity}
           />
         </mesh>
       )}

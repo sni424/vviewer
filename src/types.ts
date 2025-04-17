@@ -468,6 +468,8 @@ export interface MeshSkyBox {
   rotation: Vector3;
   position: Vector3;
   scale: Vector3;
+  transparent: boolean;
+  opacity: number;
 }
 
 export interface SkyBoxState {

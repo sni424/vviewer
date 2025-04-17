@@ -121,7 +121,7 @@ const SkyBoxPanel = () => {
   // 중첩 속성 업데이트 함수 (intensity 같은 단일 값)
   const updateProperty = (
     field: 'scene' | 'mesh',
-    subField: 'intensity',
+    subField: 'intensity' | 'opacity',
     value: number,
   ) => {
     setSkyBoxInfo(prev => ({
@@ -249,6 +249,38 @@ const SkyBoxPanel = () => {
                 }}
               />
             </div>
+            <div>
+              <label>투명</label>
+              <input
+                type="checkbox"
+                id="isoView"
+                name="isoView"
+                checked={skyBoxInfo.mesh.transparent}
+                onChange={e => {
+                  setSkyBoxInfo(prev => ({
+                    ...prev,
+                    mesh: {
+                      ...prev.mesh,
+                      transparent: !prev.mesh.transparent,
+                    },
+                  }));
+                }}
+              />
+            </div>
+            <SliderInput
+              label="투명도"
+              value={skyBoxInfo.mesh.opacity}
+              onChange={e =>
+                updateProperty(
+                  skyBoxInfo.type as 'scene' | 'mesh',
+                  'opacity',
+                  Number(e.target.value),
+                )
+              }
+              min={0}
+              max={10}
+              step={0.1}
+            />
             {/* 공통 속성: 강도 */}
             <SliderInput
               label="강도"
