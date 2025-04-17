@@ -32,14 +32,16 @@ import { defaultSettings, loadSettings } from '../pages/useSettings.ts';
 import {
   anisotropyAtom,
   cameraMatrixAtom,
-  getAtomValue,
+  DPAtom,
+  DPCModeAtom,
+  getAtomValue, highlightBurnAtom,
   lightMapAtom,
   lightMapContrastAtom,
   materialSettingAtom,
   minimapAtom,
   postprocessAtoms,
   ProbeAtom,
-  selectedAtom,
+  selectedAtom, sharpenAtom,
   testAtom,
   threeExportsAtom,
   uploadingAtom,
@@ -1189,7 +1191,14 @@ const GeneralMinimapControl = () => {
 };
 
 const TestControl = () => {
+  const threeExports = getAtomValue(threeExportsAtom);
+  if (!threeExports) {
+    return null;
+  }
   const [test, setTest] = useAtom(testAtom);
+  const [hBurn, setHBurn] = useAtom(highlightBurnAtom);
+  const [sharpen, setSharpen] = useAtom(sharpenAtom);
+  const { scene } = threeExports;
 
   return (
     <section className="w-full flex flex-col gap-y-2">
@@ -1217,6 +1226,90 @@ const TestControl = () => {
               setTest(pre => ({ ...pre, showSelectBox: !pre.showSelectBox }));
             }}
           />
+        </div>
+      </div>
+      <div>
+        <strong>highlight Burn</strong>
+        <div>
+          <div className="flex gap-x-1">
+            <span>사용</span>
+            <input
+              type="checkbox"
+              checked={hBurn.use}
+              onChange={e => {
+                setHBurn(pre => {
+                  const target = !pre.use;
+                  scene.traverseAll((o) => {
+                    if (o.type === 'Mesh') {
+                      const mat = (o as THREE.Mesh).mat;
+                      mat.apply('highlightBurn', {
+                        useHighlightBurn: target,
+                        highlightBurnFactor: pre.value
+                      })
+                    }
+                  })
+                  return { ...pre, use: target };
+                });
+              }}
+            />
+          </div>
+          {hBurn.use && (
+            <div className="flex gap-x-1">
+              <input
+                type="range"
+                min={0.001}
+                max={1}
+                step={0.001}
+                value={hBurn.value}
+                onChange={e => {
+                  const value = parseFloat(e.target.value);
+                  scene.traverseAll((o) => {
+                    if (o.type === 'Mesh') {
+                      const mat = (o as THREE.Mesh).mat;
+                      mat.apply('highlightBurn', {
+                        useHighlightBurn: hBurn.use,
+                        highlightBurnFactor: value
+                      })
+                    }
+                  })
+                  setHBurn(pre => ({ ...pre, value: value }));
+                }}
+              ></input>
+              <span>{hBurn.value}</span>
+            </div>
+          )}
+        </div>
+      </div>
+      <div>
+        <strong>sharpen</strong>
+        <div>
+          <div className="flex gap-x-1">
+            <span>사용</span>
+            <input
+              type="checkbox"
+              checked={sharpen.use}
+              onChange={e => {
+                setSharpen(pre => {
+                  return { ...pre, use: !pre.use };
+                });
+              }}
+            />
+          </div>
+          {sharpen.use && (
+            <div className="flex gap-x-1">
+              <input
+                type="range"
+                min={0}
+                max={4}
+                step={0.01}
+                value={sharpen.value}
+                onChange={e => {
+                  setSharpen(pre => ({ ...pre, value: parseFloat(e.target.value) }));
+                }}
+              ></input>
+              <span>{sharpen.value}</span>
+            </div>
+          )}
         </div>
       </div>
     </section>

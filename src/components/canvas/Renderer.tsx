@@ -25,7 +25,7 @@ import {
   pathfindingAtom,
   pointsAtom,
   selectedAtom,
-  setAtomValue,
+  setAtomValue, sharpenAtom,
   sourceAtom,
   threeExportsAtom,
   toggleGrid,
@@ -56,6 +56,7 @@ import Rooms from './Rooms';
 import SelectBox from './SelectBox';
 import SkyBoxMesh from './SkyBox.tsx';
 import Walls from './Walls.tsx';
+import Sharpen from 'src/components/canvas/Sharpen.tsx';
 
 const MainGrid = () => {
   const on = useAtomValue(viewGridAtom);
@@ -283,6 +284,7 @@ function Renderer() {
   const { scene, camera, gl } = threeExports;
   useLoadModel(threeExports);
   const setCameraAtom = useSetAtom(cameraMatrixAtom);
+  const { use: useSharpen } = useAtomValue(sharpenAtom);
 
   useEffect(() => {
     scene.addEventListener('childadded', event => {
@@ -307,6 +309,7 @@ function Renderer() {
       <Hotspot></Hotspot>
       <Anisotropy></Anisotropy>
       <SkyBoxMesh></SkyBoxMesh>
+      {useSharpen && <Sharpen />}
     </>
   );
 }
