@@ -1,5 +1,5 @@
 import { useAtom } from 'jotai';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { THREE } from 'VTHREE';
 import { newRoomColorString } from '../Constants';
 
@@ -11,7 +11,10 @@ import {
   threeExportsAtom,
 } from '../scripts/atoms';
 import { loadRooms, uploadJson } from '../scripts/atomUtils';
-
+type RoomData = {
+  parent: { name: string; index: number };
+  roomInfo: { index: number };
+};
 const uploadRooms = async () => {
   // const hotspots = getAtomValue(roomAtom);
   const hotspots = getAtomValue(newRoomAtom);
@@ -54,8 +57,6 @@ function RoomSetting() {
   //     ];
   //   });
   // };
-
-  console.log('newRooms', newRooms);
 
   const newCreateRoom = () => {
     setNewRooms(prev => {
@@ -178,6 +179,128 @@ function RoomSetting() {
     // setRooms(dropRooms);
   };
 
+  const directions3D = useMemo<THREE.Vector3[]>(() => {
+    const arr: THREE.Vector3[] = [];
+    const step = 5; // 10° 간격
+    for (let deg = 0; deg < 360; deg += step) {
+      const θ = THREE.MathUtils.degToRad(deg);
+      // y를 –1로 주어 “내려오는” 대각선 레이 생성
+      arr.push(new THREE.Vector3(Math.cos(θ), 0, Math.sin(θ)).normalize());
+    }
+    return arr;
+  }, []);
+
+  // 광선 시각화 헬퍼 함수
+  const visualizeRay = (
+    scene: THREE.Scene,
+    origin: THREE.Vector3,
+    direction: THREE.Vector3,
+    length: number = 100, // 광선 길이 (디버깅용)
+    color: number = 0xff0000, // 빨간색으로 표시
+  ) => {
+    // 광선의 끝점 계산
+    const endPoint = origin
+      .clone()
+      .add(direction.clone().multiplyScalar(length));
+
+    // 광선을 나타내는 선분 생성
+    const geometry = new THREE.BufferGeometry().setFromPoints([
+      origin,
+      endPoint,
+    ]);
+    const material = new THREE.LineBasicMaterial({
+      color,
+      depthTest: false, // ✅ 깊이 무시
+      transparent: true,
+    });
+    const line = new THREE.Line(geometry, material);
+    line.renderOrder = 99;
+
+    line.name = '광선';
+    // 장면에 추가
+    scene.add(line);
+
+    // 디버깅: 일정 시간 후 제거 (필요 시 주석 해제)
+    // setTimeout(() => {
+    //   scene.remove(line);
+    //   geometry.dispose();
+    //   material.dispose();
+    // }, 5000); // 5초 후 제거
+  };
+
+  const findOtherRoomFun = (
+    border: [number, number][],
+    newRoomData: newRoom,
+  ) => {
+    const three = getAtomValue(threeExportsAtom);
+    if (!three) {
+      return console.log('no Three');
+    }
+
+    const raycaster = new THREE.Raycaster();
+    // y는 원하는 높이로 설정
+
+    const objectsToTest = [...three.scene.children];
+
+    const newChildren = objectsToTest.filter(child => {
+      const name = child.name.toLowerCase();
+
+      return (
+        !name.includes('광선') && !name.includes(`방 바닥_${newRoomData.index}`)
+      );
+    });
+
+    console.log('탐지 대상 객체:', newChildren);
+    const includeRoom: RoomData[] = [];
+    const includeMesh: string[] = [];
+    border.forEach(([x, z]) => {
+      const origin = new THREE.Vector3(x, 0.099, z);
+
+      for (const dir of directions3D) {
+        // ✅ 매 방향마다 현재까지 감지된 mesh(uuid) 제외
+        const filteredChildren = newChildren.filter(
+          child => !includeMesh.includes(child.uuid),
+        );
+
+        raycaster.set(origin, dir.normalize());
+        const hits = raycaster.intersectObjects(filteredChildren, true);
+        const newHits = hits.filter(child => {
+          return !child.object.name.toLocaleLowerCase().includes('dp');
+        });
+        // visualizeRay(three.scene, origin, dir.normalize(), 100, 0xff0000);
+        for (const hit of newHits) {
+          const name = hit.object.name.toLowerCase();
+          const parentUuid = hit.object.parent?.uuid;
+          const info = hit.object.userData.roomData as RoomData | undefined;
+
+          if (
+            newHits[0].object.name.toLowerCase().includes('base') ||
+            newHits[0].object.name.toLowerCase().includes('door') ||
+            newHits[0].object.name.toLowerCase().includes('프레임') ||
+            newHits[0].object.name.toLowerCase().includes('plane')
+          ) {
+            continue;
+          }
+          if (
+            info &&
+            name.includes('방바닥') &&
+            !includeRoom.some(r => r.roomInfo.index === info.roomInfo.index)
+          ) {
+            // visualizeRay(three.scene, origin, dir.normalize(), 100, 0xff0000);
+            includeRoom.push(info);
+            if (parentUuid) {
+              includeMesh.push(parentUuid);
+            }
+            console.log('hits', newHits, includeRoom);
+            break; // ✅ 이 방향은 끝났으니 다음 방향으로
+          }
+        }
+      }
+    });
+
+    console.log('includeRoom', includeRoom);
+  };
+
   useEffect(() => {
     if (newRooms.length > 0) {
       const sorted = [...newRooms];
@@ -253,6 +376,25 @@ function RoomSetting() {
           }}
         >
           전체숨기기
+        </button>
+        <button
+          onClick={() => {
+            const three = getAtomValue(threeExportsAtom);
+            if (!three) {
+              return console.log('no Three');
+            }
+            const { scene } = three;
+            console.log('scene', scene);
+            scene.traverseAll(child => {
+              if (child.name.includes('광선')) {
+                child.removeFromParent();
+                child.geometry.dispose();
+                child.material.dispose();
+              }
+            });
+          }}
+        >
+          광선삭제
         </button>
       </div>
       {newRoomsArray.length > 0 &&
@@ -484,6 +626,21 @@ function RoomSetting() {
                               }}
                             >
                               투어 카메라위치 설정하기
+                            </button>
+                          </div>
+                          <div>
+                            <button
+                              onClick={() => {
+                                const newRoomData = room.roomInfo.filter(
+                                  roomChild => {
+                                    return roomChild.index === child.index;
+                                  },
+                                );
+                                console.log('newRoomData', newRoomData);
+                                findOtherRoomFun(child.border, newRoomData[0]);
+                              }}
+                            >
+                              보이는방 확인
                             </button>
                           </div>
                           <div className="flex items-center mt-1">

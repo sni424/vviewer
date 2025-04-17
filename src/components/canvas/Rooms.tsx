@@ -4,6 +4,7 @@ import { Fragment, useRef } from 'react';
 import { Mesh, Vector3 } from 'VTHREE';
 import { newRoomColorString } from '../../Constants';
 import {
+  newRoom,
   newRoomAtom,
   panelTabAtom,
   roomAtom,
@@ -104,8 +105,6 @@ function Rooms() {
     return;
   }
 
-  console.log('newRooms', newRooms);
-
   const { scene } = threeExports;
 
   const isCreating = newRooms.some(
@@ -132,51 +131,44 @@ function Rooms() {
     <>
       {isCreating && <XZPlane></XZPlane>}
 
-      {shows.map(
-        (room, i) =>
-          room && room.length > 0
-            ? room.map((data, j) => {
-                const points: PointXZ[] = data.border.map(border => ({
-                  x: border[0],
-                  z: border[1],
-                }));
+      {shows.map((room, i) =>
+        room && room.length > 0
+          ? room.map((data: newRoom, j) => {
+              const points: PointXZ[] = data.border.map(border => ({
+                x: border[0],
+                z: border[1],
+              }));
 
-                const surface =
-                  points.length > 2
-                    ? createClosedConcaveSurface(
-                        points,
-                        newRoomColorString(Number(data.index)),
-                      )
-                    : null;
-                console.log(surface, scene);
-                return (
-                  <Fragment key={`canvas-room-${i}-${j}`}>
-                    {surface && (
-                      <mesh name="방 바닥" position={new Vector3(0, 0.001, 0)}>
-                        <primitive object={surface} />
-                      </mesh>
-                    )}
-                  </Fragment>
-                );
-              })
-            : null,
-        // const points: PointXZ[] = room.border.map(border => ({
-        //   x: border[0],
-        //   z: border[1],
-        // }));
-        // const surface =
-        //   points.length > 2
-        //     ? createClosedConcaveSurface(points, roomColor(room.index))
-        //     : null;
-        // return (
-        //   <Fragment key={`canvas-room-${i}`}>
-        //     {/* {surface && (
-        //       <mesh position={new Vector3(0, 0.001, 0)}>
-        //         <primitive object={surface}></primitive>
-        //       </mesh>
-        //     )} */}
-        //   </Fragment>
-        // );
+              const surface =
+                points.length > 2
+                  ? createClosedConcaveSurface(
+                      points,
+                      newRooms,
+                      data,
+                      newRoomColorString(Number(data.index)),
+                    )
+                  : null;
+
+              return (
+                <Fragment key={`canvas-room-${i}-${j}`}>
+                  {surface && (
+                    <mesh
+                      name={`방 바닥_${data.index}`}
+                      position={new Vector3(0, 0.1, 0)}
+                      // userData={{
+                      //   roomInfo: {
+                      //     name: filterRoom[0].name,
+                      //     index: filterRoom[0].index,
+                      //   },
+                      // }}
+                    >
+                      <primitive object={surface} />
+                    </mesh>
+                  )}
+                </Fragment>
+              );
+            })
+          : null,
       )}
     </>
   );

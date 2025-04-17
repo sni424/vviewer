@@ -25,6 +25,8 @@ import {
   getAtomValue,
   getWallOptionAtom,
   lastCameraInfoAtom,
+  newRoom,
+  newRoomCreateOption,
   pathfindingAtom,
   selectedAtom,
   threeExportsAtom,
@@ -1233,6 +1235,8 @@ export type PointXZ = { x: number; z: number };
 
 export function createClosedConcaveSurface(
   points: PointXZ[],
+  newRoomsData?: newRoomCreateOption[],
+  data?: newRoom,
   // y: number,
   color?: number,
 ): THREE.Mesh {
@@ -1252,7 +1256,11 @@ export function createClosedConcaveSurface(
   });
   shape.closePath();
 
-  const geometry = new THREE.ShapeGeometry(shape);
+  const extrudeSettings = {
+    depth: 0.5, // 아주 작은 두께
+    bevelEnabled: false,
+  };
+  const geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
   geometry.rotateX(Math.PI / 2);
 
   // 이 때 바깥쪽을 보고 있으므로 Material에서 더블사이드로 설정
@@ -1262,8 +1270,26 @@ export function createClosedConcaveSurface(
     side: THREE.DoubleSide,
   });
   const mesh = new THREE.Mesh(geometry, material);
-  mesh.layers.disableAll();
-  mesh.layers.enable(Layer.Room);
+  if (data && newRoomsData) {
+    mesh.name = `방바닥_${data.index}`;
+    // mesh.layers.disableAll();
+    // mesh.layers.enable(Layer.Room);
+    const filterRoom = newRoomsData.filter((child): boolean =>
+      child.roomInfo.some(newChild => newChild.index === data.index),
+    );
+
+    mesh.userData = {
+      roomData: {
+        parent: {
+          name: filterRoom[0].name,
+          index: filterRoom[0].index,
+        },
+        roomInfo: {
+          index: data.index,
+        },
+      },
+    };
+  }
 
   return mesh;
 }
