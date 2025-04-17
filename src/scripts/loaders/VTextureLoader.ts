@@ -1,6 +1,8 @@
 import { set } from 'idb-keyval';
 import { EXRLoader, RGBELoader } from 'three/examples/jsm/Addons.js';
 import { DataTexture, THREE } from 'VTHREE';
+import { getTypedArray } from '../manager/assets/AssetUtils.ts';
+import Workers from '../manager/assets/Workers.ts';
 import { getVKTX2Loader } from './VKTX2Loader.ts';
 
 const dispoableUrls: string[] = [];
@@ -80,9 +82,20 @@ export default class VTextureLoader {
       }
 
       if (option?.ext === 'exr') {
-        return new Promise((res, rej) => {
-          console.log('exrToDataTexture', param);
-          res(exrToDataTexture(param));
+        // return new Promise((res, rej) => {
+        //   console.log('exrToDataTexture', param);
+        //   res(exrToDataTexture(param));
+        // });
+        return Workers.exrParse(param).then(exr => {
+          const texture = new DataTexture(
+            getTypedArray(exr.arrayType, exr.data),
+            exr.width,
+            exr.height,
+            exr.format,
+            exr.type,
+          );
+          texture.needsUpdate = true;
+          return texture;
         });
       }
 

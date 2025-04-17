@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { AssetMgr } from '../manager/assets/AssetMgr';
 import { VRemoteFile } from '../manager/assets/VFile';
+import { getImageData } from '../utils';
 import { type VUserData } from './VTHREETypes';
 
 declare module 'three' {
@@ -147,17 +148,14 @@ async function serializeImage(
   if (
     (typeof HTMLImageElement !== 'undefined' &&
       image instanceof HTMLImageElement) ||
-    (typeof HTMLCanvasElement !== 'undefined' &&
-      image instanceof HTMLCanvasElement) ||
     (typeof ImageBitmap !== 'undefined' && image instanceof ImageBitmap)
   ) {
     // default images
-    return ImageUtils.getArrayBuffer(image as any).then(ab => {
-      return {
-        data: ab,
-        type: 'png',
-      };
-    });
+    const ab = getImageData(image).data.buffer;
+    return {
+      data: ab,
+      type: 'png',
+    };
   } else {
     // exr
     const exrData = image as {

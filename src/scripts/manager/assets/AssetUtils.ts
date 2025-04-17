@@ -1,5 +1,4 @@
-import { sha1 } from 'js-sha1';
-import objectHash from 'object-hash';
+import objectHash, { sha1 } from 'object-hash';
 
 declare global {
   interface ArrayBuffer {
@@ -98,9 +97,12 @@ export type TypedArray =
   | Float32Array
   | Float64Array;
 
-const hashCache: Map<ArrayBuffer | TypedArray, string> = new Map();
-export const hashArrayBuffer = (input: ArrayBuffer | TypedArray): string => {
+const hashCache: Map<ArrayBufferLike | TypedArray, string> = new Map();
+export const hashArrayBuffer = (
+  input: ArrayBufferLike | TypedArray,
+): string => {
   if (hashCache.has(input)) {
+    console.log('Cached ab');
     return hashCache.get(input) as string;
   }
 

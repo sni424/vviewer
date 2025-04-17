@@ -103,12 +103,19 @@ const handleImageData = async (
 };
 
 THREE.Texture.prototype.toAsset = async function () {
+  // const image = await AssetMgr.get<THREE.Texture>(this.hash);
+  // if (!image) image = await handleImageData(this);
+  const start = performance.now();
+  const image = await handleImageData(this);
+  const end = performance.now();
+  console.log('handleImageData', end - start, image);
+
   const output: VTexture = {
     // uuid: this.uuid,
     uuid: this.hash,
     name: this.name,
 
-    image: await handleImageData(this),
+    image,
 
     // imageData: await handleImageData(this),
 
@@ -174,14 +181,12 @@ THREE.Texture.prototype.updateHash = function (): string {
       throw new Error('KTX2 Buffer가 없음');
     }
     imageHash = hashArrayBuffer(this.vUserData.ktx2Buffer);
-  }
-
-  if ((this as THREE.DataTexture).isDataTexture) {
+  } else if ((this as THREE.DataTexture).isDataTexture) {
     imageHash = hashDataTexture(this as THREE.DataTexture);
-  }
-
-  if (Boolean(this.image)) {
+  } else if (Boolean(this.image)) {
     imageHash = hashImageData(this.image);
+  } else {
+    throw new Error('이미지 없음');
   }
 
   // 이미지해시 + 기타 들어가있는 value값들 해시를 모아서 다시 해시

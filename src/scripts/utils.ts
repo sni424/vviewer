@@ -289,6 +289,7 @@ export const loadLatest = async ({
     alert('.env에 환경변수를 설정해주세요, VITE_MODELS_URL');
     return;
   }
+  // @ts-ignore
   const latestUrl = mobile ? ENV.testMobile : ENV.latest;
   if (!threeExports) {
     alert('threeExports 분기 문제');
@@ -1714,10 +1715,48 @@ export function getImageData(image: HTMLImageElement | ImageBitmap): ImageData {
   return imageData;
 }
 
+// will read frequently
+const sharedCanvas = new OffscreenCanvas(1, 1);
+const sharedCtx = sharedCanvas.getContext('2d', {
+  willReadFrequently: true,
+})!;
+
+if (!sharedCtx) {
+  throw new Error('2D context not supported');
+}
+
 // three.js의 텍스쳐.image를 받음
+
 export function hashImageData(image: HTMLImageElement | ImageBitmap): string {
-  const imageData = getImageData(image).data;
-  return hashArrayBuffer(imageData);
+  if (image instanceof HTMLImageElement) {
+    const imageData = getImageData(image).data;
+    return hashArrayBuffer(imageData);
+  } else {
+    // imagebitmap
+    if (
+      sharedCanvas.width !== image.width ||
+      sharedCanvas.height !== image.height
+    ) {
+      sharedCanvas.width = image.width;
+      sharedCanvas.height = image.height;
+    }
+
+    // 이미지 그리기
+    sharedCtx.drawImage(image, 0, 0);
+
+    // ImageData 얻기
+    const imageData = sharedCtx.getImageData(0, 0, image.width, image.height);
+
+    // 정확한 ArrayBuffer 추출
+    const clamped = imageData.data;
+    const exact = new Uint8Array(
+      clamped.buffer,
+      clamped.byteOffset,
+      clamped.byteLength,
+    );
+
+    return hashArrayBuffer(exact);
+  }
 }
 
 export function hashDataTexture(texture: THREE.DataTexture) {

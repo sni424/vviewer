@@ -44,6 +44,8 @@ declare module 'three' {
 
     materials(): THREE.Material[];
 
+    textures(): THREE.Texture[];
+
     geometries(): THREE.BufferGeometry[];
 
     updateAllMaterials(threeExports?: RootState): void;
@@ -121,6 +123,17 @@ THREE.Object3D.prototype.materials = function () {
     }
   });
   return result;
+};
+
+THREE.Object3D.prototype.textures = function () {
+  const resultSet = new Set<THREE.Texture>();
+  this.materials().forEach(material => {
+    material.textures().forEach(texture => {
+      resultSet.add(texture);
+    });
+  });
+
+  return Array.from(resultSet) as THREE.Texture[];
 };
 
 THREE.Object3D.prototype.geometries = function () {
