@@ -59,6 +59,9 @@ window.getThree = (view: View = View.Shared) => {
   return window.threeStore[view];
 };
 
+// Event
+import './EventDispatcher';
+
 // 구현체 임포트
 import './Matrix4';
 import './Shader';

@@ -3,7 +3,7 @@ import { Canvas, useThree } from '@react-three/fiber';
 import { useEffect, useRef, useState } from 'react';
 import ObjectViewer from 'src/components/ObjectViewer';
 import VGLTFLoader from 'src/scripts/loaders/VGLTFLoader';
-import Asset, { VRemoteAsset } from 'src/scripts/manager/Asset';
+import Asset from 'src/scripts/manager/Asset';
 import { AssetMgr } from 'src/scripts/manager/assets/AssetMgr';
 import MaterialLoader from 'src/scripts/manager/assets/MaterialLoader';
 import { VFile, VRemoteFile } from 'src/scripts/manager/assets/VFile';
@@ -31,41 +31,6 @@ function useEffectOnce(effect: () => void | (() => void)) {
     }
   }, []);
 }
-
-const tex1Asset: VRemoteAsset = {
-  type: 'texture',
-  id: 'tex1',
-};
-
-const tex2Asset: VRemoteAsset = {
-  type: 'texture',
-  id: 'tex2',
-};
-
-const matAsset: VRemoteAsset = {
-  type: 'material',
-  id: 'mat',
-  textures: [tex1Asset, tex2Asset],
-};
-
-const geoAsset: VRemoteAsset = {
-  type: 'geometry',
-  id: 'geo',
-};
-
-const meshAsset: VRemoteAsset = {
-  id: 'mesh',
-  type: 'mesh',
-  geometry: geoAsset,
-  material: matAsset,
-};
-
-const mesh2Asset: VRemoteAsset = {
-  id: 'mesh2',
-  type: 'mesh',
-  geometry: geoAsset,
-  material: matAsset,
-};
 
 function TestPage() {
   const [useEnv, setUseEnv] = useState(true);
@@ -505,7 +470,7 @@ function TestPage() {
                 mgr.get('abp'),
                 mgr.get('all'),
               );
-              mgr.getAsync('abp').then(res => {
+              mgr.getCacheAsync('abp').then(res => {
                 console.log('abp', res);
               });
             }}

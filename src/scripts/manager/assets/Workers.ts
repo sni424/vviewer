@@ -103,7 +103,7 @@ export default class Workers {
     if (this.cache.has(url)) return this.cache.get(url)!;
     const id = this.taskId++;
 
-    return new Promise((resolve, reject) => {
+    const prom = new Promise((resolve, reject) => {
       const task: Task = {
         id,
         action: 'fetch',
@@ -118,6 +118,8 @@ export default class Workers {
       this.cache.set(url, buffer);
       return buffer;
     });
+    this.cache.set(url, prom as any);
+    return prom as any;
   }
 
   private enqueue(task: Task) {

@@ -7,15 +7,10 @@ import { VFile } from '../manager/assets/VFile';
 import { VObject3D, VObject3DType } from '../manager/assets/VObject3D';
 import { resetGL } from '../utils';
 import './Object3DSerialize';
-import { type VUserData } from './VTHREETypes';
 
 declare module 'three' {
   interface Object3D {
     get asMesh(): THREE.Mesh;
-
-    get vUserData(): VUserData;
-
-    set vUserData(userData: Partial<VUserData>);
 
     traverse(callback: (node: Object3D) => any): void;
 
@@ -182,23 +177,6 @@ THREE.Object3D.prototype.isParentVisible = function () {
   });
   return visibility;
 };
-
-// vUserData
-if (
-  !Object.prototype.hasOwnProperty.call(THREE.Object3D.prototype, 'vUserData')
-) {
-  Object.defineProperty(THREE.Object3D.prototype, 'vUserData', {
-    get: function () {
-      if (!this.userData) {
-        this.userData = {};
-      }
-      return this.userData as VUserData;
-    },
-    set: function (userData: Partial<VUserData>) {
-      this.userData = { ...this.userData, ...userData };
-    },
-  });
-}
 
 THREE.Object3D.prototype.isTransformControl = function () {
   return (
@@ -503,6 +481,7 @@ THREE.Object3D.prototype.toAsset = async function () {
   // }
 
   const retval: VFile<VObject3D> = {
+    isVFile: true,
     id: this.hash,
     type: 'VObject3D',
     data: object as VObject3D,

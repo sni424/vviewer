@@ -1,11 +1,10 @@
 import objectHash from 'object-hash';
 import * as THREE from 'three';
 import { AssetMgr } from '../manager/assets/AssetMgr';
-import { hashArrayBuffer } from '../manager/assets/AssetUtils';
+import Hasher from '../manager/assets/Hasher';
 import { VFile, VRemoteFile } from '../manager/assets/VFile';
 import { VTexture } from '../manager/assets/VTexture';
 import { hashDataTexture, hashImageData } from '../utils';
-import { type VUserData } from './VTHREETypes';
 
 declare module 'three' {
   interface WebGLProgramParametersWithUniforms {
@@ -16,31 +15,11 @@ declare module 'three' {
     get asData(): THREE.DataTexture;
     get asCompressed(): THREE.CompressedTexture;
 
-    get vUserData(): VUserData;
-
-    set vUserData(userData: Partial<VUserData>);
-
     // vUserData.hash가 있으면 리턴, 없으면 계산 후 vUserData.hash에 저장
     get hash(): string;
     updateHash(): string;
     toAsset(): Promise<VFile<VTexture>>;
   }
-}
-
-if (
-  !Object.prototype.hasOwnProperty.call(THREE.Texture.prototype, 'vUserData')
-) {
-  Object.defineProperty(THREE.Texture.prototype, 'vUserData', {
-    get: function () {
-      if (!this.userData) {
-        this.userData = {};
-      }
-      return this.userData as VUserData;
-    },
-    set: function (userData: Partial<VUserData>) {
-      this.userData = { ...this.userData, ...userData };
-    },
-  });
 }
 
 if (!Object.prototype.hasOwnProperty.call(THREE.Texture.prototype, 'asData')) {
@@ -82,20 +61,10 @@ const handleImageData = async (
       debugger;
       throw new Error('KTX2 Buffer가 없음');
     }
-    console.log('called');
-    const hash = AssetMgr.set(texture.vUserData.ktx2Buffer);
-    return {
-      id: hash,
-      format: 'binary',
-    } as VRemoteFile;
+    return AssetMgr.makeRemoteFile(texture.vUserData.ktx2Buffer);
   } else if ((texture as THREE.DataTexture).isDataTexture) {
     // exr임
-    const ab = texture.image.data.buffer;
-    const hash = AssetMgr.set(ab);
-    return {
-      id: hash,
-      format: 'binary',
-    } as VRemoteFile;
+    return AssetMgr.makeRemoteFile(texture.image.data.buffer);
   } else {
     // 일반 이미지포맷
     return texture.source.toAsset();
@@ -161,6 +130,7 @@ THREE.Texture.prototype.toAsset = async function () {
   }
 
   const retval: VFile<VTexture> = {
+    isVFile: true,
     id: this.hash,
     type,
     data: output,
@@ -180,7 +150,7 @@ THREE.Texture.prototype.updateHash = function (): string {
     if (!this.vUserData.ktx2Buffer) {
       throw new Error('KTX2 Buffer가 없음');
     }
-    imageHash = hashArrayBuffer(this.vUserData.ktx2Buffer);
+    imageHash = Hasher.hash(this.vUserData.ktx2Buffer);
   } else if ((this as THREE.DataTexture).isDataTexture) {
     imageHash = hashDataTexture(this as THREE.DataTexture);
   } else if (Boolean(this.image)) {

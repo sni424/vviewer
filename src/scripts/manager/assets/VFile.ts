@@ -1,10 +1,11 @@
-import { FileID, VAssetType, VAssetTypes } from './AssetTypes';
+import { FileID, VAssetType } from './AssetTypes';
+import { TYPED_ARRAY_NAME } from './AssetUtils';
 
 // VFile대신 원격(또는 캐시)에 있는 파일을 레퍼런스로 사용할 때
 export type VRemoteFile = {
+  isVRemoteFile: true; // 로컬에서 판단할 때 있으면 좋음
   id: FileID;
-  format: 'json' | 'binary';
-  hint?: 'jpg' | 'png' | 'Uint8Array' | 'Uint16Array' | 'Float32Array' | string;
+  format: 'json' | 'jpg' | 'png' | 'ktx' | 'buffer' | TYPED_ARRAY_NAME;
 };
 
 // 에셋매니저에서 로드할 수 있는 RemoteFile이거나 VFile
@@ -14,15 +15,16 @@ export type VLoadable<T extends Record<any, any> = any> =
 
 // json객체
 export type VFile<T extends Record<any, any> = any> = {
+  isVFile: true;
   id: FileID; // json url : workspace/project/files/[id] <- json파일
   type: VAssetType;
   data: T; // json객체
 };
 
 export function isVFile(file?: any) {
-  return file?.id && file?.type && VAssetTypes.includes(file?.type);
+  return Boolean(file?.isVFile);
 }
 
 export function isVRemoteFile(file?: any) {
-  return file?.id && (file?.format === 'json' || file?.format === 'binary');
+  return Boolean(file?.isVRemoteFile);
 }

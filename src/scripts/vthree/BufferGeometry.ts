@@ -1,37 +1,17 @@
 import * as THREE from 'three';
 import { AssetMgr } from '../manager/assets/AssetMgr';
-import { hashArrayBuffer, hashObject } from '../manager/assets/AssetUtils';
+import { hashObject } from '../manager/assets/AssetUtils';
+import Hasher from '../manager/assets/Hasher';
 import { VBufferGeometry } from '../manager/assets/VBufferGeometry';
 import { VFile } from '../manager/assets/VFile';
 import { VUserData } from './VTHREETypes';
 declare module 'three' {
   interface BufferGeometry {
-    get vUserData(): VUserData;
-
-    set vUserData(userData: Partial<VUserData>);
-
     get hash(): string;
     updateHash(): string;
 
     toAsset(): Promise<VFile<VBufferGeometry>>;
   }
-}
-
-// vUserData
-if (
-  !Object.prototype.hasOwnProperty.call(THREE.Material.prototype, 'vUserData')
-) {
-  Object.defineProperty(THREE.Material.prototype, 'vUserData', {
-    get: function () {
-      if (!this.userData) {
-        this.userData = {};
-      }
-      return this.userData as VUserData;
-    },
-    set: function (userData: Partial<VUserData>) {
-      this.userData = { ...this.userData, ...userData };
-    },
-  });
 }
 
 if (
@@ -54,14 +34,14 @@ THREE.BufferGeometry.prototype.updateHash = function (): string {
 
   // 인덱스 포함 (있다면)
   if (geometry.index) {
-    const hash = hashArrayBuffer(geometry.index.array);
+    const hash = Hasher.hash(geometry.index.array);
     hashInputParts.push(hash);
   }
 
   // 각 속성에 대해 데이터 추출
   for (const [_, attr] of Object.entries(geometry.attributes)) {
     const typedArray = (attr as any).array;
-    const hash = hashArrayBuffer(typedArray.buffer);
+    const hash = Hasher.hash(typedArray.buffer);
     hashInputParts.push(hash);
   }
 
@@ -78,10 +58,10 @@ THREE.BufferGeometry.prototype.updateHash = function (): string {
   return finalhash;
 };
 
-THREE.BufferGeometry.prototype.toAsset = function () {
+THREE.BufferGeometry.prototype.toAsset = async function () {
   const data: Partial<VBufferGeometry> = {};
 
-  data.uuid = this.uuid;
+  data.uuid = this.vid;
   data.type = this.type;
   if (this.name !== '') data.name = this.name;
   if (Object.keys(this.userData).length > 0) data.userData = this.userData;
@@ -105,10 +85,7 @@ THREE.BufferGeometry.prototype.toAsset = function () {
   if (index !== null) {
     data.data.index = {
       type: index.array.constructor.name,
-      array: {
-        id: AssetMgr.set(index.array),
-        format: 'binary',
-      },
+      array: AssetMgr.makeRemoteFile(index.array),
     };
   }
 
@@ -166,6 +143,7 @@ THREE.BufferGeometry.prototype.toAsset = function () {
   }
 
   const retval: VFile<VBufferGeometry> = {
+    isVFile: true,
     id: this.hash,
     type: 'VBufferGeometry',
     data: data as VBufferGeometry,

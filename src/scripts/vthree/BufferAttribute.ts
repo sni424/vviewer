@@ -23,15 +23,12 @@ declare module 'three' {
 }
 
 THREE.BufferAttribute.prototype.toAsset = function () {
-  const arrayId = AssetMgr.set(this.array);
+  const array = AssetMgr.makeRemoteFile(this.array);
 
   const attributeData: VBufferAttribute = {
     itemSize: this.itemSize,
     type: this.array.constructor.name,
-    array: {
-      id: arrayId,
-      format: 'binary',
-    },
+    array,
     normalized: this.normalized,
   };
 
@@ -55,10 +52,7 @@ THREE.InterleavedBufferAttribute.prototype.toAsset = function () {
 THREE.InterleavedBuffer.prototype.toAsset = function () {
   const retval: VInterleavedBuffer = {
     uuid: this.uuid,
-    buffer: {
-      id: AssetMgr.set(this.array.buffer),
-      format: 'binary',
-    },
+    buffer: AssetMgr.makeRemoteFile(this.array.buffer),
     type: this.array.constructor.name,
     stride: this.stride,
   };

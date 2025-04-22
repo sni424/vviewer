@@ -79,10 +79,6 @@ declare module 'three' {
     get standard(): THREE.MeshStandardMaterial;
     get physical(): THREE.MeshPhysicalMaterial;
 
-    get vUserData(): VUserData;
-
-    set vUserData(userData: Partial<VUserData>);
-
     // get/set, this.uniform.progress.value를 변화시킴
     get progress(): number;
     set progress(value: number);
@@ -374,23 +370,6 @@ THREE.Material.prototype.removeDefine = function (key: MATERIAL_DEFINE) {
   delete this.defines[key];
   return this;
 };
-
-// vUserData
-if (
-  !Object.prototype.hasOwnProperty.call(THREE.Material.prototype, 'vUserData')
-) {
-  Object.defineProperty(THREE.Material.prototype, 'vUserData', {
-    get: function () {
-      if (!this.userData) {
-        this.userData = {};
-      }
-      return this.userData as VUserData;
-    },
-    set: function (userData: Partial<VUserData>) {
-      this.userData = { ...this.userData, ...userData };
-    },
-  });
-}
 
 THREE.Material.prototype.prepareMeshTransition = function (params: {
   direction: 'fadeIn' | 'fadeOut';

@@ -1,4 +1,6 @@
 import { CommonObject } from './AssetTypes';
+import { isThreeObject } from './AssetUtils';
+import Hasher from './Hasher';
 import { isVFile, isVRemoteFile, VFile, VRemoteFile } from './VFile';
 
 export type FileID = string;
@@ -8,11 +10,24 @@ export type Promisable<T> = T | Promise<T>;
 
 export type CachePayload<T = any> = {
   file?: File; // input file
-  inputBuffer?: ArrayBuffer; // File, 또는 remote arraybuffer이 인풋인 경우
+  inputBuffer?: ArrayBuffer; // 로컬File, 또는 VRemoteFile.binary이 인풋인 경우
   // resultBuffer?: ArrayBuffer; // upload 직전의 result ab
-  obj?: CommonObject; // VFile도 아니고 VRemoteFile도 아닌 일반 오브젝트
-  vfile?: VFile;
+  // obj?: CommonObject; // VFile도 아니고 VRemoteFile도 아닌 일반 오브젝트
+
+  // 순서
+  // * VFile = load(VRemoteFile)
+  //    buffer = fetchArrayBuffer(toUrl(VRemoteFile.id));
+  //    if (hint === 'json') { VFile = parse(buffer); }
+  //    if (hint === 'binary') { inputBuffer = unzip(buffer); }
+  //
+  // * Result = load(VFile)
+  //    if ( type === 'VFile' )
+  //      result = VFile; // 일반 json 객체
+  //    if ( type === 'VTexture' )
+  //      result = texture = TextureLoader(vfile);
+
   vremotefile?: VRemoteFile;
+  vfile?: VFile;
 
   // 상위 파일들로부터 나온 데이터
   // load()로부터 나온 값임. ( set()으로부터 나온 값이 아님 )
@@ -25,27 +40,18 @@ export type CacheValue<T> = {
   hash: string; // 첫 시작시는 id == hash이지만 데이터가 변화됨에 따라 hash가 바뀜
   state: 'loading' | 'loaded';
   payload: T;
-  loadingQueue: Map<PayloadValue<T>, boolean>; // 로딩 중인 payload
+  loadingQueue: Map<Promise<PayloadValue<T>>, boolean>; // 로딩 중인 payload
 };
 
-class Hasher {
+class CacheValueHasher {
   static objectHashMap = new WeakMap<object, string>();
   static objectHashCounter = 0;
-
-  static object(obj: object): string {
-    if (!Hasher.objectHashMap.has(obj)) {
-      const hash = `#${++Hasher.objectHashCounter}`;
-      Hasher.objectHashMap.set(obj, hash);
-      return hash;
-    }
-    return Hasher.objectHashMap.get(obj)!;
-  }
 
   static payload(payload: CachePayload): string {
     const keys = [
       'file',
       'inputBuffer',
-      'obj',
+      // 'obj',
       'vfile',
       'vremotefile',
       'result',
@@ -55,18 +61,14 @@ class Hasher {
 
     for (const key of keys) {
       const value = payload[key];
-      if (!value) continue;
+      if (value === undefined) continue;
 
-      if (typeof value === 'object') {
-        if (value instanceof ArrayBuffer) {
-          // buffer는 identity가 아니라도 hashable
-          hashParts.push(`buffer:${value.byteLength}`);
-        } else {
-          hashParts.push(`${key}:${Hasher.object(value)}`);
-        }
+      const useCache = true;
+      if (isThreeObject(value)) {
+        hashParts.push(value.vid);
       } else {
-        // primitive 값 (아주 드물겠지만)
-        hashParts.push(`${key}:${String(value)}`);
+        // Hash.hash에서 같은 오브젝트에 대한 해시는 알아서 캐싱
+        hashParts.push(Hasher.hash(value, useCache));
       }
     }
 
@@ -74,24 +76,9 @@ class Hasher {
   }
 }
 
-function isThreeObject(obj: any): boolean {
-  if (!obj || typeof obj !== 'object') return false;
-
-  return Boolean(
-    obj.isObject3D ||
-      obj.isMaterial ||
-      obj.isTexture ||
-      obj.isSource ||
-      obj.isBufferGeometry ||
-      obj.isBufferAttribute ||
-      obj.isInterleavedBufferAttribute ||
-      obj.isWebGLRenderTarget,
-  );
-}
-
-let cacheCount = 1;
+let _cacheCount = 1;
 export default class VCache {
-  constructor(public name: string = 'Cache' + cacheCount++) {}
+  constructor(public name: string = 'Cache' + _cacheCount++) {}
 
   cache: Map<FileID, CacheValue<CachePayload>> = new Map();
 
@@ -112,11 +99,11 @@ export default class VCache {
     }
   }
 
+  // CacheValue의 각 필드 중 하나를 업서트
   _upsert<T = any>(
     cacheValue: CacheValue<CachePayload<T>>,
     value: PayloadValue<T>,
   ) {
-    console.log('_upsert called');
     const payload = cacheValue.payload;
     if (value !== undefined && Object.values(payload).includes(value)) {
       // 같은 밸류를 다시 업데이트하려고하면 리턴
@@ -136,13 +123,16 @@ export default class VCache {
         // three.js 객체인 경우
         payload.result = value as T;
       } else {
-        payload.obj = value as CommonObject;
+        // payload.obj = value as CommonObject;
+        throw new Error('지원하지 않는 타입입니다');
       }
     } else {
       // result는 load()에서 저장하는 값이
       throw new Error('지원하지 않는 타입입니다');
     }
-    cacheValue.hash = Hasher.payload(payload);
+
+    // 해시 업데이트
+    cacheValue.hash = CacheValueHasher.payload(payload);
 
     // 참조캐시들 업데이트
     {
@@ -153,7 +143,7 @@ export default class VCache {
         payload.inputBuffer,
       );
       this._updateDerivedCache(this.cacheByFile, id, payload.file);
-      this._updateDerivedCache(this.cacheByObject, id, payload.obj);
+      // this._updateDerivedCache(this.cacheByObject, id, payload.obj);
       this._updateDerivedCache(this.cacheByVFile, id, payload.vfile);
       this._updateDerivedCache(
         this.cacheByVRemoteFile,
@@ -193,11 +183,16 @@ export default class VCache {
       value = valueCandidate[0] as Promisable<PayloadValue<T>>;
     }
 
+    // 이미 같은 value가 있으면 리턴
+    if (this.get(value)) {
+      return this;
+    }
+
     // if (id === 'vfile2') {
     //   debugger;
     // }
     // 로직 시작
-    const cached = this.cache.get(id)!;
+    const cached = this.cache.get(id);
     const hasCache = cached !== undefined;
     const targetValue: CacheValue<CachePayload<T>> = hasCache
       ? cached
@@ -208,7 +203,7 @@ export default class VCache {
           payload: {
             file: undefined,
             inputBuffer: undefined,
-            obj: undefined,
+            // obj: undefined,
             vfile: undefined,
             vremotefile: undefined,
             result: undefined,
@@ -228,30 +223,32 @@ export default class VCache {
       targetValue.state = 'loading';
 
       // 1. payload의 밸류 업데이트
-      const currentHash = targetValue.hash;
+      const currentHashProm = targetValue.hash;
       const loadingPromise = value.then((payloadValue: PayloadValue<T>) => {
         const futureCache = this.cache.get(id)!;
         if (!futureCache) {
           // 끝나고 돌아왔는데 캐시삭제됨
           return;
         }
-        if (currentHash !== futureCache.hash) {
+
+        // 바뀌지 않았다면 prom 객체도 같을 것이다
+        if (currentHashProm !== futureCache.hash) {
           // 만약 업데이트가 끝났는데 내용이 바뀌어있으면 리턴
           return;
         }
         this._upsert(futureCache, payloadValue);
 
-        futureCache.loadingQueue.delete(loadingPromise);
+        futureCache.loadingQueue.delete(loadingPromise as any);
 
         if (futureCache.loadingQueue.size === 0) {
           // 남은 작업이 없다면 로드 종료
           targetValue.state = 'loaded';
         }
 
-        return undefined;
+        return payloadValue;
       });
 
-      targetValue.loadingQueue.set(loadingPromise, true);
+      targetValue.loadingQueue.set(loadingPromise as any, true);
     } else {
       // case 2. value가 Promise가 아닌 경우
 

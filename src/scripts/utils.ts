@@ -1659,6 +1659,7 @@ import { ClassValue, clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { hashArrayBuffer } from './manager/assets/AssetUtils.ts';
 import { VUserData } from './vthree/VTHREETypes.ts';
+import Hasher from './manager/assets/Hasher.ts';
 
 // tailwind에 동적으로 클래스이름 할당할 때 필요
 export function cn(...inputs: ClassValue[]): string {
@@ -1730,7 +1731,7 @@ if (!sharedCtx) {
 export function hashImageData(image: HTMLImageElement | ImageBitmap): string {
   if (image instanceof HTMLImageElement) {
     const imageData = getImageData(image).data;
-    return hashArrayBuffer(imageData);
+    return Hasher.hash(imageData);
   } else {
     // imagebitmap
     if (
@@ -1755,13 +1756,13 @@ export function hashImageData(image: HTMLImageElement | ImageBitmap): string {
       clamped.byteLength,
     );
 
-    return hashArrayBuffer(exact);
+    return Hasher.hash(exact);
   }
 }
 
 export function hashDataTexture(texture: THREE.DataTexture) {
   const data = (texture.image as { data: ArrayBufferView }).data;
-  return hashArrayBuffer(data.buffer);
+  return Hasher.hash(data.buffer);
 }
 
 export function getParentPath(o: THREE.Object3D): string {

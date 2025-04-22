@@ -1,4 +1,6 @@
-import objectHash, { sha1 } from 'object-hash';
+import { sha1 } from 'hash-wasm';
+import objectHash from 'object-hash';
+import { type THREE } from 'VTHREE';
 
 declare global {
   interface ArrayBuffer {
@@ -86,32 +88,23 @@ export async function awaitAll<T>(
 
 export const hashObject = objectHash;
 
-export type TypedArray =
-  | Int8Array
-  | Uint8Array
-  | Uint8ClampedArray
-  | Int16Array
-  | Uint16Array
-  | Int32Array
-  | Uint32Array
-  | Float32Array
-  | Float64Array;
+const hashCache: WeakMap<ArrayBufferLike | TypedArray, string> = new WeakMap();
 
-const hashCache: Map<ArrayBufferLike | TypedArray, string> = new Map();
-export const hashArrayBuffer = (
+export const hashArrayBuffer = async (
   input: ArrayBufferLike | TypedArray,
-): string => {
-  if (hashCache.has(input)) {
+  useCache = true,
+): Promise<string> => {
+  if (useCache && hashCache.has(input)) {
     console.log('Cached ab');
     return hashCache.get(input) as string;
   }
 
   if (ArrayBuffer.isView(input)) {
-    const hash = sha1(input as any);
+    const hash = await sha1(input as any);
     hashCache.set(input, hash);
     return hash;
   } else {
-    const hash = sha1(new Uint8Array(input));
+    const hash = await sha1(new Uint8Array(input));
     hashCache.set(input, hash);
     return hash;
   }
@@ -129,6 +122,44 @@ export const TYPED_ARRAYS = {
   Float64Array: Float64Array,
 };
 
+export const TYPED_ARRAY_NAMES = Object.keys(
+  TYPED_ARRAYS,
+) as (keyof typeof TYPED_ARRAYS)[];
+export type TYPED_ARRAY_NAME = keyof typeof TYPED_ARRAYS;
+
+export type TypedArray =
+  | Int8Array
+  | Uint8Array
+  | Uint8ClampedArray
+  | Int16Array
+  | Uint16Array
+  | Int32Array
+  | Uint32Array
+  | Float32Array
+  | Float64Array;
+
+export function getBufferFormat(buffer: ArrayBufferLike | TypedArray):
+  | {
+      buffer: ArrayBufferLike;
+      format: 'buffer';
+    }
+  | {
+      buffer: TypedArray;
+      format: TYPED_ARRAY_NAME;
+    } {
+  if (buffer instanceof ArrayBuffer) {
+    return {
+      buffer: buffer,
+      format: 'buffer',
+    };
+  } else {
+    return {
+      buffer: buffer as TypedArray,
+      format: buffer.constructor.name as TYPED_ARRAY_NAME,
+    };
+  }
+}
+
 export function getTypedArray(type: string, buffer: ArrayBuffer) {
   return new (TYPED_ARRAYS as any)[type](buffer);
 }
@@ -137,4 +168,22 @@ export function cloneArrayBuffer(buffer: ArrayBuffer): ArrayBuffer {
   const copy = new ArrayBuffer(buffer.byteLength);
   new Uint8Array(copy).set(new Uint8Array(buffer));
   return copy;
+}
+
+// EventDispatcher를 상속받는 아이들
+// Mesh, Camera, Scene 등은 모두 Object3D임
+export type ThreeObject =
+  | THREE.Object3D
+  | THREE.Material
+  | THREE.Texture
+  | THREE.BufferGeometry;
+export function isThreeObject(obj: any): boolean {
+  if (!obj || typeof obj !== 'object') return false;
+
+  return Boolean(
+    obj.isObject3D || obj.isMaterial || obj.isTexture || obj.isBufferGeometry,
+    // ||  obj.isSource ||
+    // obj.isBufferAttribute ||
+    // obj.isInterleavedBufferAttribute,
+  );
 }

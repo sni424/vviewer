@@ -20,12 +20,26 @@ export default tseslint.config(
     plugins: {
       'react-hooks': reactHooks,
       'react-refresh': reactRefresh,
+      prettier: 'eslint-plugin-prettier',
     },
     rules: {
       ...reactHooks.configs.recommended.rules,
       'react-refresh/only-export-components': [
         'warn',
         { allowConstantExport: true },
+      ],
+      'no-multiple-empty-lines': [
+        'warn',
+        {
+          max: 2,
+          maxBOF: 0,
+          maxEOF: 1,
+        },
+      ],
+      // 모든 문장 사이에 빈 줄 허용
+      'padding-line-between-statements': [
+        'warn',
+        { blankLine: 'always', prev: '*', next: '*' },
       ],
     },
   },
