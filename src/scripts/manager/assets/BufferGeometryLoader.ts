@@ -1,5 +1,5 @@
 import { THREE } from 'VTHREE';
-import { AssetMgr } from './AssetMgr';
+import Asset from '../Asset';
 import { getTypedArray } from './AssetUtils';
 import {
   VBufferAttribute,
@@ -7,165 +7,170 @@ import {
   VInterleavedBuffer,
   VInterleavedBufferAttribute,
 } from './VBufferGeometry';
-import { VFile, VRemoteFile } from './VFile';
+import { isVFile, VFile, VRemoteFile } from './VFile';
 
-export default async function BufferGeometryLoader(
-  vfile: VFile | VRemoteFile,
-): Promise<THREE.BufferGeometry> {
-  return AssetMgr.get<VFile<VBufferGeometry>>(vfile as any).then(
-    async geometryFile => {
-      const { id, type, data } = geometryFile;
-      if (type !== 'VBufferGeometry') {
-        throw new Error('VBufferGeometry가 아닙니다');
-      }
+const handleVFile = async (vfile: VFile) => {
+  const { id, type, data } = vfile;
+  if (type !== 'VBufferGeometry') {
+    throw new Error('VBufferGeometry가 아닙니다');
+  }
 
-      async function getInterleavedBuffer(data: VInterleavedBuffer) {
-        const array = getTypedArray(data.type, await AssetMgr.get(data.buffer));
-        const ib = new THREE.InterleavedBuffer(array, data.stride);
-        ib.uuid = data.uuid;
+  if (id !== vfile.id) {
+    console.warn('id mismatch', id, vfile.id);
+    debugger;
+  }
 
-        return ib;
-      }
+  async function getInterleavedBuffer(data: VInterleavedBuffer) {
+    const array = getTypedArray(data.type, await Asset.result(data.buffer));
+    const ib = new THREE.InterleavedBuffer(array, data.stride);
+    ib.uuid = data.uuid;
 
-      const geometry = (data as any).isInstancedBufferGeometry
-        ? new THREE.InstancedBufferGeometry()
-        : new THREE.BufferGeometry();
+    return ib;
+  }
 
-      const index = data.data!.index;
+  const geometry = (data as any).isInstancedBufferGeometry
+    ? new THREE.InstancedBufferGeometry()
+    : new THREE.BufferGeometry();
 
-      if (index !== undefined) {
-        const typedArray = getTypedArray(
-          index.type,
-          await AssetMgr.get<ArrayBuffer>(index.array),
-        );
-        geometry.setIndex(new THREE.BufferAttribute(typedArray, 1));
-      }
+  const index = data.data!.index;
 
-      const attributes = data.data.attributes;
+  if (index !== undefined) {
+    const typedArray = getTypedArray(
+      index.type,
+      await Asset.result(index.array),
+    );
+    geometry.setIndex(new THREE.BufferAttribute(typedArray, 1));
+  }
 
-      for (const key in attributes) {
-        const attribute = attributes[key];
+  const attributes = data.data.attributes;
+
+  for (const key in attributes) {
+    const attribute = attributes[key];
+    let bufferAttribute;
+
+    if (
+      (attribute as VInterleavedBufferAttribute).isInterleavedBufferAttribute
+    ) {
+      const attr = attribute as VInterleavedBufferAttribute;
+      const interleavedBuffer = await getInterleavedBuffer(attr.data);
+      bufferAttribute = new THREE.InterleavedBufferAttribute(
+        interleavedBuffer,
+        attr.itemSize,
+        attr.offset,
+        attr.normalized,
+      );
+    } else {
+      const attr = attribute as VBufferAttribute;
+      const typedArray = getTypedArray(
+        attr.type,
+        await Asset.result(attr.array),
+      );
+      const bufferAttributeConstr = (attr as any).isInstancedBufferAttribute
+        ? THREE.InstancedBufferAttribute
+        : THREE.BufferAttribute;
+      bufferAttribute = new bufferAttributeConstr(
+        typedArray,
+        attr.itemSize,
+        attr.normalized,
+      );
+    }
+
+    if ((attribute as any).name !== undefined)
+      bufferAttribute.name = (attribute as any).name;
+    if ((attribute as any).usage !== undefined)
+      (bufferAttribute as any).setUsage?.((attribute as any).usage);
+
+    geometry.setAttribute(key, bufferAttribute);
+  }
+
+  const morphAttributes = data.data.morphAttributes;
+
+  if (morphAttributes) {
+    for (const key in morphAttributes) {
+      const attributeArray = morphAttributes[key];
+
+      const array = [];
+
+      for (let i = 0, il = attributeArray.length; i < il; i++) {
+        const attribute = attributeArray[i];
         let bufferAttribute;
 
-        if (
-          (attribute as VInterleavedBufferAttribute)
-            .isInterleavedBufferAttribute
-        ) {
-          const attr = attribute as VInterleavedBufferAttribute;
-          const interleavedBuffer = await getInterleavedBuffer(attr.data);
+        const attrBuffer = attribute as VBufferAttribute;
+        const attrInterleaved = attribute as VInterleavedBufferAttribute;
+        if (attrInterleaved.isInterleavedBufferAttribute) {
+          const interleavedBuffer = await getInterleavedBuffer(
+            attrInterleaved.data,
+          );
           bufferAttribute = new THREE.InterleavedBufferAttribute(
             interleavedBuffer,
-            attr.itemSize,
-            attr.offset,
-            attr.normalized,
+            attrInterleaved.itemSize,
+            attrInterleaved.offset,
+            attrInterleaved.normalized,
           );
         } else {
-          const attr = attribute as VBufferAttribute;
           const typedArray = getTypedArray(
-            attr.type,
-            await AssetMgr.get(attr.array),
+            attrBuffer.type,
+            await Asset.result(attrBuffer.array),
           );
-          const bufferAttributeConstr = (attr as any).isInstancedBufferAttribute
-            ? THREE.InstancedBufferAttribute
-            : THREE.BufferAttribute;
-          bufferAttribute = new bufferAttributeConstr(
+          bufferAttribute = new THREE.BufferAttribute(
             typedArray,
-            attr.itemSize,
-            attr.normalized,
+            attrBuffer.itemSize,
+            attrBuffer.normalized,
           );
         }
 
         if ((attribute as any).name !== undefined)
           bufferAttribute.name = (attribute as any).name;
-        if ((attribute as any).usage !== undefined)
-          (bufferAttribute as any).setUsage?.((attribute as any).usage);
-
-        geometry.setAttribute(key, bufferAttribute);
+        array.push(bufferAttribute);
       }
 
-      const morphAttributes = data.data.morphAttributes;
+      geometry.morphAttributes[key] = array;
+    }
+  }
 
-      if (morphAttributes) {
-        for (const key in morphAttributes) {
-          const attributeArray = morphAttributes[key];
+  const morphTargetsRelative = data.data.morphTargetsRelative;
 
-          const array = [];
+  if (morphTargetsRelative) {
+    geometry.morphTargetsRelative = true;
+  }
 
-          for (let i = 0, il = attributeArray.length; i < il; i++) {
-            const attribute = attributeArray[i];
-            let bufferAttribute;
+  const groups =
+    data.data.groups ||
+    (data.data as any).drawcalls ||
+    (data as any).data.offsets;
 
-            const attrBuffer = attribute as VBufferAttribute;
-            const attrInterleaved = attribute as VInterleavedBufferAttribute;
-            if (attrInterleaved.isInterleavedBufferAttribute) {
-              const interleavedBuffer = await getInterleavedBuffer(
-                attrInterleaved.data,
-              );
-              bufferAttribute = new THREE.InterleavedBufferAttribute(
-                interleavedBuffer,
-                attrInterleaved.itemSize,
-                attrInterleaved.offset,
-                attrInterleaved.normalized,
-              );
-            } else {
-              const typedArray = getTypedArray(
-                attrBuffer.type,
-                await AssetMgr.get(attrBuffer.array),
-              );
-              bufferAttribute = new THREE.BufferAttribute(
-                typedArray,
-                attrBuffer.itemSize,
-                attrBuffer.normalized,
-              );
-            }
+  if (groups !== undefined) {
+    for (let i = 0, n = groups.length; i !== n; ++i) {
+      const group = groups[i];
 
-            if ((attribute as any).name !== undefined)
-              bufferAttribute.name = (attribute as any).name;
-            array.push(bufferAttribute);
-          }
+      geometry.addGroup(group.start, group.count, group.materialIndex);
+    }
+  }
 
-          geometry.morphAttributes[key] = array;
-        }
-      }
+  const boundingSphere = data.data.boundingSphere;
 
-      const morphTargetsRelative = data.data.morphTargetsRelative;
+  if (boundingSphere !== undefined) {
+    const center = new THREE.Vector3();
 
-      if (morphTargetsRelative) {
-        geometry.morphTargetsRelative = true;
-      }
+    if (boundingSphere.center !== undefined) {
+      center.fromArray(boundingSphere.center);
+    }
 
-      const groups =
-        data.data.groups ||
-        (data.data as any).drawcalls ||
-        (data as any).data.offsets;
+    geometry.boundingSphere = new THREE.Sphere(center, boundingSphere.radius);
+  }
 
-      if (groups !== undefined) {
-        for (let i = 0, n = groups.length; i !== n; ++i) {
-          const group = groups[i];
+  if (data.name) geometry.name = data.name;
+  if (data.userData) geometry.userData = data.userData;
 
-          geometry.addGroup(group.start, group.count, group.materialIndex);
-        }
-      }
+  return geometry;
+};
 
-      const boundingSphere = data.data.boundingSphere;
+export default async function BufferGeometryLoader(
+  vfile: VFile<VBufferGeometry> | VRemoteFile,
+): Promise<THREE.BufferGeometry> {
+  if (isVFile(vfile)) {
+    return handleVFile(vfile as VFile);
+  }
 
-      if (boundingSphere !== undefined) {
-        const center = new THREE.Vector3();
-
-        if (boundingSphere.center !== undefined) {
-          center.fromArray(boundingSphere.center);
-        }
-
-        geometry.boundingSphere = new THREE.Sphere(
-          center,
-          boundingSphere.radius,
-        );
-      }
-
-      if (data.name) geometry.name = data.name;
-      if (data.userData) geometry.userData = data.userData;
-
-      return geometry;
-    },
-  );
+  throw new Error('VFile이 아닙니다');
 }

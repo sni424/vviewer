@@ -3,6 +3,7 @@ import objectHash from 'object-hash';
 import * as THREE from 'three';
 import type { TransformControlsPlane } from 'three/examples/jsm/controls/TransformControls.js';
 import { Layer } from '../../Constants';
+import Asset from '../manager/Asset';
 import { VFile } from '../manager/assets/VFile';
 import { VObject3D, VObject3DType } from '../manager/assets/VObject3D';
 import { resetGL } from '../utils';
@@ -52,7 +53,7 @@ declare module 'three' {
     get hash(): string;
     updateHash(path?: string): string;
 
-    toAsset(): Promise<VFile<VObject3D>>;
+    toAsset(): Promise<Asset>;
   }
 }
 
@@ -275,7 +276,7 @@ const getVObjectType = (type: string | THREE.Object3D): VObject3DType => {
       return 'VObject3D';
     }
   } else {
-    // THREE>Object3D
+    // THREE.Object3D
     if (type.asMesh.isMesh) {
       return 'VMesh';
     } else {
@@ -296,8 +297,8 @@ THREE.Object3D.prototype.toAsset = async function () {
   const line = o3 as THREE.Line;
   const points = o3 as THREE.Points;
 
-  object.uuid = this.hash;
-  object.type = getVObjectType(this.type);
+  object.uuid = this.vid;
+  object.type = this.type;
 
   if (this.name !== '') object.name = this.name;
   if (this.castShadow === true) object.castShadow = true;
@@ -399,11 +400,11 @@ THREE.Object3D.prototype.toAsset = async function () {
     ) {
       // throw new Error('Scene environment is not supported yet');
       // object.environment = scene.environment.toJSON(meta).uuid;
-      object.environment = await scene.environment.toAsset();
+      object.environment = (await scene.environment.toAsset()).vremotefile;
     }
   } else if (mesh.isMesh || line.isLine || points.isPoints) {
     // object.geometry = serialize(meta.geometries, mesh.geometry);
-    object.geometry = await mesh.geometry.toAsset();
+    object.geometry = (await mesh.geometry.toAsset()).vremotefile;
 
     const parameters = (mesh.geometry as any).parameters;
 
@@ -436,15 +437,15 @@ THREE.Object3D.prototype.toAsset = async function () {
   }
 
   if (mesh.material !== undefined) {
-    object.material = await mesh.matStandard.toAsset();
+    object.material = (await mesh.matStandard.toAsset()).vremotefile;
   }
 
   //
 
   if (this.children.length > 0) {
-    object.children = await Promise.all(
-      this.children.map(child => child.toAsset()),
-    );
+    object.children = (
+      await Promise.all(this.children.map(child => child.toAsset()))
+    ).map(a => a.vremotefile);
   }
 
   //
@@ -483,9 +484,9 @@ THREE.Object3D.prototype.toAsset = async function () {
   const retval: VFile<VObject3D> = {
     isVFile: true,
     id: this.hash,
-    type: 'VObject3D',
+    type: getVObjectType(this.type),
     data: object as VObject3D,
   };
 
-  return retval;
+  return Asset.from(retval);
 };

@@ -198,20 +198,9 @@ THREE.Source.prototype.toAsset = async function (): Promise<VRemoteFile> {
     }
 
     const { data: ab, type, width, height } = await serializeImage(data);
-    const hash = AssetMgr.set(ab);
+    const remotefile = AssetMgr.makeRemoteFile(ab);
 
-    this.vUserData.hash = hash;
-    if (!this.vUserData.id) {
-      this.vUserData.id = hash;
-    }
-
-    const output: VRemoteFile = {
-      id: hash,
-      format: 'binary',
-      hint: type,
-    };
-
-    return output;
+    return remotefile;
   } else {
     throw new Error('Data가 없는 텍스쳐는 지원하지 않음');
   }

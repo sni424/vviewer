@@ -1,7 +1,7 @@
 import { getVKTX2Loader } from 'src/scripts/loaders/VKTX2Loader';
 import { EXRLoader } from 'three/examples/jsm/Addons.js';
 import { THREE } from 'VTHREE';
-import { AssetMgr } from './AssetMgr';
+import Asset from '../Asset';
 import { getTypedArray } from './AssetUtils';
 import { VFile, VRemoteFile } from './VFile';
 import { VTexture } from './VTexture';
@@ -49,8 +49,8 @@ async function loadCompressedTexture(
 async function createCompressedTexture(
   data: VTexture,
 ): Promise<THREE.CompressedTexture> {
-  return AssetMgr.get(data.image)
-    .then(arrayBuffer => loadCompressedTexture(arrayBuffer))
+  return Asset.buffer(data.image)
+    .then(arrayBuffer => loadCompressedTexture(arrayBuffer!))
     .then(texture => {
       if (data.uuid) texture.uuid = data.uuid;
       if (data.name) texture.name = data.name;
@@ -101,9 +101,9 @@ async function createDataTexture(data: VTexture): Promise<THREE.DataTexture> {
   }
   // const retval = new THREE.DataTexture();
   // return retval;
-  return AssetMgr.get(data.image).then(arrayBuffer => {
+  return Asset.buffer(data.image).then(arrayBuffer => {
     const sourceData = {
-      data: getTypedArray(data.arrayType!, arrayBuffer),
+      data: getTypedArray(data.arrayType!, arrayBuffer!),
       width: data.width!,
       height: data.height!,
     };
@@ -181,8 +181,8 @@ async function imageBufferToHTMLImgElement(
 }
 
 async function createCommonTexture(data: VTexture): Promise<THREE.Texture> {
-  return AssetMgr.get(data.image)
-    .then(arrayBuffer => imageBufferToImageBitmap(arrayBuffer))
+  return Asset.buffer(data.image)
+    .then(arrayBuffer => imageBufferToImageBitmap(arrayBuffer!))
     .then(bitmap => {
       const texture = new THREE.Texture(bitmap);
 
@@ -226,7 +226,10 @@ async function createCommonTexture(data: VTexture): Promise<THREE.Texture> {
 export default async function TextureLoader(
   file: VFile | VRemoteFile,
 ): Promise<THREE.Texture> {
-  return AssetMgr.get<VFile<VTexture>>(file as any).then(async textureFile => {
+  return Asset.vfile<VFile<VTexture>>(file as any).then(async textureFile => {
+    if (!textureFile) {
+      debugger;
+    }
     if (!TEXTURE_KEYS.includes(textureFile.type)) {
       throw new Error('VTexture가 아닙니다');
     }

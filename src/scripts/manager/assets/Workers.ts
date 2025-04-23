@@ -57,7 +57,7 @@ export default class Workers {
 
   public static async fetch(
     url: string,
-    inflate: boolean = true,
+    inflate: boolean = false,
   ): Promise<ArrayBuffer> {
     return this.instance._fetch(url, inflate);
   }

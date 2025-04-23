@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import Asset from '../manager/Asset';
 import { AssetMgr } from '../manager/assets/AssetMgr';
 import { hashObject } from '../manager/assets/AssetUtils';
 import Hasher from '../manager/assets/Hasher';
@@ -10,7 +11,7 @@ declare module 'three' {
     get hash(): string;
     updateHash(): string;
 
-    toAsset(): Promise<VFile<VBufferGeometry>>;
+    toAsset(): Promise<Asset>;
   }
 }
 
@@ -149,5 +150,5 @@ THREE.BufferGeometry.prototype.toAsset = async function () {
     data: data as VBufferGeometry,
   };
 
-  return Promise.resolve(retval);
+  return Promise.resolve(Asset.from(retval));
 };

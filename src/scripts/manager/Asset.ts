@@ -1,8 +1,15 @@
 import { v4 } from 'uuid';
 import { AssetMgr } from './assets/AssetMgr';
+import { FileID } from './assets/AssetTypes';
 import { hashObject, isThreeObject } from './assets/AssetUtils';
 import { PayloadValue } from './assets/VCache';
 import { isVFile, isVRemoteFile, VFile, VRemoteFile } from './assets/VFile';
+import Ext from './Ext';
+
+export type VUploadable<T extends Record<string, any> = any> = {
+  vremotefile: VRemoteFile;
+  data: VFile<T> | ArrayBuffer;
+};
 
 // innerId가 동일한 경우 여기서 찾는다
 const _assets: Map<string, Asset> = new Map();
@@ -55,13 +62,14 @@ export default class Asset<T = any> {
     // case 1. cache hit
     const assetCache = AssetCache.get(id);
     if (assetCache) {
-      if (payload) {
-        // 캐시가 있을 때 id와 payload를 같이 넣으면
-        // 다음 두 가지 중 어떻게 해야할 지 정해야 함
-        // 1. 기존 캐시의 payload 덮어쓰기
-        // 2. 그냥 기존 캐시 리턴하기
-        debugger;
-      }
+      // cache가 있으면 payload가 있던말던 리턴
+      // if (payload) {
+      //   // 캐시가 있을 때 id와 payload를 같이 넣으면
+      //   // 다음 두 가지 중 어떻게 해야할 지 정해야 함
+      //   // 1. 기존 캐시의 payload 덮어쓰기
+      //   // 2. 그냥 기존 캐시 리턴하기
+      //   debugger;
+      // }
 
       return assetCache;
     }
@@ -71,6 +79,12 @@ export default class Asset<T = any> {
     if (payload) {
       // id가 있을때만 payload가 가능
       AssetMgr.set(id, payload);
+
+      if (isVFile(payload)) {
+        // recursively check vfile & vremotefile
+        const vfile = payload as VFile;
+        // !TODO : VFile이거나 VRemoteFile인 경우 내부를 돌면서 Asset + Cache에 넣어야 함
+      }
     }
     AssetCache.set(asset);
     return asset;
@@ -196,8 +210,8 @@ export default class Asset<T = any> {
     }
   }
 
-  async load(): Promise<T | undefined> {
-    return AssetMgr.load<T>(this.id);
+  async load<T = any>(): Promise<T> {
+    return AssetMgr.load<T>(this.id) as Promise<T>;
   }
 
   static same(a: Asset, b: Asset): boolean {
@@ -214,5 +228,166 @@ export default class Asset<T = any> {
 
   loaded(): boolean {
     return AssetMgr.loaded(this.id);
+  }
+
+  get filename(): string | undefined {
+    const cached = AssetMgr.getCache(this.id);
+    if (cached?.payload?.file?.name) {
+      return cached.payload.file.name;
+    }
+
+    return undefined;
+  }
+
+  get vfile(): VFile {
+    const cached = AssetMgr.getCache(this.id);
+    if (cached?.payload?.vfile) {
+      return cached.payload.vfile;
+    }
+
+    throw new Error('vfile not found');
+  }
+
+  get vremotefile(): VRemoteFile {
+    const cached = AssetMgr.getCache(this.id);
+    if (cached?.payload?.vremotefile) {
+      return cached.payload.vremotefile;
+    }
+
+    throw new Error('vremotefile not found');
+  }
+
+  get result(): T {
+    const cached = AssetMgr.getCache(this.id);
+    if (cached?.payload?.result) {
+      return cached.payload.result as T;
+    }
+
+    throw new Error('result not found');
+  }
+
+  get isGlb() {
+    return this.filename?.toLowerCase()?.endsWith('.glb');
+  }
+
+  get isMap() {
+    if (!this.filename) {
+      return false;
+    }
+
+    const mapname = new Ext(this.filename).ext;
+    const retval = ['jpg', 'jpeg', 'png', 'exr', 'ktx', 'ktx2', 'hdr'].includes(
+      mapname as string,
+    );
+
+    if (retval) {
+      console.log(mapname);
+      return true;
+    }
+
+    return false;
+  }
+
+  static async result<T = any>(query: FileID | PayloadValue) {
+    return AssetMgr.getCacheAsync(query).then(
+      cache => cache?.payload?.result as T,
+    );
+  }
+
+  static async buffer(query: FileID | PayloadValue) {
+    return AssetMgr.getCacheAsync(query).then(
+      cache => cache?.payload?.inputBuffer,
+    );
+  }
+
+  static async file(query: FileID | PayloadValue) {
+    return AssetMgr.getCacheAsync(query).then(cache => cache?.payload?.file);
+  }
+
+  static async vfile<T extends VFile = any>(query: FileID | PayloadValue) {
+    return AssetMgr.getCacheAsync(query).then(
+      cache => cache?.payload?.vfile as T,
+    );
+  }
+
+  static async vremotefile<T extends VRemoteFile = any>(
+    query: FileID | PayloadValue,
+  ) {
+    return AssetMgr.getCacheAsync(query).then(
+      cache => cache?.payload?.vremotefile as T,
+    );
+  }
+
+  async download(
+    children: VUploadable[] = [],
+  ): Promise<{ self: VUploadable; children: VUploadable[] } | undefined> {
+    const cache = await AssetMgr.getCacheAsync(this.id);
+    if (!cache) {
+      console.warn('다운로드할 수 없음', this.id, this);
+      return undefined;
+    }
+
+    const { payload } = cache;
+    const { vremotefile, vfile, inputBuffer, result } = payload;
+
+    if (!vremotefile) {
+      console.warn('vremotefile이 없음', this.id, this);
+      return undefined;
+    }
+
+    if (vremotefile.format === 'json') {
+      if (!vfile) {
+        debugger;
+      }
+
+      const addChildren = async (obj: object) => {
+        return Promise.all(
+          Object.entries(obj!).map(async ([key, value]) => {
+            if (typeof value !== 'object' || !Boolean(value)) {
+              return;
+            }
+
+            if (isVFile(value) || isVRemoteFile(value)) {
+              const childAlreadyExists = children.find(
+                c => c.vremotefile.id === value.id,
+              );
+
+              if (!childAlreadyExists) {
+                const child = await Asset.from(value).download(children);
+
+                children.push(child!.self);
+              }
+            } else {
+              await addChildren(value);
+            }
+          }),
+        );
+      };
+
+      await addChildren(vfile!);
+
+      return {
+        self: {
+          vremotefile,
+          data: vfile!,
+        },
+        children,
+      };
+    } else {
+      // self.
+      const retval = result ?? inputBuffer;
+      if (!retval) {
+        debugger;
+      }
+      return {
+        self: {
+          vremotefile,
+          data: retval as ArrayBuffer,
+        },
+        children,
+      };
+    }
+
+    // return retval;
   }
 }

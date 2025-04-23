@@ -1,7 +1,7 @@
 import { VUserData } from 'src/scripts/vthree/VTHREETypes';
 import { THREE } from 'VTHREE';
 import '../../vthree/Material';
-import { AssetMgr } from './AssetMgr';
+import Asset from '../Asset';
 import { awaitAll } from './AssetUtils';
 import TextureLoader from './TextureLoader';
 import { isVFile, VFile, VRemoteFile } from './VFile';
@@ -34,7 +34,7 @@ function createMaterialFromType(type: string) {
 }
 
 export default async function (file: VFile | VRemoteFile) {
-  return AssetMgr.get<VFile<VMaterial>>(file as any).then(async vfile => {
+  return Asset.vfile<VFile<VMaterial>>(file).then(async vfile => {
     if (!isVFile(vfile)) {
       throw new Error('file이 VFile도 아닙니다');
     }

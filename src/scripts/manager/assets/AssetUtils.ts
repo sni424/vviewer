@@ -160,7 +160,7 @@ export function getBufferFormat(buffer: ArrayBufferLike | TypedArray):
   }
 }
 
-export function getTypedArray(type: string, buffer: ArrayBuffer) {
+export function getTypedArray(type: string, buffer: ArrayBuffer): TypedArray {
   return new (TYPED_ARRAYS as any)[type](buffer);
 }
 

@@ -1,5 +1,6 @@
 import objectHash from 'object-hash';
 import * as THREE from 'three';
+import Asset from '../manager/Asset';
 import { AssetMgr } from '../manager/assets/AssetMgr';
 import Hasher from '../manager/assets/Hasher';
 import { VFile, VRemoteFile } from '../manager/assets/VFile';
@@ -18,7 +19,7 @@ declare module 'three' {
     // vUserData.hash가 있으면 리턴, 없으면 계산 후 vUserData.hash에 저장
     get hash(): string;
     updateHash(): string;
-    toAsset(): Promise<VFile<VTexture>>;
+    toAsset(): Promise<Asset>;
   }
 }
 
@@ -81,7 +82,7 @@ THREE.Texture.prototype.toAsset = async function () {
 
   const output: VTexture = {
     // uuid: this.uuid,
-    uuid: this.hash,
+    uuid: this.vid,
     name: this.name,
 
     image,
@@ -136,7 +137,7 @@ THREE.Texture.prototype.toAsset = async function () {
     data: output,
   };
 
-  return retval;
+  return Asset.from(retval);
 };
 
 THREE.Texture.prototype.updateHash = function (): string {

@@ -1,11 +1,12 @@
 import * as THREE from 'three';
+import Asset from '../manager/Asset';
 import { awaitAll } from '../manager/assets/AssetUtils';
 import { VFile } from '../manager/assets/VFile';
 import VMaterial from '../manager/assets/VMaterial';
 
 declare module 'three' {
   interface Material {
-    toAsset(): Promise<VFile<VMaterial>>;
+    toAsset(): Promise<Asset>;
   }
 }
 
@@ -29,20 +30,24 @@ THREE.Material.prototype.toAsset = async function () {
   // handle maps first
   {
     if (mat.clearcoatMap && mat.clearcoatMap.isTexture) {
-      data.clearcoatMap = mat.clearcoatMap.toAsset();
+      data.clearcoatMap = (await mat.clearcoatMap.toAsset()).vremotefile;
     }
 
     if (mat.clearcoatRoughnessMap && mat.clearcoatRoughnessMap.isTexture) {
-      data.clearcoatRoughnessMap = mat.clearcoatRoughnessMap.toAsset();
+      data.clearcoatRoughnessMap = (
+        await mat.clearcoatRoughnessMap.toAsset()
+      ).vremotefile;
     }
 
     if (mat.clearcoatNormalMap && mat.clearcoatNormalMap.isTexture) {
-      data.clearcoatNormalMap = mat.clearcoatNormalMap.toAsset();
+      data.clearcoatNormalMap = (
+        await mat.clearcoatNormalMap.toAsset()
+      ).vremotefile;
       data.clearcoatNormalScale = mat.clearcoatNormalScale.toArray();
     }
 
     if (mat.iridescenceMap && mat.iridescenceMap.isTexture) {
-      data.iridescenceMap = mat.iridescenceMap.toAsset();
+      data.iridescenceMap = (await mat.iridescenceMap.toAsset()).vremotefile;
     }
   }
 
@@ -83,69 +88,76 @@ THREE.Material.prototype.toAsset = async function () {
     data.iridescenceThicknessRange = mat.iridescenceThicknessRange as any; // 그대로 복사해왔는데 왜 타입에러가 나는것일까
 
   if (mat.iridescenceThicknessMap && mat.iridescenceThicknessMap.isTexture) {
-    data.iridescenceThicknessMap = mat.iridescenceThicknessMap.toAsset();
+    data.iridescenceThicknessMap = (
+      await mat.iridescenceThicknessMap.toAsset()
+    ).vremotefile;
   }
 
   if (mat.anisotropyMap && mat.anisotropyMap.isTexture) {
-    data.anisotropyMap = mat.anisotropyMap.toAsset();
+    data.anisotropyMap = (await mat.anisotropyMap.toAsset()).vremotefile;
   }
 
   if (mat.anisotropy !== undefined) data.anisotropy = mat.anisotropy;
   if (mat.anisotropyRotation !== undefined)
     data.anisotropyRotation = mat.anisotropyRotation;
 
-  if (mat.map && mat.map.isTexture) data.map = mat.map.toAsset();
+  if (mat.map && mat.map.isTexture)
+    data.map = (await mat.map.toAsset()).vremotefile;
   if (
     (this as THREE.MeshMatcapMaterial).matcap &&
     (this as THREE.MeshMatcapMaterial).matcap!.isTexture
   )
-    data.matcap = (this as THREE.MeshMatcapMaterial).matcap!.toAsset();
+    data.matcap = (
+      await (this as THREE.MeshMatcapMaterial).matcap!.toAsset()
+    ).vremotefile;
   if (mat.alphaMap && mat.alphaMap.isTexture)
-    data.alphaMap = mat.alphaMap.toAsset();
+    data.alphaMap = (await mat.alphaMap.toAsset()).vremotefile;
 
   if (mat.lightMap && mat.lightMap.isTexture) {
-    data.lightMap = mat.lightMap.toAsset();
+    data.lightMap = (await mat.lightMap.toAsset()).vremotefile;
     data.lightMapIntensity = mat.lightMapIntensity;
   }
 
   if (mat.aoMap && mat.aoMap.isTexture) {
-    data.aoMap = mat.aoMap.toAsset();
+    data.aoMap = (await mat.aoMap.toAsset()).vremotefile;
     data.aoMapIntensity = mat.aoMapIntensity;
   }
 
   if (mat.bumpMap && mat.bumpMap.isTexture) {
-    data.bumpMap = mat.bumpMap.toAsset();
+    data.bumpMap = (await mat.bumpMap.toAsset()).vremotefile;
     data.bumpScale = mat.bumpScale;
   }
 
   if (mat.normalMap && mat.normalMap.isTexture) {
-    data.normalMap = mat.normalMap.toAsset();
+    data.normalMap = (await mat.normalMap.toAsset()).vremotefile;
     data.normalMapType = mat.normalMapType;
     data.normalScale = mat.normalScale.toArray();
   }
 
   if (mat.displacementMap && mat.displacementMap.isTexture) {
-    data.displacementMap = mat.displacementMap.toAsset();
+    data.displacementMap = (await mat.displacementMap.toAsset()).vremotefile;
     data.displacementScale = mat.displacementScale;
     data.displacementBias = mat.displacementBias;
   }
 
   if (mat.roughnessMap && mat.roughnessMap.isTexture)
-    data.roughnessMap = mat.roughnessMap.toAsset();
+    data.roughnessMap = (await mat.roughnessMap.toAsset()).vremotefile;
   if (mat.metalnessMap && mat.metalnessMap.isTexture)
-    data.metalnessMap = mat.metalnessMap.toAsset();
+    data.metalnessMap = (await mat.metalnessMap.toAsset()).vremotefile;
 
   if (mat.emissiveMap && mat.emissiveMap.isTexture)
-    data.emissiveMap = mat.emissiveMap.toAsset();
+    data.emissiveMap = (await mat.emissiveMap.toAsset()).vremotefile;
   if (phong.specularMap && phong.specularMap.isTexture)
-    data.specularMap = phong.specularMap.toAsset();
+    data.specularMap = (await phong.specularMap.toAsset()).vremotefile;
   if (mat.specularIntensityMap && mat.specularIntensityMap.isTexture)
-    data.specularIntensityMap = mat.specularIntensityMap.toAsset();
+    data.specularIntensityMap = (
+      await mat.specularIntensityMap.toAsset()
+    ).vremotefile;
   if (mat.specularColorMap && mat.specularColorMap.isTexture)
-    data.specularColorMap = mat.specularColorMap.toAsset();
+    data.specularColorMap = (await mat.specularColorMap.toAsset()).vremotefile;
 
   if (mat.envMap && mat.envMap.isTexture) {
-    data.envMap = mat.envMap.toAsset();
+    data.envMap = (await mat.envMap.toAsset()).vremotefile;
 
     if (phong.combine !== undefined) data.combine = phong.combine;
   }
@@ -159,15 +171,15 @@ THREE.Material.prototype.toAsset = async function () {
     data.refractionRatio = phong.refractionRatio;
 
   if (toon.gradientMap && toon.gradientMap.isTexture) {
-    data.gradientMap = toon.gradientMap.toAsset();
+    data.gradientMap = (await toon.gradientMap.toAsset()).vremotefile;
   }
 
   if (mat.transmission !== undefined) data.transmission = mat.transmission;
   if (mat.transmissionMap && mat.transmissionMap.isTexture)
-    data.transmissionMap = mat.transmissionMap.toAsset();
+    data.transmissionMap = (await mat.transmissionMap.toAsset()).vremotefile;
   if (mat.thickness !== undefined) data.thickness = mat.thickness;
   if (mat.thicknessMap && mat.thicknessMap.isTexture)
-    data.thicknessMap = mat.thicknessMap.toAsset();
+    data.thicknessMap = (await mat.thicknessMap.toAsset()).vremotefile;
   if (
     mat.attenuationDistance !== undefined &&
     mat.attenuationDistance !== Infinity
@@ -267,10 +279,12 @@ THREE.Material.prototype.toAsset = async function () {
   if (Object.keys(mat.userData).length > 0) data.userData = mat.userData;
 
   const retval: VFile<VMaterial> = {
+    isVFile: true,
     id: this.hash,
     type: 'VMaterial',
     data: data as VMaterial,
   };
 
-  return awaitAll(retval);
+  const prom = await awaitAll(retval);
+  return Asset.from(prom);
 };

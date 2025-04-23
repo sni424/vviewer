@@ -3,16 +3,135 @@ import { Canvas, useThree } from '@react-three/fiber';
 import { useEffect, useRef, useState } from 'react';
 import ObjectViewer from 'src/components/ObjectViewer';
 import VGLTFLoader from 'src/scripts/loaders/VGLTFLoader';
-import Asset from 'src/scripts/manager/Asset';
+import Asset, { VUploadable } from 'src/scripts/manager/Asset';
 import { AssetMgr } from 'src/scripts/manager/assets/AssetMgr';
-import MaterialLoader from 'src/scripts/manager/assets/MaterialLoader';
-import { VFile, VRemoteFile } from 'src/scripts/manager/assets/VFile';
+import { deserialize, serialize } from 'src/scripts/manager/assets/Serializer';
+import { VFile, VLoadable } from 'src/scripts/manager/assets/VFile';
+import { VOption } from 'src/scripts/manager/assets/VOption';
+import { VProject } from 'src/scripts/manager/assets/VProject';
+import { VScene } from 'src/scripts/manager/assets/VScene';
 import Workers from 'src/scripts/manager/assets/Workers';
 import { THREE } from 'VTHREE';
 import useTestModelDragAndDrop from './useTestModelDragAndDrop';
 
 const mgr = AssetMgr;
 const print = console.log;
+
+type TypedArray =
+  | Int8Array
+  | Uint8Array
+  | Uint8ClampedArray
+  | Int16Array
+  | Uint16Array
+  | Int32Array
+  | Uint32Array
+  | Float32Array
+  | Float64Array
+  | BigInt64Array
+  | BigUint64Array;
+
+export type Serializable =
+  | null
+  | undefined
+  | boolean
+  | number
+  | string
+  | ArrayBuffer
+  | TypedArray
+  | Serializable[]
+  | { [key: string]: Serializable };
+
+/**
+ * Deeply compares two Serializable values for equality.
+ * @param a First value to compare.
+ * @param b Second value to compare.
+ * @returns True if the values are deeply equal, false otherwise.
+ */
+function deepEqual(a: Serializable, b: Serializable): boolean {
+  // Handle strict equality for primitives and reference equality
+  if (a === b) {
+    return true;
+  }
+
+  // Handle NaN (NaN === NaN is false, but they should be considered equal)
+  if (typeof a === 'number' && typeof b === 'number' && isNaN(a) && isNaN(b)) {
+    return true;
+  }
+
+  // Type mismatch or one is null/undefined and the other isn't
+  if (typeof a !== typeof b || a == null || b == null) {
+    return false;
+  }
+
+  // Handle ArrayBuffer
+  if (a instanceof ArrayBuffer && b instanceof ArrayBuffer) {
+    if (a.byteLength !== b.byteLength) {
+      return false;
+    }
+    const viewA = new Uint8Array(a);
+    const viewB = new Uint8Array(b);
+    for (let i = 0; i < a.byteLength; i++) {
+      if (viewA[i] !== viewB[i]) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  // Handle TypedArray
+  if (isTypedArray(a) && isTypedArray(b)) {
+    if (a.constructor !== b.constructor || a.length !== b.length) {
+      return false;
+    }
+    for (let i = 0; i < a.length; i++) {
+      if (a[i] !== b[i]) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  // Handle Arrays
+  if (Array.isArray(a) && Array.isArray(b)) {
+    if (a.length !== b.length) {
+      return false;
+    }
+    return a.every((item, index) => deepEqual(item, b[index]));
+  }
+
+  // Handle Objects
+  if (typeof a === 'object' && typeof b === 'object') {
+    const keysA = Object.keys(a);
+    const keysB = Object.keys(b);
+    if (keysA.length !== keysB.length) {
+      return false;
+    }
+    return keysA.every(
+      key => keysB.includes(key) && deepEqual((a as any)[key], (b as any)[key]),
+    );
+  }
+
+  // Fallback for primitives that weren't caught by ===
+  debugger;
+  return false;
+}
+
+// Helper to check if a value is a TypedArray
+function isTypedArray(value: any): value is TypedArray {
+  return (
+    value instanceof Int8Array ||
+    value instanceof Uint8Array ||
+    value instanceof Uint8ClampedArray ||
+    value instanceof Int16Array ||
+    value instanceof Uint16Array ||
+    value instanceof Int32Array ||
+    value instanceof Uint32Array ||
+    value instanceof Float32Array ||
+    value instanceof Float64Array ||
+    value instanceof BigInt64Array ||
+    value instanceof BigUint64Array
+  );
+}
 
 function CallLoader() {
   const { gl } = useThree();
@@ -51,7 +170,17 @@ function TestPage() {
   // print('rerender');
 
   useEffect(() => {
-    const assets = new Set(files.map(file => Asset.create(file)));
+    if (files.length === 0) {
+      return;
+    }
+
+    console.log('File changed', files);
+    const assets = new Set(
+      files.map(file => {
+        console.log('Asset.from called');
+        return Asset.from(file);
+      }),
+    );
     print(assets);
     setAsset([...assets]);
     // print(assets.map(asset => asset.toJson()));
@@ -63,7 +192,7 @@ function TestPage() {
       .map(a => {
         return {
           name: a.filename!,
-          glb: a.get<THREE.Group>(),
+          glb: a.load<THREE.Group>(),
         };
       });
 
@@ -71,7 +200,7 @@ function TestPage() {
       asset
         .filter(a => a.isMap)
         .map(a => {
-          return a.get<THREE.Texture>().then(tex => {
+          return a.load<THREE.Texture>().then(tex => {
             tex.anisotropy = 16;
             tex.channel = 1;
             tex.flipY = true;
@@ -122,7 +251,7 @@ function TestPage() {
     asset
       .filter(a => a.isGlb)
       .forEach(a =>
-        a.get<THREE.Group>().then(a => {
+        a.load<THREE.Group>().then(a => {
           sceneRef.current.add(a);
         }),
       );
@@ -141,47 +270,191 @@ function TestPage() {
           <h3>Drag&Drop Assets</h3>
           <button
             onClick={async () => {
-              // const glbStart = performance.now();
-              // const glbs = await Promise.all(
-              //   asset
-              //     .filter(a => a.isGlb)
-              //     .map(a =>
-              //       a.get<THREE.Group>().then(g => {
-              //         g.meshes().forEach(m => {
-              //           m.frustumCulled = false;
-              //         });
-              //         return g;
-              //       }),
-              //     ),
-              // );
-              // const glbEnd = performance.now();
+              const start = performance.now();
+              Promise.all(
+                asset.filter(a => a.isGlb).map(a => a.load<THREE.Group>()),
+              ).then(groups => {
+                const end = performance.now();
+                console.log('glb 로드 완료', end - start, 'ms');
+                groups.forEach(g => g.position.addScalar(2));
+                sceneRef.current.add(...groups);
+              });
+            }}
+          >
+            GLB만 로드
+          </button>
+          <button
+            onClick={() => {
+              const start = performance.now();
+              Promise.all(
+                asset.filter(a => a.isMap).map(a => a.load<THREE.Texture>()),
+              ).then(textures => {
+                const end = performance.now();
+                console.log(textures);
+                console.log('map 로드 완료', end - start, 'ms');
+                textures.forEach(tex => {
+                  tex.anisotropy = 16;
+                  tex.flipY = true;
+                  tex.needsUpdate = true;
+                });
+              });
+            }}
+          >
+            EXR만 로드
+          </button>
+          <button
+            onClick={async () => {
+              const start = performance.now();
+              sceneRef.current.toAsset().then(async asset => {
+                const end = performance.now();
+                console.log('씬 toAsset()', end - start, 'ms');
+                console.log(asset.vfile);
 
-              const mapStart = performance.now();
-              const maps = await Promise.all(
-                asset
-                  .filter(a => a.isMap)
-                  .map(a =>
-                    a.get<THREE.Texture>().then(tex => {
-                      tex.anisotropy = 16;
-                      tex.flipY = true;
-                      tex.needsUpdate = true;
-                      return tex;
-                    }),
-                  ),
-              )
-                .then(applyExr)
-                .then(addToScene)
-                .finally(() => {
-                  const mapEnd = performance.now();
+                const downloadStart = performance.now();
+                const uploadable = (await asset.download())!;
+                const downloadEnd = performance.now();
+                const { self, children } = uploadable;
+                console.log('씬 다운로드', downloadEnd - downloadStart, 'ms');
+                console.log({ self, children });
 
-                  console.log('map', mapEnd - mapStart, 'ms');
+                const remotefiles = children.map(c => c.vremotefile);
+                const vscene: VFile<VScene> = {
+                  isVFile: true,
+                  id: self.vremotefile.id,
+                  type: 'VScene',
+                  data: {
+                    object: self.vremotefile,
+                  },
+                };
+                const vproject: VFile<VProject> = {
+                  isVFile: true,
+                  id: AssetMgr.projectId,
+                  type: 'VProject',
+                  data: {
+                    files: remotefiles,
+                    rootScenes: [vscene],
+                    option: {
+                      defaultOption: {
+                        isVFile: true,
+                        id: 'default',
+                        type: 'VOption',
+                        data: { scene: vscene } as VOption,
+                      } as VFile<VOption>,
+                      options: [] as VLoadable<VOption>[],
+                    } as VProject['option'],
+                  } as VProject,
+                };
+
+                const compress = true;
+
+                const arr = serialize(uploadable, compress);
+
+                const upload = async (uploadable: VUploadable) => {
+                  const { vremotefile, data } = uploadable;
+
+                  const type =
+                    vremotefile.format === 'json' ? 'json' : 'binary';
+
+                  const formData = new FormData();
+                  formData.append(
+                    'data',
+                    new Blob([arr], { type: 'application/octet-stream' }),
+                    'data.bin',
+                  );
+                  const filepath = '/' + AssetMgr.projectId + '/scene.vo';
+                  formData.append('filepath', filepath);
+                  formData.append('type', type);
+
+                  return fetch('http://localhost:4000/save', {
+                    method: 'POST',
+                    body: formData,
+                  })
+                    .then(res => res.json())
+                    .then(async res => {
+                      if (!res.ok) {
+                        throw new Error(res.error || 'Failed to save file');
+                      } else {
+                        console.log('File saved:', res.filePath);
+
+                        // 업로드한 것과 다운로드한 것이 동일한지 확인
+                        {
+                          const ab = await Workers.fetch(filepath, compress);
+                          console.log('size : ', ab.byteLength / 1024, 'KB');
+                          const des = deserialize<VFile>(ab);
+                          console.log(des);
+                          const equal = deepEqual(uploadable, des);
+                          console.log('씬 deepEqual', equal ? 'OK' : 'FAIL');
+                        }
+                      }
+                    });
+                };
+
+                // const inflateStart = performance.now();
+                // AssetMgr.inflate(a.vfile).then(inflated => {
+                //   const inflateEnd = performance.now();
+                //   console.log('씬 inflate()', inflateEnd - inflateStart, 'ms');
+                //   console.log({ inflated });
+                //   const serialStart = performance.now();
+                //   const inflate = true;
+                //   const ab = serialize(inflated, inflate);
+                //   const serialEnd = performance.now();
+                //   console.log('씬 직렬화', serialEnd - serialStart, 'ms');
+
+                //   const deserialStart = performance.now();
+                //   const des = deserialize(ab.buffer, inflate);
+                //   const deserialEnd = performance.now();
+                //   console.log(
+                //     '씬 디시리얼라이즈',
+                //     deserialEnd - deserialStart,
+                //     'ms',
+                //   );
+                //   console.log(des);
+
+                //   const deStart = performance.now();
+                //   const equal = deepEqual(inflated, des);
+                //   const deEnd = performance.now();
+                //   console.log(
+                //     '씬 deepEqual',
+                //     deEnd - deStart,
+                //     'ms :',
+                //     equal ? 'OK' : 'FAIL',
+                //   );
+                //   if (equal) {
+                //     // download as a
+                //     const a = document.createElement('a');
+                //     a.href = URL.createObjectURL(
+                //       new Blob([ab], { type: 'application/octet-stream' }),
+                //     );
+                //     a.download = 'scene.vo';
+                //     a.click();
+                //     URL.revokeObjectURL(a.href);
+                //   } else {
+                //     console.error('씬 deepEqual 실패', equal);
+                //     debugger;
+                //   }
+                // });
+              });
+            }}
+          >
+            ToAsset + Download
+          </button>
+          <button
+            onClick={async () => {
+              const buffer = await Workers.fetch('/scene (2).vo', true);
+              const start = performance.now();
+              const vfile = deserialize<VFile>(buffer, false);
+              const end = performance.now();
+              console.log('씬 디시리얼라이즈', end - start, 'ms');
+              console.log(vfile);
+              Asset.from(vfile)
+                .load<THREE.Group>()
+                .then(g => {
+                  sceneRef.current.add(g);
                 });
             }}
           >
-            로드만
+            VO 로드
           </button>
-          <button onClick={addToScene}>화면에 추가</button>
-          <button onClick={applyExr}>EXR 적용</button>
           <button
             onClick={() => {
               function clearScene(scene: THREE.Scene) {
@@ -215,12 +488,12 @@ function TestPage() {
           <button
             onClick={async () => {
               // const texs = await Promise.all(
-              //   asset.filter(a => a.isMap).map(a => a.get<THREE.Texture>()),
+              //   asset.filter(a => a.isMap).map(a => a.load<THREE.Texture>()),
               // );
               // asset
               //   .filter(a => a.isGlb)
               //   .forEach(a =>
-              //     a.get<THREE.Group>().then(a => {
+              //     a.load<THREE.Group>().then(a => {
               //       a.toAsset().then(vfile => {
               //         ObjectLoader(vfile).then(loaded => {
               //           if (texs.length > 0) {
@@ -291,84 +564,7 @@ function TestPage() {
           >
             씬 에셋화
           </button>
-          <button
-            onClick={() => {
-              const proms: Promise<VFile>[] = [];
-              const vfiles: VFile[] = [];
-              // sceneRef.current.traverse(o => {
-              //   if (o.asMesh.isMesh) {
-              //     o.geometries().forEach(g => {
-              //       proms.push(g.toAsset());
-              //     });
-              //     o.asMesh.matStandard.textures().forEach(t => {
-              //       proms.push(t.toAsset());
-              //     });
 
-              //     o.asMesh.matStandard.toAsset().then(mat => {
-              //       console.log({ mat });
-              //       // MaterialLoader(mat).then(loaded => {
-              //       //   debugger;
-              //       //   console.log({ loaded });
-              //       //   // // debugger;
-              //       //   // const box = new THREE.Mesh(
-              //       //   //   new THREE.BoxGeometry(1, 1, 1),
-              //       //   //   loaded,
-              //       //   // );
-              //       //   // sceneRef.current.add(box);
-              //       //   sceneRef.current.traverse(o => {
-              //       //     if (o.asMesh.isMesh) {
-              //       //       o.asMesh.material = loaded;
-              //       //     }
-              //       //   });
-              //       // });
-              //     });
-              //   }
-              // });
-
-              sceneRef.current.traverse(o => {
-                if (o.asMesh.isMesh) {
-                  const mesh = o.asMesh;
-                  const mat = mesh.matStandard;
-                  mat.toAsset().then(vfile => {
-                    MaterialLoader(vfile).then(setLoadedMat);
-                  });
-                }
-              });
-
-              console.log('Textures:', vfiles);
-
-              // Promise.all(proms).then(async res => {
-              //   // TextureLoader(res[1]).then(loaded => {
-              //   //   console.log('loaded', loaded);
-              //   //   loaded.flipY = false;
-
-              //   //   // add new box to the scene
-              //   //   const material = new THREE.MeshStandardMaterial({
-              //   //     map: loaded,
-              //   //   });
-              //   //   const box = new THREE.Mesh(
-              //   //     new THREE.BoxGeometry(1, 1, 1),
-              //   //     material,
-              //   //   );
-              //   //   sceneRef.current.add(box);
-              //   // });
-
-              //   const arrayId = res[0].data.data!.index!.array;
-
-              //   // const ab = await AssetMgr.get(arrayId);
-
-              //   console.log(
-              //     'geometries',
-              //     arrayId,
-              //     res,
-              //     // ab,
-              //     // AssetMgr.cache.keys(),
-              //   );
-              // });
-            }}
-          >
-            업로드
-          </button>
           <button
             onClick={() => {
               const url =
@@ -401,81 +597,6 @@ function TestPage() {
             }}
           >
             다운로드
-          </button>
-          <button
-            onClick={() => {
-              const ab = new ArrayBuffer(8);
-              const abp = new Promise(res =>
-                setTimeout(() => {
-                  res(new ArrayBuffer(80));
-                }, 5000),
-              );
-              const vfile: VFile = {
-                id: 'vfile',
-                type: 'VBufferGeometry',
-                data: {},
-              };
-              const vfile2 = vfile;
-              const vremotefile: VRemoteFile = {
-                id: 'vremotefile',
-                format: 'json',
-              };
-
-              const commonObject = {};
-
-              if (!mgr.get(ab)) {
-                console.log('set ab', ab);
-                mgr.set('ab', ab);
-              }
-              if (!mgr.get(vfile)) {
-                console.log('set vfile', vfile);
-                mgr.set(vfile);
-              }
-              if (!mgr.get(vfile2)) {
-                console.log('set vfile2', vfile2);
-                mgr.set(vfile2);
-              }
-              if (!mgr.get(vremotefile)) {
-                console.log('set vremotefile', vremotefile);
-                mgr.set(vremotefile);
-              }
-              if (!mgr.get('commonObject')) {
-                console.log('set commonObject', commonObject);
-                mgr.set('commonObject', commonObject);
-              }
-              if (!mgr.get(abp)) {
-                console.log('set abp', abp);
-                mgr.set('abp', abp);
-              }
-
-              mgr.set(
-                'all',
-                ab,
-                vfile,
-                vremotefile,
-                commonObject,
-                new THREE.Material(),
-              );
-
-              console.log(
-                mgr.get(ab),
-                mgr.get(vfile),
-                mgr.get(vfile2),
-                mgr.get(vremotefile),
-                mgr.get(commonObject),
-                mgr.get('ab'),
-                mgr.get('vfile'),
-                mgr.get('vremotefile'),
-                mgr.get('commonObject'),
-                mgr.get('abp'),
-                mgr.get('all'),
-              );
-              mgr.getCacheAsync('abp').then(res => {
-                console.log('abp', res);
-              });
-            }}
-          >
-            캐시시스템
           </button>
         </div>
         <ObjectViewer data={asset}></ObjectViewer>

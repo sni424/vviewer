@@ -1657,9 +1657,8 @@ export function computeBoundingBoxForMaterial(
 
 import { ClassValue, clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-import { hashArrayBuffer } from './manager/assets/AssetUtils.ts';
-import { VUserData } from './vthree/VTHREETypes.ts';
 import Hasher from './manager/assets/Hasher.ts';
+import { VUserData } from './vthree/VTHREETypes.ts';
 
 // tailwind에 동적으로 클래스이름 할당할 때 필요
 export function cn(...inputs: ClassValue[]): string {

@@ -13,7 +13,7 @@ export type VTextureLoaderOption = {
   channel?: number;
   gl?: THREE.WebGLRenderer;
   saveAs?: string;
-  ext?: 'exr' | 'ktx';
+  ext?: 'exr' | 'ktx' | string;
 };
 
 const defaultOption: VTextureLoaderOption = {

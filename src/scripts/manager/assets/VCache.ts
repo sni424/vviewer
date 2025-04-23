@@ -6,7 +6,8 @@ import { isVFile, isVRemoteFile, VFile, VRemoteFile } from './VFile';
 export type FileID = string;
 export type Hash = string;
 
-export type Promisable<T> = T | Promise<T>;
+// export type Promisable<T> = T | Promise<T>;
+//T | File | ArrayBuffer | VRemoteFile | VFile
 
 export type CachePayload<T = any> = {
   file?: File; // input file
@@ -35,12 +36,18 @@ export type CachePayload<T = any> = {
 };
 export type PayloadValue<T = any> = CachePayload<T>[keyof CachePayload<T>];
 
-export type CacheValue<T> = {
+export type CachePromise<T = any> = {
+  destination: keyof CachePayload<T>;
+  from: File | VFile | VRemoteFile | string | any; // 무엇으로부터 promise를 만드는지. 무엇이 됐든 loadingQueue에 추가하기 전에 이미 이 from이 있는지를 검사하기 위한 일종의 id임
+  promise: Promise<CachePayload<T>[keyof CachePayload<T>]>;
+};
+export type Promisable<T = any> = T | CachePromise<T>;
+
+export type CacheValue<T = any> = {
   id: string;
   hash: string; // 첫 시작시는 id == hash이지만 데이터가 변화됨에 따라 hash가 바뀜
-  state: 'loading' | 'loaded';
   payload: T;
-  loadingQueue: Map<Promise<PayloadValue<T>>, boolean>; // 로딩 중인 payload
+  loadingQueue: CachePromise[];
 };
 
 class CacheValueHasher {
@@ -78,6 +85,10 @@ class CacheValueHasher {
 
 let _cacheCount = 1;
 export default class VCache {
+  static isLoading(value: CacheValue<any>) {
+    return value.loadingQueue.length > 0;
+  }
+
   constructor(public name: string = 'Cache' + _cacheCount++) {}
 
   cache: Map<FileID, CacheValue<CachePayload>> = new Map();
@@ -99,64 +110,94 @@ export default class VCache {
     }
   }
 
+  _upsertArrayBuffer<T>(
+    cacheValue: CacheValue<CachePayload<T>>,
+    value?: ArrayBuffer,
+  ) {
+    cacheValue.payload.inputBuffer = value;
+    if (value) {
+      this.cacheByArrayBuffer.set(value, cacheValue.id);
+    }
+    return cacheValue;
+  }
+
+  _upsertFile<T>(cacheValue: CacheValue<CachePayload<T>>, value?: File) {
+    cacheValue.payload.file = value;
+    if (value) {
+      this.cacheByFile.set(value, cacheValue.id);
+    }
+    return cacheValue;
+  }
+
+  _upsertVFile<T>(cacheValue: CacheValue<CachePayload<T>>, value?: VFile) {
+    cacheValue.payload.vfile = value;
+    if (value) {
+      this.cacheByVFile.set(value, cacheValue.id);
+    }
+    return cacheValue;
+  }
+
+  _upsertVRemoteFile<T>(
+    cacheValue: CacheValue<CachePayload<T>>,
+    value?: VRemoteFile,
+  ) {
+    cacheValue.payload.vremotefile = value;
+    if (value) {
+      this.cacheByVRemoteFile.set(value, cacheValue.id);
+    }
+    return cacheValue;
+  }
+
+  _upsertResult<T>(cacheValue: CacheValue<CachePayload<T>>, value?: T) {
+    cacheValue.payload.result = value;
+    if (value) {
+      this.cacheByResult.set(value, cacheValue.id);
+    }
+    return cacheValue;
+  }
+
   // CacheValue의 각 필드 중 하나를 업서트
   _upsert<T = any>(
     cacheValue: CacheValue<CachePayload<T>>,
     value: PayloadValue<T>,
+    destination?: keyof CachePayload<T>,
   ) {
     const payload = cacheValue.payload;
     if (value !== undefined && Object.values(payload).includes(value)) {
       // 같은 밸류를 다시 업데이트하려고하면 리턴
       return;
     }
-    if (value instanceof ArrayBuffer) {
-      payload.inputBuffer = value;
-    } else if (value instanceof File) {
-      payload.file = value;
-    } else if (isVFile(value)) {
-      payload.vfile = value as VFile;
-    } else if (isVRemoteFile(value)) {
-      payload.vremotefile = value as VRemoteFile;
-    } else if (typeof value === 'object') {
-      // three.js 객체인지 확인
-      if (isThreeObject(value)) {
-        // three.js 객체인 경우
-        payload.result = value as T;
-      } else {
-        // payload.obj = value as CommonObject;
-        throw new Error('지원하지 않는 타입입니다');
-      }
-    } else {
-      // result는 load()에서 저장하는 값이
-      throw new Error('지원하지 않는 타입입니다');
+
+    const upsertBuffer =
+      destination === 'inputBuffer' || value instanceof ArrayBuffer;
+    const upsertFile = destination === 'file' || value instanceof File;
+    const upsertVFile = destination === 'vfile' || isVFile(value);
+    const upsertVRemoteFile =
+      destination === 'vremotefile' || isVRemoteFile(value);
+    const upsertResult = destination === 'result' || typeof value === 'object';
+
+    if (upsertBuffer) {
+      this._upsertArrayBuffer(cacheValue, value as ArrayBuffer);
+    } else if (upsertFile) {
+      this._upsertFile(cacheValue, value as File);
+    } else if (upsertVFile) {
+      this._upsertVFile(cacheValue, value as VFile);
+    } else if (upsertVRemoteFile) {
+      this._upsertVRemoteFile(cacheValue, value as VRemoteFile);
+    } else if (upsertResult) {
+      this._upsertResult(cacheValue, value as T);
     }
 
-    // 해시 업데이트
     cacheValue.hash = CacheValueHasher.payload(payload);
-
-    // 참조캐시들 업데이트
-    {
-      const id = cacheValue.id;
-      this._updateDerivedCache(
-        this.cacheByArrayBuffer,
-        id,
-        payload.inputBuffer,
-      );
-      this._updateDerivedCache(this.cacheByFile, id, payload.file);
-      // this._updateDerivedCache(this.cacheByObject, id, payload.obj);
-      this._updateDerivedCache(this.cacheByVFile, id, payload.vfile);
-      this._updateDerivedCache(
-        this.cacheByVRemoteFile,
-        id,
-        payload.vremotefile,
-      );
-      this._updateDerivedCache(this.cacheByResult, id, payload.result);
-      this._updateDerivedCache(this.cacheByHash, id, cacheValue.hash);
-    }
+    const id = cacheValue.id;
+    this._updateDerivedCache(this.cacheByHash, id, cacheValue.hash);
 
     return cacheValue;
   }
 
+  isCachePromise(value: any) {
+    return Boolean(value?.destination) && value?.promise instanceof Promise;
+  }
   set<T = any>(id: string, ...value: Promisable<PayloadValue<T>>[]): this;
   set(vremotefile: VRemoteFile): this;
   set(vfile: VFile): this;
@@ -183,14 +224,11 @@ export default class VCache {
       value = valueCandidate[0] as Promisable<PayloadValue<T>>;
     }
 
-    // 이미 같은 value가 있으면 리턴
-    if (this.get(value)) {
-      return this;
-    }
-
-    // if (id === 'vfile2') {
-    //   debugger;
+    // // 이미 같은 value가 있으면 리턴
+    // if (this.get(value)) {
+    //   return this;
     // }
+
     // 로직 시작
     const cached = this.cache.get(id);
     const hasCache = cached !== undefined;
@@ -199,7 +237,6 @@ export default class VCache {
       : {
           id,
           hash: id,
-          state: 'loading' as const,
           payload: {
             file: undefined,
             inputBuffer: undefined,
@@ -208,7 +245,7 @@ export default class VCache {
             vremotefile: undefined,
             result: undefined,
           },
-          loadingQueue: new Map(),
+          loadingQueue: [],
         };
 
     // 캐시된게 없으면 일단 저장
@@ -218,42 +255,52 @@ export default class VCache {
     }
 
     // case 1. value를 Promise로 받은 경우
-    if (value instanceof Promise) {
-      // promise이므로 loading
-      targetValue.state = 'loading';
-
+    if (this.isCachePromise(value)) {
+      const prom = value as CachePromise<T>;
       // 1. payload의 밸류 업데이트
-      const currentHashProm = targetValue.hash;
-      const loadingPromise = value.then((payloadValue: PayloadValue<T>) => {
-        const futureCache = this.cache.get(id)!;
-        if (!futureCache) {
-          // 끝나고 돌아왔는데 캐시삭제됨
-          return;
+      const proms = targetValue.loadingQueue;
+
+      if (proms.some(p => p.from === prom.from)) {
+        // 이미 로딩 중인 promise가 있으면 리턴
+        return this;
+      } else {
+        // 같은 from이 아닌데 중복된 promise 세팅하면 일단 에러
+        if (proms.some(p => p.destination === prom.destination)) {
+          console.error(
+            '같은 from이 아닌데 중복된 promise 세팅하면 일단 에러',
+            this,
+            targetValue,
+            prom,
+          );
+          // debugger;
+          // throw new Error('중복된 promise입니다');
+        }
+      }
+
+      // 로딩 큐에 push
+      proms.push(prom);
+
+      prom.promise = prom.promise.then(result => {
+        if (!result) {
+          debugger;
+        }
+        // promise가 끝난 결과 할당
+        // (targetValue.payload as any)[prom.destination] = result;
+        this._upsert(targetValue, result, prom.destination);
+
+        // 최종적으로 loadingQueue에서 자기 자신을 클린업
+        const arr = targetValue.loadingQueue;
+        const index = arr.findIndex(obj => obj === prom);
+        if (index !== -1) {
+          arr.splice(index, 1);
+          // console.log('Spliced');
         }
 
-        // 바뀌지 않았다면 prom 객체도 같을 것이다
-        if (currentHashProm !== futureCache.hash) {
-          // 만약 업데이트가 끝났는데 내용이 바뀌어있으면 리턴
-          return;
-        }
-        this._upsert(futureCache, payloadValue);
-
-        futureCache.loadingQueue.delete(loadingPromise as any);
-
-        if (futureCache.loadingQueue.size === 0) {
-          // 남은 작업이 없다면 로드 종료
-          targetValue.state = 'loaded';
-        }
-
-        return payloadValue;
+        return result;
       });
-
-      targetValue.loadingQueue.set(loadingPromise as any, true);
     } else {
       // case 2. value가 Promise가 아닌 경우
-
       this._upsert(targetValue, value);
-      targetValue.state = 'loaded';
     }
 
     return this;
@@ -265,9 +312,9 @@ export default class VCache {
     } else if (query instanceof File) {
       return this.cacheByFile.get(query);
     } else if (isVFile(query)) {
-      return this.cacheByVFile.get(query);
+      return this.cacheByVFile.get(query) ?? (query as VFile).id;
     } else if (isVRemoteFile(query)) {
-      return this.cacheByVRemoteFile.get(query);
+      return this.cacheByVRemoteFile.get(query) ?? (query as VRemoteFile).id;
     } else if (typeof query === 'object') {
       return this.cacheByObject.get(query);
     } else {
@@ -304,16 +351,18 @@ export default class VCache {
   ): Promise<CacheValue<CachePayload<T>> | undefined> {
     const cached = this.get(query);
     if (!cached) {
+      debugger;
       return;
     }
 
-    if (cached.state === 'loaded') {
-      return cached as any;
-    }
-
-    return Promise.all(cached.loadingQueue!.keys()).then(() => {
-      console.log('Then finished');
-      return this.get(query) as any;
-    });
+    return Promise.all(cached.loadingQueue.map(item => item.promise)).then(
+      loadingProms => {
+        const retval = this.get(query) as any;
+        if (!retval) {
+          debugger;
+        }
+        return retval;
+      },
+    );
   }
 }

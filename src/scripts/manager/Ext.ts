@@ -5,7 +5,7 @@ interface NameContainer {
 
 // 확장자 비교
 export default class Ext {
-  ext: string;
+  ext: string; // 'jpg' 'ktx' 'exr' 'glb'
   constructor(ext: Ext);
   constructor(url: string);
   constructor(file: NameContainer);
