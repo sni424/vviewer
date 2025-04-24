@@ -39,7 +39,6 @@ const XZPlane: React.FC = () => {
 
     const intersects = raycaster.intersectObject(meshRef.current);
 
-    console.log('here');
     if (intersects.length > 0) {
       const { point } = intersects[0];
 
@@ -154,7 +153,7 @@ function Rooms() {
                   {surface && (
                     <mesh
                       name={`방 바닥_${data.index}`}
-                      position={new Vector3(0, 0.1, 0)}
+                      position={new Vector3(0, 0.001, 0)}
                       // userData={{
                       //   roomInfo: {
                       //     name: filterRoom[0].name,

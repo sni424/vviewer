@@ -483,3 +483,11 @@ export interface SkyBoxState {
 }
 
 export type ProbeTypes = 'multi' | 'multiWall';
+
+export type IncludeRoomType = {
+  parent: { name: string; index: number };
+  roomInfo: { index: number };
+};
+
+export type Point2D = [number, number];
+export type Point3D = [number, number, number];

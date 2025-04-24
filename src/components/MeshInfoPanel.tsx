@@ -1,4 +1,5 @@
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
+import { useEffect } from 'react';
 import { THREE } from 'VTHREE';
 import {
   materialSelectedAtom,
@@ -152,12 +153,20 @@ function MeshInfoPanel() {
   const threeExports = useAtomValue(threeExportsAtom);
   const materialSelected = useAtomValue(materialSelectedAtom);
   const { openModal, closeModal } = useModal();
+  const { scene } = threeExports || {};
+  useEffect(() => {
+    if (selecteds && scene) {
+      const found = scene.getObjectByProperty('uuid', selecteds[0]);
+      if (found) {
+        const boundingBox = new THREE.Box3().setFromObject(found);
+        console.log('found', found, boundingBox);
+      }
+    }
+  }, [selecteds, scene]);
 
   if (selecteds.length === 0 || !threeExports) {
     return null;
   }
-
-  const { scene } = threeExports;
 
   return (
     <div

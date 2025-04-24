@@ -13,9 +13,11 @@ import { ENV, Layer } from '../Constants';
 import {
   FileInfo,
   MoveActionOptions,
+  Point2D,
   View,
   WallPoint,
   WallPointView,
+  Walls,
   WallView,
 } from '../types.ts';
 import {
@@ -1256,11 +1258,12 @@ export function createClosedConcaveSurface(
   });
   shape.closePath();
 
-  const extrudeSettings = {
-    depth: 0.5, // 아주 작은 두께
-    bevelEnabled: false,
-  };
-  const geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+  const geometry = new THREE.ShapeGeometry(shape);
+  // const extrudeSettings = {
+  //   depth: 0.5, // 아주 작은 두께
+  //   bevelEnabled: false,
+  // };
+  // const geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
   geometry.rotateX(Math.PI / 2);
 
   // 이 때 바깥쪽을 보고 있으므로 Material에서 더블사이드로 설정
@@ -1270,26 +1273,28 @@ export function createClosedConcaveSurface(
     side: THREE.DoubleSide,
   });
   const mesh = new THREE.Mesh(geometry, material);
-  if (data && newRoomsData) {
-    mesh.name = `방바닥_${data.index}`;
-    // mesh.layers.disableAll();
-    // mesh.layers.enable(Layer.Room);
-    const filterRoom = newRoomsData.filter((child): boolean =>
-      child.roomInfo.some(newChild => newChild.index === data.index),
-    );
+  mesh.layers.disableAll();
+  mesh.layers.enable(Layer.Room);
+  // if (data && newRoomsData) {
+  //   mesh.name = `방바닥_${data.index}`;
+  //   // mesh.layers.disableAll();
+  //   // mesh.layers.enable(Layer.Room);
+  //   const filterRoom = newRoomsData.filter((child): boolean =>
+  //     child.roomInfo.some(newChild => newChild.index === data.index),
+  //   );
 
-    mesh.userData = {
-      roomData: {
-        parent: {
-          name: filterRoom[0].name,
-          index: filterRoom[0].index,
-        },
-        roomInfo: {
-          index: data.index,
-        },
-      },
-    };
-  }
+  //   mesh.userData = {
+  //     roomData: {
+  //       parent: {
+  //         name: filterRoom[0].name,
+  //         index: filterRoom[0].index,
+  //       },
+  //       roomInfo: {
+  //         index: data.index,
+  //       },
+  //     },
+  //   };
+  // }
 
   return mesh;
 }
@@ -1773,3 +1778,129 @@ import { VUserData } from './vthree/VTHREETypes.ts';
 export function cn(...inputs: ClassValue[]): string {
   return twMerge(clsx(...inputs));
 }
+
+//선분 교차 검증 함수
+export const isIntersectFromPoints = (
+  line1: [number, number][],
+  line2: [number, number][],
+): boolean => {
+  const [a, b] = line1;
+  const [c, d] = line2;
+
+  function ccw(
+    p1: [number, number],
+    p2: [number, number],
+    p3: [number, number],
+  ) {
+    const result =
+      (p2[0] - p1[0]) * (p3[1] - p1[1]) - (p2[1] - p1[1]) * (p3[0] - p1[0]);
+    if (result > 0) return 1;
+    if (result < 0) return -1;
+    return 0;
+  }
+
+  const ab = ccw(a, b, c) * ccw(a, b, d);
+  const cd = ccw(c, d, a) * ccw(c, d, b);
+
+  if (ab === 0 && cd === 0) {
+    const [a1x, a2x] = [Math.min(a[0], b[0]), Math.max(a[0], b[0])];
+    const [a1y, a2y] = [Math.min(a[1], b[1]), Math.max(a[1], b[1])];
+    const [b1x, b2x] = [Math.min(c[0], d[0]), Math.max(c[0], d[0])];
+    const [b1y, b2y] = [Math.min(c[1], d[1]), Math.max(c[1], d[1])];
+    return a1x <= b2x && b1x <= a2x && a1y <= b2y && b1y <= a2y;
+  }
+
+  return ab <= 0 && cd <= 0;
+};
+
+//포인트가 폴리곤 안에 있는지 검증하는 함수
+export const isPointInPolygon = (
+  point: Point2D,
+  polygon: Point2D[],
+): boolean => {
+  const x = point[0],
+    y = point[1];
+  let inside = false;
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const xi = polygon[i][0],
+      yi = polygon[i][1];
+    const xj = polygon[j][0],
+      yj = polygon[j][1];
+    const intersect =
+      yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi;
+    if (intersect) inside = !inside;
+  }
+  return inside;
+};
+
+//박스의 최대 최소값 구하기기
+const getBoundingBox = (
+  polygon: Point2D[],
+): {
+  minX: number;
+  maxX: number;
+  minY: number;
+  maxY: number;
+} => {
+  const xs = polygon.map(p => p[0]);
+  const ys = polygon.map(p => p[1]);
+
+  return {
+    minX: Math.min(...xs),
+    maxX: Math.max(...xs),
+    minY: Math.min(...ys),
+    maxY: Math.max(...ys),
+  };
+};
+
+//그리드를 깔아서 포인트를 일정하게 폴리곤안에 찍는 함수
+export const generateGridPointsInsidePolygon = (
+  polygon: Point2D[],
+  gridSize: number,
+): Point2D[] => {
+  const points: Point2D[] = [];
+  const { minX, maxX, minY, maxY } = getBoundingBox(polygon);
+
+  for (let x = minX; x <= maxX; x += gridSize) {
+    for (let y = minY; y <= maxY; y += gridSize) {
+      const point: Point2D = [x, y];
+      if (isPointInPolygon(point, polygon)) {
+        points.push(point); // 다각형 내부 포인트만 추가
+      }
+    }
+  }
+  return points;
+};
+
+export const checkBoxToObject = (
+  roomArray: Point2D[],
+  objectArray: Point2D[],
+  wallsData: Walls,
+): boolean => {
+  for (const roomPoint of roomArray) {
+    for (const boxPoint of objectArray) {
+      // 이 경로가 어떤 벽과 교차하는지 추적
+      let intersectsAnyWall = false;
+      for (const wallPointIndex of wallsData.walls) {
+        const result = isIntersectFromPoints(
+          [roomPoint, boxPoint],
+          [
+            wallsData.points[wallPointIndex[0]],
+            wallsData.points[wallPointIndex[1]],
+          ],
+        );
+        if (result) {
+          // 하나라도 교차하면 이 쌍은 유효하지 않음
+          intersectsAnyWall = true;
+          break;
+        }
+      }
+      if (!intersectsAnyWall) {
+        // 모든 벽과 교차하지 않는 경로 발견
+        return true;
+      }
+    }
+  }
+  // 유효한 경로가 없음
+  return false;
+};

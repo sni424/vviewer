@@ -112,10 +112,10 @@ export const loadHistoryAtom = atom<
 >(new Map());
 export const threeExportsAtom = atom<RootState>();
 export const orbitControlAtom = atom<OrbitControls>();
-export const sharpenAtom = atom<{use: boolean; value: number}>({
+export const sharpenAtom = atom<{ use: boolean; value: number }>({
   use: false,
-  value: 2.0
-})
+  value: 2.0,
+});
 
 export type Env = {
   select: 'none' | 'preset' | 'custom' | 'url';
@@ -523,6 +523,7 @@ export type newRoom = {
   index: string;
   creating?: boolean;
   visible: boolean;
+  inCludeMesh: string[];
 };
 
 export type newRoomCreateOption = {
@@ -630,10 +631,10 @@ export const testAtom = atom<{ useSkyBox: boolean; showSelectBox: boolean }>({
   showSelectBox: true,
 });
 
-export const highlightBurnAtom = atom<{use:boolean; value: number}>({
+export const highlightBurnAtom = atom<{ use: boolean; value: number }>({
   use: false,
   value: 0.001,
-})
+});
 
 export const skyBoxAtom = atom<SkyBoxState>({
   isSkyBox: false,

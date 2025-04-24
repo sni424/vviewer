@@ -4,6 +4,11 @@ import { THREE } from 'VTHREE';
 import { newRoomColorString } from '../Constants';
 
 import {
+  checkBoxToObject,
+  generateGridPointsInsidePolygon,
+} from 'src/scripts/utils';
+import { IncludeRoomType, Point2D, Walls } from 'src/types';
+import {
   getAtomValue,
   newRoom,
   newRoomAtom,
@@ -11,9 +16,9 @@ import {
   threeExportsAtom,
 } from '../scripts/atoms';
 import { loadRooms, uploadJson } from '../scripts/atomUtils';
-type RoomData = {
-  parent: { name: string; index: number };
-  roomInfo: { index: number };
+import wallDataUrl from '/src/assets/walls.json?url';
+type OpenState = {
+  [key: number]: boolean;
 };
 const uploadRooms = async () => {
   // const hotspots = getAtomValue(roomAtom);
@@ -37,8 +42,11 @@ const uploadRooms = async () => {
 function RoomSetting() {
   const [newRooms, setNewRooms] = useAtom(newRoomAtom);
   const [newRoomsArray, setNewRoomsArray] = useState<newRoomCreateOption[]>([]);
-
+  const [DpArray, setDpArray] = useState<THREE.Mesh[]>([]);
+  const [wallData, setWallData] = useState<Walls | null>(null);
+  const [isOpen, setOpen] = useState<OpenState>({});
   // const [rooms, setRooms] = useAtom(roomAtom);
+
   // const [roomsArray, setRoomsArray] = useState<RoomCreateOption[]>([]);
 
   // 각 방 이름의 로컬 상태를 관리할 객체
@@ -58,6 +66,17 @@ function RoomSetting() {
   //   });
   // };
 
+  async function loadWallData(): Promise<any> {
+    const response = await fetch(wallDataUrl);
+    const data = await response.json();
+    if (data) {
+      setWallData(data);
+    } else {
+      console.warn('no wallData');
+      setWallData(null);
+    }
+  }
+
   const newCreateRoom = () => {
     setNewRooms(prev => {
       return [
@@ -73,11 +92,65 @@ function RoomSetting() {
               show: true,
               visible: false,
               tourMatrix: [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1],
+              inCludeMesh: [],
             },
           ],
         },
       ];
     });
+  };
+
+  const boxPoint = (min: THREE.Vector3, max: THREE.Vector3) => {
+    const points: Point2D[] = [];
+
+    for (let x = min.x; x <= max.x; x += 0.1) {
+      for (let y = min.z; y <= max.z; y += 0.1) {
+        const point: Point2D = [x, y];
+
+        points.push(point);
+      }
+    }
+    return points;
+  };
+
+  const checkDpInRoom = (room: newRoom) => {
+    if (DpArray.length < 1 || !wallData) {
+      return console.warn('Dp가져오기와 벽 정보 가져오기기 부터 해주세요.');
+    } else {
+      let insideDpArray: string[] = [];
+      const generatedPoints = generateGridPointsInsidePolygon(room.border, 0.1);
+      DpArray.forEach(child => {
+        const boundingBox = new THREE.Box3().setFromObject(child);
+        const { min, max } = boundingBox;
+        const meshPoint = boxPoint(min, max);
+        const result = checkBoxToObject(generatedPoints, meshPoint, wallData);
+        if (result) {
+          insideDpArray.push(child.name);
+        }
+      });
+      setNewRooms(prev =>
+        prev.map((prevChild, index) => ({
+          ...prevChild,
+          roomInfo: prevChild.roomInfo.map(roomChild =>
+            roomChild.index === room.index
+              ? {
+                  ...roomChild,
+                  inCludeMesh: insideDpArray,
+                }
+              : roomChild,
+          ),
+        })),
+      );
+      if (isOpen && !isOpen[Number(room.index)]) {
+        const keyNumber = Number(room.index);
+        setOpen(prev => ({
+          ...prev,
+          [keyNumber]: true,
+        }));
+      }
+
+      console.log('insideDpArray', insideDpArray);
+    }
   };
 
   // 입력 핸들러 수정
@@ -251,7 +324,7 @@ function RoomSetting() {
     });
 
     console.log('탐지 대상 객체:', newChildren);
-    const includeRoom: RoomData[] = [];
+    const includeRoom: IncludeRoomType[] = [];
     const includeMesh: string[] = [];
     border.forEach(([x, z]) => {
       const origin = new THREE.Vector3(x, 0.099, z);
@@ -271,10 +344,13 @@ function RoomSetting() {
         for (const hit of newHits) {
           const name = hit.object.name.toLowerCase();
           const parentUuid = hit.object.parent?.uuid;
-          const info = hit.object.userData.roomData as RoomData | undefined;
+          const info = hit.object.userData.roomData as
+            | IncludeRoomType
+            | undefined;
 
           if (
             newHits[0].object.name.toLowerCase().includes('base') ||
+            newHits[0].object.name.toLowerCase().includes('m') ||
             newHits[0].object.name.toLowerCase().includes('door') ||
             newHits[0].object.name.toLowerCase().includes('프레임') ||
             newHits[0].object.name.toLowerCase().includes('plane')
@@ -286,19 +362,19 @@ function RoomSetting() {
             name.includes('방바닥') &&
             !includeRoom.some(r => r.roomInfo.index === info.roomInfo.index)
           ) {
-            // visualizeRay(three.scene, origin, dir.normalize(), 100, 0xff0000);
+            visualizeRay(three.scene, origin, dir.normalize(), 100, 0xff0000);
             includeRoom.push(info);
             if (parentUuid) {
               includeMesh.push(parentUuid);
             }
-            console.log('hits', newHits, includeRoom);
+
             break; // ✅ 이 방향은 끝났으니 다음 방향으로
           }
         }
       }
     });
 
-    console.log('includeRoom', includeRoom);
+    return includeRoom;
   };
 
   useEffect(() => {
@@ -377,7 +453,7 @@ function RoomSetting() {
         >
           전체숨기기
         </button>
-        <button
+        {/* <button
           onClick={() => {
             const three = getAtomValue(threeExportsAtom);
             if (!three) {
@@ -395,6 +471,31 @@ function RoomSetting() {
           }}
         >
           광선삭제
+        </button> */}
+        <button
+          onClick={() => {
+            setDpArray(pre => [...pre]);
+            const three = getAtomValue(threeExportsAtom);
+            if (!three) {
+              return console.log('no Three');
+            }
+            const { scene } = three;
+
+            scene.traverseAll(child => {
+              if (child.name.toLocaleLowerCase().includes('dp')) {
+                setDpArray(pre => [...pre, child as THREE.Mesh]);
+              }
+            });
+          }}
+        >
+          DP만 가져오기 {DpArray.length > 1 ? '완료' : '미정'}
+        </button>
+        <button
+          onClick={() => {
+            loadWallData();
+          }}
+        >
+          벽 정보 가져오기 {wallData ? '완료' : '미정'}
         </button>
       </div>
       {newRoomsArray.length > 0 &&
@@ -452,6 +553,7 @@ function RoomSetting() {
                             roomInfo: [
                               ...child.roomInfo,
                               {
+                                inCludeMesh: [],
                                 index:
                                   `${child.index}` +
                                   `${child.roomInfo.length + 1}`,
@@ -628,7 +730,7 @@ function RoomSetting() {
                               투어 카메라위치 설정하기
                             </button>
                           </div>
-                          <div>
+                          {/* <div>
                             <button
                               onClick={() => {
                                 const newRoomData = room.roomInfo.filter(
@@ -636,13 +738,106 @@ function RoomSetting() {
                                     return roomChild.index === child.index;
                                   },
                                 );
-                                console.log('newRoomData', newRoomData);
-                                findOtherRoomFun(child.border, newRoomData[0]);
+
+                                const includeRoomData = findOtherRoomFun(
+                                  child.border,
+                                  newRoomData[0],
+                                );
+                                console.log('includeRoomData', includeRoomData);
+                                setNewRooms(prev =>
+                                  prev.map((prevChild, index) => ({
+                                    ...prevChild,
+                                    roomInfo: prevChild.roomInfo.map(
+                                      roomChild =>
+                                        roomChild.index === child.index
+                                          ? {
+                                              ...roomChild,
+                                              inCludeRoom:
+                                                includeRoomData || null,
+                                            }
+                                          : roomChild,
+                                    ),
+                                  })),
+                                );
                               }}
                             >
                               보이는방 확인
                             </button>
+                          </div> */}
+                          <div>
+                            <button
+                              onClick={() => {
+                                checkDpInRoom(child);
+                              }}
+                            >
+                              보이는방 DP확인
+                            </button>
                           </div>
+
+                          {child.inCludeMesh &&
+                            child.inCludeMesh.length > 0 && (
+                              <div>
+                                <button
+                                  onClick={() => {
+                                    setOpen(pre => {
+                                      const key = Number(child.index);
+                                      return {
+                                        ...pre,
+                                        [key]: !pre[key],
+                                      };
+                                    });
+                                  }}
+                                >
+                                  {isOpen[Number(child.index)]
+                                    ? '축소'
+                                    : '확장'}
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    setNewRooms(prev =>
+                                      prev.map((prevChild, index) => ({
+                                        ...prevChild,
+                                        roomInfo: prevChild.roomInfo.map(
+                                          roomChild =>
+                                            roomChild.index === child.index
+                                              ? {
+                                                  ...roomChild,
+                                                  inCludeMesh: [],
+                                                }
+                                              : roomChild,
+                                        ),
+                                      })),
+                                    );
+                                  }}
+                                >
+                                  방에 포함된 mesh초기화
+                                </button>
+                                {isOpen[Number(child.index)] && (
+                                  <ul>
+                                    {child.inCludeMesh.map(meshName => (
+                                      <li key={`roomMeshName_${meshName}`}>
+                                        {meshName}
+                                      </li>
+                                    ))}
+                                  </ul>
+                                )}
+                              </div>
+                            )}
+
+                          {/* <div className="flex items-center">
+                            <p>보이는방</p>
+                            <ul className="flex items-center">
+                              {child.inCludeRoom?.map(
+                                (data: IncludeRoomType, index) => {
+                                  return (
+                                    <li key={`inCludeRoom_${index}`}>
+                                      {data.parent.name},
+                                    </li>
+                                  );
+                                },
+                              )}
+                            </ul>
+                          </div> */}
                           <div className="flex items-center mt-1">
                             <p>색상</p>
                             <span
