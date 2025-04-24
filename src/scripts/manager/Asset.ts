@@ -1,14 +1,14 @@
 import { v4 } from 'uuid';
 import { AssetMgr } from './assets/AssetMgr';
 import { FileID } from './assets/AssetTypes';
-import { hashObject, isThreeObject } from './assets/AssetUtils';
+import { hashObject, isThreeObject, TypedArray } from './assets/AssetUtils';
 import { PayloadValue } from './assets/VCache';
 import { isVFile, isVRemoteFile, VFile, VRemoteFile } from './assets/VFile';
 import Ext from './Ext';
 
 export type VUploadable<T extends Record<string, any> = any> = {
   vremotefile: VRemoteFile;
-  data: VFile<T> | ArrayBuffer;
+  data: VFile<T> | ArrayBuffer | TypedArray;
 };
 
 // innerId가 동일한 경우 여기서 찾는다

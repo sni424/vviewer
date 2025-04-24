@@ -26,6 +26,7 @@ import { isVFile, isVRemoteFile, VFile, VRemoteFile } from './VFile';
 import Workers from './Workers';
 
 const SERVER_URL = '';
+const getFilePath = (path: string) => `${AssetMgr.projectId}/${path}`;
 
 type ProjectId = string;
 export class AssetMgr {
@@ -260,6 +261,54 @@ export class AssetMgr {
         // !TODO : AssetMgr.load 구현
       }
     }
+  }
+
+  static async getRemote<T>(id: string, type?: 'json' | 'binary'): Promise<T>;
+  static async getRemote<T>(
+    param: string | VFile | VRemoteFile,
+    type?: 'json' | 'binary',
+    inflate?: boolean,
+  ) {
+    if (typeof param === 'string') {
+      if (!type || type === 'json') {
+        let retval = fetch(
+          `http://localhost:4000/retrieve?filepath=${getFilePath(param)}`,
+        ).then(res => res.json());
+        if (!type) {
+          retval = retval.catch(() => {
+            return Workers.fetch(
+              `/${AssetMgr.projectId}/${param}`,
+              inflate,
+            ) as T;
+          });
+        }
+        return retval;
+      } else {
+        // type === 'binary'
+        return Workers.fetch(`/${getFilePath(param)}`, inflate) as T;
+      }
+    }
+
+    const obj = param as VFile | VRemoteFile;
+
+    if (isVFile(obj)) {
+      return obj as T;
+    }
+
+    if (isVRemoteFile(obj)) {
+      const file = obj as VRemoteFile;
+      const isJson = file.format === 'json';
+
+      if (isJson) {
+        return fetch(`http://localhost:4000/retrieve?filepath=${file.id}`).then(
+          res => res.json() as Promise<T>,
+        );
+      } else {
+        return Workers.fetch(`/${AssetMgr.projectId}/${obj.id}`, inflate) as T;
+      }
+    }
+
+    throw new Error('Invalid object type');
   }
 
   static get<T = any>(id: FileID): Asset<T> | undefined;

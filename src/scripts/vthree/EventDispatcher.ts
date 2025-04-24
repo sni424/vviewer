@@ -12,8 +12,17 @@ declare module 'three' {
 
     updateHash(): string;
     updateHashPrecise(): Promise<string>;
+
+    update(): void;
+    _version: number;
   }
 }
+
+THREE.EventDispatcher.prototype._version = 0;
+THREE.EventDispatcher.prototype.update = function () {
+  this._version++;
+  this.dispatchEvent({ type: 'update' });
+};
 
 if (
   !Object.prototype.hasOwnProperty.call(THREE.EventDispatcher.prototype, 'vid')

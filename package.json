@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "save": "bun run save.ts",
+    "server": "bun --watch run server.ts",
     "_lint": "eslint .",
     "format": "prettier --write --cache .",
     "lint": "eslint src/**/*.{ts,tsx} --fix",
@@ -24,6 +24,7 @@
     "jotai": "2.10.3",
     "js-sha1": "^0.7.0",
     "jszip": "^3.10.1",
+    "mongodb": "^6.16.0",
     "object-hash": "3.0.0",
     "pako": "2.1.0",
     "postprocessing": "6.36.4",

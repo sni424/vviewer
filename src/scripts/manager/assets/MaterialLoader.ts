@@ -10,24 +10,25 @@ import { isVTextureFile } from './VTexture';
 
 function createMaterialFromType(type: string) {
   const materialLib = {
-    ShadowMaterial: THREE.ShadowMaterial,
-    SpriteMaterial: THREE.SpriteMaterial,
-    RawShaderMaterial: THREE.RawShaderMaterial,
-    ShaderMaterial: THREE.ShaderMaterial,
-    PointsMaterial: THREE.PointsMaterial,
-    MeshPhysicalMaterial: THREE.MeshPhysicalMaterial,
     MeshStandardMaterial: THREE.MeshStandardMaterial,
-    MeshPhongMaterial: THREE.MeshPhongMaterial,
-    MeshToonMaterial: THREE.MeshToonMaterial,
-    MeshNormalMaterial: THREE.MeshNormalMaterial,
-    MeshLambertMaterial: THREE.MeshLambertMaterial,
-    MeshDepthMaterial: THREE.MeshDepthMaterial,
-    MeshDistanceMaterial: THREE.MeshDistanceMaterial,
+    MeshPhysicalMaterial: THREE.MeshPhysicalMaterial,
     MeshBasicMaterial: THREE.MeshBasicMaterial,
-    MeshMatcapMaterial: THREE.MeshMatcapMaterial,
-    LineDashedMaterial: THREE.LineDashedMaterial,
-    LineBasicMaterial: THREE.LineBasicMaterial,
     Material: THREE.Material,
+    ShaderMaterial: THREE.ShaderMaterial,
+    RawShaderMaterial: THREE.RawShaderMaterial,
+
+    // ShadowMaterial: THREE.ShadowMaterial,
+    // SpriteMaterial: THREE.SpriteMaterial,
+    // PointsMaterial: THREE.PointsMaterial,
+    // MeshPhongMaterial: THREE.MeshPhongMaterial,
+    // MeshToonMaterial: THREE.MeshToonMaterial,
+    // MeshNormalMaterial: THREE.MeshNormalMaterial,
+    // MeshLambertMaterial: THREE.MeshLambertMaterial,
+    // MeshDepthMaterial: THREE.MeshDepthMaterial,
+    // MeshDistanceMaterial: THREE.MeshDistanceMaterial,
+    // MeshMatcapMaterial: THREE.MeshMatcapMaterial,
+    // LineDashedMaterial: THREE.LineDashedMaterial,
+    // LineBasicMaterial: THREE.LineBasicMaterial,
   };
 
   return new (materialLib as any)[type]();

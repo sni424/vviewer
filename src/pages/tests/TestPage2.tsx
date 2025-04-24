@@ -5,8 +5,18 @@ import ObjectViewer from 'src/components/ObjectViewer';
 import VGLTFLoader from 'src/scripts/loaders/VGLTFLoader';
 import Asset, { VUploadable } from 'src/scripts/manager/Asset';
 import { AssetMgr } from 'src/scripts/manager/assets/AssetMgr';
-import { deserialize, serialize } from 'src/scripts/manager/assets/Serializer';
-import { VFile, VLoadable } from 'src/scripts/manager/assets/VFile';
+import {
+  TYPED_ARRAY_NAMES,
+  TYPED_ARRAYS,
+} from 'src/scripts/manager/assets/AssetUtils';
+import { serialize } from 'src/scripts/manager/assets/Serializer';
+import {
+  isVFile,
+  isVRemoteFile,
+  VFile,
+  VLoadable,
+  VRemoteFile,
+} from 'src/scripts/manager/assets/VFile';
 import { VOption } from 'src/scripts/manager/assets/VOption';
 import { VProject } from 'src/scripts/manager/assets/VProject';
 import { VScene } from 'src/scripts/manager/assets/VScene';
@@ -16,6 +26,95 @@ import useTestModelDragAndDrop from './useTestModelDragAndDrop';
 
 const mgr = AssetMgr;
 const print = console.log;
+interface UploadResponse {
+  message: string;
+  filePath: string;
+  error?: string;
+}
+
+const getFilePath = (path: string) => `${AssetMgr.projectId}/${path}`;
+
+async function upload(
+  filepath: string,
+  data: object | ArrayBuffer | TypedArray,
+  type?: 'json' | 'binary',
+): Promise<UploadResponse> {
+  filepath = getFilePath(filepath);
+
+  const isArray = data instanceof ArrayBuffer || isTypedArray(data);
+  type = type ?? (isArray ? 'binary' : 'json');
+
+  const formData = new FormData();
+  let file: File;
+
+  if (type === 'json') {
+    // Convert JSON object to a Blob
+    const jsonString = JSON.stringify(data);
+    file = new File([jsonString], filepath, { type: 'application/json' });
+  } else {
+    // Create a Blob from ArrayBuffer
+    file = new File([data as ArrayBuffer], filepath, {
+      type: 'application/octet-stream',
+    });
+  }
+
+  formData.append('data', file);
+  formData.append('filepath', filepath);
+  formData.append('type', type);
+
+  return fetch('http://localhost:4000/save', {
+    method: 'POST',
+    body: formData,
+    headers: {
+      Accept: 'application/json',
+    },
+  }).then(res => res.json() as Promise<UploadResponse>);
+}
+
+async function download<T>(id: string, type?: 'json' | 'binary'): Promise<T>;
+async function download<T>(
+  param: string | VFile | VRemoteFile,
+  type?: 'json' | 'binary',
+  inflate?: boolean,
+) {
+  if (typeof param === 'string') {
+    if (!type || type === 'json') {
+      let retval = fetch(
+        `http://localhost:4000/retrieve?filepath=${getFilePath(param)}`,
+      ).then(res => res.json());
+      if (!type) {
+        retval = retval.catch(() => {
+          return Workers.fetch(`/${AssetMgr.projectId}/${param}`, inflate) as T;
+        });
+      }
+      return retval;
+    } else {
+      // type === 'binary'
+      return Workers.fetch(`/${getFilePath(param)}`, inflate) as T;
+    }
+  }
+
+  const obj = param as VFile | VRemoteFile;
+
+  if (isVFile(obj)) {
+    return obj as T;
+  }
+
+  if (isVRemoteFile(obj)) {
+    const file = obj as VRemoteFile;
+    const isJson = file.format === 'json';
+
+    if (isJson) {
+      return fetch(`http://localhost:4000/retrieve?filepath=${file.id}`).then(
+        res => res.json() as Promise<T>,
+      );
+    } else {
+      return Workers.fetch(`/${AssetMgr.projectId}/${obj.id}`, inflate) as T;
+    }
+  }
+
+  throw new Error('Invalid object type');
+}
 
 type TypedArray =
   | Int8Array
@@ -349,90 +448,10 @@ function TestPage() {
 
                 const arr = serialize(uploadable, compress);
 
-                const upload = async (uploadable: VUploadable) => {
-                  const { vremotefile, data } = uploadable;
-
-                  const type =
-                    vremotefile.format === 'json' ? 'json' : 'binary';
-
-                  const formData = new FormData();
-                  formData.append(
-                    'data',
-                    new Blob([arr], { type: 'application/octet-stream' }),
-                    'data.bin',
-                  );
-                  const filepath = '/' + AssetMgr.projectId + '/scene.vo';
-                  formData.append('filepath', filepath);
-                  formData.append('type', type);
-
-                  return fetch('http://localhost:4000/save', {
-                    method: 'POST',
-                    body: formData,
-                  })
-                    .then(res => res.json())
-                    .then(async res => {
-                      if (!res.ok) {
-                        throw new Error(res.error || 'Failed to save file');
-                      } else {
-                        console.log('File saved:', res.filePath);
-
-                        // 업로드한 것과 다운로드한 것이 동일한지 확인
-                        {
-                          const ab = await Workers.fetch(filepath, compress);
-                          console.log('size : ', ab.byteLength / 1024, 'KB');
-                          const des = deserialize<VFile>(ab);
-                          console.log(des);
-                          const equal = deepEqual(uploadable, des);
-                          console.log('씬 deepEqual', equal ? 'OK' : 'FAIL');
-                        }
-                      }
-                    });
-                };
-
-                // const inflateStart = performance.now();
-                // AssetMgr.inflate(a.vfile).then(inflated => {
-                //   const inflateEnd = performance.now();
-                //   console.log('씬 inflate()', inflateEnd - inflateStart, 'ms');
-                //   console.log({ inflated });
-                //   const serialStart = performance.now();
-                //   const inflate = true;
-                //   const ab = serialize(inflated, inflate);
-                //   const serialEnd = performance.now();
-                //   console.log('씬 직렬화', serialEnd - serialStart, 'ms');
-
-                //   const deserialStart = performance.now();
-                //   const des = deserialize(ab.buffer, inflate);
-                //   const deserialEnd = performance.now();
-                //   console.log(
-                //     '씬 디시리얼라이즈',
-                //     deserialEnd - deserialStart,
-                //     'ms',
-                //   );
-                //   console.log(des);
-
-                //   const deStart = performance.now();
-                //   const equal = deepEqual(inflated, des);
-                //   const deEnd = performance.now();
-                //   console.log(
-                //     '씬 deepEqual',
-                //     deEnd - deStart,
-                //     'ms :',
-                //     equal ? 'OK' : 'FAIL',
-                //   );
-                //   if (equal) {
-                //     // download as a
-                //     const a = document.createElement('a');
-                //     a.href = URL.createObjectURL(
-                //       new Blob([ab], { type: 'application/octet-stream' }),
-                //     );
-                //     a.download = 'scene.vo';
-                //     a.click();
-                //     URL.revokeObjectURL(a.href);
-                //   } else {
-                //     console.error('씬 deepEqual 실패', equal);
-                //     debugger;
-                //   }
-                // });
+                console.log('start upload');
+                upload('scene_test.json', uploadable).then(res => {
+                  console.log(res);
+                });
               });
             }}
           >
@@ -440,17 +459,36 @@ function TestPage() {
           </button>
           <button
             onClick={async () => {
-              const buffer = await Workers.fetch('/scene (2).vo', true);
-              const start = performance.now();
-              const vfile = deserialize<VFile>(buffer, false);
-              const end = performance.now();
-              console.log('씬 디시리얼라이즈', end - start, 'ms');
-              console.log(vfile);
-              Asset.from(vfile)
-                .load<THREE.Group>()
-                .then(g => {
-                  sceneRef.current.add(g);
+              type Response = { self: VUploadable; children: VUploadable[] };
+              download<Response>('scene_test.json').then(res => {
+                console.log(res);
+                const { self, children } = res;
+                children.forEach(c => {
+                  if (c.vremotefile.format === 'json') {
+                    return;
+                  }
+                  const format = c.vremotefile.format;
+                  if (TYPED_ARRAY_NAMES.includes(format as any)) {
+                    const org = c.data as { [key: number]: number };
+                    const length = Object.keys(org).length;
+
+                    const arr = new (TYPED_ARRAYS as any)[format](length);
+
+                    // Assign values to Float32Array (assume keys are sequential)
+                    for (let i = 0; i < length; i++) {
+                      if (i in org) {
+                        arr[i] = org[i];
+                      } else {
+                        throw new Error(`Missing key ${i} in input object`);
+                      }
+                    }
+
+                    // Return the underlying ArrayBuffer
+                    c.data = arr;
+                  }
                 });
+                console.log(res);
+              });
             }}
           >
             VO 로드
@@ -567,25 +605,6 @@ function TestPage() {
 
           <button
             onClick={() => {
-              const url =
-                'https://cdn.jsdelivr.net/gh/mrdoob/three.js@r128/examples/models/gltf/DamagedHelmet/glTF/DamagedHelmet.gltf';
-              for (let i = 0; i < 100; ++i) {
-                Workers.fetch(url + '?' + i, false);
-              }
-            }}
-          >
-            Fetcher pool 테스트
-          </button>
-          <button
-            onClick={() => {
-              console.log(sceneRef.current);
-              console.log(asset);
-            }}
-          >
-            Scene
-          </button>
-          <button
-            onClick={() => {
               setUseEnv(prev => !prev);
             }}
           >
@@ -593,10 +612,43 @@ function TestPage() {
           </button>
           <button
             onClick={() => {
-              // AssetMgr.downloadAll();
+              const id = 'test.json';
+              const binaryId = 'test.bin';
+              const obj = {
+                hi: 'hod',
+              };
+
+              // json 테스트
+              // {
+              //   upload(id, obj).then(res => {
+              //     if (res.error) {
+              //       console.error(res.error);
+              //     } else {
+              //       download(id).then(res => {
+              //         console.log('downloaded : ', res);
+              //       });
+              //     }
+              //   });
+              // }
+
+              // binary 테스트
+              {
+                const buffer = new ArrayBuffer(8);
+                const typedArray = new Uint8Array(buffer);
+                typedArray.set([1, 2, 3, 4, 5, 6, 7, 8]);
+                upload(binaryId, typedArray).then(res => {
+                  if (res.error) {
+                    console.error(res.error);
+                  } else {
+                    download(binaryId, 'binary').then(res => {
+                      console.log('downloaded : ', res);
+                    });
+                  }
+                });
+              }
             }}
           >
-            다운로드
+            업로드/다운로드 테스트
           </button>
         </div>
         <ObjectViewer data={asset}></ObjectViewer>

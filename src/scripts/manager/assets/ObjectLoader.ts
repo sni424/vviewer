@@ -1,5 +1,4 @@
 import { THREE } from 'VTHREE';
-import { AssetMgr } from './AssetMgr';
 import BufferGeometryLoader from './BufferGeometryLoader';
 import MaterialLoader from './MaterialLoader';
 import TextureLoader from './TextureLoader';
@@ -37,9 +36,6 @@ export default async function ObjectLoader(
       }
 
       if (data.environment !== undefined) {
-        const cache = AssetMgr.cache;
-        const loaded = AssetMgr.getCache(data.environment);
-        debugger;
         scene.environment = await TextureLoader(data.environment);
       }
 
