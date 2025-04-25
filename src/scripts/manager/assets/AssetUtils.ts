@@ -1,6 +1,12 @@
 import { sha1 } from 'hash-wasm';
 import objectHash from 'object-hash';
 import { type THREE } from 'VTHREE';
+import {
+  isDataArray,
+  TYPED_ARRAY_NAME,
+  TYPED_ARRAYS,
+  TypedArray,
+} from './AssetTypes';
 
 declare global {
   interface ArrayBuffer {
@@ -34,7 +40,7 @@ export async function awaitAll<T>(
     return awaitAll(resolved, checked);
   }
 
-  if (typeof input !== 'object' || input === null) {
+  if (typeof input !== 'object' || input === null || isDataArray(input)) {
     return input; // primitive
   }
 
@@ -109,34 +115,6 @@ export const hashArrayBuffer = async (
     return hash;
   }
 };
-
-export const TYPED_ARRAYS = {
-  Int8Array: Int8Array,
-  Uint8Array: Uint8Array,
-  Uint8ClampedArray: Uint8ClampedArray,
-  Int16Array: Int16Array,
-  Uint16Array: Uint16Array,
-  Int32Array: Int32Array,
-  Uint32Array: Uint32Array,
-  Float32Array: Float32Array,
-  Float64Array: Float64Array,
-};
-
-export const TYPED_ARRAY_NAMES = Object.keys(
-  TYPED_ARRAYS,
-) as (keyof typeof TYPED_ARRAYS)[];
-export type TYPED_ARRAY_NAME = keyof typeof TYPED_ARRAYS;
-
-export type TypedArray =
-  | Int8Array
-  | Uint8Array
-  | Uint8ClampedArray
-  | Int16Array
-  | Uint16Array
-  | Int32Array
-  | Uint32Array
-  | Float32Array
-  | Float64Array;
 
 export function getBufferFormat(buffer: ArrayBufferLike | TypedArray):
   | {

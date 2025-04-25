@@ -1,15 +1,15 @@
 // WorkerPool.ts
 
 import { THREE } from 'VTHREE';
-import { WorkerTaskExr, WorkerTaskFetch } from './SingleWorker';
+import {
+  WorkerTaskBitmapToArrayBuffer,
+  WorkerTaskCompress,
+  WorkerTaskDecompress,
+  WorkerTaskExr,
+  WorkerTaskFetch,
+} from './SingleWorker';
 
-type Task = TaskFetch | TaskExr;
-
-export type TaskFetch = WorkerTaskFetch & {
-  resolve: (buf: ArrayBuffer) => void;
-  reject: (err: any) => void;
-};
-export type TaskExr = WorkerTaskExr & {
+type TaskExr = WorkerTaskExr & {
   resolve: (params: {
     data: ArrayBuffer;
     width: number;
@@ -20,6 +20,47 @@ export type TaskExr = WorkerTaskExr & {
   }) => void;
   reject: (err: any) => void;
 };
+
+type TaskBitmapToArrayBuffer = WorkerTaskBitmapToArrayBuffer & {
+  resolve: (params: {
+    data: ArrayBuffer;
+    width: number;
+    height: number;
+    type: string;
+  }) => void;
+  reject: (err: any) => void;
+};
+
+type TaskCompress = WorkerTaskCompress & {
+  resolve: (buffer: ArrayBuffer) => void;
+  reject: (err: any) => void;
+};
+
+type TaskDecompress = WorkerTaskDecompress & {
+  resolve: (buffer: ArrayBuffer) => void;
+  reject: (err: any) => void;
+};
+
+type Task =
+  | TaskFetch
+  | TaskExr
+  | TaskBitmapToArrayBuffer
+  | TaskCompress
+  | TaskDecompress;
+
+type TaskReturn<T extends { resolve: (...args: any[]) => void }> = Parameters<
+  T['resolve']
+>[0];
+
+type TaskFetch = WorkerTaskFetch & {
+  resolve: (buf: ArrayBuffer) => void;
+  reject: (err: any) => void;
+};
+export type TaskFetchReturn = TaskReturn<TaskFetch>;
+export type TaskExrReturn = TaskReturn<TaskExr>;
+export type TaskBitmapToArrayBufferReturn = TaskReturn<TaskBitmapToArrayBuffer>;
+export type TaskCompressReturn = TaskReturn<TaskCompress>;
+export type TaskDecompressReturn = TaskReturn<TaskDecompress>;
 
 export type ExrParse = {
   data: ArrayBuffer;
@@ -62,6 +103,22 @@ export default class Workers {
     return this.instance._fetch(url, inflate);
   }
 
+  // trasnfer이면 worker로 넘겨버려서 앞으로 buffer을 사용할 수 없음
+  public static async compress(
+    buffer: ArrayBuffer,
+    transfer?: boolean,
+  ): Promise<ArrayBuffer> {
+    return this.instance._compress(buffer, transfer);
+  }
+
+  // trasnfer이면 worker로 넘겨버려서 앞으로 buffer을 사용할 수 없음
+  public static async decompress(
+    buffer: ArrayBuffer,
+    transfer?: boolean,
+  ): Promise<ArrayBuffer> {
+    return this.instance._decompress(buffer, transfer);
+  }
+
   public static async exrParse(url?: string): Promise<ExrParse>;
   public static async exrParse(arrayBuffer?: ArrayBuffer): Promise<ExrParse>;
   public static async exrParse(
@@ -74,6 +131,33 @@ export default class Workers {
     } else {
       throw new Error('Invalid argument');
     }
+  }
+
+  public static async bitmapToArrayBuffer(bitmap: ImageBitmap) {
+    return this.instance._bitmapToArrayBuffer(bitmap);
+  }
+
+  private async _bitmapToArrayBuffer(bitmap: ImageBitmap): Promise<{
+    data: ArrayBuffer;
+    width: number;
+    height: number;
+    type: string;
+  }> {
+    const id = this.taskId++;
+    return new Promise((resolve, reject) => {
+      const task: Task = {
+        id,
+        action: 'bitmapToArrayBuffer',
+        data: {
+          bitmap,
+        },
+        resolve,
+        reject,
+      };
+      this.taskMap.set(id, task);
+      this.enqueue(task);
+      // resolve는 onMessage에서 task.resolve 참조
+    });
   }
 
   private async _exrParse(
@@ -122,6 +206,52 @@ export default class Workers {
     return prom as any;
   }
 
+  private async _compress(
+    buffer: ArrayBuffer,
+    transfer?: boolean,
+  ): Promise<ArrayBuffer> {
+    const id = this.taskId++;
+
+    return new Promise((resolve, reject) => {
+      const task: Task = {
+        id,
+        action: 'compress',
+        data: {
+          arrayBuffer: buffer,
+          transfer,
+        },
+        resolve,
+        reject,
+      };
+
+      this.taskMap.set(id, task);
+      this.enqueue(task);
+    });
+  }
+
+  private async _decompress(
+    buffer: ArrayBuffer,
+    transfer?: boolean,
+  ): Promise<ArrayBuffer> {
+    const id = this.taskId++;
+
+    return new Promise((resolve, reject) => {
+      const task: Task = {
+        id,
+        action: 'decompress',
+        data: {
+          arrayBuffer: buffer,
+          transfer,
+        },
+        resolve,
+        reject,
+      };
+
+      this.taskMap.set(id, task);
+      this.enqueue(task);
+    });
+  }
+
   private enqueue(task: Task) {
     const workerIndex = this.getAvailableWorkerIndex();
     if (workerIndex !== -1) {
@@ -141,6 +271,14 @@ export default class Workers {
     const transferrables = [];
 
     if (task.action === 'exr' && task.data.arrayBuffer) {
+      transferrables.push(task.data.arrayBuffer);
+    }
+
+    if (task.action === 'compress' && task.data.transfer) {
+      transferrables.push(task.data.arrayBuffer);
+    }
+
+    if (task.action === 'decompress' && task.data.transfer) {
       transferrables.push(task.data.arrayBuffer);
     }
 
@@ -168,6 +306,24 @@ export default class Workers {
           };
           error?: any;
         }
+      | {
+          id: number;
+          action: 'bitmapToArrayBuffer';
+          data: TaskBitmapToArrayBufferReturn;
+          error?: any;
+        }
+      | {
+          id: number;
+          action: 'compress';
+          data: TaskCompressReturn;
+          error?: any;
+        }
+      | {
+          id: number;
+          action: 'decompress';
+          data: TaskDecompressReturn;
+          error?: any;
+        }
     >,
   ) {
     const { id, action, data, error } = e.data;
@@ -193,6 +349,12 @@ export default class Workers {
           type,
           arrayType,
         });
+      } else if (action === 'bitmapToArrayBuffer') {
+        (task as TaskBitmapToArrayBuffer).resolve(data);
+      } else if (action === 'compress' || action === 'decompress') {
+        (task as TaskCompress).resolve(data);
+      } else {
+        throw new Error(`Unknown action: ${action}`);
       }
     }
 

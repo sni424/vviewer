@@ -1,7 +1,7 @@
 import { v4 } from 'uuid';
 import { AssetMgr } from './assets/AssetMgr';
-import { FileID } from './assets/AssetTypes';
-import { hashObject, isThreeObject, TypedArray } from './assets/AssetUtils';
+import { FileID, TypedArray } from './assets/AssetTypes';
+import { hashObject, isThreeObject } from './assets/AssetUtils';
 import { PayloadValue } from './assets/VCache';
 import { isVFile, isVRemoteFile, VFile, VRemoteFile } from './assets/VFile';
 import Ext from './Ext';
@@ -305,6 +305,10 @@ export default class Asset<T = any> {
   }
 
   static async vfile<T extends VFile = any>(query: FileID | PayloadValue) {
+    if (isVFile(query)) {
+      return query;
+    }
+
     return AssetMgr.getCacheAsync(query).then(
       cache => cache?.payload?.vfile as T,
     );
@@ -313,6 +317,10 @@ export default class Asset<T = any> {
   static async vremotefile<T extends VRemoteFile = any>(
     query: FileID | PayloadValue,
   ) {
+    if (isVRemoteFile(query)) {
+      return query;
+    }
+
     return AssetMgr.getCacheAsync(query).then(
       cache => cache?.payload?.vremotefile as T,
     );
@@ -389,5 +397,12 @@ export default class Asset<T = any> {
     }
 
     // return retval;
+  }
+
+  async inflate<T extends VFile = any>(): Promise<T | undefined> {
+    if (!this.vfile) {
+      return undefined;
+    }
+    return AssetMgr.inflate(this.vfile) as Promise<T>;
   }
 }

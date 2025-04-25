@@ -1,5 +1,6 @@
 import { THREE } from 'VTHREE';
 import Asset from '../Asset';
+import { isDataArray, TypedArray } from './AssetTypes';
 import { getTypedArray } from './AssetUtils';
 import {
   VBufferAttribute,
@@ -9,7 +10,18 @@ import {
 } from './VBufferGeometry';
 import { isVFile, VFile, VRemoteFile } from './VFile';
 
-const handleVFile = async (vfile: VFile) => {
+const handleArray = async (data: any): Promise<TypedArray> => {
+  if (isDataArray(data)) {
+    return data as TypedArray;
+  } else {
+    return getTypedArray(
+      (data as VBufferAttribute).type,
+      await Asset.result(data),
+    );
+  }
+};
+
+const handleVFile = async (vfile: VFile<VBufferGeometry>) => {
   const { id, type, data } = vfile;
   if (type !== 'VBufferGeometry') {
     throw new Error('VBufferGeometry가 아닙니다');
@@ -21,8 +33,11 @@ const handleVFile = async (vfile: VFile) => {
   }
 
   async function getInterleavedBuffer(data: VInterleavedBuffer) {
-    const array = getTypedArray(data.type, await Asset.result(data.buffer));
-    const ib = new THREE.InterleavedBuffer(array, data.stride);
+    const array = await handleArray(data.buffer);
+    const ib = new THREE.InterleavedBuffer(
+      getTypedArray(data.type, array as any),
+      data.stride,
+    );
     ib.uuid = data.uuid;
 
     return ib;
@@ -35,10 +50,7 @@ const handleVFile = async (vfile: VFile) => {
   const index = data.data!.index;
 
   if (index !== undefined) {
-    const typedArray = getTypedArray(
-      index.type,
-      await Asset.result(index.array),
-    );
+    const typedArray = await handleArray(index.array);
     geometry.setIndex(new THREE.BufferAttribute(typedArray, 1));
   }
 
@@ -61,10 +73,7 @@ const handleVFile = async (vfile: VFile) => {
       );
     } else {
       const attr = attribute as VBufferAttribute;
-      const typedArray = getTypedArray(
-        attr.type,
-        await Asset.result(attr.array),
-      );
+      const typedArray = await handleArray(attr.array);
       const bufferAttributeConstr = (attr as any).isInstancedBufferAttribute
         ? THREE.InstancedBufferAttribute
         : THREE.BufferAttribute;
@@ -108,10 +117,7 @@ const handleVFile = async (vfile: VFile) => {
             attrInterleaved.normalized,
           );
         } else {
-          const typedArray = getTypedArray(
-            attrBuffer.type,
-            await Asset.result(attrBuffer.array),
-          );
+          const typedArray = await handleArray(attrBuffer.array);
           bufferAttribute = new THREE.BufferAttribute(
             typedArray,
             attrBuffer.itemSize,

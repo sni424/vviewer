@@ -1,6 +1,9 @@
 import * as THREE from 'three';
 import { AssetMgr } from '../manager/assets/AssetMgr';
+import { DataArray } from '../manager/assets/AssetTypes';
+import { serialize } from '../manager/assets/Serializer';
 import { VRemoteFile } from '../manager/assets/VFile';
+import Workers from '../manager/assets/Workers';
 import { getImageData } from '../utils';
 import { type VUserData } from './VTHREETypes';
 
@@ -136,10 +139,10 @@ async function serializeImage(
         height: number;
       },
 ): Promise<{
-  data: ArrayBufferLike;
-  type: 'png' | 'Float32Array' | 'Uint16Array' | string;
-  width?: number;
-  height?: number;
+  data: ArrayBuffer;
+  type: 'image/png' | 'Float32Array' | 'Uint16Array' | string;
+  width: number;
+  height: number;
 }> {
   if (!_canvas) {
     _canvas = document.createElement('canvas');
@@ -153,8 +156,10 @@ async function serializeImage(
     // default images
     const ab = getImageData(image).data.buffer;
     return {
-      data: ab,
-      type: 'png',
+      data: ab as ArrayBuffer,
+      type: 'image/png',
+      width: image.width,
+      height: image.height,
     };
   } else {
     // exr
@@ -166,7 +171,7 @@ async function serializeImage(
     if (exrData.data) {
       const ab = exrData.data.buffer;
       return {
-        data: ab,
+        data: ab as ArrayBuffer,
         width: exrData.width,
         height: exrData.height,
         type: exrData.data.constructor.name,
@@ -180,7 +185,6 @@ async function serializeImage(
 
 THREE.Source.prototype.toAsset = async function (): Promise<VRemoteFile> {
   const data = this.data;
-
   if (data !== null) {
     if (Array.isArray(data)) {
       // cube texture은 아직 지원 안함
@@ -197,7 +201,27 @@ THREE.Source.prototype.toAsset = async function (): Promise<VRemoteFile> {
       // }
     }
 
-    const { data: ab, type, width, height } = await serializeImage(data);
+    let serializedImage: {
+      data: DataArray;
+      type?: string;
+      width: number;
+      height: number;
+    };
+    if (data instanceof ImageBitmap) {
+      const start = performance.now();
+      serializedImage = await Workers.bitmapToArrayBuffer(data);
+      const end = performance.now();
+      console.log('Workers.bitmapToArrayBuffer', end - start);
+    } else {
+      serializedImage = await serializeImage(data);
+    }
+    const ab = serialize(
+      {
+        ...serializedImage,
+      },
+      true, // compress
+    );
+    // const des = deserialize(ab);
     const remotefile = AssetMgr.makeRemoteFile(ab);
 
     return remotefile;

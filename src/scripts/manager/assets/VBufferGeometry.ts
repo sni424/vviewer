@@ -4,6 +4,7 @@
 // constants.d.ts
 
 import { type THREE } from 'VTHREE';
+import { DataArray } from './AssetTypes';
 import { isVFile, VRemoteFile } from './VFile';
 
 interface GeometryGroup {
@@ -48,7 +49,7 @@ export type VBufferAttributeUsage =
 export interface VBufferAttribute {
   itemSize: number;
   type: string;
-  array: VRemoteFile;
+  array: VRemoteFile | DataArray;
   normalized: boolean;
 
   name?: string;
@@ -73,7 +74,7 @@ export interface VBufferGeometry {
   data: {
     attributes: Record<string, VBufferAttribute | VInterleavedBufferAttribute>;
 
-    index?: { type: string; array: VRemoteFile };
+    index?: { type: string; array: VRemoteFile | DataArray };
 
     morphAttributes?: Record<
       string,
@@ -89,7 +90,7 @@ export interface VBufferGeometry {
 
 export interface VInterleavedBuffer {
   uuid: string;
-  buffer: VRemoteFile;
+  buffer: VRemoteFile | DataArray;
   type: string; //arraytype
   stride: number;
 }

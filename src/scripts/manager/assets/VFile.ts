@@ -1,5 +1,4 @@
-import { FileID, VAssetType } from './AssetTypes';
-import { TYPED_ARRAY_NAME } from './AssetUtils';
+import type { FileID, TYPED_ARRAY_NAME, VAssetType } from './AssetTypes';
 
 // VFile대신 원격(또는 캐시)에 있는 파일을 레퍼런스로 사용할 때
 export type VRemoteFile = {

@@ -11,10 +11,10 @@ export default async function ObjectLoader(
 ): Promise<THREE.Object3D> {
   const { id, type, data } = vfile as any;
 
-  if (data.uuid !== id) {
-    console.error(vfile);
-    throw new Error('uuid가 다릅니다');
-  }
+  // if (data.uuid !== id) {
+  //   console.error(vfile);
+  //   throw new Error('uuid가 다릅니다');
+  // }
 
   if (!OBJECT3D_TYPES.includes(type)) {
     throw new Error('VObject3D가 아닙니다');
@@ -268,9 +268,8 @@ export default async function ObjectLoader(
       break;
 
     case 'LOD':
-      object = new THREE.LOD();
-
-      break;
+      // object = new THREE.LOD();
+      throw new Error('LOD구현 안됨');
 
     case 'Line':
       object = new THREE.Line(

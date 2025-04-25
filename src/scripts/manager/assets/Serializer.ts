@@ -238,9 +238,10 @@ export function serialize(obj: Serializable, compress = true): Uint8Array {
  * @returns The deserialized object.
  */
 export function deserialize<T = any>(
-  bufferInput: ArrayBufferLike,
+  bufferInput: ArrayBufferLike | TypedArray,
   decompress = false,
 ): T {
+  bufferInput = isTypedArray(bufferInput) ? bufferInput.buffer : bufferInput;
   let buffer: ArrayBuffer;
   if (decompress) {
     buffer = pako.inflate(new Uint8Array(bufferInput)).buffer as ArrayBuffer;
@@ -337,6 +338,7 @@ export function deserialize<T = any>(
         return new TypedArrayConstructor(ab);
       }
       default:
+        debugger;
         throw new Error('Unknown type');
     }
   }

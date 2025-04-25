@@ -36,18 +36,19 @@ export type CachePayload<T = any> = {
 };
 export type PayloadValue<T = any> = CachePayload<T>[keyof CachePayload<T>];
 
-export type CachePromise<T = any> = {
+export type CachePayloadTarget<T = any> = {
   destination: keyof CachePayload<T>;
   from: File | VFile | VRemoteFile | string | any; // 무엇으로부터 promise를 만드는지. 무엇이 됐든 loadingQueue에 추가하기 전에 이미 이 from이 있는지를 검사하기 위한 일종의 id임
-  promise: Promise<CachePayload<T>[keyof CachePayload<T>]>;
+  promise?: Promise<CachePayload<T>[keyof CachePayload<T>]>;
+  data?: CachePayload<T>[keyof CachePayload<T>];
 };
-export type Promisable<T = any> = T | CachePromise<T>;
+export type Promisable<T = any> = T | CachePayloadTarget<T>;
 
 export type CacheValue<T = any> = {
   id: string;
   hash: string; // 첫 시작시는 id == hash이지만 데이터가 변화됨에 따라 hash가 바뀜
   payload: T;
-  loadingQueue: CachePromise[];
+  loadingQueue: CachePayloadTarget[];
 };
 
 class CacheValueHasher {
@@ -168,13 +169,38 @@ export default class VCache {
       return;
     }
 
-    const upsertBuffer =
-      destination === 'inputBuffer' || value instanceof ArrayBuffer;
-    const upsertFile = destination === 'file' || value instanceof File;
-    const upsertVFile = destination === 'vfile' || isVFile(value);
-    const upsertVRemoteFile =
-      destination === 'vremotefile' || isVRemoteFile(value);
-    const upsertResult = destination === 'result' || typeof value === 'object';
+    let upsertBuffer: boolean = false;
+    let upsertFile: boolean = false;
+    let upsertVFile: boolean = false;
+    let upsertVRemoteFile: boolean = false;
+    let upsertResult: boolean = false;
+
+    if (destination) {
+      if (destination === 'inputBuffer') {
+        upsertBuffer = true;
+      } else if (destination === 'file') {
+        upsertFile = true;
+      } else if (destination === 'vfile') {
+        upsertVFile = true;
+      } else if (destination === 'vremotefile') {
+        upsertVRemoteFile = true;
+      } else if (destination === 'result') {
+        upsertResult = true;
+      }
+    } else {
+      // destination이 없으면 value의 타입에 따라 결정
+      if (value instanceof ArrayBuffer) {
+        upsertBuffer = true;
+      } else if (value instanceof File) {
+        upsertFile = true;
+      } else if (isVFile(value)) {
+        upsertVFile = true;
+      } else if (isVRemoteFile(value)) {
+        upsertVRemoteFile = true;
+      } else if (typeof value === 'object') {
+        upsertResult = true;
+      }
+    }
 
     if (upsertBuffer) {
       this._upsertArrayBuffer(cacheValue, value as ArrayBuffer);
@@ -186,6 +212,9 @@ export default class VCache {
       this._upsertVRemoteFile(cacheValue, value as VRemoteFile);
     } else if (upsertResult) {
       this._upsertResult(cacheValue, value as T);
+    } else {
+      debugger;
+      throw new Error('업서트할 수 없는 타입입니다');
     }
 
     cacheValue.hash = CacheValueHasher.payload(payload);
@@ -195,8 +224,8 @@ export default class VCache {
     return cacheValue;
   }
 
-  isCachePromise(value: any) {
-    return Boolean(value?.destination) && value?.promise instanceof Promise;
+  isCachePayloadTarget(value: any) {
+    return Boolean(value?.destination) && Boolean(value?.from);
   }
   set<T = any>(id: string, ...value: Promisable<PayloadValue<T>>[]): this;
   set(vremotefile: VRemoteFile): this;
@@ -255,49 +284,55 @@ export default class VCache {
     }
 
     // case 1. value를 Promise로 받은 경우
-    if (this.isCachePromise(value)) {
-      const prom = value as CachePromise<T>;
-      // 1. payload의 밸류 업데이트
-      const proms = targetValue.loadingQueue;
+    if (this.isCachePayloadTarget(value)) {
+      const target = value as CachePayloadTarget<T>;
 
-      if (proms.some(p => p.from === prom.from)) {
-        // 이미 로딩 중인 promise가 있으면 리턴
-        return this;
+      if (target.promise) {
+        // 1. payload의 밸류 업데이트
+        const proms = targetValue.loadingQueue;
+
+        if (proms.some(p => p.from === target.from)) {
+          // 이미 로딩 중인 promise가 있으면 리턴
+          return this;
+        } else {
+          // 같은 from이 아닌데 중복된 promise 세팅하면 일단 에러
+          if (proms.some(p => p.destination === target.destination)) {
+            console.error(
+              '같은 from이 아닌데 중복된 promise 세팅하면 일단 에러',
+              this,
+              targetValue,
+              target,
+            );
+            // debugger;
+            // throw new Error('중복된 promise입니다');
+          }
+        }
+
+        // 로딩 큐에 push
+        proms.push(target);
+
+        target.promise = target.promise.then(result => {
+          if (!result) {
+            debugger;
+          }
+          // promise가 끝난 결과 할당
+          // (targetValue.payload as any)[prom.destination] = result;
+          this._upsert(targetValue, result, target.destination);
+
+          // 최종적으로 loadingQueue에서 자기 자신을 클린업
+          const arr = targetValue.loadingQueue;
+          const index = arr.findIndex(obj => obj === target);
+          if (index !== -1) {
+            arr.splice(index, 1);
+            // console.log('Spliced');
+          }
+
+          return result;
+        });
       } else {
-        // 같은 from이 아닌데 중복된 promise 세팅하면 일단 에러
-        if (proms.some(p => p.destination === prom.destination)) {
-          console.error(
-            '같은 from이 아닌데 중복된 promise 세팅하면 일단 에러',
-            this,
-            targetValue,
-            prom,
-          );
-          // debugger;
-          // throw new Error('중복된 promise입니다');
-        }
+        // 2. payload의 밸류 업데이트
+        this._upsert(targetValue, target.data, target.destination);
       }
-
-      // 로딩 큐에 push
-      proms.push(prom);
-
-      prom.promise = prom.promise.then(result => {
-        if (!result) {
-          debugger;
-        }
-        // promise가 끝난 결과 할당
-        // (targetValue.payload as any)[prom.destination] = result;
-        this._upsert(targetValue, result, prom.destination);
-
-        // 최종적으로 loadingQueue에서 자기 자신을 클린업
-        const arr = targetValue.loadingQueue;
-        const index = arr.findIndex(obj => obj === prom);
-        if (index !== -1) {
-          arr.splice(index, 1);
-          // console.log('Spliced');
-        }
-
-        return result;
-      });
     } else {
       // case 2. value가 Promise가 아닌 경우
       this._upsert(targetValue, value);
@@ -318,6 +353,8 @@ export default class VCache {
     } else if (typeof query === 'object') {
       return this.cacheByObject.get(query);
     } else {
+      console.error(query);
+      debugger;
       throw new Error('지원하지 않는 타입입니다');
     }
   }

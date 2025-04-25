@@ -1,9 +1,9 @@
 import { getVKTX2Loader } from 'src/scripts/loaders/VKTX2Loader';
-import { EXRLoader } from 'three/examples/jsm/Addons.js';
 import { THREE } from 'VTHREE';
 import Asset from '../Asset';
 import { getTypedArray } from './AssetUtils';
-import { VFile, VRemoteFile } from './VFile';
+import { deserialize } from './Serializer';
+import { isVRemoteFile, VFile, VRemoteFile } from './VFile';
 import { VTexture } from './VTexture';
 
 const TEXTURE_KEYS = ['VTexture', 'VDataTexture', 'VCompressedTexture'];
@@ -46,119 +46,130 @@ async function loadCompressedTexture(
   });
 }
 
+const handleArrayBuffer = async (data: any): Promise<ArrayBuffer> => {
+  if (isVRemoteFile(data)) {
+    return Asset.buffer(data) as Promise<ArrayBuffer>;
+  } else {
+    return data as ArrayBuffer;
+  }
+};
+
 async function createCompressedTexture(
   data: VTexture,
 ): Promise<THREE.CompressedTexture> {
-  return Asset.buffer(data.image)
-    .then(arrayBuffer => loadCompressedTexture(arrayBuffer!))
-    .then(texture => {
-      if (data.uuid) texture.uuid = data.uuid;
-      if (data.name) texture.name = data.name;
-      if (data.type) texture.type = data.type;
+  const arrayBuffer = await handleArrayBuffer(data.image);
+  const texture = await loadCompressedTexture(arrayBuffer);
 
-      if (data.mapping) texture.mapping = data.mapping;
-      if (data.channel) texture.channel = data.channel;
+  if (data.uuid) texture.uuid = data.uuid;
+  if (data.name) texture.name = data.name;
+  if (data.type) texture.type = data.type;
 
-      if (data.repeat) texture.repeat.set(data.repeat[0], data.repeat[1]);
-      if (data.offset) texture.offset.set(data.offset[0], data.offset[1]);
-      if (data.center) texture.center.set(data.center[0], data.center[1]);
-      if (data.rotation) texture.rotation = data.rotation;
+  if (data.mapping) texture.mapping = data.mapping;
+  if (data.channel) texture.channel = data.channel;
 
-      if (data.wrap) {
-        texture.wrapS = data.wrap[0] as THREE.Wrapping;
-        texture.wrapT = data.wrap[1] as THREE.Wrapping;
-      }
-      if (data.format)
-        texture.format = data.format as THREE.CompressedPixelFormat;
-      if (data.internalFormat) texture.internalFormat = data.internalFormat;
-      if (data.colorSpace) texture.colorSpace = data.colorSpace;
+  if (data.repeat) texture.repeat.set(data.repeat[0], data.repeat[1]);
+  if (data.offset) texture.offset.set(data.offset[0], data.offset[1]);
+  if (data.center) texture.center.set(data.center[0], data.center[1]);
+  if (data.rotation) texture.rotation = data.rotation;
 
-      if (data.minFilter) texture.minFilter = data.minFilter;
-      if (data.magFilter) texture.magFilter = data.magFilter;
-      if (data.anisotropy) texture.anisotropy = data.anisotropy;
+  if (data.wrap) {
+    texture.wrapS = data.wrap[0] as THREE.Wrapping;
+    texture.wrapT = data.wrap[1] as THREE.Wrapping;
+  }
+  if (data.format) texture.format = data.format as THREE.CompressedPixelFormat;
+  if (data.internalFormat) texture.internalFormat = data.internalFormat;
+  if (data.colorSpace) texture.colorSpace = data.colorSpace;
 
-      if (data.flipY) texture.flipY = data.flipY;
+  if (data.minFilter) texture.minFilter = data.minFilter;
+  if (data.magFilter) texture.magFilter = data.magFilter;
+  if (data.anisotropy) texture.anisotropy = data.anisotropy;
 
-      if (data.generateMipmaps) texture.generateMipmaps = data.generateMipmaps;
-      if (data.premultiplyAlpha)
-        texture.premultiplyAlpha = data.premultiplyAlpha;
-      if (data.unpackAlignment) texture.unpackAlignment = data.unpackAlignment;
-      if (data.userData) texture.userData = data.userData;
+  if (data.flipY) texture.flipY = data.flipY;
 
-      texture.needsUpdate = true;
+  if (data.generateMipmaps) texture.generateMipmaps = data.generateMipmaps;
+  if (data.premultiplyAlpha) texture.premultiplyAlpha = data.premultiplyAlpha;
+  if (data.unpackAlignment) texture.unpackAlignment = data.unpackAlignment;
+  if (data.userData) texture.userData = data.userData;
 
-      console.log({ texture });
+  texture.needsUpdate = true;
 
-      return texture;
-    });
+  console.log({ texture });
+
+  return texture;
 }
 
-const _EXRLoader = new EXRLoader();
 async function createDataTexture(data: VTexture): Promise<THREE.DataTexture> {
   if (!data.arrayType || !data.width || !data.height) {
     console.error(data);
     throw new Error('arrayType이 없습니다');
   }
-  // const retval = new THREE.DataTexture();
-  // return retval;
-  return Asset.buffer(data.image).then(arrayBuffer => {
-    const sourceData = {
-      data: getTypedArray(data.arrayType!, arrayBuffer!),
-      width: data.width!,
-      height: data.height!,
-    };
-    const source = new THREE.Source(sourceData);
-    const texture = new THREE.DataTexture();
-    texture.source = source;
 
-    texture.wrapS = THREE.ClampToEdgeWrapping;
-    texture.wrapT = THREE.ClampToEdgeWrapping;
-    texture.magFilter = THREE.LinearFilter;
-    texture.minFilter = THREE.LinearFilter;
+  const arrayBuffer = await handleArrayBuffer(data.image);
 
-    if (data.uuid) texture.uuid = data.uuid;
-    if (data.name) texture.name = data.name;
-    if (data.type) texture.type = data.type;
+  const sourceData = {
+    data: getTypedArray(data.arrayType!, arrayBuffer!),
+    width: data.width!,
+    height: data.height!,
+  };
+  const source = new THREE.Source(sourceData);
+  const texture = new THREE.DataTexture();
+  texture.source = source;
 
-    if (data.mapping) texture.mapping = data.mapping;
-    if (data.channel) texture.channel = data.channel;
+  texture.wrapS = THREE.ClampToEdgeWrapping;
+  texture.wrapT = THREE.ClampToEdgeWrapping;
+  texture.magFilter = THREE.LinearFilter;
+  texture.minFilter = THREE.LinearFilter;
 
-    if (data.repeat) texture.repeat.set(data.repeat[0], data.repeat[1]);
-    if (data.offset) texture.offset.set(data.offset[0], data.offset[1]);
-    if (data.center) texture.center.set(data.center[0], data.center[1]);
-    if (data.rotation) texture.rotation = data.rotation;
+  if (data.uuid) texture.uuid = data.uuid;
+  if (data.name) texture.name = data.name;
+  if (data.type) texture.type = data.type;
 
-    if (data.wrap) {
-      texture.wrapS = data.wrap[0] as THREE.Wrapping;
-      texture.wrapT = data.wrap[1] as THREE.Wrapping;
-    }
-    if (data.format) texture.format = data.format;
-    if (data.internalFormat) texture.internalFormat = data.internalFormat;
-    if (data.colorSpace) texture.colorSpace = data.colorSpace;
+  if (data.mapping) texture.mapping = data.mapping;
+  if (data.channel) texture.channel = data.channel;
 
-    if (data.minFilter) texture.minFilter = data.minFilter;
-    if (data.magFilter) texture.magFilter = data.magFilter;
-    if (data.anisotropy) texture.anisotropy = data.anisotropy;
+  if (data.repeat) texture.repeat.set(data.repeat[0], data.repeat[1]);
+  if (data.offset) texture.offset.set(data.offset[0], data.offset[1]);
+  if (data.center) texture.center.set(data.center[0], data.center[1]);
+  if (data.rotation) texture.rotation = data.rotation;
 
-    if (data.flipY) texture.flipY = data.flipY;
+  if (data.wrap) {
+    texture.wrapS = data.wrap[0] as THREE.Wrapping;
+    texture.wrapT = data.wrap[1] as THREE.Wrapping;
+  }
+  if (data.format) texture.format = data.format;
+  if (data.internalFormat) texture.internalFormat = data.internalFormat;
+  if (data.colorSpace) texture.colorSpace = data.colorSpace;
 
-    if (data.generateMipmaps) texture.generateMipmaps = data.generateMipmaps;
-    if (data.premultiplyAlpha) texture.premultiplyAlpha = data.premultiplyAlpha;
-    if (data.unpackAlignment) texture.unpackAlignment = data.unpackAlignment;
-    if (data.userData) texture.userData = data.userData;
+  if (data.minFilter) texture.minFilter = data.minFilter;
+  if (data.magFilter) texture.magFilter = data.magFilter;
+  if (data.anisotropy) texture.anisotropy = data.anisotropy;
 
-    texture.needsUpdate = true;
+  if (data.flipY) texture.flipY = data.flipY;
 
-    return texture;
-  });
+  if (data.generateMipmaps) texture.generateMipmaps = data.generateMipmaps;
+  if (data.premultiplyAlpha) texture.premultiplyAlpha = data.premultiplyAlpha;
+  if (data.unpackAlignment) texture.unpackAlignment = data.unpackAlignment;
+  if (data.userData) texture.userData = data.userData;
+
+  texture.needsUpdate = true;
+
+  return texture;
 }
 
 async function imageBufferToImageBitmap(
   buffer: ArrayBuffer,
-  mimeType: string = 'image/png',
+  // mimeType: string = 'image/png',
 ): Promise<ImageBitmap> {
-  const blob = new Blob([buffer], { type: mimeType });
-  const bitmap = await createImageBitmap(blob);
+  const { data, width, height, type } = deserialize<{
+    data: ArrayBuffer;
+    width: number;
+    height: number;
+    type: string;
+  }>(buffer, true); // decompress
+
+  const uint8Array = new Uint8ClampedArray(data);
+  const imageData = new ImageData(uint8Array, width, height);
+  const bitmap = await createImageBitmap(imageData);
   return bitmap;
 }
 
@@ -181,46 +192,44 @@ async function imageBufferToHTMLImgElement(
 }
 
 async function createCommonTexture(data: VTexture): Promise<THREE.Texture> {
-  return Asset.buffer(data.image)
-    .then(arrayBuffer => imageBufferToImageBitmap(arrayBuffer!))
-    .then(bitmap => {
-      const texture = new THREE.Texture(bitmap);
+  const arrayBuffer = await handleArrayBuffer(data.image);
+  const bitmap = await imageBufferToImageBitmap(arrayBuffer!);
 
-      if (data.uuid) texture.uuid = data.uuid;
-      if (data.name) texture.name = data.name;
-      if (data.type) texture.type = data.type;
+  const texture = new THREE.Texture(bitmap);
 
-      if (data.mapping) texture.mapping = data.mapping;
-      if (data.channel) texture.channel = data.channel;
+  if (data.uuid) texture.uuid = data.uuid;
+  if (data.name) texture.name = data.name;
+  if (data.type) texture.type = data.type;
 
-      if (data.repeat) texture.repeat.set(data.repeat[0], data.repeat[1]);
-      if (data.offset) texture.offset.set(data.offset[0], data.offset[1]);
-      if (data.center) texture.center.set(data.center[0], data.center[1]);
-      if (data.rotation) texture.rotation = data.rotation;
+  if (data.mapping) texture.mapping = data.mapping;
+  if (data.channel) texture.channel = data.channel;
 
-      if (data.wrap) {
-        texture.wrapS = data.wrap[0] as THREE.Wrapping;
-        texture.wrapT = data.wrap[1] as THREE.Wrapping;
-      }
-      if (data.format) texture.format = data.format;
-      if (data.internalFormat) texture.internalFormat = data.internalFormat;
-      if (data.colorSpace) texture.colorSpace = data.colorSpace;
+  if (data.repeat) texture.repeat.set(data.repeat[0], data.repeat[1]);
+  if (data.offset) texture.offset.set(data.offset[0], data.offset[1]);
+  if (data.center) texture.center.set(data.center[0], data.center[1]);
+  if (data.rotation) texture.rotation = data.rotation;
 
-      if (data.minFilter) texture.minFilter = data.minFilter;
-      if (data.magFilter) texture.magFilter = data.magFilter;
-      if (data.anisotropy) texture.anisotropy = data.anisotropy;
+  if (data.wrap) {
+    texture.wrapS = data.wrap[0] as THREE.Wrapping;
+    texture.wrapT = data.wrap[1] as THREE.Wrapping;
+  }
+  if (data.format) texture.format = data.format;
+  if (data.internalFormat) texture.internalFormat = data.internalFormat;
+  if (data.colorSpace) texture.colorSpace = data.colorSpace;
 
-      if (data.flipY) texture.flipY = data.flipY;
+  if (data.minFilter) texture.minFilter = data.minFilter;
+  if (data.magFilter) texture.magFilter = data.magFilter;
+  if (data.anisotropy) texture.anisotropy = data.anisotropy;
 
-      if (data.generateMipmaps) texture.generateMipmaps = data.generateMipmaps;
-      if (data.premultiplyAlpha)
-        texture.premultiplyAlpha = data.premultiplyAlpha;
-      if (data.unpackAlignment) texture.unpackAlignment = data.unpackAlignment;
-      if (data.userData) texture.userData = data.userData;
+  if (data.flipY) texture.flipY = data.flipY;
 
-      texture.needsUpdate = true;
-      return texture;
-    });
+  if (data.generateMipmaps) texture.generateMipmaps = data.generateMipmaps;
+  if (data.premultiplyAlpha) texture.premultiplyAlpha = data.premultiplyAlpha;
+  if (data.unpackAlignment) texture.unpackAlignment = data.unpackAlignment;
+  if (data.userData) texture.userData = data.userData;
+
+  texture.needsUpdate = true;
+  return texture;
 }
 
 export default async function TextureLoader(

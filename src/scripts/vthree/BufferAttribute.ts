@@ -40,13 +40,14 @@ THREE.BufferAttribute.prototype.toAsset = function () {
 };
 
 THREE.InterleavedBufferAttribute.prototype.toAsset = function () {
-  return {
-    isInterleavedBufferAttribute: true,
+  const retval = {
+    isInterleavedBufferAttribute: true as const,
     itemSize: this.itemSize,
     data: this.data.toAsset(),
     offset: this.offset,
     normalized: this.normalized,
   };
+  return retval;
 };
 
 THREE.InterleavedBuffer.prototype.toAsset = function () {

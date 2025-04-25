@@ -384,24 +384,27 @@ THREE.Object3D.prototype.toAsset = async function () {
   // }
 
   if (scene.isScene) {
-    if (scene.background) {
-      throw new Error('Scene background is not supported yet');
-      // if (scene.background.isColor) {
-      //   object.background = scene.background.toJSON();
-      // } else if (scene.background.isTexture) {
-      //   object.background = scene.background.toJSON(meta).uuid;
-      // }
-    }
+    //! 일단 Scene은 그룹으로 다룬다
+    object.type = 'Group'; // 원래Scene임
 
-    if (
-      scene.environment &&
-      scene.environment.isTexture &&
-      scene.environment.isRenderTargetTexture !== true
-    ) {
-      // throw new Error('Scene environment is not supported yet');
-      // object.environment = scene.environment.toJSON(meta).uuid;
-      object.environment = (await scene.environment.toAsset()).vremotefile;
-    }
+    // if (scene.background) {
+    //   throw new Error('Scene background is not supported yet');
+    //   // if (scene.background.isColor) {
+    //   //   object.background = scene.background.toJSON();
+    //   // } else if (scene.background.isTexture) {
+    //   //   object.background = scene.background.toJSON(meta).uuid;
+    //   // }
+    // }
+
+    // if (
+    //   scene.environment &&
+    //   scene.environment.isTexture &&
+    //   scene.environment.isRenderTargetTexture !== true
+    // ) {
+    //   // throw new Error('Scene environment is not supported yet');
+    //   // object.environment = scene.environment.toJSON(meta).uuid;
+    //   object.environment = (await scene.environment.toAsset()).vremotefile;
+    // }
   } else if (mesh.isMesh || line.isLine || points.isPoints) {
     // object.geometry = serialize(meta.geometries, mesh.geometry);
     object.geometry = (await mesh.geometry.toAsset()).vremotefile;

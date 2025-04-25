@@ -5,21 +5,14 @@ import ObjectViewer from 'src/components/ObjectViewer';
 import VGLTFLoader from 'src/scripts/loaders/VGLTFLoader';
 import Asset, { VUploadable } from 'src/scripts/manager/Asset';
 import { AssetMgr } from 'src/scripts/manager/assets/AssetMgr';
-import {
-  TYPED_ARRAY_NAMES,
-  TYPED_ARRAYS,
-} from 'src/scripts/manager/assets/AssetUtils';
-import { serialize } from 'src/scripts/manager/assets/Serializer';
+import ObjectLoader from 'src/scripts/manager/assets/ObjectLoader';
+import { deserialize, serialize } from 'src/scripts/manager/assets/Serializer';
 import {
   isVFile,
   isVRemoteFile,
   VFile,
-  VLoadable,
   VRemoteFile,
 } from 'src/scripts/manager/assets/VFile';
-import { VOption } from 'src/scripts/manager/assets/VOption';
-import { VProject } from 'src/scripts/manager/assets/VProject';
-import { VScene } from 'src/scripts/manager/assets/VScene';
 import Workers from 'src/scripts/manager/assets/Workers';
 import { THREE } from 'VTHREE';
 import useTestModelDragAndDrop from './useTestModelDragAndDrop';
@@ -33,6 +26,34 @@ interface UploadResponse {
 }
 
 const getFilePath = (path: string) => `${AssetMgr.projectId}/${path}`;
+
+// obj를 재귀적으로 돌면서 내부의 ArrayBuffer만 Uint8Array로 변환하는 함수
+// ArrayBuffer을 mongodb에 저장하면 데이터가 날아가서 일단 Uint8Array로 변환
+function convertArrayBufferToUint8Array(obj: any): any {
+  // Handle null or non-object types (return unchanged)
+  if (obj === null || typeof obj !== 'object') {
+    return obj;
+  }
+
+  // Handle ArrayBuffer
+  if (obj instanceof ArrayBuffer) {
+    return new Uint8Array(obj);
+  }
+
+  // Handle arrays
+  if (Array.isArray(obj)) {
+    return obj.map(item => convertArrayBufferToUint8Array(item));
+  }
+
+  // Handle objects
+  const result: { [key: string]: any } = {};
+  for (const key in obj) {
+    if (Object.prototype.hasOwnProperty.call(obj, key)) {
+      result[key] = convertArrayBufferToUint8Array(obj[key]);
+    }
+  }
+  return result;
+}
 
 async function upload(
   filepath: string,
@@ -49,7 +70,7 @@ async function upload(
 
   if (type === 'json') {
     // Convert JSON object to a Blob
-    const jsonString = JSON.stringify(data);
+    const jsonString = JSON.stringify(convertArrayBufferToUint8Array(data));
     file = new File([jsonString], filepath, { type: 'application/json' });
   } else {
     // Create a Blob from ArrayBuffer
@@ -71,7 +92,11 @@ async function upload(
   }).then(res => res.json() as Promise<UploadResponse>);
 }
 
-async function download<T>(id: string, type?: 'json' | 'binary'): Promise<T>;
+async function download<T>(
+  id: string,
+  type?: 'json' | 'binary',
+  inflate?: boolean,
+): Promise<T>;
 async function download<T>(
   param: string | VFile | VRemoteFile,
   type?: 'json' | 'binary',
@@ -374,7 +399,7 @@ function TestPage() {
                 asset.filter(a => a.isGlb).map(a => a.load<THREE.Group>()),
               ).then(groups => {
                 const end = performance.now();
-                console.log('glb 로드 완료', end - start, 'ms');
+                console.log('glb 로드 완료', end - start, 'ms', groups);
                 groups.forEach(g => g.position.addScalar(2));
                 sceneRef.current.add(...groups);
               });
@@ -404,10 +429,12 @@ function TestPage() {
           <button
             onClick={async () => {
               const start = performance.now();
+              sceneRef.current.name = 'main';
               sceneRef.current.toAsset().then(async asset => {
                 const end = performance.now();
                 console.log('씬 toAsset()', end - start, 'ms');
                 console.log(asset.vfile);
+                // debugger;
 
                 const downloadStart = performance.now();
                 const uploadable = (await asset.download())!;
@@ -416,42 +443,64 @@ function TestPage() {
                 console.log('씬 다운로드', downloadEnd - downloadStart, 'ms');
                 console.log({ self, children });
 
-                const remotefiles = children.map(c => c.vremotefile);
-                const vscene: VFile<VScene> = {
-                  isVFile: true,
-                  id: self.vremotefile.id,
-                  type: 'VScene',
-                  data: {
-                    object: self.vremotefile,
-                  },
-                };
-                const vproject: VFile<VProject> = {
-                  isVFile: true,
-                  id: AssetMgr.projectId,
-                  type: 'VProject',
-                  data: {
-                    files: remotefiles,
-                    rootScenes: [vscene],
-                    option: {
-                      defaultOption: {
-                        isVFile: true,
-                        id: 'default',
-                        type: 'VOption',
-                        data: { scene: vscene } as VOption,
-                      } as VFile<VOption>,
-                      options: [] as VLoadable<VOption>[],
-                    } as VProject['option'],
-                  } as VProject,
-                };
+                // const remotefiles = children.map(c => c.vremotefile);
+                // const vscene: VFile<VScene> = {
+                //   isVFile: true,
+                //   id: self.vremotefile.id,
+                //   type: 'VScene',
+                //   data: {
+                //     object: self.vremotefile,
+                //   },
+                // };
+                // const vproject: VFile<VProject> = {
+                //   isVFile: true,
+                //   id: AssetMgr.projectId,
+                //   type: 'VProject',
+                //   data: {
+                //     files: remotefiles,
+                //     rootScenes: [vscene],
+                //     option: {
+                //       defaultOption: {
+                //         isVFile: true,
+                //         id: 'default',
+                //         type: 'VOption',
+                //         data: { scene: vscene } as VOption,
+                //       } as VFile<VOption>,
+                //       options: [] as VLoadable<VOption>[],
+                //     } as VProject['option'],
+                //   } as VProject,
+                // };
+
+                // const inflateStart = performance.now();
+                // const inflated = await AssetMgr.inflate(
+                //   uploadable.self.data as VFile,
+                // );
+                // const inflateEnd = performance.now();
+                // console.log(
+                //   'inflate',
+                //   inflateEnd - inflateStart,
+                //   'ms',
+                //   inflated,
+                // );
 
                 const compress = true;
+                const inflated = await Asset.from(
+                  uploadable.self.data,
+                ).inflate();
+                print({ inflated });
+                const arr = serialize(inflated, compress);
 
-                const arr = serialize(uploadable, compress);
+                // !TODO : TextureLoader 등에서 VRemoteFile대신 DataArray들어올 때 핸들링
 
                 console.log('start upload');
-                upload('scene_test.json', uploadable).then(res => {
-                  console.log(res);
-                });
+                upload('scene_test.vo', arr)
+                  .then(res => {
+                    console.log(res);
+                  })
+                  .finally(() => {
+                    const end = performance.now();
+                    console.log('씬 업로드', end - downloadStart, 'ms');
+                  });
               });
             }}
           >
@@ -460,35 +509,60 @@ function TestPage() {
           <button
             onClick={async () => {
               type Response = { self: VUploadable; children: VUploadable[] };
-              download<Response>('scene_test.json').then(res => {
-                console.log(res);
-                const { self, children } = res;
-                children.forEach(c => {
-                  if (c.vremotefile.format === 'json') {
-                    return;
-                  }
-                  const format = c.vremotefile.format;
-                  if (TYPED_ARRAY_NAMES.includes(format as any)) {
-                    const org = c.data as { [key: number]: number };
-                    const length = Object.keys(org).length;
-
-                    const arr = new (TYPED_ARRAYS as any)[format](length);
-
-                    // Assign values to Float32Array (assume keys are sequential)
-                    for (let i = 0; i < length; i++) {
-                      if (i in org) {
-                        arr[i] = org[i];
-                      } else {
-                        throw new Error(`Missing key ${i} in input object`);
-                      }
-                    }
-
-                    // Return the underlying ArrayBuffer
-                    c.data = arr;
-                  }
+              download<ArrayBuffer>('scene_test.vo', 'binary', true)
+                .then(deserialize<VFile>)
+                .then(async res => {
+                  console.log(res);
+                  const obj = await ObjectLoader(res);
+                  print({ obj });
+                  sceneRef.current.add(obj);
                 });
-                console.log(res);
-              });
+              // download<Response>('scene_test.json').then(res => {
+              //   console.log(res);
+              //   const { self, children } = res;
+              //   children.forEach(c => {
+              //     if (c.vremotefile.format === 'json') {
+              //       return;
+              //     }
+              //     const format = c.vremotefile.format;
+              //     if (TYPED_ARRAY_NAMES.includes(format as any)) {
+              //       const org = c.data as { [key: number]: number };
+              //       const length = Object.keys(org).length;
+
+              //       const arr = new (TYPED_ARRAYS as any)[format](length);
+
+              //       // Assign values to Float32Array (assume keys are sequential)
+              //       for (let i = 0; i < length; i++) {
+              //         if (i in org) {
+              //           arr[i] = org[i];
+              //         } else {
+              //           throw new Error(`Missing key ${i} in input object`);
+              //         }
+              //       }
+
+              //       // Return the underlying ArrayBuffer
+              //       c.data = arr;
+              //     } else if (format === 'buffer') {
+              //       const org = c.data as { [key: number]: number };
+              //       const length = Object.keys(org).length;
+
+              //       const arr = new Uint8Array(length);
+
+              //       // Assign values to Float32Array (assume keys are sequential)
+              //       for (let i = 0; i < length; i++) {
+              //         if (i in org) {
+              //           arr[i] = org[i];
+              //         } else {
+              //           throw new Error(`Missing key ${i} in input object`);
+              //         }
+              //       }
+
+              //       // Return the underlying ArrayBuffer
+              //       c.data = arr.buffer;
+              //     }
+              //   });
+              //   console.log(res);
+              // });
             }}
           >
             VO 로드

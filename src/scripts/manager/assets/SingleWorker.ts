@@ -1,7 +1,12 @@
 import pako from 'pako';
 import { EXRLoader } from 'three/examples/jsm/Addons.js';
 
-export type WorkerTask = WorkerTaskFetch | WorkerTaskExr;
+export type WorkerTask =
+  | WorkerTaskFetch
+  | WorkerTaskExr
+  | WorkerTaskBitmapToArrayBuffer
+  | WorkerTaskCompress
+  | WorkerTaskDecompress;
 
 export type WorkerTaskFetch = {
   id: number;
@@ -18,6 +23,32 @@ export type WorkerTaskExr = {
   data: {
     url?: string;
     arrayBuffer?: ArrayBuffer;
+  };
+};
+
+export type WorkerTaskBitmapToArrayBuffer = {
+  id: number;
+  action: 'bitmapToArrayBuffer';
+  data: {
+    bitmap: ImageBitmap;
+  };
+};
+
+export type WorkerTaskCompress = {
+  id: number;
+  action: 'compress';
+  data: {
+    arrayBuffer: ArrayBuffer;
+    transfer?: boolean;
+  };
+};
+
+export type WorkerTaskDecompress = {
+  id: number;
+  action: 'decompress';
+  data: {
+    arrayBuffer: ArrayBuffer;
+    transfer?: boolean;
   };
 };
 
@@ -113,6 +144,51 @@ self.onmessage = async (e: MessageEvent<WorkerTask>) => {
         },
       } as WorkerTaskExr,
       [exrdata.buffer],
+    );
+  } else if (action === 'bitmapToArrayBuffer') {
+    const { bitmap } = data;
+    const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
+    const ctx = canvas.getContext('2d')!;
+    ctx.drawImage(bitmap, 0, 0);
+    const imageData = ctx.getImageData(0, 0, bitmap.width, bitmap.height);
+    const arrayBuffer = imageData.data.buffer;
+    const width = bitmap.width;
+    const height = bitmap.height;
+
+    (self as any).postMessage(
+      {
+        id,
+        action: 'bitmapToArrayBuffer',
+        data: {
+          data: arrayBuffer,
+          width,
+          height,
+          type: 'image/png',
+        },
+      },
+      [arrayBuffer],
+    );
+  } else if (action === 'compress') {
+    const { arrayBuffer } = data;
+    const compressedBuffer = pako.deflate(new Uint8Array(arrayBuffer));
+    (self as any).postMessage(
+      {
+        id,
+        action: 'compress',
+        data: compressedBuffer.buffer,
+      },
+      [compressedBuffer.buffer],
+    );
+  } else if (action === 'decompress') {
+    const { arrayBuffer } = data;
+    const decompressedBuffer = pako.inflate(new Uint8Array(arrayBuffer));
+    (self as any).postMessage(
+      {
+        id,
+        action: 'decompress',
+        data: decompressedBuffer.buffer,
+      },
+      [decompressedBuffer.buffer],
     );
   } else {
     throw new Error('Unknown action');

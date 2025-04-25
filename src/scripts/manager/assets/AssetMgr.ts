@@ -2,13 +2,8 @@ import VGLTFLoader from 'src/scripts/loaders/VGLTFLoader';
 import VTextureLoader from 'src/scripts/loaders/VTextureLoader';
 import Asset from '../Asset';
 import { iterateObjectWithPredicate } from './AssetMgr copy';
-import {
-  awaitAll,
-  getBufferFormat,
-  getTypedArray,
-  TYPED_ARRAY_NAMES,
-  TypedArray,
-} from './AssetUtils';
+import { TYPED_ARRAY_NAMES, TypedArray } from './AssetTypes';
+import { awaitAll, getBufferFormat, getTypedArray } from './AssetUtils';
 import BufferGeometryLoader from './BufferGeometryLoader';
 import Hasher from './Hasher';
 import MaterialLoader from './MaterialLoader';
@@ -16,7 +11,7 @@ import ObjectLoader from './ObjectLoader';
 import TextureLoader from './TextureLoader';
 import VCache, {
   CachePayload,
-  CachePromise,
+  CachePayloadTarget,
   CacheValue,
   FileID,
   PayloadValue,
@@ -85,8 +80,10 @@ export class AssetMgr {
     if (vremotefile.format === 'json') {
       if (!vfile) {
         debugger;
+        throw new Error('VFile not found');
       }
       const retval = vfile!;
+
       let count = 0;
       const recursvielyInflate = async (obj: any) => {
         count++;
@@ -118,13 +115,17 @@ export class AssetMgr {
       // });
       return retval;
     } else {
+      if (!result) {
+        debugger;
+      }
+
       const retval = result ?? inputBuffer; //! inputBuffer은 임시방편
       if (!retval) {
         // 임시방편마저 에러인 경우
         debugger;
       }
 
-      return result as unknown as ArrayBuffer | TypedArray;
+      return retval as unknown as ArrayBuffer | TypedArray;
     }
   }
 
@@ -159,8 +160,8 @@ export class AssetMgr {
       this.cache.set(retval.id, {
         destination: 'result',
         from: retval,
-        promise: Promise.resolve(buffer),
-      });
+        data: buffer,
+      } as CachePayloadTarget);
       // console.log('retval.id buffer', retval.id, buffer);
 
       return retval;
@@ -218,7 +219,7 @@ export class AssetMgr {
             destination: 'inputBuffer',
             from: file,
             promise: file.arrayBuffer(),
-          } as CachePromise,
+          } as CachePayloadTarget,
         );
         return;
       }
@@ -256,7 +257,7 @@ export class AssetMgr {
           {
             destination: 'result',
             promise: prom,
-          } as CachePromise,
+          } as CachePayloadTarget,
         );
         // !TODO : AssetMgr.load 구현
       }
@@ -359,7 +360,7 @@ export class AssetMgr {
       const prom = VGLTFLoader.instance
         .parseAsync(buffer, fname)
         .then(gltf => gltf.scene);
-      const cacheProm: CachePromise = {
+      const cacheProm: CachePayloadTarget = {
         destination: 'result',
         from: file,
         promise: prom,
@@ -375,7 +376,7 @@ export class AssetMgr {
       const prom = VTextureLoader.parseAsync(buffer, {
         ext,
       });
-      const cacheProm: CachePromise = {
+      const cacheProm: CachePayloadTarget = {
         destination: 'result',
         from: file,
         promise: prom,
@@ -398,7 +399,7 @@ export class AssetMgr {
           destination: 'result',
           from: vfile,
           promise: objectProm,
-        } as CachePromise);
+        } as CachePayloadTarget);
         return objectProm as Promise<T>;
       case 'VCompressedTexture':
       case 'VDataTexture':
@@ -408,7 +409,7 @@ export class AssetMgr {
           destination: 'result',
           from: vfile,
           promise: texProm,
-        } as CachePromise);
+        } as CachePayloadTarget);
         return texProm as Promise<T>;
       case 'VBufferGeometry':
         const bufferProm = BufferGeometryLoader(vfile);
@@ -416,7 +417,7 @@ export class AssetMgr {
           destination: 'result',
           from: vfile,
           promise: bufferProm,
-        } as CachePromise);
+        } as CachePayloadTarget);
         return bufferProm as Promise<T>;
       case 'VMaterial':
         const materialProm = MaterialLoader(vfile);
@@ -424,7 +425,7 @@ export class AssetMgr {
           destination: 'result',
           from: vfile,
           promise: materialProm,
-        } as CachePromise);
+        } as CachePayloadTarget);
         return materialProm as Promise<T>;
       default:
         throw new Error(`Unknown VFile type: ${type}`);
@@ -462,7 +463,7 @@ export class AssetMgr {
             destination: 'vfile',
             from: vremotefile,
             promise: prom,
-          } as CachePromise);
+          } as CachePayloadTarget);
         } else {
           const prom = Workers.fetch(this.fileUrl(id));
 
@@ -470,7 +471,7 @@ export class AssetMgr {
             destination: 'result',
             from: vremotefile,
             promise: prom,
-          } as CachePromise);
+          } as CachePayloadTarget);
         }
 
         // vremote를 vfile로 로드했으니 다시 로드를 리턴
