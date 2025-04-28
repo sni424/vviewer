@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>three.js webgl - materials - dynamic cube reflection</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+  <link type="text/css" rel="stylesheet" href="main.css">
+  <style>
+      body {
+          touch-action: none;
+      }
+  </style>
+</head>
+<body>
+<script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@latest/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@latest/examples/jsm/"
+    }
+  }
+</script>
+
+<script type="module">
+
+  import * as THREE from 'three';
+
+  import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
+  import {RGBELoader} from 'three/addons/loaders/RGBELoader.js';
+  import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
+
+  import {GUI} from 'three/addons/libs/lil-gui.module.min.js';
+  import Stats from 'three/addons/libs/stats.module.js';
+
+  let camera, scene, renderer, stats;
+  let cube, sphere, torus, material;
+
+  let cubeCamera, cubeRenderTarget;
+
+  let controls;
+
+  let binaryMesh, gltfMesh;
+
+  init();
+
+  async function init() {
+
+    renderer = new THREE.WebGLRenderer({antialias: true});
+    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    document.body.appendChild(renderer.domElement);
+
+    window.addEventListener('resize', onWindowResized);
+
+    stats = new Stats();
+    document.body.appendChild(stats.dom);
+
+    camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 1000);
+    camera.position.z = 75;
+
+    scene = new THREE.Scene();
+    scene.rotation.y = 0.5; // avoid flying objects occluding the sun
+
+    new RGBELoader()
+      .load('https://vra-configurator-dev.s3.ap-northeast-2.amazonaws.com/models/studio_small_08_2k.hdr', function (texture) {
+
+        texture.mapping = THREE.EquirectangularReflectionMapping;
+
+        scene.background = texture;
+        scene.environment = texture;
+
+      });
+
+    //
+
+    cubeRenderTarget = new THREE.WebGLCubeRenderTarget(256);
+    cubeRenderTarget.texture.type = THREE.HalfFloatType;
+
+    cubeCamera = new THREE.CubeCamera(1, 1000, cubeRenderTarget);
+
+    //
+
+    material = new THREE.MeshStandardMaterial({
+      envMap: cubeRenderTarget.texture,
+      roughness: 0.05,
+      metalness: 1
+    });
+
+    const gui = new GUI();
+    gui.add(renderer, 'toneMappingExposure', 0, 2).name('exposure');
+
+    sphere = new THREE.Mesh(new THREE.IcosahedronGeometry(15, 8), material);
+    // scene.add( sphere );
+
+    const material2 = new THREE.MeshStandardMaterial({
+      roughness: 0.1,
+      metalness: 0
+    });
+
+    cube = new THREE.Mesh(new THREE.BoxGeometry(15, 15, 15), material2);
+    // scene.add( cube );
+
+    torus = new THREE.Mesh(new THREE.TorusKnotGeometry(8, 3, 128, 16), material2);
+    // scene.add( torus );
+
+    binaryMesh = await loadGeometryAndMaterial(
+      'https://vra-configurator-dev.s3.ap-northeast-2.amazonaws.com/test/max/Teapot001_geo.bin',
+      'https://vra-configurator-dev.s3.ap-northeast-2.amazonaws.com/test/max/Teapot001_mat.bin',
+      'https://vra-configurator-dev.s3.ap-northeast-2.amazonaws.com/test/max/Teapot001_mesh.bin'
+    )
+
+    if (binaryMesh) {
+      // mesh.geometry = new THREE.SphereGeometry(15, 32, 32);
+      binaryMesh.scale.set(0.5, 0.5, 0.5);
+      scene.add(binaryMesh);
+      console.log('메쉬 추가 완료:', binaryMesh);
+    } else {
+      console.log('메쉬 로드 실패');
+    }
+
+    const gltf = await new GLTFLoader().loadAsync('https://vra-configurator-dev.s3.ap-northeast-2.amazonaws.com/test/max/max_test.glb');
+    const targetMesh = gltf.scene.children[0].children[0];
+    targetMesh.scale.set(0.5, 0.5, 0.5);
+    gltf.scene.position.x -= 30
+    scene.add(gltf.scene);
+    gltfMesh = targetMesh;
+
+
+    const testMesh = new THREE.Mesh(new THREE.SphereGeometry(15, 32, 32), new THREE.MeshStandardMaterial({
+      color: 'green',
+      metalness: 1,
+      roughness: 0.1
+    }));
+    testMesh.position.set(10, 0, 0);
+    // scene.add(testMesh)
+
+    //
+
+    controls = new OrbitControls(camera, renderer.domElement);
+    // controls.autoRotate = true;
+
+    console.log(gltfMesh, binaryMesh)
+    const wp = new THREE.Vector3();
+    targetMesh.getWorldPosition(wp)
+    console.log(wp)
+    // diffObjects(gltfMesh.geometry, binaryMesh.geometry)
+    renderer.setAnimationLoop(animate);
+
+    const bTexture = binaryMesh.material.map;
+    const gTexture = gltfMesh.material.map;
+    const map = [bTexture, gTexture];
+    const textureUse = {
+      value: true
+    };
+
+    // diffObjects(binaryMesh.geometry, gltfMesh.geometry);
+    gui.add(textureUse, 'value').name('use texture').onChange((value) => {
+      if (value) {
+        binaryMesh.material.map = bTexture;
+        gltfMesh.material.map = gTexture;
+      } else {
+        binaryMesh.material.map = null;
+        gltfMesh.material.map = null;
+      }
+    });
+
+
+    function diffObjects(A, B, path = '') {
+      if (Array.isArray(A) && Array.isArray(B)) {
+        // 배열은 전체 비교만
+        if (A.length !== B.length || !A.every((v, i) => v === B[i])) {
+          console.log(`배열 "${path}" 의 값이 다름: A = ${JSON.stringify(A)}, B = ${JSON.stringify(B)}`);
+        }
+        return;
+      }
+
+      // 배열이 아닌데 한쪽만 배열이면 다름
+      if (Array.isArray(A) !== Array.isArray(B)) {
+        console.log(`"${path}" 배열/비배열 타입 불일치: A = ${JSON.stringify(A)}, B = ${JSON.stringify(B)}`);
+        return;
+      }
+
+      const isObj = (val) =>
+        typeof val === 'object' && val !== null && !Array.isArray(val) &&
+        !(val instanceof ArrayBuffer || val instanceof Date || val instanceof RegExp);
+
+      if (!isObj(A) || !isObj(B)) {
+        if (A !== B) {
+          console.log(`값이 다름 "${path}": A = ${JSON.stringify(A)}, B = ${JSON.stringify(B)}`);
+        }
+        return;
+      }
+
+      const keys = new Set([...Object.keys(A), ...Object.keys(B)]);
+
+      for (const key of keys) {
+        if (key.includes('uuid')) {
+
+        } else {
+          const fullPath = path ? `${path}.${key}` : key;
+
+          const hasA = A.hasOwnProperty(key);
+          const hasB = B.hasOwnProperty(key);
+
+          if (hasA && hasB) {
+            diffObjects(A[key], B[key], fullPath); // 재귀 호출
+          } else if (hasA && !hasB) {
+            console.log(`A에만 존재하는 키: "${fullPath}"`);
+          } else if (!hasA && hasB) {
+            console.log(`B에만 존재하는 키: "${fullPath}"`);
+          }
+        }
+      }
+    }
+  }
+
+  function onWindowResized() {
+
+    renderer.setSize(window.innerWidth, window.innerHeight);
+
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+
+  }
+
+  function animate(msTime) {
+
+    const time = msTime / 1000;
+
+    cube.position.x = Math.cos(time) * 30;
+    cube.position.y = Math.sin(time) * 30;
+    cube.position.z = Math.sin(time) * 30;
+
+    cube.rotation.x += 0.02;
+    cube.rotation.y += 0.03;
+
+    torus.position.x = Math.cos(time + 10) * 30;
+    torus.position.y = Math.sin(time + 10) * 30;
+    torus.position.z = Math.sin(time + 10) * 30;
+
+    torus.rotation.x += 0.02;
+    torus.rotation.y += 0.03;
+
+    cubeCamera.update(renderer, scene);
+
+    controls.update();
+
+    renderer.render(scene, camera);
+
+    stats.update();
+
+  }
+
+  async function loadGeometryAndMaterial(geoUrl, matUrl, meshUrl) {
+    async function loadSmartGeometry(url) {
+      const response = await fetch(url);
+      const arrayBuffer = await response.arrayBuffer();
+      const dataView = new DataView(arrayBuffer);
+      let offset = 0;
+
+      // 헤더 4개 int 읽고, 유효성 검증
+      const numVerts = dataView.getInt32(0, true);
+      const numFaces = dataView.getInt32(4, true);
+      const numUVs = dataView.getInt32(8, true);
+      const numNormals = dataView.getInt32(12, true);
+
+      const looksIndexed =
+        numVerts > 0 && numVerts < 1000000 &&
+        numFaces > 0 && numFaces < 1000000 &&
+        numUVs > 0 && numUVs < 1000000 &&
+        numNormals > 0 && numNormals < 1000000;
+
+      if (looksIndexed) {
+        offset = 16;
+
+        const positions = new Float32Array(numVerts * 3);
+        for (let i = 0; i < positions.length; i++) {
+          positions[i] = dataView.getFloat32(offset, true); offset += 4;
+        }
+
+        const indices = new Uint32Array(numFaces * 3);
+        for (let i = 0; i < indices.length; i++) {
+          indices[i] = dataView.getUint32(offset, true); offset += 4;
+        }
+
+        const uvs = new Float32Array(numUVs * 2);
+        for (let i = 0; i < uvs.length; i++) {
+          uvs[i] = dataView.getFloat32(offset, true); offset += 4;
+        }
+
+        const normals = new Float32Array(numNormals * 3);
+        for (let i = 0; i < normals.length; i++) {
+          normals[i] = dataView.getFloat32(offset, true); offset += 4;
+        }
+
+        const stride = 8;
+        const interleavedData = new Float32Array(numVerts * stride);
+        for (let i = 0; i < numVerts; i++) {
+          const pi = i * 3;
+          const ni = i * 3;
+          const uvi = i * 2;
+          const ii = i * stride;
+
+          interleavedData[ii] = positions[pi];
+          interleavedData[ii + 1] = positions[pi + 1];
+          interleavedData[ii + 2] = positions[pi + 2];
+
+          interleavedData[ii + 3] = normals[ni];
+          interleavedData[ii + 4] = normals[ni + 1];
+          interleavedData[ii + 5] = normals[ni + 2];
+
+          interleavedData[ii + 6] = uvs[uvi];
+          interleavedData[ii + 7] = uvs[uvi + 1];
+        }
+
+        const interleavedBuffer = new THREE.InterleavedBuffer(interleavedData, stride);
+        const geometry = new THREE.BufferGeometry();
+        geometry.setAttribute('position', new THREE.InterleavedBufferAttribute(interleavedBuffer, 3, 0));
+        geometry.setAttribute('normal', new THREE.InterleavedBufferAttribute(interleavedBuffer, 3, 3));
+        geometry.setAttribute('uv', new THREE.InterleavedBufferAttribute(interleavedBuffer, 2, 6));
+        geometry.setIndex(new THREE.BufferAttribute(indices, 1));
+        geometry.computeBoundingBox();
+        return geometry;
+
+      } else {
+        offset = 4;
+        const numFaces = dataView.getInt32(0, true);
+        const vertexCount = numFaces * 3;
+
+        const positions = new Float32Array(vertexCount * 3);
+        const normals = new Float32Array(vertexCount * 3);
+        const uvs = new Float32Array(vertexCount * 2);
+
+        for (let i = 0; i < vertexCount; i++) {
+          positions[i * 3] = dataView.getFloat32(offset, true); offset += 4;
+          positions[i * 3 + 1] = dataView.getFloat32(offset, true); offset += 4;
+          positions[i * 3 + 2] = dataView.getFloat32(offset, true); offset += 4;
+
+          normals[i * 3] = dataView.getFloat32(offset, true); offset += 4;
+          normals[i * 3 + 1] = dataView.getFloat32(offset, true); offset += 4;
+          normals[i * 3 + 2] = dataView.getFloat32(offset, true); offset += 4;
+
+          uvs[i * 2] = dataView.getFloat32(offset, true); offset += 4;
+          uvs[i * 2 + 1] = dataView.getFloat32(offset, true); offset += 4;
+        }
+
+        const geometry = new THREE.BufferGeometry();
+        geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        geometry.setAttribute('normal', new THREE.BufferAttribute(normals, 3));
+        geometry.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
+        geometry.computeBoundingBox();
+        return geometry;
+      }
+    }
+
+    async function loadMaterial(url) {
+      const response = await fetch(url);
+      const arrayBuffer = await response.arrayBuffer();
+      const dataView = new DataView(arrayBuffer);
+      let offset = 0;
+
+      const nameLen = dataView.getInt32(offset, true);
+      offset += 4;
+      console.log('Material name length:', nameLen);
+      if (nameLen < 0 || nameLen > 1000) {
+        throw new Error('Invalid name length: ' + nameLen);
+      }
+      const name = new TextDecoder().decode(new Uint8Array(arrayBuffer, offset, nameLen));
+      offset += nameLen;
+      console.log('Material name:', name);
+
+      const color = [
+        dataView.getFloat32(offset, true),
+        dataView.getFloat32(offset + 4, true),
+        dataView.getFloat32(offset + 8, true)
+      ];
+      offset += 12;
+      console.log('Base Color:', color);
+      if (color.some(c => c < 0 || c > 1 || isNaN(c))) {
+        throw new Error('Invalid Base Color: ' + color);
+      }
+
+      const base64Len = dataView.getInt32(offset, true);
+      offset += 4;
+      console.log('Base64 length:', base64Len);
+      let texture = null;
+      if (base64Len > 0) {
+        if (base64Len > 10000000) {
+          throw new Error('Base64 length too large: ' + base64Len);
+        }
+        const base64Data = new TextDecoder().decode(new Uint8Array(arrayBuffer, offset, base64Len));
+        offset += base64Len;
+        const img = new Image();
+        img.src = `data:image/png;base64,${base64Data}`;
+        texture = new THREE.TextureLoader().load(img.src);
+        texture.flipY = false;
+        texture.colorSpace = 'srgb';
+        texture.magFilter = THREE.LinearFilter;
+        texture.minFilter = THREE.LinearFilter;
+        texture.wrapS = THREE.RepeatWrapping;
+        texture.wrapT = THREE.RepeatWrapping;
+        texture.needsUpdate = true;
+      } else if (base64Len < 0) {
+        throw new Error('Invalid base64 length: ' + base64Len);
+      }
+
+      const material = new THREE.MeshStandardMaterial({
+        color: new THREE.Color(...color),
+        map: texture
+      });
+      material.name = name;
+      return material;
+    }
+
+    async function loadMesh(url) {
+      const response = await fetch(url);
+      const arrayBuffer = await response.arrayBuffer();
+      const dataView = new DataView(arrayBuffer);
+      let offset = 0;
+
+      const meshNameLen = dataView.getInt32(offset, true);
+      offset += 4;
+      console.log('Mesh name length:', meshNameLen);
+      if (meshNameLen < 0 || meshNameLen > 1000) {
+        throw new Error('Invalid mesh name length: ' + meshNameLen);
+      }
+      const meshName = new TextDecoder().decode(new Uint8Array(arrayBuffer, offset, meshNameLen));
+      offset += meshNameLen;
+      console.log('Mesh name:', meshName);
+
+      const position = [
+        dataView.getFloat32(offset, true),
+        dataView.getFloat32(offset + 4, true),
+        dataView.getFloat32(offset + 8, true)
+      ];
+      offset += 12;
+      console.log('Position:', position);
+
+      const quaternion = [
+        dataView.getFloat32(offset, true),
+        dataView.getFloat32(offset + 4, true),
+        dataView.getFloat32(offset + 8, true),
+        dataView.getFloat32(offset + 12, true)
+      ];
+      offset += 16;
+      console.log('Quaternion:', quaternion);
+
+      const scale = [
+        dataView.getFloat32(offset, true),
+        dataView.getFloat32(offset + 4, true),
+        dataView.getFloat32(offset + 8, true)
+      ];
+      offset += 12;
+      console.log('Scale:', scale);
+
+      const parentNameLen = dataView.getInt32(offset, true);
+      offset += 4;
+      console.log('Parent name length:', parentNameLen);
+      if (parentNameLen < 0 || parentNameLen > 1000) {
+        throw new Error('Invalid parent name length: ' + parentNameLen);
+      }
+      const parentName = parentNameLen > 0 ? new TextDecoder().decode(new Uint8Array(arrayBuffer, offset, parentNameLen)) : null;
+      offset += parentNameLen;
+      console.log('Parent name:', parentName || 'None');
+
+      return {meshName, position, quaternion, scale, parentName};
+    }
+
+    try {
+      const [geometry, material, meshData] = await Promise.all([
+        loadSmartGeometry(geoUrl),
+        loadMaterial(matUrl),
+        loadMesh(meshUrl)
+      ]);
+
+      const mesh = new THREE.Mesh(geometry, material);
+      mesh.name = meshData.meshName;
+      mesh.position.set(...meshData.position);
+      mesh.quaternion.set(...meshData.quaternion);
+      mesh.scale.set(...meshData.scale);
+      mesh.rotation.set(0, 0, 0);
+
+      if (meshData.parentName) {
+        console.log(`Mesh ${meshData.meshName} has parent: ${meshData.parentName}`);
+      }
+
+      return mesh;
+    } catch (error) {
+      console.error('로드 중 오류 발생:', error);
+      return null;
+    }
+  }
+
+</script>
+
+</body>
+</html>

@@ -51,7 +51,7 @@ const ApplyLightMapComponent = () => {
   });
 
   const handleDragOver = (event: React.DragEvent<HTMLDivElement>) => {
-    console.log('HERE');
+    // console.log('HERE');
     event.preventDefault();
     event.stopPropagation();
     setIsDragging(true);

@@ -38,7 +38,7 @@ const XZPlane: React.FC = () => {
 
     const intersects = raycaster.intersectObject(meshRef.current);
 
-    console.log('here');
+    // console.log('here');
     if (intersects.length > 0) {
       const { point } = intersects[0];
 
