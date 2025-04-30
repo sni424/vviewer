@@ -10,7 +10,7 @@ const ContrastController = () => {
   return null;
 };
 
-const EnvController = () => {
+export const EnvController = () => {
   const { filelist, loading } = useFilelist();
   const [env, setEnv] = useAtom(envAtom);
 

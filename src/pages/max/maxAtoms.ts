@@ -1,5 +1,6 @@
 import { atom } from 'jotai';
 import { splitExtension } from 'src/scripts/utils.ts';
+import * as THREE from 'VTHREE';
 
 export type MaxFileType =
   | 'texture'
@@ -7,6 +8,8 @@ export type MaxFileType =
   | 'material'
   | 'geometry'
   | 'object';
+
+export type MaxFileData = THREE.MeshPhysicalMaterial | THREE.Texture | THREE.Source | THREE.BufferGeometry
 
 export function getMaxFileType(file: File): MaxFileType {
   const { ext } = splitExtension(file.name);
@@ -32,6 +35,7 @@ export type MaxFile = {
   originalFile: File;
   type: MaxFileType;
   loaded: boolean;
+  resultData?: MaxFileData | any;
 };
 
 export const maxFileAtom = atom<MaxFile[]>([]);
