@@ -1,10 +1,11 @@
 import { getVKTX2Loader } from 'src/scripts/loaders/VKTX2Loader';
 import { THREE } from 'VTHREE';
-import Asset from '../Asset';
+import _Asset from '../_Asset';
 import { getTypedArray } from './AssetUtils';
 import { deserialize } from './Serializer';
 import { isVRemoteFile, VFile, VRemoteFile } from './VFile';
-import { VTexture } from './VTexture';
+import { VTexture, VTextureSource } from './VTexture';
+import Workers from './Workers';
 
 const TEXTURE_KEYS = ['VTexture', 'VDataTexture', 'VCompressedTexture'];
 
@@ -48,7 +49,7 @@ async function loadCompressedTexture(
 
 const handleArrayBuffer = async (data: any): Promise<ArrayBuffer> => {
   if (isVRemoteFile(data)) {
-    return Asset.buffer(data) as Promise<ArrayBuffer>;
+    return _Asset.buffer(data) as Promise<ArrayBuffer>;
   } else {
     return data as ArrayBuffer;
   }
@@ -160,12 +161,16 @@ async function imageBufferToImageBitmap(
   buffer: ArrayBuffer,
   // mimeType: string = 'image/png',
 ): Promise<ImageBitmap> {
+  const decompress = !true;
+
+  buffer = decompress ? await Workers.decompress(buffer) : buffer;
+
   const { data, width, height, type } = deserialize<{
     data: ArrayBuffer;
     width: number;
     height: number;
     type: string;
-  }>(buffer, true); // decompress
+  }>(buffer); // decompress
 
   const uint8Array = new Uint8ClampedArray(data);
   const imageData = new ImageData(uint8Array, width, height);
@@ -192,10 +197,21 @@ async function imageBufferToHTMLImgElement(
 }
 
 async function createCommonTexture(data: VTexture): Promise<THREE.Texture> {
-  const arrayBuffer = await handleArrayBuffer(data.image);
-  const bitmap = await imageBufferToImageBitmap(arrayBuffer!);
-
-  const texture = new THREE.Texture(bitmap);
+  let texture!: THREE.Texture;
+  const image = data.image as VTextureSource;
+  if (image.width && image.height) {
+    const { data: imageArrayBuffer, width, height } = image;
+    const arrayBuffer = await handleArrayBuffer(imageArrayBuffer);
+    const uint8Array = new Uint8ClampedArray(arrayBuffer);
+    const imageData = new ImageData(uint8Array, width, height);
+    const bitmap = await createImageBitmap(imageData);
+    texture = new THREE.Texture(bitmap);
+    // VTextureSource
+  } else {
+    const arrayBuffer = await handleArrayBuffer(data.image);
+    const bitmap = await imageBufferToImageBitmap(arrayBuffer!);
+    texture = new THREE.Texture(bitmap);
+  }
 
   if (data.uuid) texture.uuid = data.uuid;
   if (data.name) texture.name = data.name;
@@ -235,7 +251,7 @@ async function createCommonTexture(data: VTexture): Promise<THREE.Texture> {
 export default async function TextureLoader(
   file: VFile | VRemoteFile,
 ): Promise<THREE.Texture> {
-  return Asset.vfile<VFile<VTexture>>(file as any).then(async textureFile => {
+  return _Asset.vfile<VFile<VTexture>>(file as any).then(async textureFile => {
     if (!textureFile) {
       debugger;
     }

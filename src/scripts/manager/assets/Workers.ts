@@ -7,7 +7,7 @@ import {
   WorkerTaskDecompress,
   WorkerTaskExr,
   WorkerTaskFetch,
-} from './SingleWorker';
+} from './Worker';
 
 type TaskExr = WorkerTaskExr & {
   resolve: (params: {
@@ -83,7 +83,7 @@ export default class Workers {
 
   private constructor(concurrency = navigator.hardwareConcurrency ?? 4) {
     for (let i = 0; i < concurrency; i++) {
-      const worker = new Worker(new URL('./SingleWorker.ts', import.meta.url), {
+      const worker = new Worker(new URL('./Worker.ts', import.meta.url), {
         type: 'module',
       });
       worker.onmessage = this.onMessage.bind(this);

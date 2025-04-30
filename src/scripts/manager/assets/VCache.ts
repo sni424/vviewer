@@ -289,27 +289,32 @@ export default class VCache {
 
       if (target.promise) {
         // 1. payload의 밸류 업데이트
-        const proms = targetValue.loadingQueue;
+        const tasks = targetValue.loadingQueue;
 
-        if (proms.some(p => p.from === target.from)) {
+        if (tasks.some(p => p.from === target.from)) {
           // 이미 로딩 중인 promise가 있으면 리턴
           return this;
         } else {
-          // 같은 from이 아닌데 중복된 promise 세팅하면 일단 에러
-          if (proms.some(p => p.destination === target.destination)) {
+          // 서로 다른 promise가 같은 destination을 가리키고 있는 경우
+          if (tasks.some(p => p.destination === target.destination)) {
+            const existingTask = tasks.find(
+              p => p.destination === target.destination,
+            );
             console.error(
-              '같은 from이 아닌데 중복된 promise 세팅하면 일단 에러',
+              '서로 다른 promise가 같은 destination을 가리키고 있는 경우',
+              existingTask,
+              target,
               this,
               targetValue,
-              target,
             );
+            debugger;
             // debugger;
             // throw new Error('중복된 promise입니다');
           }
         }
 
         // 로딩 큐에 push
-        proms.push(target);
+        tasks.push(target);
 
         target.promise = target.promise.then(result => {
           if (!result) {

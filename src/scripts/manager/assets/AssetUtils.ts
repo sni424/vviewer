@@ -2,8 +2,10 @@ import { sha1 } from 'hash-wasm';
 import objectHash from 'object-hash';
 import { type THREE } from 'VTHREE';
 import {
+  DataArray,
   isDataArray,
   TYPED_ARRAY_NAME,
+  TYPED_ARRAY_NAMES,
   TYPED_ARRAYS,
   TypedArray,
 } from './AssetTypes';
@@ -142,6 +144,14 @@ export function getTypedArray(type: string, buffer: ArrayBuffer): TypedArray {
   return new (TYPED_ARRAYS as any)[type](buffer);
 }
 
+export function getDataArray(type: string, buffer: ArrayBuffer): DataArray {
+  if (TYPED_ARRAY_NAMES.includes(type as any)) {
+    return getTypedArray(type, buffer);
+  } else {
+    return buffer;
+  }
+}
+
 export function cloneArrayBuffer(buffer: ArrayBuffer): ArrayBuffer {
   const copy = new ArrayBuffer(buffer.byteLength);
   new Uint8Array(copy).set(new Uint8Array(buffer));
@@ -164,4 +174,25 @@ export function isThreeObject(obj: any): boolean {
     // obj.isBufferAttribute ||
     // obj.isInterleavedBufferAttribute,
   );
+}
+
+export function iterateWithPredicate<T = any>(
+  obj: any,
+  predicate: (val: any) => boolean,
+  callback: (value: T, path: string[]) => void,
+  path: string[] = [],
+) {
+  if (predicate(obj)) {
+    callback(obj, path);
+  }
+
+  if (Array.isArray(obj)) {
+    obj.forEach((item, index) =>
+      iterateWithPredicate(item, predicate, callback, [...path, String(index)]),
+    );
+  } else if (obj && typeof obj === 'object' && !isDataArray(obj)) {
+    for (const [key, val] of Object.entries(obj)) {
+      iterateWithPredicate(val, predicate, callback, [...path, key]);
+    }
+  }
 }

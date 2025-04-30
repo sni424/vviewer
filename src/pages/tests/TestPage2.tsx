@@ -3,21 +3,21 @@ import { Canvas, useThree } from '@react-three/fiber';
 import { useEffect, useRef, useState } from 'react';
 import ObjectViewer from 'src/components/ObjectViewer';
 import VGLTFLoader from 'src/scripts/loaders/VGLTFLoader';
-import Asset, { VUploadable } from 'src/scripts/manager/Asset';
-import { AssetMgr } from 'src/scripts/manager/assets/AssetMgr';
-import ObjectLoader from 'src/scripts/manager/assets/ObjectLoader';
-import { deserialize, serialize } from 'src/scripts/manager/assets/Serializer';
+import _Asset from 'src/scripts/manager/_Asset';
+import { _AssetMgr } from 'src/scripts/manager/assets/_AssetMgr';
+import { DataArray, isDataArray } from 'src/scripts/manager/assets/AssetTypes';
+import { iterateWithPredicate } from 'src/scripts/manager/assets/AssetUtils';
 import {
   isVFile,
   isVRemoteFile,
   VFile,
   VRemoteFile,
 } from 'src/scripts/manager/assets/VFile';
-import Workers from 'src/scripts/manager/assets/Workers';
+import { VObject3D } from 'src/scripts/manager/assets/VObject3D';
 import { THREE } from 'VTHREE';
 import useTestModelDragAndDrop from './useTestModelDragAndDrop';
 
-const mgr = AssetMgr;
+const mgr = _AssetMgr;
 const print = console.log;
 interface UploadResponse {
   message: string;
@@ -25,7 +25,7 @@ interface UploadResponse {
   error?: string;
 }
 
-const getFilePath = (path: string) => `${AssetMgr.projectId}/${path}`;
+const getFilePath = (path: string) => `${_AssetMgr.projectId}/${path}`;
 
 // obj를 재귀적으로 돌면서 내부의 ArrayBuffer만 Uint8Array로 변환하는 함수
 // ArrayBuffer을 mongodb에 저장하면 데이터가 날아가서 일단 Uint8Array로 변환
@@ -72,11 +72,20 @@ async function upload(
     // Convert JSON object to a Blob
     const jsonString = JSON.stringify(convertArrayBufferToUint8Array(data));
     file = new File([jsonString], filepath, { type: 'application/json' });
-  } else {
+  } else if (isDataArray(data)) {
     // Create a Blob from ArrayBuffer
-    file = new File([data as ArrayBuffer], filepath, {
-      type: 'application/octet-stream',
-    });
+    if (isTypedArray(data)) {
+      file = new File([(data as TypedArray).buffer as ArrayBuffer], filepath, {
+        type: 'application/octet-stream',
+      });
+    } else {
+      // ArrayBuffer
+      file = new File([data as ArrayBuffer], filepath, {
+        type: 'application/octet-stream',
+      });
+    }
+  } else {
+    throw new Error('Invalid data type. Expected ArrayBuffer or TypedArray.');
   }
 
   formData.append('data', file);
@@ -87,58 +96,9 @@ async function upload(
     method: 'POST',
     body: formData,
     headers: {
-      Accept: 'application/json',
+      Accept: 'multipart/form-data',
     },
   }).then(res => res.json() as Promise<UploadResponse>);
-}
-
-async function download<T>(
-  id: string,
-  type?: 'json' | 'binary',
-  inflate?: boolean,
-): Promise<T>;
-async function download<T>(
-  param: string | VFile | VRemoteFile,
-  type?: 'json' | 'binary',
-  inflate?: boolean,
-) {
-  if (typeof param === 'string') {
-    if (!type || type === 'json') {
-      let retval = fetch(
-        `http://localhost:4000/retrieve?filepath=${getFilePath(param)}`,
-      ).then(res => res.json());
-      if (!type) {
-        retval = retval.catch(() => {
-          return Workers.fetch(`/${AssetMgr.projectId}/${param}`, inflate) as T;
-        });
-      }
-      return retval;
-    } else {
-      // type === 'binary'
-      return Workers.fetch(`/${getFilePath(param)}`, inflate) as T;
-    }
-  }
-
-  const obj = param as VFile | VRemoteFile;
-
-  if (isVFile(obj)) {
-    return obj as T;
-  }
-
-  if (isVRemoteFile(obj)) {
-    const file = obj as VRemoteFile;
-    const isJson = file.format === 'json';
-
-    if (isJson) {
-      return fetch(`http://localhost:4000/retrieve?filepath=${file.id}`).then(
-        res => res.json() as Promise<T>,
-      );
-    } else {
-      return Workers.fetch(`/${AssetMgr.projectId}/${obj.id}`, inflate) as T;
-    }
-  }
-
-  throw new Error('Invalid object type');
 }
 
 type TypedArray =
@@ -279,7 +239,7 @@ function TestPage() {
   const [useEnv, setUseEnv] = useState(true);
   const [loadedMat, setLoadedMat] = useState<THREE.Material>();
   const sceneRef = useRef<THREE.Scene>(new THREE.Scene());
-  const [asset, setAsset] = useState<Asset[]>([]);
+  const [asset, setAsset] = useState<_Asset[]>([]);
   const { files, isDragging, handleDragOver, handleDragLeave, handleDrop } =
     useTestModelDragAndDrop();
   const [loaded, setLoaded] = useState<any[]>();
@@ -302,7 +262,7 @@ function TestPage() {
     const assets = new Set(
       files.map(file => {
         console.log('Asset.from called');
-        return Asset.from(file);
+        return _Asset.from(file);
       }),
     );
     print(assets);
@@ -400,8 +360,9 @@ function TestPage() {
               ).then(groups => {
                 const end = performance.now();
                 console.log('glb 로드 완료', end - start, 'ms', groups);
-                groups.forEach(g => g.position.addScalar(2));
-                sceneRef.current.add(...groups);
+                // groups.forEach(g => g.position.addScalar(2));
+                const meshes = groups.map(g => g.flattendMeshes()).flat();
+                sceneRef.current.add(...meshes);
               });
             }}
           >
@@ -430,77 +391,99 @@ function TestPage() {
             onClick={async () => {
               const start = performance.now();
               sceneRef.current.name = 'main';
+
+              // const meshes = sceneRef.current.flattendMeshes();
+              // debugger;
+              // const assets = await Promise.all(
+              //   meshes.map(m => m.toAsset().then(a => a.result)),
+              // );
+              // console.log(assets);
+
               sceneRef.current.toAsset().then(async asset => {
                 const end = performance.now();
                 console.log('씬 toAsset()', end - start, 'ms');
                 console.log(asset.vfile);
                 // debugger;
 
-                const downloadStart = performance.now();
-                const uploadable = (await asset.download())!;
-                const downloadEnd = performance.now();
-                const { self, children } = uploadable;
-                console.log('씬 다운로드', downloadEnd - downloadStart, 'ms');
-                console.log({ self, children });
+                const remotes: [VRemoteFile, VFile | DataArray][] = [];
+                const getArrayBufferRecursive = (
+                  vfiles: VFile<VObject3D>[],
+                ) => {
+                  const innerVFiles: VFile[] = [];
+                  vfiles.forEach(vfile => {
+                    if (!isVFile(vfile)) {
+                      return;
+                    }
+                    iterateWithPredicate(
+                      vfile,
+                      o => isVRemoteFile(o),
+                      (value: VRemoteFile) => {
+                        let result: VFile | DataArray;
+                        if (value.format === 'json') {
+                          const innerVfile = _Asset.from(value).vfile!;
+                          if (!isVFile(innerVfile)) {
+                            debugger;
+                          }
+                          innerVFiles.push(innerVfile);
+                          result = innerVfile;
+                        } else {
+                          result = _Asset.from(value).result;
+                        }
 
-                // const remotefiles = children.map(c => c.vremotefile);
-                // const vscene: VFile<VScene> = {
-                //   isVFile: true,
-                //   id: self.vremotefile.id,
-                //   type: 'VScene',
-                //   data: {
-                //     object: self.vremotefile,
-                //   },
-                // };
-                // const vproject: VFile<VProject> = {
-                //   isVFile: true,
-                //   id: AssetMgr.projectId,
-                //   type: 'VProject',
-                //   data: {
-                //     files: remotefiles,
-                //     rootScenes: [vscene],
-                //     option: {
-                //       defaultOption: {
-                //         isVFile: true,
-                //         id: 'default',
-                //         type: 'VOption',
-                //         data: { scene: vscene } as VOption,
-                //       } as VFile<VOption>,
-                //       options: [] as VLoadable<VOption>[],
-                //     } as VProject['option'],
-                //   } as VProject,
-                // };
-
-                // const inflateStart = performance.now();
-                // const inflated = await AssetMgr.inflate(
-                //   uploadable.self.data as VFile,
-                // );
-                // const inflateEnd = performance.now();
-                // console.log(
-                //   'inflate',
-                //   inflateEnd - inflateStart,
-                //   'ms',
-                //   inflated,
-                // );
-
-                const compress = true;
-                const inflated = await Asset.from(
-                  uploadable.self.data,
-                ).inflate();
-                print({ inflated });
-                const arr = serialize(inflated, compress);
-
-                // !TODO : TextureLoader 등에서 VRemoteFile대신 DataArray들어올 때 핸들링
-
-                console.log('start upload');
-                upload('scene_test.vo', arr)
-                  .then(res => {
-                    console.log(res);
-                  })
-                  .finally(() => {
-                    const end = performance.now();
-                    console.log('씬 업로드', end - downloadStart, 'ms');
+                        remotes.push([value, result]);
+                      },
+                    );
                   });
+                  if (innerVFiles.length === 0) {
+                    return;
+                  }
+                  getArrayBufferRecursive(innerVFiles);
+                };
+                getArrayBufferRecursive([asset.vfile]);
+
+                remotes.push([asset.vremotefile, asset.vfile]);
+                console.log(remotes);
+                console.log(asset.id);
+
+                const proms: Promise<any>[] = [];
+                remotes.forEach(([remote, data]) => {
+                  proms.push(
+                    upload(
+                      remote.id,
+                      data,
+                      remote.format === 'json' ? 'json' : 'binary',
+                    ),
+                  );
+                });
+                Promise.all(proms).then(res => {
+                  console.log(res);
+                });
+
+                // const downloadStart = performance.now();
+                // const uploadable = (await asset.download())!;
+                // const downloadEnd = performance.now();
+                // const { self, children } = uploadable;
+                // console.log('씬 다운로드', downloadEnd - downloadStart, 'ms');
+                // console.log({ self, children });
+
+                // const compress = false;
+                // const inflated = await Asset.from(
+                //   uploadable.self.data,
+                // ).inflate();
+                // print({ inflated });
+                // const arr = serialize(inflated, compress);
+
+                // // !TODO : TextureLoader 등에서 VRemoteFile대신 DataArray들어올 때 핸들링
+
+                // console.log('start upload');
+                // upload('scene_test.vo', arr)
+                //   .then(res => {
+                //     console.log(res);
+                //   })
+                //   .finally(() => {
+                //     const end = performance.now();
+                //     console.log('씬 업로드', end - downloadStart, 'ms');
+                //   });
               });
             }}
           >
@@ -508,64 +491,45 @@ function TestPage() {
           </button>
           <button
             onClick={async () => {
-              type Response = { self: VUploadable; children: VUploadable[] };
-              download<ArrayBuffer>('scene_test.vo', 'binary', true)
-                .then(deserialize<VFile>)
-                .then(async res => {
-                  console.log(res);
-                  const obj = await ObjectLoader(res);
-                  print({ obj });
-                  sceneRef.current.add(obj);
+              const objId = 'b6882bfe8520994cbf7eec5abb238108fdbd6204';
+
+              {
+                // const start = performance.now();
+                // const graph = await download<DownloadWithChildren>(objId, {
+                //   type: 'json',
+                //   withChildren: true,
+                // });
+                // const end = performance.now();
+                // console.log('다운로드 완료', end - start, 'ms', graph);
+                // const { self, vfiles, vremotefiles } = graph;
+                // Asset.from(self);
+                // vfiles.forEach(Asset.from);
+                // vremotefiles.forEach(Asset.from);
+              }
+
+              _Asset
+                .from(objId)
+                .load<THREE.Group>()
+                .then(g => {
+                  console.log(g);
                 });
-              // download<Response>('scene_test.json').then(res => {
-              //   console.log(res);
-              //   const { self, children } = res;
-              //   children.forEach(c => {
-              //     if (c.vremotefile.format === 'json') {
-              //       return;
-              //     }
-              //     const format = c.vremotefile.format;
-              //     if (TYPED_ARRAY_NAMES.includes(format as any)) {
-              //       const org = c.data as { [key: number]: number };
-              //       const length = Object.keys(org).length;
 
-              //       const arr = new (TYPED_ARRAYS as any)[format](length);
-
-              //       // Assign values to Float32Array (assume keys are sequential)
-              //       for (let i = 0; i < length; i++) {
-              //         if (i in org) {
-              //           arr[i] = org[i];
-              //         } else {
-              //           throw new Error(`Missing key ${i} in input object`);
-              //         }
-              //       }
-
-              //       // Return the underlying ArrayBuffer
-              //       c.data = arr;
-              //     } else if (format === 'buffer') {
-              //       const org = c.data as { [key: number]: number };
-              //       const length = Object.keys(org).length;
-
-              //       const arr = new Uint8Array(length);
-
-              //       // Assign values to Float32Array (assume keys are sequential)
-              //       for (let i = 0; i < length; i++) {
-              //         if (i in org) {
-              //           arr[i] = org[i];
-              //         } else {
-              //           throw new Error(`Missing key ${i} in input object`);
-              //         }
-              //       }
-
-              //       // Return the underlying ArrayBuffer
-              //       c.data = arr.buffer;
-              //     }
-              //   });
-              //   console.log(res);
-              // });
+              // debugger;
             }}
           >
             VO 로드
+          </button>
+          <button
+            onClick={() => {
+              const vremote = {
+                isVRemoteFile: true,
+                id: '0938de5d-3f9a-4cee-90a6-5834e3a53649',
+                format: 'Float32Array',
+              };
+              _Asset.from(vremote);
+            }}
+          >
+            Array로드
           </button>
           <button
             onClick={() => {
@@ -686,43 +650,34 @@ function TestPage() {
           </button>
           <button
             onClick={() => {
-              const id = 'test.json';
-              const binaryId = 'test.bin';
-              const obj = {
-                hi: 'hod',
-              };
-
-              // json 테스트
-              // {
-              //   upload(id, obj).then(res => {
-              //     if (res.error) {
-              //       console.error(res.error);
-              //     } else {
-              //       download(id).then(res => {
-              //         console.log('downloaded : ', res);
-              //       });
-              //     }
-              //   });
-              // }
-
-              // binary 테스트
-              {
-                const buffer = new ArrayBuffer(8);
-                const typedArray = new Uint8Array(buffer);
-                typedArray.set([1, 2, 3, 4, 5, 6, 7, 8]);
-                upload(binaryId, typedArray).then(res => {
-                  if (res.error) {
-                    console.error(res.error);
-                  } else {
-                    download(binaryId, 'binary').then(res => {
-                      console.log('downloaded : ', res);
-                    });
-                  }
-                });
-              }
+              const urls = [
+                // 'MAINBED _HG.glb',
+                // 'MAINBED _M.glb',
+                // 'MAINBED _M2.glb',
+                // 'MAINBED..base.door.glb',
+                // 'MAINBED..base.glb',
+                // 'MAINBED..PT.glb',
+                // 'option 라이브월 base E.glb',
+                // 'option 라이브월 base.glb',
+                // 'option 라이브월 base2.glb',
+                // 'Pantry_base.glb',
+                '주방base.001.glb',
+                '주방base.002.glb',
+                '주방base.M.glb',
+                '주방DP METAL.glb',
+                '주방DP METAL2.glb',
+                '주방DP 냉장고수납장.glb',
+              ];
+              const loader = new VGLTFLoader();
+              urls.forEach(url =>
+                loader.load(url, gltf => {
+                  console.log(gltf.scene);
+                  sceneRef.current.add(gltf.scene);
+                }),
+              );
             }}
           >
-            업로드/다운로드 테스트
+            GLB쌩로드
           </button>
         </div>
         <ObjectViewer data={asset}></ObjectViewer>

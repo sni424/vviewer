@@ -1,9 +1,13 @@
 import VGLTFLoader from 'src/scripts/loaders/VGLTFLoader';
 import VTextureLoader from 'src/scripts/loaders/VTextureLoader';
-import Asset from '../Asset';
-import { iterateObjectWithPredicate } from './AssetMgr copy';
-import { TYPED_ARRAY_NAMES, TypedArray } from './AssetTypes';
-import { awaitAll, getBufferFormat, getTypedArray } from './AssetUtils';
+import _Asset, { download } from '../_Asset';
+import { isDataArray, TypedArray } from './AssetTypes';
+import {
+  awaitAll,
+  getBufferFormat,
+  getDataArray,
+  iterateWithPredicate,
+} from './AssetUtils';
 import BufferGeometryLoader from './BufferGeometryLoader';
 import Hasher from './Hasher';
 import MaterialLoader from './MaterialLoader';
@@ -21,10 +25,10 @@ import { isVFile, isVRemoteFile, VFile, VRemoteFile } from './VFile';
 import Workers from './Workers';
 
 const SERVER_URL = '';
-const getFilePath = (path: string) => `${AssetMgr.projectId}/${path}`;
+const getFilePath = (path: string) => `${_AssetMgr.projectId}/${path}`;
 
 type ProjectId = string;
-export class AssetMgr {
+export class _AssetMgr {
   static async makeRemoteFilePrecise(
     buffer: ArrayBufferLike | TypedArray,
   ): Promise<VRemoteFile> {
@@ -94,7 +98,12 @@ export class AssetMgr {
           Object.entries(obj).map(async ([key, value]) => {
             if (isVFile(value) || isVRemoteFile(value)) {
               obj[key] = await this.inflate(value as VFile);
-            } else if (Boolean(obj) && typeof obj === 'object') {
+            } else if (
+              Boolean(value) &&
+              typeof value === 'object' &&
+              !isDataArray(value)
+            ) {
+              console.log('value', value);
               await recursvielyInflate(value);
             }
           }),
@@ -103,7 +112,7 @@ export class AssetMgr {
 
       await recursvielyInflate(retval);
       console.log('count', count);
-      iterateObjectWithPredicate(retval, isVRemoteFile, (value, path) => {
+      iterateWithPredicate(retval, isVRemoteFile, (value, path) => {
         // debugger;
       });
       // debugger;
@@ -202,6 +211,11 @@ export class AssetMgr {
     ...valueCandidate: Promisable<PayloadValue<T>>[]
   ): void {
     this.cache.set(idCandidate as any, ...valueCandidate);
+    const cached = this.cache.get(idCandidate)!;
+    if (!cached) {
+      // 위에서 cache.set을 불러서 이게 없으면 안된다
+      debugger;
+    }
 
     // 만약 똑같은
 
@@ -225,8 +239,12 @@ export class AssetMgr {
       }
     }
 
-    const vfile = valueCandidate.find(v => isVFile(v)) as VFile;
-    const vremote = valueCandidate.find(v => isVRemoteFile(v)) as VRemoteFile;
+    const vfile = isVFile(idCandidate)
+      ? (idCandidate as VFile)
+      : (valueCandidate.find(v => isVFile(v)) as VFile);
+    const vremote = isVRemoteFile(idCandidate)
+      ? (idCandidate as VRemoteFile)
+      : (valueCandidate.find(v => isVRemoteFile(v)) as VRemoteFile);
     const cachedVRemote = this.cache.get(idCandidate)?.payload?.vremotefile;
 
     if (vfile && !cachedVRemote) {
@@ -239,27 +257,55 @@ export class AssetMgr {
       this.cache.set(vfile.id, vremotefile);
     }
 
-    if (vremote) {
-      const cached = this.cache.get(vremote);
-      const alreadyDownloading = cached && Boolean(cached.payload.inputBuffer);
+    if (vfile) {
+      iterateWithPredicate(vfile, isVRemoteFile, value => {
+        _AssetMgr.set(value);
+      });
+    }
 
-      if (!alreadyDownloading) {
-        const id = vremote.id;
-        const inflate = false; //  !나중에 압축들어가면 그 때
-        const prom = Workers.fetch(this.fileUrl(id), inflate).then(buffer => {
-          if (TYPED_ARRAY_NAMES.includes(vremote.format as any)) {
-            return getTypedArray(vremote.format as any, buffer);
-          }
-          return buffer;
-        });
-        this.cache.set(
-          idCandidate as string,
-          {
-            destination: 'result',
-            promise: prom,
-          } as CachePayloadTarget,
+    if (vremote) {
+      if (vremote.format === 'json') {
+        const needsDownload = !(
+          cached.payload.vfile ||
+          cached.loadingQueue.some(q => q.destination === 'vfile')
         );
-        // !TODO : AssetMgr.load 구현
+
+        if (needsDownload) {
+          const prom = download(vremote, {
+            type: 'json',
+          });
+          this.cache.set(vremote.id, {
+            destination: 'vfile',
+            from: vremote.id + 'initial-download',
+            promise: prom,
+          } as CachePayloadTarget);
+        }
+      } else {
+        const needsDownload =
+          cached &&
+          !cached.payload.inputBuffer &&
+          !cached.payload.result &&
+          !cached.loadingQueue.some(
+            q => q.destination === 'inputBuffer' || q.destination === 'result',
+          );
+
+        if (needsDownload) {
+          const inflate = false; //  !나중에 압축들어가면 그 때
+          const prom = download(vremote, {
+            type: 'binary',
+            inflate,
+          }).then(buffer => {
+            return getDataArray(vremote.format as any, buffer);
+          });
+          this.cache.set(
+            idCandidate as string,
+            {
+              destination: 'result',
+              from: vremote.id + 'initial-download',
+              promise: prom,
+            } as CachePayloadTarget,
+          );
+        }
       }
     }
   }
@@ -278,7 +324,7 @@ export class AssetMgr {
         if (!type) {
           retval = retval.catch(() => {
             return Workers.fetch(
-              `/${AssetMgr.projectId}/${param}`,
+              `/${_AssetMgr.projectId}/${param}`,
               inflate,
             ) as T;
           });
@@ -305,25 +351,25 @@ export class AssetMgr {
           res => res.json() as Promise<T>,
         );
       } else {
-        return Workers.fetch(`/${AssetMgr.projectId}/${obj.id}`, inflate) as T;
+        return Workers.fetch(`/${_AssetMgr.projectId}/${obj.id}`, inflate) as T;
       }
     }
 
     throw new Error('Invalid object type');
   }
 
-  static get<T = any>(id: FileID): Asset<T> | undefined;
-  static get<T = any>(buffer: ArrayBuffer): Asset<T> | undefined;
-  static get<T = any>(file: File): Asset<T> | undefined;
-  static get<T = any>(vfile: VFile): Asset<T> | undefined;
-  static get<T = any>(vremotefile: VRemoteFile): Asset<T> | undefined;
-  static get<T = any>(result: T): Asset<T> | undefined;
-  static get<T = any>(query: FileID | PayloadValue<T>): Asset<T> | undefined {
+  static get<T = any>(id: FileID): _Asset<T> | undefined;
+  static get<T = any>(buffer: ArrayBuffer): _Asset<T> | undefined;
+  static get<T = any>(file: File): _Asset<T> | undefined;
+  static get<T = any>(vfile: VFile): _Asset<T> | undefined;
+  static get<T = any>(vremotefile: VRemoteFile): _Asset<T> | undefined;
+  static get<T = any>(result: T): _Asset<T> | undefined;
+  static get<T = any>(query: FileID | PayloadValue<T>): _Asset<T> | undefined {
     const { id } = this.cache.get(query as any) ?? {};
     if (!id) {
       return undefined;
     } else {
-      return Asset.fromId(id);
+      return _Asset.from(query);
     }
   }
 
@@ -355,11 +401,18 @@ export class AssetMgr {
       '.ktx2',
       '.hdr',
     ].some(ext => fname.toLowerCase().endsWith(ext));
+
     // case1. glb
     if (isGlb) {
-      const prom = VGLTFLoader.instance
-        .parseAsync(buffer, fname)
-        .then(gltf => gltf.scene);
+      const prom = VGLTFLoader.instance.parseAsync(buffer, fname).then(gltf => {
+        const scene = gltf.scene;
+        scene.traverse(o => {
+          if (o.asMesh.isMesh) {
+            o.toAsset();
+          }
+        });
+        return gltf.scene;
+      });
       const cacheProm: CachePayloadTarget = {
         destination: 'result',
         from: file,
@@ -453,30 +506,30 @@ export class AssetMgr {
       }
 
       // remotefile만 있고 vfile은 로딩이 안 된 경우
-      if (vremotefile && !vfile) {
-        const { id, format } = vremotefile;
+      // if (vremotefile && !vfile) {
+      //   const { id, format } = vremotefile;
 
-        if (format === 'json') {
-          const prom = fetch(this.fileUrl(id)).then(res => res.json());
+      //   if (format === 'json') {
+      //     const prom = fetch(this.fileUrl(id)).then(res => res.json());
 
-          this.cache.set(cached.id, {
-            destination: 'vfile',
-            from: vremotefile,
-            promise: prom,
-          } as CachePayloadTarget);
-        } else {
-          const prom = Workers.fetch(this.fileUrl(id));
+      //     this.cache.set(cached.id, {
+      //       destination: 'vfile',
+      //       from: vremotefile,
+      //       promise: prom,
+      //     } as CachePayloadTarget);
+      //   } else {
+      //     const prom = Workers.fetch(this.fileUrl(id));
 
-          this.cache.set(cached.id, {
-            destination: 'result',
-            from: vremotefile,
-            promise: prom,
-          } as CachePayloadTarget);
-        }
+      //     this.cache.set(cached.id, {
+      //       destination: 'result',
+      //       from: vremotefile,
+      //       promise: prom,
+      //     } as CachePayloadTarget);
+      //   }
 
-        // vremote를 vfile로 로드했으니 다시 로드를 리턴
-        return this.load(query) as T | undefined;
-      }
+      //   // vremote를 vfile로 로드했으니 다시 로드를 리턴
+      //   return this.load(query) as T | undefined;
+      // }
 
       // case 1. VFile | VRemoteFile
       if (vfile) {

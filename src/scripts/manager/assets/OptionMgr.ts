@@ -1,6 +1,6 @@
 import { THREE } from 'VTHREE';
-import Asset from '../Asset';
-import { AssetMgr } from './AssetMgr';
+import _Asset from '../_Asset';
+import { _AssetMgr } from './_AssetMgr';
 import { VFile } from './VFile';
 import { VOption } from './VOption';
 import { VProject } from './VProject';
@@ -26,20 +26,20 @@ export default class OptionMgr {
       ...defaultLoadProjectOptions,
       ...options,
     };
-    AssetMgr.setProject(pid);
-    return AssetMgr.load<VFile<VProject>>(pid).then(async vfile => {
-      const project = Asset.vfile(pid)!;
+    _AssetMgr.setProject(pid);
+    return _AssetMgr.load<VFile<VProject>>(pid).then(async vfile => {
+      const project = _Asset.vfile(pid)!;
       if (!project) {
         throw new Error('Project not found');
       }
 
-      const dstScene = await AssetMgr.load<VOption>(
-        vfile?.data.option.defaultOption,
-      ).then(option => {
-        return AssetMgr.load<VFile<VScene>>(option?.scene).then(scene =>
-          AssetMgr.load<THREE.Scene>(scene?.data.object),
-        );
-      });
+      const dstScene = await _AssetMgr
+        .load<VOption>(vfile?.data.option.defaultOption)
+        .then(option => {
+          return _AssetMgr
+            .load<VFile<VScene>>(option?.scene)
+            .then(scene => _AssetMgr.load<THREE.Scene>(scene?.data.root));
+        });
       if (options.setToScene) {
         // this.switchScene();
       }

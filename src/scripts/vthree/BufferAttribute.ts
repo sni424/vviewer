@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { AssetMgr } from '../manager/assets/AssetMgr';
+import { _AssetMgr } from '../manager/assets/_AssetMgr';
 import {
   VBufferAttribute,
   VInterleavedBuffer,
@@ -23,7 +23,7 @@ declare module 'three' {
 }
 
 THREE.BufferAttribute.prototype.toAsset = function () {
-  const array = AssetMgr.makeRemoteFile(this.array);
+  const array = _AssetMgr.makeRemoteFile(this.array);
 
   const attributeData: VBufferAttribute = {
     itemSize: this.itemSize,
@@ -53,7 +53,7 @@ THREE.InterleavedBufferAttribute.prototype.toAsset = function () {
 THREE.InterleavedBuffer.prototype.toAsset = function () {
   const retval: VInterleavedBuffer = {
     uuid: this.uuid,
-    buffer: AssetMgr.makeRemoteFile(this.array.buffer),
+    buffer: _AssetMgr.makeRemoteFile(this.array.buffer),
     type: this.array.constructor.name,
     stride: this.stride,
   };

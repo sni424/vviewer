@@ -1,10 +1,11 @@
+import { FileID } from './AssetTypes';
 import { VLoadable } from './VFile';
 import { VOption } from './VOption';
 import { VScene } from './VScene';
 
 export interface VProject {
   option: {
-    defaultOption: VLoadable<VOption>;
+    defaultOption: FileID; // VOption.id
     options: VLoadable<VOption>[]; // -> VFile -> VOption
   };
   rootScenes: VLoadable<VScene>[]; // -> VFile -> VScene

@@ -43,8 +43,10 @@ const useTestModelDragAndDrop = () => {
   const [files, setFiles] = useState<File[]>([]);
 
   const handleDragOver = (event: React.DragEvent<HTMLDivElement>) => {
-    event.preventDefault();
-    setIsDragging(true);
+    if (event.dataTransfer.types.includes('Files')) {
+      event.preventDefault(); // Allow dropping files
+      setIsDragging(true);
+    }
   };
 
   const handleDragLeave = () => {
@@ -81,7 +83,8 @@ const useTestModelDragAndDrop = () => {
           //     }),
           //   );
 
-          setFiles(prev => [...prev, ...filteredFiles]);
+          // setFiles(prev => [...prev, ...filteredFiles]);
+          setFiles(prev => filteredFiles);
         })
         .finally(() => {
           event.dataTransfer.clearData();

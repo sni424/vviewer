@@ -1,5 +1,5 @@
 import { THREE } from 'VTHREE';
-import Asset from '../Asset';
+import _Asset from '../_Asset';
 import { isDataArray, TypedArray } from './AssetTypes';
 import { getTypedArray } from './AssetUtils';
 import {
@@ -16,7 +16,7 @@ const handleArray = async (data: any): Promise<TypedArray> => {
   } else {
     return getTypedArray(
       (data as VBufferAttribute).type,
-      await Asset.result(data),
+      await _Asset.result(data),
     );
   }
 };

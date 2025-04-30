@@ -1,13 +1,13 @@
 import { type THREE } from 'VTHREE';
-import { VAssetType } from './AssetTypes';
-import { isVFile, VLoadable } from './VFile';
+import { DataArray, VAssetType } from './AssetTypes';
+import { isVFile, VLoadable, VRemoteFile } from './VFile';
 
 // TextureJSON에서 image만 변경
 export interface VTexture {
   uuid: string;
   name: string;
 
-  image: VLoadable;
+  image: VLoadable | VTextureSource;
   width?: number; // VDataTexture에서 사용
   height?: number; // VDataTexture에서 사용
   arrayType?: string; // VDataTexture에서 사용
@@ -51,3 +51,10 @@ export const VTextureTypes: VAssetType[] = [
 export const isVTextureFile = (file?: any): boolean => {
   return isVFile(file) && VTextureTypes.includes(file?.type);
 };
+
+export interface VTextureSource {
+  data: VRemoteFile | DataArray;
+  type: string;
+  width: number;
+  height: number;
+}

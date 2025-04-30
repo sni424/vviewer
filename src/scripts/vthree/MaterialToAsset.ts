@@ -1,12 +1,12 @@
 import * as THREE from 'three';
-import Asset from '../manager/Asset';
+import _Asset from '../manager/_Asset';
 import { awaitAll } from '../manager/assets/AssetUtils';
 import { VFile } from '../manager/assets/VFile';
 import VMaterial from '../manager/assets/VMaterial';
 
 declare module 'three' {
   interface Material {
-    toAsset(): Promise<Asset>;
+    toAsset(): Promise<_Asset>;
   }
 }
 
@@ -286,5 +286,5 @@ THREE.Material.prototype.toAsset = async function () {
   };
 
   const prom = await awaitAll(retval);
-  return Asset.from(prom);
+  return _Asset.from(prom);
 };

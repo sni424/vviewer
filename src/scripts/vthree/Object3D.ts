@@ -3,7 +3,7 @@ import objectHash from 'object-hash';
 import * as THREE from 'three';
 import type { TransformControlsPlane } from 'three/examples/jsm/controls/TransformControls.js';
 import { Layer } from '../../Constants';
-import Asset from '../manager/Asset';
+import _Asset from '../manager/_Asset';
 import { VFile } from '../manager/assets/VFile';
 import { VObject3D, VObject3DType } from '../manager/assets/VObject3D';
 import { resetGL } from '../utils';
@@ -38,6 +38,10 @@ declare module 'three' {
 
     meshes(): THREE.Mesh[];
 
+    // 부모의 transform을 적용한 최종 메시들
+    //! 카피된 mesh + 카피된 geometry임
+    flattendMeshes(): THREE.Mesh[];
+
     materials(): THREE.Material[];
 
     textures(): THREE.Texture[];
@@ -53,7 +57,7 @@ declare module 'three' {
     get hash(): string;
     updateHash(path?: string): string;
 
-    toAsset(): Promise<Asset>;
+    toAsset(): Promise<_Asset>;
   }
 }
 
@@ -491,5 +495,35 @@ THREE.Object3D.prototype.toAsset = async function () {
     data: object as VObject3D,
   };
 
-  return Asset.from(retval);
+  return _Asset.from(retval);
+};
+
+THREE.Object3D.prototype.flattendMeshes = function () {
+  const meshes: THREE.Mesh[] = [];
+
+  this.updateMatrixWorld(true); // 반드시! worldMatrix 업데이트 먼저
+
+  this.traverse(object => {
+    if ((object as THREE.Mesh).isMesh) {
+      const mesh = object as THREE.Mesh;
+
+      // 로컬 -> 글로벌 변환 적용
+      mesh.updateWorldMatrix(false, false);
+
+      // geometry를 변환된 matrixWorld를 적용해서 bake
+      const clonedGeometry = mesh.geometry.clone();
+      clonedGeometry.applyMatrix4(mesh.matrixWorld);
+
+      const newMesh = new THREE.Mesh(clonedGeometry, mesh.material);
+      newMesh.name = mesh.name;
+      newMesh.matrix.identity(); // 이제 로컬에서 변환 0
+      newMesh.position.set(0, 0, 0);
+      newMesh.rotation.set(0, 0, 0);
+      newMesh.scale.set(1, 1, 1);
+
+      meshes.push(newMesh);
+    }
+  });
+
+  return meshes;
 };

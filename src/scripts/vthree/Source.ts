@@ -1,15 +1,14 @@
 import * as THREE from 'three';
-import { AssetMgr } from '../manager/assets/AssetMgr';
+import { _AssetMgr } from '../manager/assets/_AssetMgr';
 import { DataArray } from '../manager/assets/AssetTypes';
-import { serialize } from '../manager/assets/Serializer';
-import { VRemoteFile } from '../manager/assets/VFile';
+import { VTextureSource } from '../manager/assets/VTexture';
 import Workers from '../manager/assets/Workers';
 import { getImageData } from '../utils';
 import { type VUserData } from './VTHREETypes';
 
 declare module 'three' {
   interface Source {
-    toAsset(): Promise<VRemoteFile>;
+    toAsset(): Promise<VTextureSource>;
 
     get vUserData(): VUserData;
     set vUserData(userData: Partial<VUserData>);
@@ -183,7 +182,7 @@ async function serializeImage(
   }
 }
 
-THREE.Source.prototype.toAsset = async function (): Promise<VRemoteFile> {
+THREE.Source.prototype.toAsset = async function (): Promise<VTextureSource> {
   const data = this.data;
   if (data !== null) {
     if (Array.isArray(data)) {
@@ -215,16 +214,21 @@ THREE.Source.prototype.toAsset = async function (): Promise<VRemoteFile> {
     } else {
       serializedImage = await serializeImage(data);
     }
-    const ab = serialize(
-      {
-        ...serializedImage,
-      },
-      true, // compress
-    );
+    // const ab = serialize(
+    //   {
+    //     ...serializedImage,
+    //   },
+    //   !true, // compress
+    // );
     // const des = deserialize(ab);
-    const remotefile = AssetMgr.makeRemoteFile(ab);
+    // const remotefile = AssetMgr.makeRemoteFile(ab);
 
-    return remotefile;
+    return {
+      data: _AssetMgr.makeRemoteFile(serializedImage.data),
+      type: serializedImage.type!,
+      width: serializedImage.width,
+      height: serializedImage.height,
+    };
   } else {
     throw new Error('Data가 없는 텍스쳐는 지원하지 않음');
   }

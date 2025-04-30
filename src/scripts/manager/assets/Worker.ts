@@ -101,7 +101,10 @@ self.onmessage = async (e: MessageEvent<WorkerTask>) => {
   if (action === 'fetch') {
     try {
       const { url, inflate } = data;
+      console.log('worker fetch url:', url);
       const buffer = await fetchArrayBuffer(url);
+      console.log('worker fetch buffer:', buffer);
+
       const result = inflate
         ? pako.inflate(new Uint8Array(buffer)).buffer
         : buffer;
