@@ -162,6 +162,10 @@ export interface VUserData {
   isVMaterial?: boolean; // VGLTFLoader로 로드 한 재질
 
   transmission?: number;
+
+  isMultiMaterial?: boolean;
+  originalMetalness?: number;
+  originalRoughness?: number;
 }
 
 export const MATERIAL_DEFINES = [

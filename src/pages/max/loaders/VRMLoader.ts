@@ -1,16 +1,18 @@
 import * as THREE from 'VTHREE';
 import { MaxLoader } from 'src/pages/max/loaders/MaxLoader.ts';
-import { MaxFile } from 'src/pages/max/maxAtoms.ts';
+import { MaxFile, MaxFileType } from 'src/pages/max/maxAtoms.ts';
 import { MaxCache } from 'src/pages/max/loaders/MaxCache.ts';
 import VRTLoader from 'src/pages/max/loaders/VRTLoader.ts';
 import { ColorJSON, MaxMaterialJSON } from 'src/pages/max/types';
 import { fileToJson } from 'src/scripts/atomUtils.ts';
+import { MaxConstants } from 'src/pages/max/loaders/MaxConstants.ts';
 
 type TargetParams = Partial<THREE.MeshPhysicalMaterialParameters>;
 
 class VRMLoader implements MaxLoader<THREE.MeshPhysicalMaterial> {
   constructor() {}
 
+  readonly type: MaxFileType = 'material';
   private textureLoader: VRTLoader = new VRTLoader();
 
   async load(maxFile: MaxFile): Promise<THREE.MeshPhysicalMaterial> {
@@ -20,7 +22,7 @@ class VRMLoader implements MaxLoader<THREE.MeshPhysicalMaterial> {
       return MaxCache.get(maxFile) as THREE.MeshPhysicalMaterial;
     }
 
-    if (type !== 'material') {
+    if (type !== this.type) {
       throw new Error('wrong Type of Max File Income for material ' + type);
     }
 
@@ -33,6 +35,8 @@ class VRMLoader implements MaxLoader<THREE.MeshPhysicalMaterial> {
     const others = Object.keys(json).filter(
       key => !key.toLowerCase().endsWith('map'),
     );
+
+    console.log(`others : ${others}`, );
 
     const physicalParams = {} as TargetParams;
 
@@ -50,6 +54,7 @@ class VRMLoader implements MaxLoader<THREE.MeshPhysicalMaterial> {
 
     for (const key of others) {
       const value = json[key as keyof MaxMaterialJSON];
+      console.log(`checking key ${key}, `, value);
       if (value !== null) {
         let resultValue: any;
         if (typeof value === 'object' && !Array.isArray(value)) {
@@ -76,15 +81,20 @@ class VRMLoader implements MaxLoader<THREE.MeshPhysicalMaterial> {
       }
     }
 
-    console.log(physicalParams);
+    console.log(json, physicalParams);
     physicalParams.depthWrite = true;
     physicalParams.depthTest = true;
     physicalParams.metalnessMap = physicalParams.roughnessMap;
 
-    physicalParams.transmission = 0;
-    physicalParams.color = new THREE.Color(1, 1, 1);
+    // physicalParams.transmission = 0;
+    // physicalParams.color = new THREE.Color(1, 1, 1);
 
     const material = new THREE.MeshPhysicalMaterial(physicalParams);
+
+    material.vUserData.originalColor = material.color.getHexString();
+    material.vUserData.originalMetalness = material.metalness;
+    material.vUserData.originalRoughness = material.roughness;
+
 
     maxFile.loaded = true;
     maxFile.resultData = material;
@@ -93,6 +103,40 @@ class VRMLoader implements MaxLoader<THREE.MeshPhysicalMaterial> {
 
     return material;
   }
+
+  async loadFromFileName(filename: string | null): Promise<THREE.MeshPhysicalMaterial> {
+    if (filename === null) {
+      throw new Error('filename is null');
+    }
+
+    if (MaxCache.hasByNameAndType(filename, this.type)) {
+      return MaxCache.getByNameAndType(filename, this.type) as THREE.MeshPhysicalMaterial;
+    }
+
+    const targetURL =
+      MaxConstants.MATERIAL_PATH +
+      encodeURIComponent(filename)
+        // S3는 공백을 + 로 반환하므로 맞춰줌 (optional)
+        .replace(/%20/g, '+');
+    console.log('fileName', filename);
+    console.log('targetURL', targetURL);
+    const file = await fetchToFile(targetURL, filename);
+    const maxFile = {
+      originalFile: file,
+      type: 'material',
+      loaded: false,
+    } as MaxFile;
+
+    return await this.load(maxFile);
+  }
+}
+
+async function fetchToFile(url: string, filename: string) {
+  const response = await fetch(url);
+  const mimeType =
+    response.headers.get('Content-Type') || 'application/octet-stream';
+  const blob = await response.blob();
+  return new File([blob], filename, { type: mimeType });
 }
 
 export default VRMLoader;

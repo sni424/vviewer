@@ -26,6 +26,18 @@ const MaxCache = {
     else return this.files.get(getKeyFromMaxFile(maxFile)) as MaxFileData;
   },
 
+  hasByNameAndType(name: string, type: MaxFileType): boolean {
+    return this.files.has({ name, type });
+  },
+
+  getByNameAndType(name: string, type: MaxFileType): MaxFileData | null {
+    if (this.hasByNameAndType(name, type)) {
+      return this.files.get({ name, type }) as MaxFileData;
+    } else {
+      return null;
+    }
+  },
+
   remove: function (maxFile: MaxFile): void {
     this.files.delete(getKeyFromMaxFile(maxFile));
   },

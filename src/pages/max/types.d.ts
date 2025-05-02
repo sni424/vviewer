@@ -68,3 +68,12 @@ export type ImageInfoJSON = {
   "height": number,
   "format": "KTX2" | string;
 }
+
+export type MaxObjectJSON = {
+  name: string;
+  position: [number, number, number];
+  rotation: [number, number, number, number];
+  scale: [number, number, number];
+  geometry: string | null;
+  material: string | null;
+}

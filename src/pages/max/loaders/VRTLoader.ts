@@ -8,7 +8,7 @@ import { MaxTextureJSON } from 'src/pages/max/types';
 import { fileToJson } from 'src/scripts/atomUtils.ts';
 
 class VRTLoader implements MaxLoader<THREE.Texture> {
-  static readonly type: MaxFileType = 'texture';
+  readonly type: MaxFileType = 'texture';
   private imageLoader: VRILoader = new VRILoader();
 
   constructor() {}
@@ -20,9 +20,9 @@ class VRTLoader implements MaxLoader<THREE.Texture> {
       return MaxCache.get(maxFile) as THREE.Texture;
     }
 
-    if (type !== VRTLoader.type) {
+    if (type !== this.type) {
       throw new Error(
-        'wrong Type of Max File Income for ' + VRTLoader.type + ' : ' + type,
+        'wrong Type of Max File Income for ' + this.type + ' : ' + type,
       );
     }
 
@@ -38,10 +38,12 @@ class VRTLoader implements MaxLoader<THREE.Texture> {
     // })
 
     texture.channel = json.channel;
-    texture.flipY = true;
+    texture.flipY = json.flipY;
     texture.colorSpace = json.colorSpace;
     texture.minFilter = THREE.LinearMipMapLinearFilter;
     texture.magFilter = THREE.LinearFilter;
+    texture.wrapT = THREE.RepeatWrapping;
+    texture.wrapS = THREE.RepeatWrapping;
     texture.unpackAlignment = 4;
 
     maxFile.loaded = true;
@@ -53,6 +55,14 @@ class VRTLoader implements MaxLoader<THREE.Texture> {
   }
 
   async loadFromFileName(filename: string): Promise<THREE.Texture> {
+    if (filename === null) {
+      throw new Error('filename is null');
+    }
+
+    if (MaxCache.hasByNameAndType(filename, this.type)) {
+      return MaxCache.getByNameAndType(filename, this.type) as THREE.Texture;
+    }
+
     const targetURL =
       MaxConstants.TEXTURE_PATH +
       encodeURIComponent(filename)

@@ -4,8 +4,6 @@ import MaxPageMain from 'src/pages/max/MaxPageMain.tsx';
 import MaxPageBelowController from 'src/pages/max/MaxPageBelowController.tsx';
 import useMaxFileManager from 'src/pages/max/UseMaxFileController.ts';
 import * as THREE from 'VTHREE';
-import { useSetAtom } from 'jotai';
-import { envAtom } from 'src/scripts/atoms.ts';
 
 const MaxPage = () => {
   const [rightBarExpanded, setRightBarExpanded] = useState(true);

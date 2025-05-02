@@ -34,7 +34,7 @@ const MaxPageMain = ({setScene}: {
         <PostProcess></PostProcess>
         {/*<ambientLight color={'#ffffff'} intensity={1}/>*/}
         <UnifiedCameraControls />
-        <mesh position={[0, 0, 0]}>
+        <mesh position={[0, 10, 0]}>
           <boxGeometry args={[4, 4, 4]}></boxGeometry>
           <meshStandardMaterial
             color={'#97efff'}
@@ -42,7 +42,7 @@ const MaxPageMain = ({setScene}: {
             roughness={0}
           ></meshStandardMaterial>
         </mesh>
-        <mesh position={[8, 0, 0]}>
+        <mesh position={[8, 10, 0]}>
           <sphereGeometry args={[2, 128, 64]}></sphereGeometry>
           <meshStandardMaterial
             color={'#97efff'}

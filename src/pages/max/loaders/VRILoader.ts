@@ -8,7 +8,7 @@ import { MaxCache } from 'src/pages/max/loaders/MaxCache.ts';
 import { MaxConstants } from 'src/pages/max/loaders/MaxConstants.ts';
 
 class VRILoader implements MaxLoader<THREE.Texture> {
-  static readonly type: MaxFileType = 'image';
+  readonly type: MaxFileType = 'image';
   private loader: VKTX2Loader = getVKTX2Loader();
 
   constructor() {}
@@ -20,9 +20,9 @@ class VRILoader implements MaxLoader<THREE.Texture> {
       return MaxCache.get(maxFile) as THREE.Texture;
     }
 
-    if (type !== VRILoader.type) {
+    if (type !== this.type) {
       throw new Error(
-        'wrong Type of Max File Income for ' + VRILoader.type + ' : ' + type,
+        'wrong Type of Max File Income for ' + this.type + ' : ' + type,
       );
     }
 
@@ -31,6 +31,14 @@ class VRILoader implements MaxLoader<THREE.Texture> {
   }
 
   async loadFromFileName(filename: string): Promise<THREE.Texture> {
+    if (filename === null) {
+      throw new Error('filename is null');
+    }
+
+    if (MaxCache.hasByNameAndType(filename, this.type)) {
+      return MaxCache.getByNameAndType(filename, this.type) as THREE.Texture;
+    }
+
     const targetURL = MaxConstants.IMAGE_PATH + encodeURIComponent(filename)
       // S3는 공백을 + 로 반환하므로 맞춰줌 (optional)
       .replace(/%20/g, '+');
