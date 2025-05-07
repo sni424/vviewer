@@ -221,21 +221,23 @@ const MaxPageRightBar = ({
         style={{ right: expanded ? 0 : '-25%' }}
       >
         <div className="relative p-2">
-          <button
-            className="border-none bg-transparent text-sm font-bold px-2"
-            onClick={() => setExpanded(false)}
-          >
-            {'>'}
-          </button>
-          <button onClick={loadAll}>모두 로드</button>
-          <button onClick={addAll}>geometry 전체 추가</button>
-          <button
-            onClick={() => {
-              setWireframe(pre => !pre);
-            }}
-          >
-            wireFrame {wireframe ? 'ON' : 'OFF'}
-          </button>
+          <div className="flex gap-x-1">
+            <button
+              className="border-none bg-transparent text-sm font-bold px-2"
+              onClick={() => setExpanded(false)}
+            >
+              {'>'}
+            </button>
+            <button onClick={loadAll}>모두 로드</button>
+            <button onClick={addAll}>geometry 전체 추가</button>
+            <button
+              onClick={() => {
+                setWireframe(pre => !pre);
+              }}
+            >
+              wireFrame {wireframe ? 'ON' : 'OFF'}
+            </button>
+          </div>
           <section className="p-1 my-1 text-sm">
             <div className="border-b border-gray-400 w-full p-1 flex gap-x-2 items-center">
               <strong className="text-sm">Files</strong>
@@ -288,19 +290,19 @@ const MaxPageRightBar = ({
               <div className="w-full flex flex-col gap-x-1 p-1">
                 <div className="flex gap-x-0.5 text-sm">
                   <strong className="text-sm">Metalness</strong>
-                  <input type="range" disabled={reflectMode === false} min={0} max={1} step={0.01} value={metalness} onChange={(e) => {
+                  <input type="range" disabled={!reflectMode} min={0} max={1} step={0.01} value={metalness} onChange={(e) => {
                     setMetalness(parseFloat(e.target.value))
                   }}/>
-                  <input type="number" disabled={reflectMode === false} min={0} max={1} step={0.01} value={metalness} onChange={(e) => {
+                  <input type="number" disabled={!reflectMode} min={0} max={1} step={0.01} value={metalness} onChange={(e) => {
                     setMetalness(parseFloat(e.target.value))
                   }}/>
                 </div>
                 <div className="flex gap-x-0.5 text-sm">
                   <strong className="text-sm">roughness</strong>
-                  <input type="range" disabled={reflectMode === false} min={0} max={1} step={0.01} value={roughness} onChange={(e) => {
+                  <input type="range" disabled={!reflectMode} min={0} max={1} step={0.01} value={roughness} onChange={(e) => {
                     setRoughness(parseFloat(e.target.value))
                   }}/>
-                  <input type="number" disabled={reflectMode === false} min={0} max={1} step={0.01} value={roughness} onChange={(e) => {
+                  <input type="number" disabled={!reflectMode} min={0} max={1} step={0.01} value={roughness} onChange={(e) => {
                     setRoughness(parseFloat(e.target.value))
                   }}/>
                 </div>
@@ -343,7 +345,7 @@ const MaxPageRightBar = ({
               })}
             </div>
           </section>
-          <section>
+          <section className="text-sm px-1">
             <EnvController />
           </section>
         </div>

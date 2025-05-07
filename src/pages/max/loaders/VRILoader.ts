@@ -6,6 +6,7 @@ import VKTX2Loader, {
 } from 'src/scripts/loaders/VKTX2Loader.ts';
 import { MaxCache } from 'src/pages/max/loaders/MaxCache.ts';
 import { MaxConstants } from 'src/pages/max/loaders/MaxConstants.ts';
+import { resolveMaxFile } from 'src/pages/max/loaders/MaxUtils.ts';
 
 class VRILoader implements MaxLoader<THREE.Texture> {
   readonly type: MaxFileType = 'image';
@@ -22,7 +23,7 @@ class VRILoader implements MaxLoader<THREE.Texture> {
 
     if (type !== this.type) {
       throw new Error(
-        'wrong Type of Max File Income for ' + this.type + ' : ' + type,
+        `wrong Type of Max File Income for ${this.type} : ${type}`,
       );
     }
 
@@ -39,17 +40,14 @@ class VRILoader implements MaxLoader<THREE.Texture> {
       return MaxCache.getByNameAndType(filename, this.type) as THREE.Texture;
     }
 
-    const targetURL = MaxConstants.IMAGE_PATH + encodeURIComponent(filename)
-      // S3는 공백을 + 로 반환하므로 맞춰줌 (optional)
-      .replace(/%20/g, '+');
-    const file = await fetchToFile(targetURL, filename);
-    const maxFile = {
-      originalFile: file,
-      type: 'image',
-      loaded: false,
-    } as MaxFile;
+    const targetURL =
+      MaxConstants.IMAGE_PATH +
+      encodeURIComponent(filename)
+        // S3는 공백을 + 로 반환하므로 맞춰줌 (optional)
+        .replace(/%20/g, '+');
+    const file = await resolveMaxFile(targetURL, filename, this.type);
 
-    return await this.load(maxFile);
+    return await this.load(file);
   }
 }
 

@@ -4,6 +4,7 @@ import { MaxFile, MaxFileType } from 'src/pages/max/maxAtoms.ts';
 import { BufferGeometry } from 'three';
 import { MaxCache } from 'src/pages/max/loaders/MaxCache.ts';
 import { MaxConstants } from 'src/pages/max/loaders/MaxConstants.ts';
+import { resolveMaxFile } from 'src/pages/max/loaders/MaxUtils.ts';
 
 class VRGLoader implements MaxLoader<THREE.BufferGeometry> {
   readonly type: MaxFileType = 'geometry';
@@ -54,14 +55,9 @@ class VRGLoader implements MaxLoader<THREE.BufferGeometry> {
         .replace(/%20/g, '+');
     console.log('fileName', filename);
     console.log('targetURL', targetURL);
-    const file = await fetchToFile(targetURL, filename);
-    const maxFile = {
-      originalFile: file,
-      type: 'geometry',
-      loaded: false,
-    } as MaxFile;
+    const file = await resolveMaxFile(targetURL, filename, this.type);
 
-    return await this.load(maxFile);
+    return await this.load(file);
   }
 }
 

@@ -1,5 +1,7 @@
 import { MaxFile, MaxFileData, MaxFileType } from 'src/pages/max/maxAtoms.ts';
 
+export type LoadingStatus = 'waiting' | 'progress' | 'done';
+
 const MaxCache = {
   enabled: true,
 

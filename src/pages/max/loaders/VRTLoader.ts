@@ -6,6 +6,7 @@ import VRILoader from 'src/pages/max/loaders/VRILoader.ts';
 import { MaxConstants } from 'src/pages/max/loaders/MaxConstants.ts';
 import { MaxTextureJSON } from 'src/pages/max/types';
 import { fileToJson } from 'src/scripts/atomUtils.ts';
+import { resolveMaxFile } from 'src/pages/max/loaders/MaxUtils.ts';
 
 class VRTLoader implements MaxLoader<THREE.Texture> {
   readonly type: MaxFileType = 'texture';
@@ -22,20 +23,13 @@ class VRTLoader implements MaxLoader<THREE.Texture> {
 
     if (type !== this.type) {
       throw new Error(
-        'wrong Type of Max File Income for ' + this.type + ' : ' + type,
+        `wrong Type of Max File Income for ${this.type} : ${type}`,
       );
     }
 
     const json: MaxTextureJSON = await fileToJson(originalFile);
 
     const texture = await this.imageLoader.loadFromFileName(json.image.vri);
-
-    // Object.keys(json).forEach((key) => {
-    //   if (texture.hasOwnProperty(key)) {
-    //     // @ts-ignore
-    //     texture[key] = json[key];
-    //   }
-    // })
 
     texture.channel = json.channel;
     texture.flipY = json.flipY;
@@ -70,14 +64,9 @@ class VRTLoader implements MaxLoader<THREE.Texture> {
         .replace(/%20/g, '+');
     console.log('fileName', filename);
     console.log('targetURL', targetURL);
-    const file = await fetchToFile(targetURL, filename);
-    const maxFile = {
-      originalFile: file,
-      type: 'texture',
-      loaded: false,
-    } as MaxFile;
+    const file = await resolveMaxFile(targetURL, filename, this.type);
 
-    return await this.load(maxFile);
+    return await this.load(file);
   }
 }
 

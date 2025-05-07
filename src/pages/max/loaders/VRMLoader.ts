@@ -6,6 +6,7 @@ import VRTLoader from 'src/pages/max/loaders/VRTLoader.ts';
 import { ColorJSON, MaxMaterialJSON } from 'src/pages/max/types';
 import { fileToJson } from 'src/scripts/atomUtils.ts';
 import { MaxConstants } from 'src/pages/max/loaders/MaxConstants.ts';
+import { resolveMaxFile } from 'src/pages/max/loaders/MaxUtils.ts';
 
 type TargetParams = Partial<THREE.MeshPhysicalMaterialParameters>;
 
@@ -113,6 +114,7 @@ class VRMLoader implements MaxLoader<THREE.MeshPhysicalMaterial> {
       return MaxCache.getByNameAndType(filename, this.type) as THREE.MeshPhysicalMaterial;
     }
 
+
     const targetURL =
       MaxConstants.MATERIAL_PATH +
       encodeURIComponent(filename)
@@ -120,14 +122,9 @@ class VRMLoader implements MaxLoader<THREE.MeshPhysicalMaterial> {
         .replace(/%20/g, '+');
     console.log('fileName', filename);
     console.log('targetURL', targetURL);
-    const file = await fetchToFile(targetURL, filename);
-    const maxFile = {
-      originalFile: file,
-      type: 'material',
-      loaded: false,
-    } as MaxFile;
+    const file = await resolveMaxFile(targetURL, filename, this.type);
 
-    return await this.load(maxFile);
+    return await this.load(file);
   }
 }
 
