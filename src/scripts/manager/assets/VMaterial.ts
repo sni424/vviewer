@@ -3,6 +3,7 @@ import { isVFile, VLoadable } from './VFile';
 import { type VTexture } from './VTexture';
 // MaterialJSON
 export default interface VMaterial {
+  version: number; // 우리가 부여하는 버전. toAsset()을 다시 불러야되는지 판단하기 위함
   uuid: string;
   type: string;
 

@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import _Asset from '../manager/_Asset';
-import { _AssetMgr } from '../manager/assets/_AssetMgr';
+import Asset from '../manager/Asset';
+import AssetMgr from '../manager/AssetMgr';
 import { hashObject } from '../manager/assets/AssetUtils';
 import Hasher from '../manager/assets/Hasher';
 import { VBufferGeometry } from '../manager/assets/VBufferGeometry';
@@ -11,7 +11,7 @@ declare module 'three' {
     get hash(): string;
     updateHash(): string;
 
-    toAsset(): Promise<_Asset>;
+    toAsset(): Promise<Asset>;
   }
 }
 
@@ -60,7 +60,33 @@ THREE.BufferGeometry.prototype.updateHash = function (): string {
 };
 
 THREE.BufferGeometry.prototype.toAsset = async function () {
-  const data: Partial<VBufferGeometry> = {};
+  const id = this.vid;
+  const asset = Asset.fromId(id);
+  if (asset.vfile) {
+    // 이미 Asset이 존재함
+
+    if (asset.result !== this) {
+      // result는 있는데 나와 같지 않을 수 없음.
+      // 다시 말해 에러
+      debugger;
+    }
+
+    if (asset.vfile.data?.version === this._version) {
+      console.warn(
+        'BufferGeometry.toAsset() : version이 같음. 다시 할 필요 없음',
+        this,
+      );
+      return asset;
+    }
+    console.warn(
+      'BufferGeometry.toAsset() : version이 다름. 다시 해야함',
+      this,
+    );
+  }
+
+  const data: Partial<VBufferGeometry> = {
+    version: this._version,
+  };
 
   data.uuid = this.vid;
   data.type = this.type;
@@ -86,7 +112,7 @@ THREE.BufferGeometry.prototype.toAsset = async function () {
   if (index !== null) {
     data.data.index = {
       type: index.array.constructor.name,
-      array: _AssetMgr.makeRemoteFile(index.array),
+      array: AssetMgr.setDataArray(index.array),
     };
   }
 
@@ -145,10 +171,13 @@ THREE.BufferGeometry.prototype.toAsset = async function () {
 
   const retval: VFile<VBufferGeometry> = {
     isVFile: true,
-    id: this.hash,
+    id: this.vid,
     type: 'VBufferGeometry',
     data: data as VBufferGeometry,
   };
 
-  return Promise.resolve(_Asset.from(retval));
+  AssetMgr.setVFile(retval, false);
+  AssetMgr.setResult(retval.id, this);
+
+  return Asset.fromVFile(retval);
 };

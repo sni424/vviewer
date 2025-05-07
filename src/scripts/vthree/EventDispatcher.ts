@@ -8,6 +8,7 @@ declare module 'three' {
     get vUserData(): VUserData;
     set vUserData(userData: Partial<VUserData>);
 
+    // 처음 한 번만 v4()로 아이디를 만든다.
     get vid(): string; // userData.vid
 
     updateHash(): string;
@@ -37,7 +38,7 @@ if (
       // Object3D, Material, Texture, BufferGeometry
       const hash = this.updateHash?.();
       if (!hash) {
-        console.error(this);
+        console.error(this.type, this);
         throw new Error('updateHash를 정의해야함');
       }
 

@@ -3,7 +3,8 @@ import objectHash from 'object-hash';
 import * as THREE from 'three';
 import type { TransformControlsPlane } from 'three/examples/jsm/controls/TransformControls.js';
 import { Layer } from '../../Constants';
-import _Asset from '../manager/_Asset';
+import Asset from '../manager/Asset';
+import AssetMgr from '../manager/AssetMgr';
 import { VFile } from '../manager/assets/VFile';
 import { VObject3D, VObject3DType } from '../manager/assets/VObject3D';
 import { resetGL } from '../utils';
@@ -57,7 +58,7 @@ declare module 'three' {
     get hash(): string;
     updateHash(path?: string): string;
 
-    toAsset(): Promise<_Asset>;
+    toAsset(): Promise<Asset>;
   }
 }
 
@@ -290,7 +291,30 @@ const getVObjectType = (type: string | THREE.Object3D): VObject3DType => {
 };
 
 THREE.Object3D.prototype.toAsset = async function () {
-  const object: Partial<VObject3D> = {};
+  const id = this.vid;
+  const asset = Asset.fromId(id);
+  if (asset.vfile) {
+    // 이미 Asset이 존재함
+
+    if (asset.result !== this) {
+      // result는 있는데 나와 같지 않을 수 없음.
+      // 다시 말해 에러
+      debugger;
+    }
+
+    if (asset.vfile.data?.version === this._version) {
+      console.warn(
+        'Object3D.toAsset() : version이 같음. 다시 할 필요 없음',
+        this,
+      );
+      return asset;
+    }
+    console.warn('Object3D.toAsset() : version이 다름. 다시 해야함', this);
+  }
+
+  const object: Partial<VObject3D> = {
+    version: this._version,
+  };
 
   const o3 = this as THREE.Object3D;
   const mesh = o3 as THREE.Mesh;
@@ -452,7 +476,14 @@ THREE.Object3D.prototype.toAsset = async function () {
   if (this.children.length > 0) {
     object.children = (
       await Promise.all(this.children.map(child => child.toAsset()))
-    ).map(a => a.vremotefile);
+    ).map(a => {
+      if (!a.vremotefile) {
+        //toAsset을 하면 VFile이 생성되고 setVFile하면 VRemoteFile도 생성됐어야한다.
+        // 없으면 에러
+        debugger;
+      }
+      return a.vremotefile!;
+    });
   }
 
   //
@@ -490,12 +521,15 @@ THREE.Object3D.prototype.toAsset = async function () {
 
   const retval: VFile<VObject3D> = {
     isVFile: true,
-    id: this.hash,
+    id: this.vid,
     type: getVObjectType(this.type),
     data: object as VObject3D,
   };
 
-  return _Asset.from(retval);
+  // Asset.fromVFile내부에서 AssetMgr.set()을 불러주므로 따로 setVFile()할 필요 없음
+  AssetMgr.setVFile(retval, false);
+  AssetMgr.setResult(retval.id, this);
+  return Asset.fromVFile(retval);
 };
 
 THREE.Object3D.prototype.flattendMeshes = function () {

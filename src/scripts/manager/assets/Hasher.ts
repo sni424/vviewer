@@ -1,7 +1,7 @@
 import { sha1 } from 'hash-wasm';
-import { type TypedArray } from './AssetUtils';
 import objectHash from 'object-hash';
 import { v4 } from 'uuid';
+import { TypedArray } from './AssetTypes';
 
 const _cache = new WeakMap<any, string>();
 const _cachePrecise = new WeakMap<any, string>();
@@ -20,6 +20,17 @@ export default class Hasher {
     } else {
       return await sha1(new Uint8Array(input));
     }
+  }
+
+  static object(obj: object, useCache = true) {
+    if (useCache && _cache.has(obj)) {
+      return _cache.get(obj) as string;
+    }
+
+    const hash = objectHash(obj);
+    _cache.set(obj, hash);
+
+    return hash;
   }
 
   // 약식으로 해싱

@@ -1,7 +1,6 @@
-import objectHash from 'object-hash';
 import * as THREE from 'three';
-import _Asset from '../manager/_Asset';
-import { _AssetMgr } from '../manager/assets/_AssetMgr';
+import Asset from '../manager/Asset';
+import AssetMgr from '../manager/AssetMgr';
 import Hasher from '../manager/assets/Hasher';
 import { VFile } from '../manager/assets/VFile';
 import { VTexture } from '../manager/assets/VTexture';
@@ -19,7 +18,7 @@ declare module 'three' {
     // vUserData.hash가 있으면 리턴, 없으면 계산 후 vUserData.hash에 저장
     get hash(): string;
     updateHash(): string;
-    toAsset(): Promise<_Asset>;
+    toAsset(): Promise<Asset>;
   }
 }
 
@@ -62,10 +61,10 @@ const handleImageData = async (
       debugger;
       throw new Error('KTX2 Buffer가 없음');
     }
-    return _AssetMgr.makeRemoteFile(texture.vUserData.ktx2Buffer);
+    return AssetMgr.setDataArray(texture.vUserData.ktx2Buffer);
   } else if ((texture as THREE.DataTexture).isDataTexture) {
     // exr임
-    return _AssetMgr.makeRemoteFile(texture.image.data.buffer);
+    return AssetMgr.setDataArray(texture.image.data.buffer);
   } else {
     // 일반 이미지포맷
     return texture.source.toAsset();
@@ -73,6 +72,27 @@ const handleImageData = async (
 };
 
 THREE.Texture.prototype.toAsset = async function () {
+  const id = this.vid;
+  const asset = Asset.fromId(id);
+  if (asset.vfile) {
+    // 이미 Asset이 존재함
+
+    if (asset.result !== this) {
+      // result는 있는데 나와 같지 않을 수 없음.
+      // 다시 말해 에러
+      debugger;
+    }
+
+    if (asset.vfile.data?.version === this._version) {
+      console.warn(
+        'Texture.toAsset() : version이 같음. 다시 할 필요 없음',
+        this,
+      );
+      return asset;
+    }
+    console.warn('Texture.toAsset() : version이 다름. 다시 해야함', this);
+  }
+
   // const image = await AssetMgr.get<THREE.Texture>(this.hash);
   // if (!image) image = await handleImageData(this);
   const start = performance.now();
@@ -81,6 +101,7 @@ THREE.Texture.prototype.toAsset = async function () {
   console.log('handleImageData', end - start, image);
 
   const output: VTexture = {
+    version: this._version,
     // uuid: this.uuid,
     uuid: this.vid,
     name: this.name,
@@ -137,7 +158,10 @@ THREE.Texture.prototype.toAsset = async function () {
     data: output,
   };
 
-  return _Asset.from(retval);
+  AssetMgr.setVFile(retval, false);
+  AssetMgr.setResult(retval.id, this);
+
+  return Asset.fromVFile(retval);
 };
 
 THREE.Texture.prototype.updateHash = function (): string {
@@ -190,10 +214,17 @@ THREE.Texture.prototype.updateHash = function (): string {
     }
   });
 
-  const hash = objectHash(hashMap);
+  const prev = this.vUserData.hash;
+  const hash = Hasher.object(hashMap);
   this.vUserData.hash = hash;
+
+  // if (prev !== hash) {
+  //   this.update();
+  // }
+
   if (!this.vUserData.id) {
     this.vUserData.id = hash;
   }
+
   return hash;
 };

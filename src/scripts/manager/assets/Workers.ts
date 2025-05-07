@@ -100,6 +100,10 @@ export default class Workers {
     url: string,
     inflate: boolean = false,
   ): Promise<ArrayBuffer> {
+    if (url.includes('undefined')) {
+      debugger;
+    }
+
     return this.instance._fetch(url, inflate);
   }
 

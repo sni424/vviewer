@@ -1,6 +1,14 @@
 import VGLTFLoader from 'src/scripts/loaders/VGLTFLoader';
 import VTextureLoader from 'src/scripts/loaders/VTextureLoader';
 import _Asset, { download } from '../_Asset';
+import _VCache, {
+  _CachePayload,
+  _CachePayloadTarget,
+  _CacheValue,
+  _PayloadValue,
+  _Promisable,
+  FileID,
+} from './_VCache';
 import { isDataArray, TypedArray } from './AssetTypes';
 import {
   awaitAll,
@@ -13,14 +21,6 @@ import Hasher from './Hasher';
 import MaterialLoader from './MaterialLoader';
 import ObjectLoader from './ObjectLoader';
 import TextureLoader from './TextureLoader';
-import VCache, {
-  CachePayload,
-  CachePayloadTarget,
-  CacheValue,
-  FileID,
-  PayloadValue,
-  Promisable,
-} from './VCache';
 import { isVFile, isVRemoteFile, VFile, VRemoteFile } from './VFile';
 import Workers from './Workers';
 
@@ -170,26 +170,26 @@ export class _AssetMgr {
         destination: 'result',
         from: retval,
         data: buffer,
-      } as CachePayloadTarget);
+      } as _CachePayloadTarget);
       // console.log('retval.id buffer', retval.id, buffer);
 
       return retval;
     }
   }
 
-  static _cacheMap: Map<ProjectId, VCache> = new Map([
-    ['test', new VCache('test')],
+  static _cacheMap: Map<ProjectId, _VCache> = new Map([
+    ['test', new _VCache('test')],
   ]);
   static projectId: string = 'test';
   static setProject(id: string) {
     if (this.projectId !== id) {
       this.projectId = id;
-      this._cacheMap.set(id, new VCache(id));
+      this._cacheMap.set(id, new _VCache(id));
     }
   }
 
   // 프로젝트id에 따라 분기
-  static get cache(): VCache {
+  static get cache(): _VCache {
     if (!this.projectId) {
       throw new Error('Project ID is not set');
     }
@@ -202,13 +202,13 @@ export class _AssetMgr {
 
   static set<T = any>(
     id: string,
-    ...value: Promisable<PayloadValue<T>>[]
+    ...value: _Promisable<_PayloadValue<T>>[]
   ): void;
   static set(vremotefile: VRemoteFile): void;
   static set(vfile: VFile): void;
   static set<T = any>(
     idCandidate: string | VFile | VRemoteFile,
-    ...valueCandidate: Promisable<PayloadValue<T>>[]
+    ...valueCandidate: _Promisable<_PayloadValue<T>>[]
   ): void {
     this.cache.set(idCandidate as any, ...valueCandidate);
     const cached = this.cache.get(idCandidate)!;
@@ -233,7 +233,7 @@ export class _AssetMgr {
             destination: 'inputBuffer',
             from: file,
             promise: file.arrayBuffer(),
-          } as CachePayloadTarget,
+          } as _CachePayloadTarget,
         );
         return;
       }
@@ -278,7 +278,7 @@ export class _AssetMgr {
             destination: 'vfile',
             from: vremote.id + 'initial-download',
             promise: prom,
-          } as CachePayloadTarget);
+          } as _CachePayloadTarget);
         }
       } else {
         const needsDownload =
@@ -303,7 +303,7 @@ export class _AssetMgr {
               destination: 'result',
               from: vremote.id + 'initial-download',
               promise: prom,
-            } as CachePayloadTarget,
+            } as _CachePayloadTarget,
           );
         }
       }
@@ -364,7 +364,7 @@ export class _AssetMgr {
   static get<T = any>(vfile: VFile): _Asset<T> | undefined;
   static get<T = any>(vremotefile: VRemoteFile): _Asset<T> | undefined;
   static get<T = any>(result: T): _Asset<T> | undefined;
-  static get<T = any>(query: FileID | PayloadValue<T>): _Asset<T> | undefined {
+  static get<T = any>(query: FileID | _PayloadValue<T>): _Asset<T> | undefined {
     const { id } = this.cache.get(query as any) ?? {};
     if (!id) {
       return undefined;
@@ -374,7 +374,7 @@ export class _AssetMgr {
   }
 
   static async _loadLocal<T>(
-    cacheValue: CacheValue<CachePayload<T>>,
+    cacheValue: _CacheValue<_CachePayload<T>>,
   ): Promise<T> {
     if (cacheValue.loadingQueue.length > 0) {
       debugger;
@@ -413,7 +413,7 @@ export class _AssetMgr {
         });
         return gltf.scene;
       });
-      const cacheProm: CachePayloadTarget = {
+      const cacheProm: _CachePayloadTarget = {
         destination: 'result',
         from: file,
         promise: prom,
@@ -429,7 +429,7 @@ export class _AssetMgr {
       const prom = VTextureLoader.parseAsync(buffer, {
         ext,
       });
-      const cacheProm: CachePayloadTarget = {
+      const cacheProm: _CachePayloadTarget = {
         destination: 'result',
         from: file,
         promise: prom,
@@ -452,7 +452,7 @@ export class _AssetMgr {
           destination: 'result',
           from: vfile,
           promise: objectProm,
-        } as CachePayloadTarget);
+        } as _CachePayloadTarget);
         return objectProm as Promise<T>;
       case 'VCompressedTexture':
       case 'VDataTexture':
@@ -462,7 +462,7 @@ export class _AssetMgr {
           destination: 'result',
           from: vfile,
           promise: texProm,
-        } as CachePayloadTarget);
+        } as _CachePayloadTarget);
         return texProm as Promise<T>;
       case 'VBufferGeometry':
         const bufferProm = BufferGeometryLoader(vfile);
@@ -470,7 +470,7 @@ export class _AssetMgr {
           destination: 'result',
           from: vfile,
           promise: bufferProm,
-        } as CachePayloadTarget);
+        } as _CachePayloadTarget);
         return bufferProm as Promise<T>;
       case 'VMaterial':
         const materialProm = MaterialLoader(vfile);
@@ -478,7 +478,7 @@ export class _AssetMgr {
           destination: 'result',
           from: vfile,
           promise: materialProm,
-        } as CachePayloadTarget);
+        } as _CachePayloadTarget);
         return materialProm as Promise<T>;
       default:
         throw new Error(`Unknown VFile type: ${type}`);
@@ -486,7 +486,7 @@ export class _AssetMgr {
   }
 
   static async load<T = any>(
-    query: FileID | PayloadValue<T>,
+    query: FileID | _PayloadValue<T>,
   ): Promise<T | undefined> {
     return this.getCacheAsync(query).then(cached => {
       if (!cached) {
@@ -551,38 +551,38 @@ export class _AssetMgr {
   }
 
   static getCache<T = any>(
-    query: FileID | PayloadValue<T>,
-  ): CacheValue<CachePayload<T>> | undefined {
+    query: FileID | _PayloadValue<T>,
+  ): _CacheValue<_CachePayload<T>> | undefined {
     return this.cache.get(query as any);
   }
 
   static async getCacheAsync<T = any>(
-    query: FileID | PayloadValue<T>,
-  ): Promise<CacheValue<CachePayload<T>> | undefined> {
+    query: FileID | _PayloadValue<T>,
+  ): Promise<_CacheValue<_CachePayload<T>> | undefined> {
     return this.cache.getAsync(query as any).then(cached => {
       return cached as any;
     });
   }
 
-  static loaded(query: FileID | PayloadValue): boolean {
+  static loaded(query: FileID | _PayloadValue): boolean {
     const cached = this.getCache(query);
     if (!cached) {
       return false;
     }
 
-    return !VCache.isLoading(cached);
+    return !_VCache.isLoading(cached);
   }
 
-  static loading(query: FileID | PayloadValue): boolean {
+  static loading(query: FileID | _PayloadValue): boolean {
     const cached = this.getCache(query);
     if (!cached) {
       return false;
     }
 
-    return VCache.isLoading(cached);
+    return _VCache.isLoading(cached);
   }
 
-  static loadable(query: FileID | PayloadValue): boolean {
+  static loadable(query: FileID | _PayloadValue): boolean {
     const cached = this.getCache(query);
     if (!cached) {
       return false;

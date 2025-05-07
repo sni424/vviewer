@@ -1,12 +1,13 @@
 import * as THREE from 'three';
-import _Asset from '../manager/_Asset';
+import Asset from '../manager/Asset';
+import AssetMgr from '../manager/AssetMgr';
 import { awaitAll } from '../manager/assets/AssetUtils';
 import { VFile } from '../manager/assets/VFile';
 import VMaterial from '../manager/assets/VMaterial';
 
 declare module 'three' {
   interface Material {
-    toAsset(): Promise<_Asset>;
+    toAsset(): Promise<Asset>;
   }
 }
 
@@ -16,7 +17,30 @@ type AwaitablePartial<T> = {
 };
 
 THREE.Material.prototype.toAsset = async function () {
-  const data: AwaitablePartial<VMaterial> = {};
+  const id = this.vid;
+  const asset = Asset.fromId(id);
+  if (asset.vfile) {
+    // 이미 Asset이 존재함
+
+    if (asset.result !== this) {
+      // result는 있는데 나와 같지 않을 수 없음.
+      // 다시 말해 에러
+      debugger;
+    }
+
+    if (asset.vfile.data?.version === this._version) {
+      console.warn(
+        'Material.toAsset() : version이 같음. 다시 할 필요 없음',
+        this,
+      );
+      return asset;
+    }
+    console.warn('Material.toAsset() : version이 다름. 다시 해야함', this);
+  }
+
+  const data: AwaitablePartial<VMaterial> = {
+    version: this._version,
+  };
 
   const mat = this as THREE.MeshPhysicalMaterial;
   const phong = this as THREE.MeshPhongMaterial;
@@ -24,7 +48,7 @@ THREE.Material.prototype.toAsset = async function () {
   const points = this as THREE.PointsMaterial;
 
   // standard Material serialization
-  data.uuid = mat.hash;
+  data.uuid = mat.vid;
   data.type = mat.type;
 
   // handle maps first
@@ -280,11 +304,14 @@ THREE.Material.prototype.toAsset = async function () {
 
   const retval: VFile<VMaterial> = {
     isVFile: true,
-    id: this.hash,
+    id: this.vid,
     type: 'VMaterial',
     data: data as VMaterial,
   };
 
   const prom = await awaitAll(retval);
-  return _Asset.from(prom);
+
+  AssetMgr.setVFile(prom, false);
+  AssetMgr.setResult(retval.id, this);
+  return Asset.fromVFile(prom);
 };

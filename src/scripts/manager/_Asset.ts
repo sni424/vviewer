@@ -1,12 +1,12 @@
 import { v4 } from 'uuid';
 import { _AssetMgr } from './assets/_AssetMgr';
+import { _CachePayloadTarget, _PayloadValue } from './assets/_VCache';
 import { FileID, isDataArray, TypedArray } from './assets/AssetTypes';
 import {
   hashObject,
   isThreeObject,
   iterateWithPredicate,
 } from './assets/AssetUtils';
-import { CachePayloadTarget, PayloadValue } from './assets/VCache';
 import { isVFile, isVRemoteFile, VFile, VRemoteFile } from './assets/VFile';
 import Workers from './assets/Workers';
 import Ext from './Ext';
@@ -159,7 +159,7 @@ export default class _Asset<T = any> {
   }
 
   // 캐시 있으면 리턴, 없으면 생성 (payload 이용)
-  static fromId(id: string, payload?: PayloadValue): _Asset {
+  static fromId(id: string, payload?: _PayloadValue): _Asset {
     // case 1. cache hit
     const assetCache = AssetCache.get(id);
     if (assetCache) {
@@ -204,7 +204,7 @@ export default class _Asset<T = any> {
           promise: download<VRemoteFile | ArrayBuffer>(vremotefile, {
             type: vremotefile.format === 'json' ? 'json' : 'binary',
           }),
-        } as CachePayloadTarget;
+        } as _CachePayloadTarget;
 
         _AssetMgr.cache.set(vremotefile.id, cacheProm);
       }
@@ -238,7 +238,7 @@ export default class _Asset<T = any> {
               destination: 'vfile',
               from: id + 'set-vfile',
               data: self,
-            } as CachePayloadTarget);
+            } as _CachePayloadTarget);
 
             // 먼저 vfile에 대해서 에셋들을 만든 후
             vfiles.forEach(vfile => {
@@ -254,7 +254,7 @@ export default class _Asset<T = any> {
 
             return self; // result에 vfile을 set하게 될 것임
           }),
-        } as CachePayloadTarget);
+        } as _CachePayloadTarget);
       } catch (e) {
         console.warn('다운로드 실패', id, e);
       }
@@ -331,11 +331,11 @@ export default class _Asset<T = any> {
     // });
   }
 
-  static from(payload: PayloadValue): _Asset;
-  static from(id: string, payload?: PayloadValue): _Asset;
+  static from(payload: _PayloadValue): _Asset;
+  static from(id: string, payload?: _PayloadValue): _Asset;
   static from(
-    idCandidate: string | PayloadValue,
-    payload?: PayloadValue,
+    idCandidate: string | _PayloadValue,
+    payload?: _PayloadValue,
   ): _Asset {
     if (idCandidate?.id === 'fc3a5981d1afbcaef9980ad60180e91ba4245fa4') {
       debugger;
@@ -362,7 +362,7 @@ export default class _Asset<T = any> {
     } else {
       // payload(File, VFile)로 생성하는 경우
 
-      const payload = idCandidate as PayloadValue;
+      const payload = idCandidate as _PayloadValue;
 
       // case 1. Local file
       if (payload instanceof File) {
@@ -474,23 +474,23 @@ export default class _Asset<T = any> {
     return false;
   }
 
-  static async result<T = any>(query: FileID | PayloadValue) {
+  static async result<T = any>(query: FileID | _PayloadValue) {
     return _AssetMgr
       .getCacheAsync(query)
       .then(cache => cache?.payload?.result as T);
   }
 
-  static async buffer(query: FileID | PayloadValue) {
+  static async buffer(query: FileID | _PayloadValue) {
     return _AssetMgr
       .getCacheAsync(query)
       .then(cache => cache?.payload?.inputBuffer);
   }
 
-  static async file(query: FileID | PayloadValue) {
+  static async file(query: FileID | _PayloadValue) {
     return _AssetMgr.getCacheAsync(query).then(cache => cache?.payload?.file);
   }
 
-  static async vfile<T extends VFile = any>(query: FileID | PayloadValue) {
+  static async vfile<T extends VFile = any>(query: FileID | _PayloadValue) {
     if (isVFile(query)) {
       return query;
     }
@@ -501,7 +501,7 @@ export default class _Asset<T = any> {
   }
 
   static async vremotefile<T extends VRemoteFile = any>(
-    query: FileID | PayloadValue,
+    query: FileID | _PayloadValue,
   ) {
     if (isVRemoteFile(query)) {
       return query;

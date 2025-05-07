@@ -94,7 +94,16 @@ export async function awaitAll<T>(
   }
 }
 
-export const hashObject = objectHash;
+const hashObjectCache = new WeakMap<any, string>();
+export const hashObject = (obj: any, useCache = true) => {
+  if (useCache && hashObjectCache.has(obj)) {
+    return hashObjectCache.get(obj) as string;
+  }
+
+  const hash = objectHash(obj);
+  hashObjectCache.set(obj, hash);
+  return hash;
+};
 
 const hashCache: WeakMap<ArrayBufferLike | TypedArray, string> = new WeakMap();
 

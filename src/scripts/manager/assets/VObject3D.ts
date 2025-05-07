@@ -6,6 +6,7 @@ import VMaterial from './VMaterial';
 import { VTexture } from './VTexture';
 
 export interface VObject3D {
+  version: number; // 우리가 부여하는 버전. toAsset()을 다시 불러야되는지 판단하기 위함
   uuid: string;
   type: string;
 

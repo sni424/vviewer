@@ -3,21 +3,13 @@ import { Canvas, useThree } from '@react-three/fiber';
 import { useEffect, useRef, useState } from 'react';
 import ObjectViewer from 'src/components/ObjectViewer';
 import VGLTFLoader from 'src/scripts/loaders/VGLTFLoader';
-import _Asset from 'src/scripts/manager/_Asset';
-import { _AssetMgr } from 'src/scripts/manager/assets/_AssetMgr';
-import { DataArray, isDataArray } from 'src/scripts/manager/assets/AssetTypes';
-import { iterateWithPredicate } from 'src/scripts/manager/assets/AssetUtils';
-import {
-  isVFile,
-  isVRemoteFile,
-  VFile,
-  VRemoteFile,
-} from 'src/scripts/manager/assets/VFile';
-import { VObject3D } from 'src/scripts/manager/assets/VObject3D';
+import Asset from 'src/scripts/manager/Asset';
+import AssetMgr from 'src/scripts/manager/AssetMgr';
+import { isDataArray } from 'src/scripts/manager/assets/AssetTypes';
 import { THREE } from 'VTHREE';
 import useTestModelDragAndDrop from './useTestModelDragAndDrop';
 
-const mgr = _AssetMgr;
+const mgr = AssetMgr;
 const print = console.log;
 interface UploadResponse {
   message: string;
@@ -25,7 +17,7 @@ interface UploadResponse {
   error?: string;
 }
 
-const getFilePath = (path: string) => `${_AssetMgr.projectId}/${path}`;
+const getFilePath = (path: string) => `${AssetMgr.projectId}/${path}`;
 
 // obj를 재귀적으로 돌면서 내부의 ArrayBuffer만 Uint8Array로 변환하는 함수
 // ArrayBuffer을 mongodb에 저장하면 데이터가 날아가서 일단 Uint8Array로 변환
@@ -239,7 +231,7 @@ function TestPage() {
   const [useEnv, setUseEnv] = useState(true);
   const [loadedMat, setLoadedMat] = useState<THREE.Material>();
   const sceneRef = useRef<THREE.Scene>(new THREE.Scene());
-  const [asset, setAsset] = useState<_Asset[]>([]);
+  const [asset, setAsset] = useState<Asset[]>([]);
   const { files, isDragging, handleDragOver, handleDragLeave, handleDrop } =
     useTestModelDragAndDrop();
   const [loaded, setLoaded] = useState<any[]>();
@@ -262,84 +254,14 @@ function TestPage() {
     const assets = new Set(
       files.map(file => {
         console.log('Asset.from called');
-        return _Asset.from(file);
+        // const fileid = Hasher.hash(file);
+        return Asset.fromFile(file);
       }),
     );
     print(assets);
     setAsset([...assets]);
     // print(assets.map(asset => asset.toJson()));
   }, [files]);
-
-  const applyExr = async () => {
-    const glbs = asset
-      .filter(a => a.isGlb)
-      .map(a => {
-        return {
-          name: a.filename!,
-          glb: a.load<THREE.Group>(),
-        };
-      });
-
-    return Promise.all(
-      asset
-        .filter(a => a.isMap)
-        .map(a => {
-          return a.load<THREE.Texture>().then(tex => {
-            tex.anisotropy = 16;
-            tex.channel = 1;
-            tex.flipY = true;
-            tex.needsUpdate = true;
-
-            const basename = a
-              .filename!.split('/')
-              .pop()!
-              .split('.')
-              .slice(0, -1)
-              .join('.');
-
-            const candidates = Array.from(
-              new Set(
-                [
-                  basename,
-                  basename.split('_Bake')[0],
-                  basename.split('__')[0],
-                ].map(c => c + '.glb'),
-              ),
-            );
-            console.log(candidates);
-
-            const foundGlb = glbs.find(glb => {
-              const found = candidates.some(fn => glb.name.endsWith(fn));
-              return found;
-            });
-
-            if (!foundGlb) {
-              debugger;
-            }
-
-            foundGlb?.glb.then(g => {
-              g.materials().forEach(m => {
-                m.standard.lightMap = tex;
-                m.standard.lightMapIntensity = 1;
-                m.needsUpdate = true;
-              });
-            });
-          });
-        }),
-    ).then(() => {
-      setUseEnv(false);
-    });
-  };
-
-  const addToScene = async () => {
-    asset
-      .filter(a => a.isGlb)
-      .forEach(a =>
-        a.load<THREE.Group>().then(a => {
-          sceneRef.current.add(a);
-        }),
-      );
-  };
 
   return (
     <div
@@ -363,284 +285,29 @@ function TestPage() {
                 // groups.forEach(g => g.position.addScalar(2));
                 const meshes = groups.map(g => g.flattendMeshes()).flat();
                 sceneRef.current.add(...meshes);
+
+                const startToasset = performance.now();
+                sceneRef.current.toAsset().then(a => {
+                  const endTooasset = performance.now();
+                  console.log('toAsset', endTooasset - startToasset, 'ms', a);
+
+                  const startInflate = performance.now();
+                  a.vfileInflated().then(vfile => {
+                    const endInflate = performance.now();
+                    console.log('vfile inflated', vfile);
+                    console.log(
+                      'inflate',
+                      endInflate - startInflate,
+                      'ms',
+                      vfile,
+                    );
+                  });
+                });
               });
             }}
           >
             GLB만 로드
           </button>
-          <button
-            onClick={() => {
-              const start = performance.now();
-              Promise.all(
-                asset.filter(a => a.isMap).map(a => a.load<THREE.Texture>()),
-              ).then(textures => {
-                const end = performance.now();
-                console.log(textures);
-                console.log('map 로드 완료', end - start, 'ms');
-                textures.forEach(tex => {
-                  tex.anisotropy = 16;
-                  tex.flipY = true;
-                  tex.needsUpdate = true;
-                });
-              });
-            }}
-          >
-            EXR만 로드
-          </button>
-          <button
-            onClick={async () => {
-              const start = performance.now();
-              sceneRef.current.name = 'main';
-
-              // const meshes = sceneRef.current.flattendMeshes();
-              // debugger;
-              // const assets = await Promise.all(
-              //   meshes.map(m => m.toAsset().then(a => a.result)),
-              // );
-              // console.log(assets);
-
-              sceneRef.current.toAsset().then(async asset => {
-                const end = performance.now();
-                console.log('씬 toAsset()', end - start, 'ms');
-                console.log(asset.vfile);
-                // debugger;
-
-                const remotes: [VRemoteFile, VFile | DataArray][] = [];
-                const getArrayBufferRecursive = (
-                  vfiles: VFile<VObject3D>[],
-                ) => {
-                  const innerVFiles: VFile[] = [];
-                  vfiles.forEach(vfile => {
-                    if (!isVFile(vfile)) {
-                      return;
-                    }
-                    iterateWithPredicate(
-                      vfile,
-                      o => isVRemoteFile(o),
-                      (value: VRemoteFile) => {
-                        let result: VFile | DataArray;
-                        if (value.format === 'json') {
-                          const innerVfile = _Asset.from(value).vfile!;
-                          if (!isVFile(innerVfile)) {
-                            debugger;
-                          }
-                          innerVFiles.push(innerVfile);
-                          result = innerVfile;
-                        } else {
-                          result = _Asset.from(value).result;
-                        }
-
-                        remotes.push([value, result]);
-                      },
-                    );
-                  });
-                  if (innerVFiles.length === 0) {
-                    return;
-                  }
-                  getArrayBufferRecursive(innerVFiles);
-                };
-                getArrayBufferRecursive([asset.vfile]);
-
-                remotes.push([asset.vremotefile, asset.vfile]);
-                console.log(remotes);
-                console.log(asset.id);
-
-                const proms: Promise<any>[] = [];
-                remotes.forEach(([remote, data]) => {
-                  proms.push(
-                    upload(
-                      remote.id,
-                      data,
-                      remote.format === 'json' ? 'json' : 'binary',
-                    ),
-                  );
-                });
-                Promise.all(proms).then(res => {
-                  console.log(res);
-                });
-
-                // const downloadStart = performance.now();
-                // const uploadable = (await asset.download())!;
-                // const downloadEnd = performance.now();
-                // const { self, children } = uploadable;
-                // console.log('씬 다운로드', downloadEnd - downloadStart, 'ms');
-                // console.log({ self, children });
-
-                // const compress = false;
-                // const inflated = await Asset.from(
-                //   uploadable.self.data,
-                // ).inflate();
-                // print({ inflated });
-                // const arr = serialize(inflated, compress);
-
-                // // !TODO : TextureLoader 등에서 VRemoteFile대신 DataArray들어올 때 핸들링
-
-                // console.log('start upload');
-                // upload('scene_test.vo', arr)
-                //   .then(res => {
-                //     console.log(res);
-                //   })
-                //   .finally(() => {
-                //     const end = performance.now();
-                //     console.log('씬 업로드', end - downloadStart, 'ms');
-                //   });
-              });
-            }}
-          >
-            ToAsset + Download
-          </button>
-          <button
-            onClick={async () => {
-              const objId = 'b6882bfe8520994cbf7eec5abb238108fdbd6204';
-
-              {
-                // const start = performance.now();
-                // const graph = await download<DownloadWithChildren>(objId, {
-                //   type: 'json',
-                //   withChildren: true,
-                // });
-                // const end = performance.now();
-                // console.log('다운로드 완료', end - start, 'ms', graph);
-                // const { self, vfiles, vremotefiles } = graph;
-                // Asset.from(self);
-                // vfiles.forEach(Asset.from);
-                // vremotefiles.forEach(Asset.from);
-              }
-
-              _Asset
-                .from(objId)
-                .load<THREE.Group>()
-                .then(g => {
-                  console.log(g);
-                });
-
-              // debugger;
-            }}
-          >
-            VO 로드
-          </button>
-          <button
-            onClick={() => {
-              const vremote = {
-                isVRemoteFile: true,
-                id: '0938de5d-3f9a-4cee-90a6-5834e3a53649',
-                format: 'Float32Array',
-              };
-              _Asset.from(vremote);
-            }}
-          >
-            Array로드
-          </button>
-          <button
-            onClick={() => {
-              function clearScene(scene: THREE.Scene) {
-                scene.traverse(object => {
-                  if ((object as THREE.Mesh).geometry) {
-                    (object as THREE.Mesh).geometry.dispose();
-                  }
-                  if ((object as THREE.Mesh).material) {
-                    const material = (object as THREE.Mesh).material;
-                    if (Array.isArray(material)) {
-                      material.forEach(m => m.dispose());
-                    } else {
-                      material.dispose();
-                    }
-                  }
-                  if ((object as THREE.Mesh).type === 'Mesh') {
-                    // dispose texture도 여기에 추가 가능
-                  }
-                });
-
-                while (scene.children.length > 0) {
-                  scene.remove(scene.children[0]);
-                }
-              }
-
-              clearScene(sceneRef.current);
-            }}
-          >
-            씬 삭제
-          </button>
-          <button
-            onClick={async () => {
-              // const texs = await Promise.all(
-              //   asset.filter(a => a.isMap).map(a => a.load<THREE.Texture>()),
-              // );
-              // asset
-              //   .filter(a => a.isGlb)
-              //   .forEach(a =>
-              //     a.load<THREE.Group>().then(a => {
-              //       a.toAsset().then(vfile => {
-              //         ObjectLoader(vfile).then(loaded => {
-              //           if (texs.length > 0) {
-              //             const tex = texs[0];
-              //             console.log(tex.vUserData);
-              //             tex.channel = 1;
-              //             loaded.meshes().forEach(m => {
-              //               m.matStandard.lightMap = tex;
-              //             });
-              //           }
-
-              //           sceneRef.current.add(loaded);
-              //         });
-              //       });
-              //     }),
-              //   );
-              const start = performance.now();
-              // sceneRef.current.toAsset().then(vfile => {
-              //   const end = performance.now();
-              //   console.log('씬 에셋화', end - start, 'ms');
-              // });
-              const scene = sceneRef.current;
-              const meshes = scene.meshes();
-              const geometries = scene.geometries();
-              const materials = scene.materials();
-              const textures = scene.textures();
-
-              const textureStart = performance.now();
-              await Promise.all(
-                textures.map(async (t, i) => {
-                  const start = performance.now();
-                  await t.toAsset();
-                  const end = performance.now();
-                  console.log(
-                    `텍스쳐 에셋화 ${i + 1} / ${textures.length}`,
-                    end - start,
-                    'ms',
-                  );
-                }),
-              );
-              const textureEnd = performance.now();
-              console.log('텍스쳐 에셋화', textureEnd - textureStart, 'ms');
-
-              const geometryStart = performance.now();
-              await Promise.all(geometries.map(g => g.toAsset()));
-              const geometryEnd = performance.now();
-              console.log(
-                '지오메트리 에셋화',
-                geometryEnd - geometryStart,
-                'ms',
-              );
-
-              const materialStart = performance.now();
-              await Promise.all(materials.map(m => m.toAsset()));
-              const materialEnd = performance.now();
-              console.log('머티리얼 에셋화', materialEnd - materialStart, 'ms');
-
-              const meshStart = performance.now();
-              await Promise.all(meshes.map(m => m.toAsset()));
-              const meshEnd = performance.now();
-              console.log('메쉬 에셋화', meshEnd - meshStart, 'ms');
-
-              const sceneStart = performance.now();
-              await scene.toAsset();
-              const sceneEnd = performance.now();
-              console.log('씬 에셋화', sceneEnd - sceneStart, 'ms');
-            }}
-          >
-            씬 에셋화
-          </button>
-
           <button
             onClick={() => {
               setUseEnv(prev => !prev);
