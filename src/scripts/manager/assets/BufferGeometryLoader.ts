@@ -1,5 +1,5 @@
 import { THREE } from 'VTHREE';
-import _Asset from '../_Asset';
+import Asset from '../Asset';
 import { isDataArray, TypedArray } from './AssetTypes';
 import { getTypedArray } from './AssetUtils';
 import {
@@ -8,17 +8,22 @@ import {
   VInterleavedBuffer,
   VInterleavedBufferAttribute,
 } from './VBufferGeometry';
-import { isVFile, VFile, VRemoteFile } from './VFile';
+import { isVFile, isVRemoteFile, VFile, VRemoteFile } from './VFile';
 
 const handleArray = async (data: any): Promise<TypedArray> => {
+  if (isVRemoteFile(data)) {
+    const vremote = data as VRemoteFile;
+    const buffer = (await Asset.fromVRemoteFile(vremote)
+      .resultAsync) as ArrayBuffer;
+    const typedArray = getTypedArray(vremote.format, buffer);
+    return typedArray;
+  }
+
   if (isDataArray(data)) {
     return data as TypedArray;
-  } else {
-    return getTypedArray(
-      (data as VBufferAttribute).type,
-      await _Asset.result(data),
-    );
   }
+
+  throw new Error('data가 VRemoteFile이거나 TypedArray가 아닙니다');
 };
 
 const handleVFile = async (vfile: VFile<VBufferGeometry>) => {
@@ -172,11 +177,11 @@ const handleVFile = async (vfile: VFile<VBufferGeometry>) => {
 };
 
 export default async function BufferGeometryLoader(
-  vfile: VFile<VBufferGeometry> | VRemoteFile,
+  file: VFile<VBufferGeometry> | VRemoteFile,
 ): Promise<THREE.BufferGeometry> {
-  if (isVFile(vfile)) {
-    return handleVFile(vfile as VFile);
-  }
+  const vfile = isVFile(file)
+    ? file
+    : await Asset.fromVRemoteFile(file as VRemoteFile).vfileAsync;
 
-  throw new Error('VFile이 아닙니다');
+  return handleVFile(vfile as VFile<VBufferGeometry>);
 }

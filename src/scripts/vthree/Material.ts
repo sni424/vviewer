@@ -9,7 +9,6 @@ import {
   MATERIAL_SHADER,
   MATERIAL_UNIFORM,
   MATERIAL_UNIFORM_VALUE,
-  VUserData,
 } from '../../scripts/vthree/VTHREETypes';
 import { threes } from '../atomUtils';
 import type ReflectionProbe from '../ReflectionProbe';
@@ -127,6 +126,7 @@ declare module 'three' {
 
     get hash(): string;
     updateHash(): string;
+    updateHashPrecise(): Promise<string>;
   }
 }
 
@@ -185,6 +185,56 @@ THREE.Material.prototype.updateHash = function (): string {
   }
   return hash;
 };
+
+THREE.Material.prototype.updateHashPrecise =
+  async function (): Promise<string> {
+    const textureHashes = await Promise.all(
+      this.textures().map(t => t.updateHashPrecise()),
+    );
+
+    const excludes = [...VTextureTypes, 'uuid', 'id'];
+    const rawKeys = Object.keys(this) as (keyof THREE.MeshPhysicalMaterial)[];
+
+    const scope = this as any;
+    const filteredKeys = rawKeys
+      .filter(key => scope[key] !== undefined && scope[key] !== null)
+      .filter(key => typeof scope[key] !== 'function')
+      .filter(key => !excludes.includes(key))
+      .filter(key => !key.startsWith('_'));
+
+    // type Primitive = string | number | boolean | null | undefined;
+
+    const hashMap: Record<string, any> = { textureHashes: textureHashes };
+
+    filteredKeys.forEach(key => {
+      const value = scope[key];
+      const typeofValue = typeof value;
+      if (
+        typeofValue === 'string' ||
+        typeofValue === 'number' ||
+        typeofValue === 'boolean' ||
+        typeofValue === 'undefined' ||
+        value === null
+      ) {
+        hashMap[key] = value;
+      } else if (
+        scope[key].toArray &&
+        typeof scope[key].toArray === 'function'
+      ) {
+        // vec2, vec3, vec4, quat 등등
+        hashMap[key] = scope[key].toArray();
+      } else if ((value as THREE.Texture).isTexture) {
+        hashMap[key] = (value as THREE.Texture).hash;
+      }
+    });
+
+    const hash = objectHash(hashMap);
+    this.vUserData.hash = hash;
+    if (!this.vUserData.id) {
+      this.vUserData.id = hash;
+    }
+    return hash;
+  };
 
 THREE.Material.prototype.removeUniform = function (...key: MATERIAL_UNIFORM[]) {
   if (!this._removeUniform) {

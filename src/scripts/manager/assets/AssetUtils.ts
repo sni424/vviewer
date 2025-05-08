@@ -200,6 +200,7 @@ export function iterateWithPredicate<T = any>(
       iterateWithPredicate(item, predicate, callback, [...path, String(index)]),
     );
   } else if (obj && typeof obj === 'object' && !isDataArray(obj)) {
+    // console.log('iterating object', obj);
     for (const [key, val] of Object.entries(obj)) {
       iterateWithPredicate(val, predicate, callback, [...path, key]);
     }

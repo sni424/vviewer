@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { _AssetMgr } from '../manager/assets/_AssetMgr';
+import AssetMgr from '../manager/AssetMgr';
 import { DataArray } from '../manager/assets/AssetTypes';
 import { VTextureSource } from '../manager/assets/VTexture';
 import Workers from '../manager/assets/Workers';
@@ -224,7 +224,7 @@ THREE.Source.prototype.toAsset = async function (): Promise<VTextureSource> {
     // const remotefile = AssetMgr.makeRemoteFile(ab);
 
     return {
-      data: _AssetMgr.makeRemoteFile(serializedImage.data),
+      data: await AssetMgr.setDataArray(serializedImage.data),
       type: serializedImage.type!,
       width: serializedImage.width,
       height: serializedImage.height,

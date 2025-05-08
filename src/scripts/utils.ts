@@ -1759,9 +1759,48 @@ export function hashImageData(image: HTMLImageElement | ImageBitmap): string {
   }
 }
 
+export async function hashImageDataPrecise(
+  image: HTMLImageElement | ImageBitmap,
+): Promise<string> {
+  if (image instanceof HTMLImageElement) {
+    const imageData = getImageData(image).data;
+    return Hasher.hashPrecisely(imageData);
+  } else {
+    // imagebitmap
+    if (
+      sharedCanvas.width !== image.width ||
+      sharedCanvas.height !== image.height
+    ) {
+      sharedCanvas.width = image.width;
+      sharedCanvas.height = image.height;
+    }
+
+    // 이미지 그리기
+    sharedCtx.drawImage(image, 0, 0);
+
+    // ImageData 얻기
+    const imageData = sharedCtx.getImageData(0, 0, image.width, image.height);
+
+    // 정확한 ArrayBuffer 추출
+    const clamped = imageData.data;
+    const exact = new Uint8Array(
+      clamped.buffer,
+      clamped.byteOffset,
+      clamped.byteLength,
+    );
+
+    return Hasher.hashPrecisely(exact);
+  }
+}
+
 export function hashDataTexture(texture: THREE.DataTexture) {
   const data = (texture.image as { data: ArrayBufferView }).data;
   return Hasher.hash(data.buffer);
+}
+
+export async function hashDataTexturePrecise(texture: THREE.DataTexture) {
+  const data = (texture.image as { data: ArrayBufferView }).data;
+  return Hasher.hashPrecisely(data.buffer);
 }
 
 export function getParentPath(o: THREE.Object3D): string {

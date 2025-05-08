@@ -4,7 +4,12 @@ import AssetMgr from '../manager/AssetMgr';
 import Hasher from '../manager/assets/Hasher';
 import { VFile } from '../manager/assets/VFile';
 import { VTexture } from '../manager/assets/VTexture';
-import { hashDataTexture, hashImageData } from '../utils';
+import {
+  hashDataTexture,
+  hashDataTexturePrecise,
+  hashImageData,
+  hashImageDataPrecise,
+} from '../utils';
 
 declare module 'three' {
   interface WebGLProgramParametersWithUniforms {
@@ -18,6 +23,7 @@ declare module 'three' {
     // vUserData.hash가 있으면 리턴, 없으면 계산 후 vUserData.hash에 저장
     get hash(): string;
     updateHash(): string;
+    updateHashPrecise(): Promise<string>;
     toAsset(): Promise<Asset>;
   }
 }
@@ -72,6 +78,7 @@ const handleImageData = async (
 };
 
 THREE.Texture.prototype.toAsset = async function () {
+  await this.updateHashPrecise();
   const id = this.vid;
   const asset = Asset.fromId(id);
   if (asset.vfile) {
@@ -180,6 +187,71 @@ THREE.Texture.prototype.updateHash = function (): string {
     imageHash = hashDataTexture(this as THREE.DataTexture);
   } else if (Boolean(this.image)) {
     imageHash = hashImageData(this.image);
+  } else {
+    throw new Error('이미지 없음');
+  }
+
+  // 이미지해시 + 기타 들어가있는 value값들 해시를 모아서 다시 해시
+
+  const hashMap: Record<string, any> = {
+    imageHash,
+  };
+
+  const scope = this as any;
+  const filteredKeys = rawKeys
+    .filter(key => scope[key] !== undefined && scope[key] !== null)
+    .filter(key => typeof scope[key] !== 'function')
+    .filter(key => !excludes.includes(key))
+    .filter(key => !key.startsWith('_'));
+
+  filteredKeys.forEach(key => {
+    const value = scope[key];
+    const typeofValue = typeof value;
+    if (
+      typeofValue === 'string' ||
+      typeofValue === 'number' ||
+      typeofValue === 'boolean' ||
+      typeofValue === 'undefined' ||
+      value === null
+    ) {
+      hashMap[key] = value;
+    } else if (scope[key].toArray && typeof scope[key].toArray === 'function') {
+      // vec2, vec3, vec4, quat 등등
+      hashMap[key] = scope[key].toArray();
+    }
+  });
+
+  const prev = this.vUserData.hash;
+  const hash = Hasher.object(hashMap);
+  this.vUserData.hash = hash;
+
+  // if (prev !== hash) {
+  //   this.update();
+  // }
+
+  if (!this.vUserData.id) {
+    this.vUserData.id = hash;
+  }
+
+  return hash;
+};
+
+THREE.Texture.prototype.updateHashPrecise = async function (): Promise<string> {
+  const excludes = ['uuid', 'id'];
+  const rawKeys = Object.keys(this) as (keyof THREE.MeshPhysicalMaterial)[];
+
+  // 우선 이미지데이터를 해싱
+  let imageHash: string | undefined = undefined;
+
+  if ((this as THREE.CompressedTexture).isCompressedTexture) {
+    if (!this.vUserData.ktx2Buffer) {
+      throw new Error('KTX2 Buffer가 없음');
+    }
+    imageHash = await Hasher.hashPrecisely(this.vUserData.ktx2Buffer);
+  } else if ((this as THREE.DataTexture).isDataTexture) {
+    imageHash = await hashDataTexturePrecise(this as THREE.DataTexture);
+  } else if (Boolean(this.image)) {
+    imageHash = await hashImageDataPrecise(this.image);
   } else {
     throw new Error('이미지 없음');
   }

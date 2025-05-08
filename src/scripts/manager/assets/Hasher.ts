@@ -1,7 +1,7 @@
 import { sha1 } from 'hash-wasm';
 import objectHash from 'object-hash';
 import { v4 } from 'uuid';
-import { TypedArray } from './AssetTypes';
+import { isDataArray, TypedArray } from './AssetTypes';
 
 const _cache = new WeakMap<any, string>();
 const _cachePrecise = new WeakMap<any, string>();
@@ -63,15 +63,23 @@ export default class Hasher {
       return _cachePrecise.get(input) as string;
     }
 
-    if (input instanceof ArrayBuffer) {
-      return this.arrayBuffer(input).then(hash => {
+    if (isDataArray(input)) {
+      if (input instanceof ArrayBuffer) {
+        return this.arrayBuffer(input).then(hash => {
+          _cachePrecise.set(input, hash);
+          return hash;
+        });
+      } else {
+        // typedArray
+        const arr = input as TypedArray;
+        const hash = await this.arrayBuffer(arr.buffer, true);
         _cachePrecise.set(input, hash);
         return hash;
-      });
+      }
     } else {
       const hash = objectHash(input);
       _cachePrecise.set(input, hash);
-      return Promise.resolve(objectHash(input));
+      return Promise.resolve(hash);
     }
   }
 }

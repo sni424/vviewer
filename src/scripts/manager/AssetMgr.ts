@@ -1,13 +1,22 @@
 import VGLTFLoader from '../loaders/VGLTFLoader';
 import VTextureLoader from '../loaders/VTextureLoader';
-import { DataArray } from './assets/AssetTypes';
-import { getBufferFormat, iterateWithPredicate } from './assets/AssetUtils';
+import {
+  DataArray,
+  isTypedArray,
+  TYPED_ARRAY_NAMES,
+  TypedArray,
+} from './assets/AssetTypes';
+import {
+  getBufferFormat,
+  getTypedArray,
+  iterateWithPredicate,
+} from './assets/AssetUtils';
 import BufferGeometryLoader from './assets/BufferGeometryLoader';
 import Hasher from './assets/Hasher';
 import MaterialLoader from './assets/MaterialLoader';
 import ObjectLoader from './assets/ObjectLoader';
 import TextureLoader from './assets/TextureLoader';
-import VCache from './assets/VCache';
+import VCache, { CachePayload } from './assets/VCache';
 import { isVFile, isVRemoteFile, VFile, VRemoteFile } from './assets/VFile';
 import Workers from './assets/Workers';
 
@@ -18,6 +27,49 @@ export type DownloadWithChildren = {
   vremotefiles: VRemoteFile[];
   vfiles: VFile[];
 };
+
+interface UploadResponse {
+  message: string;
+  filePath: string;
+  error?: string;
+}
+
+export type VFileInflateOption = {
+  inPlace?: boolean; // true면 vfile을 직접 수정, false면 clone한 후 수정
+  replaceBuffer?: boolean; // VRemoteFile.format이 buffer | TypedArray인 경우 이것까지 바꿔줄지 여부
+};
+
+export type AssetUploadOption = {
+  recursive?: boolean; // VFile인 경우 하위의 VFile, VRemoteFile, Binary파일까지 업로드
+};
+
+// obj를 재귀적으로 돌면서 내부의 ArrayBuffer만 Uint8Array로 변환하는 함수
+// ArrayBuffer을 mongodb에 저장하면 데이터가 날아가서 일단 Uint8Array로 변환
+function sanitizeObject(obj: any): any {
+  // Handle null or non-object types (return unchanged)
+  if (obj === null || typeof obj !== 'object') {
+    return obj;
+  }
+
+  // Handle ArrayBuffer
+  if (obj instanceof ArrayBuffer) {
+    return new Uint8Array(obj);
+  }
+
+  // Handle arrays
+  if (Array.isArray(obj)) {
+    return obj.map(item => sanitizeObject(item));
+  }
+
+  // Handle objects
+  const result: { [key: string]: any } = {};
+  for (const key in obj) {
+    if (Object.prototype.hasOwnProperty.call(obj, key)) {
+      result[key] = sanitizeObject(obj[key]);
+    }
+  }
+  return result;
+}
 
 async function fileToJson<T>(file: File): Promise<T> {
   return new Promise((resolve, reject) => {
@@ -116,12 +168,17 @@ export default class AssetMgr {
         const downloadPromise = AssetMgr._downloadJson(file.id, true).then(
           res => {
             const { self, vfiles, vremotefiles } = res;
-            vfiles.forEach(vfile => {
+
+            const vfilesExceptSelf = vfiles.filter(
+              vfile => vfile.id !== self.id,
+            );
+            vfilesExceptSelf.forEach(vfile => {
               const remote = vremotefiles.find(
                 vremotefile => vremotefile.id === vfile.id,
               );
               if (!remote) {
                 // 서버에서 잘못 보내준거임
+                res;
                 debugger;
               }
               cache.set(vfile.id, vfile, remote);
@@ -149,8 +206,15 @@ export default class AssetMgr {
       // format이 binary인 경우
       // result가 없으면 다운로드
 
-      if (!cache.hasResult) {
-        const downloadPromise = AssetMgr._downloadBinary(file.id);
+      if (!cache.hasResult(file.id)) {
+        const downloadPromise: Promise<DataArray> = AssetMgr._downloadBinary(
+          file.id,
+        ).then((buffer: ArrayBuffer) => {
+          if (TYPED_ARRAY_NAMES.includes(file.format as any)) {
+            return getTypedArray(file.format as any, buffer);
+          }
+          return buffer; // ArrayBuffer
+        });
         cache.setPromise(
           file.id,
           'result',
@@ -161,9 +225,11 @@ export default class AssetMgr {
     }
   }
 
+  // static debugIndex = 0;
+
   // DataArray를 set하고 VRemoteFile을 돌려준다
-  static setDataArray(data: DataArray): VRemoteFile {
-    const hash = Hasher.hash(data);
+  static async setDataArray(data: DataArray): Promise<VRemoteFile> {
+    const hash = await Hasher.hashPrecisely(data);
     AssetMgr.cache.setResult(hash, data);
 
     // VRemoteFile이 없으면 만들어서 넣어준다
@@ -177,6 +243,8 @@ export default class AssetMgr {
     }
 
     const vremotefile = AssetMgr.cache.get(hash)?.payload?.vremotefile!;
+
+    // vremotefile.index = AssetMgr.debugIndex++;
 
     return vremotefile;
   }
@@ -213,6 +281,8 @@ export default class AssetMgr {
     remotes.forEach(vremotefile => {
       AssetMgr.setVRemoteFile(vremotefile, true);
     });
+
+    return AssetMgr;
   }
 
   static setFile(id: string, file: File, autoPrepare: boolean) {
@@ -346,6 +416,8 @@ export default class AssetMgr {
 
     // prepare() => AssetMgr.cache.getAsync<any>(id);
 
+    console.log('Cache value', AssetMgr.cache.get(id));
+
     return AssetMgr.cache.getAsync<T>(id).then(async res => {
       if (!res) {
         AssetMgr.cache;
@@ -358,7 +430,11 @@ export default class AssetMgr {
       const vfile = await AssetMgr.cache.getVFileAsync(id);
 
       if (vfile) {
-        return AssetMgr.loadVFile(vfile);
+        // VFile을 재귀적으로 다 채워서 로드한다
+        const inflated = await AssetMgr.inflateVFile(vfile, {
+          replaceBuffer: true,
+        });
+        return AssetMgr.loadVFile(inflated);
       }
 
       // case 2. File인 경우
@@ -440,6 +516,209 @@ export default class AssetMgr {
     }
 
     throw new Error('Unknown file type');
+  }
+
+  static async _uploadJson(vfile: VFile) {
+    const filepath = `${AssetMgr.projectId}/${vfile.id}`;
+
+    const jsonString = JSON.stringify(sanitizeObject(vfile));
+    const file = new File([jsonString], filepath, { type: 'application/json' });
+    const formData = new FormData();
+
+    formData.append('data', file);
+    formData.append('filepath', filepath);
+    formData.append('type', 'json');
+
+    return fetch('http://localhost:4000/save', {
+      method: 'POST',
+      body: formData,
+      headers: {
+        Accept: 'multipart/form-data',
+      },
+    }).then(res => res.json() as Promise<UploadResponse>);
+  }
+
+  static async _uploadBinary(vremotefile: VRemoteFile, dataArray: DataArray) {
+    const filepath = `${AssetMgr.projectId}/${vremotefile.id}`;
+    const formData = new FormData();
+
+    let file: File;
+    if (isTypedArray(dataArray)) {
+      file = new File(
+        [(dataArray as TypedArray).buffer as ArrayBuffer],
+        filepath,
+        {
+          type: 'application/octet-stream',
+        },
+      );
+    } else {
+      // ArrayBuffer
+      file = new File([dataArray as ArrayBuffer], filepath, {
+        type: 'application/octet-stream',
+      });
+    }
+
+    formData.append('data', file);
+    formData.append('filepath', filepath);
+    formData.append('type', 'binary');
+
+    return fetch('http://localhost:4000/save', {
+      method: 'POST',
+      body: formData,
+      headers: {
+        Accept: 'multipart/form-data',
+      },
+    }).then(res => res.json() as Promise<UploadResponse>);
+  }
+
+  static async upload(
+    idContainer: string | { id: string },
+    uploadOption?: AssetUploadOption,
+  ) {
+    const id = typeof idContainer === 'string' ? idContainer : idContainer.id;
+
+    const cached = AssetMgr.cache.get(id);
+
+    if (!cached) {
+      return { error: '캐시가 없음' };
+    }
+
+    // handle options
+    const { recursive = true } = (uploadOption ?? {}) as AssetUploadOption;
+
+    const { vremotefile, vfile, result } = cached.payload;
+
+    if (!vremotefile) {
+      debugger;
+      return { error: 'VRemoteFile이 생성되어 있어야 업로드 가능함' };
+    }
+    if (vremotefile.format === 'json') {
+      if (!vfile) {
+        debugger;
+        return { error: 'VFile이 생성되어 있어야 업로드 가능함' };
+      }
+
+      if (recursive) {
+        const childrenProms: Promise<any>[] = [];
+        let iter = 1;
+        iterateWithPredicate<VFile>(
+          vfile,
+          child => {
+            return isVFile(child) || isVRemoteFile(child);
+          },
+          (child: VFile | VRemoteFile) => {
+            if (child === vfile) {
+              // 나 자신을 제외
+              return;
+            }
+            console.log('Pushing child', child);
+            childrenProms.push(AssetMgr.upload(child.id, uploadOption));
+          },
+        );
+        await Promise.all(childrenProms);
+      }
+
+      return AssetMgr._uploadJson(vfile);
+    } else {
+      // binary
+      if (!result) {
+        debugger;
+        return { error: 'result가 생성되어 있어야 업로드 가능함' };
+      }
+      if (!isTypedArray(result) && !(result instanceof ArrayBuffer)) {
+        debugger;
+        return { error: 'result가 TypedArray 또는 ArrayBuffer여야 함' };
+      }
+      return AssetMgr._uploadBinary(vremotefile, result);
+    }
+  }
+
+  static async getAsync<T = any>(
+    id: string,
+    key: keyof CachePayload,
+  ): Promise<T> {
+    const cached = AssetMgr.cache.get(id);
+    if (!cached) {
+      return undefined as T;
+    }
+
+    // case 1. 이미 값이 존재하는 경우
+    const payload = cached.payload[key];
+    if (payload) {
+      return payload as T;
+    }
+
+    // case 2. promise가 존재하는 경우
+    const queued = cached.loadingQueue.find(item => item.destination === key);
+
+    return queued?.promise as Promise<T>;
+  }
+
+  // vfile 내부를 돌면서 VRemoteFile을 VFile로 바꿔준다
+  static async inflateVFile(
+    vfile: VFile,
+    option?: VFileInflateOption,
+  ): Promise<VFile> {
+    const { inPlace = false, replaceBuffer = false } = option ?? {};
+    vfile = inPlace ? vfile : structuredClone(vfile);
+
+    const proms: Promise<any>[] = [];
+
+    iterateWithPredicate<VRemoteFile>(
+      vfile,
+      isVRemoteFile,
+      async (vremotefile, path) => {
+        if (!replaceBuffer) {
+          // !replaceBuffer = VFile만 대체하는 경우
+          if (vremotefile.format !== 'json') {
+            return;
+          }
+        }
+
+        const prom = AssetMgr.getVRemoteFile(vremotefile).then(value => {
+          const pathToPop = path.slice(0, -1);
+          const target = pathToPop.reduce(
+            (acc, key) => (acc as any)[key],
+            vfile,
+          );
+
+          // 가장 마지막 요소인 VRemoteFile을 VFile로 갈아끼우기
+          (target as any)[path[path.length - 1]] = value;
+        });
+        proms.push(prom);
+      },
+    );
+
+    // 한 번 채웠으니 다시 VRemoteFile이 있는지 재귀적으로 검사
+    if (proms.length > 0) {
+      await Promise.all(proms);
+      return AssetMgr.inflateVFile(vfile, option);
+    }
+
+    return vfile;
+  }
+
+  // VRemoteFile을 VFile이나 DataArray로 바꿔준다
+  static async getVRemoteFile<T extends VFile | DataArray>(
+    vremotefile: VRemoteFile,
+  ): Promise<T> {
+    const { id, format } = vremotefile;
+
+    AssetMgr.setVRemoteFile(vremotefile, true);
+
+    if (format === 'json') {
+      const vfile = await AssetMgr.cache.getVFileAsync(id);
+      if (!vfile) {
+        throw new Error('VFile이 없음');
+      }
+      return vfile as T;
+    } else {
+      const result = (await AssetMgr.cache.getResultAsync(id)) as DataArray;
+      if (!result) {
+        throw new Error('result가 없음');
+      }
+      return result as T;
+    }
   }
 }
 

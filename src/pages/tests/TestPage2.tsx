@@ -1,13 +1,16 @@
-import { Environment, OrbitControls } from '@react-three/drei';
-import { Canvas, useThree } from '@react-three/fiber';
+import { useThree } from '@react-three/fiber';
 import { useEffect, useRef, useState } from 'react';
-import ObjectViewer from 'src/components/ObjectViewer';
 import VGLTFLoader from 'src/scripts/loaders/VGLTFLoader';
 import Asset from 'src/scripts/manager/Asset';
 import AssetMgr from 'src/scripts/manager/AssetMgr';
 import { isDataArray } from 'src/scripts/manager/assets/AssetTypes';
+import { iterateWithPredicate } from 'src/scripts/manager/assets/AssetUtils';
+import { isVRemoteFile, VRemoteFile } from 'src/scripts/manager/assets/VFile';
+import { formatNumber } from 'src/scripts/utils';
+import { RGBELoader } from 'three/examples/jsm/Addons.js';
 import { THREE } from 'VTHREE';
 import useTestModelDragAndDrop from './useTestModelDragAndDrop';
+import VRenderer from './VRenderer';
 
 const mgr = AssetMgr;
 const print = console.log;
@@ -230,8 +233,10 @@ function useEffectOnce(effect: () => void | (() => void)) {
 function TestPage() {
   const [useEnv, setUseEnv] = useState(true);
   const [loadedMat, setLoadedMat] = useState<THREE.Material>();
-  const sceneRef = useRef<THREE.Scene>(new THREE.Scene());
+  // const sceneRef = useRef<THREE.Scene>(new THREE.Scene());
+
   const [asset, setAsset] = useState<Asset[]>([]);
+  const canvasContainerRef = useRef<HTMLDivElement>(null);
   const { files, isDragging, handleDragOver, handleDragLeave, handleDrop } =
     useTestModelDragAndDrop();
   const [loaded, setLoaded] = useState<any[]>();
@@ -263,6 +268,61 @@ function TestPage() {
     // print(assets.map(asset => asset.toJson()));
   }, [files]);
 
+  const animRef = useRef<number | null>(null);
+  const envRef = useRef<Promise<THREE.Texture> | null>(null);
+
+  useEffect(() => {
+    if (!envRef.current) {
+      envRef.current = new RGBELoader()
+        .loadAsync('/dancing_hall_1k.hdr')
+        .then(t => {
+          t.mapping = THREE.EquirectangularReflectionMapping;
+          t.anisotropy = 16;
+          t.magFilter = THREE.LinearFilter;
+          t.minFilter = THREE.LinearFilter;
+          t.needsUpdate = true;
+          return t;
+        });
+    }
+
+    if (canvasContainerRef.current) {
+      VRenderer.init(canvasContainerRef.current);
+
+      if (!animRef.current) {
+        const animate = () => {
+          VRenderer.render();
+          animRef.current = requestAnimationFrame(animate);
+        };
+        animRef.current = requestAnimationFrame(animate);
+      }
+    }
+
+    return () => {
+      // clean up
+      VRenderer.cleanup();
+
+      if (animRef.current) {
+        cancelAnimationFrame(animRef.current);
+        animRef.current = null;
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (useEnv) {
+      envRef.current?.then(t => {
+        console.log('env loaded', t);
+        VRenderer.scene.environment = t;
+        VRenderer.scene.environmentIntensity = 1;
+        VRenderer.scene.environment.needsUpdate = true;
+
+        console.log(VRenderer.scene);
+      });
+    } else {
+      VRenderer.scene.environment = null;
+    }
+  }, [useEnv]);
+
   return (
     <div
       className="fullscreen flex"
@@ -277,32 +337,110 @@ function TestPage() {
           <button
             onClick={async () => {
               const start = performance.now();
+
               Promise.all(
-                asset.filter(a => a.isGlb).map(a => a.load<THREE.Group>()),
+                asset
+                  .filter(a => a.isGlb)
+                  .map((a, assetIndex) =>
+                    a.load<THREE.Group>().then(g => {
+                      const start = performance.now();
+
+                      g.traverse(c => {
+                        if (c.asMesh.isMesh) {
+                          c.frustumCulled = false;
+                        }
+                      });
+
+                      // return g;
+                      const { renderer: gl, camera: cam, scene } = VRenderer;
+                      return gl.compileAsync(g, cam, scene).then(() => {
+                        const end = performance.now();
+                        console.log(
+                          `[${assetIndex + 1}] CompileAsync`,
+                          end - start,
+                          'ms',
+                          g,
+                        );
+
+                        VRenderer.scene.add(g);
+
+                        return g;
+                      });
+                    }),
+                  ),
               ).then(groups => {
                 const end = performance.now();
                 console.log('glb 로드 완료', end - start, 'ms', groups);
-                // groups.forEach(g => g.position.addScalar(2));
-                const meshes = groups.map(g => g.flattendMeshes()).flat();
-                sceneRef.current.add(...meshes);
+                // sceneRef.current.add(...groups);
+                // VRenderer.scene.add(...groups);
 
-                const startToasset = performance.now();
-                sceneRef.current.toAsset().then(a => {
-                  const endTooasset = performance.now();
-                  console.log('toAsset', endTooasset - startToasset, 'ms', a);
+                // // groups.forEach(g => g.position.addScalar(2));
+                // const meshes = groups.map(g => g.flattendMeshes()).flat();
 
-                  const startInflate = performance.now();
-                  a.vfileInflated().then(vfile => {
-                    const endInflate = performance.now();
-                    console.log('vfile inflated', vfile);
-                    console.log(
-                      'inflate',
-                      endInflate - startInflate,
-                      'ms',
-                      vfile,
-                    );
-                  });
-                });
+                // sceneRef.current.add(...meshes);
+
+                // const startToasset = performance.now();
+                // sceneRef.current.toAsset().then(a => {
+                //   const endTooasset = performance.now();
+                //   console.log('toAsset', endTooasset - startToasset, 'ms', a);
+
+                //   const startInflate = performance.now();
+                //   a.vfileInflated().then(vfileInflated => {
+                //     const endInflate = performance.now();
+                //     console.log('vfile inflated', vfileInflated);
+                //     console.log(
+                //       'inflate',
+                //       endInflate - startInflate,
+                //       'ms',
+                //       vfileInflated,
+                //     );
+
+                //     let idx = 1;
+                //     console.log('From here');
+                //     // debugger;
+                //     const idCount = new Map<string, number>();
+                //     const upsert = (id: string) => {
+                //       const count = idCount.get(id) ?? 0;
+                //       idCount.set(id, count + 1);
+                //     };
+                //     const buffersOfSameLength = new Map<number, string[]>();
+
+                //     iterateWithPredicate<VRemoteFile>(
+                //       vfileInflated,
+                //       isVRemoteFile,
+                //       (geo, path) => {
+                //         vfileInflated;
+                //         const asset = Asset.fromId(geo.id);
+                //         upsert(geo.id);
+                //         const dataArray = asset.result as DataArray;
+                //         if (!dataArray) {
+                //           debugger;
+                //         }
+                //         console.log(
+                //           idx++,
+                //           geo.id,
+                //           geo.format,
+                //           dataArray.byteLength,
+                //           path.join('/'),
+                //         );
+
+                //         const len = dataArray.byteLength;
+                //         if (!buffersOfSameLength.has(len)) {
+                //           buffersOfSameLength.set(len, []);
+                //         }
+                //         const ids = buffersOfSameLength.get(len)!;
+                //         ids.push(geo.id);
+                //       },
+                //     );
+                //     console.log('idCount', idCount);
+                //     console.log('buffersOfSameLength', buffersOfSameLength);
+                //     for (const [key, value] of idCount.entries()) {
+                //       if (value > 1) {
+                //         console.log(key, value);
+                //       }
+                //     }
+                //   });
+                // });
               });
             }}
           >
@@ -310,11 +448,95 @@ function TestPage() {
           </button>
           <button
             onClick={() => {
+              const start = performance.now();
+              VRenderer.scene.toAsset().then(sceneAsset => {
+                const end = performance.now();
+
+                console.log('toAsset', end - start, 'ms');
+
+                const uploadStart = performance.now();
+                sceneAsset.upload().then(() => {
+                  const uploadEnd = performance.now();
+                  console.log('Scene id : ', sceneAsset.id);
+                  console.log(
+                    'Upload',
+                    uploadEnd - uploadStart,
+                    'ms',
+                    sceneAsset,
+                  );
+                });
+
+                // console.log('toAsset', end - start, 'ms', sceneAsset);
+                // const startInflate = performance.now();
+                // sceneAsset.vfileInflated().then(vfileInflated => {
+                //   const endInflate = performance.now();
+                //   console.log('vfile inflated', vfileInflated);
+                //   console.log(
+                //     'inflate',
+                //     endInflate - startInflate,
+                //     'ms',
+                //     vfileInflated,
+                //   );
+                //   iterateWithPredicate<any>(
+                //     vfileInflated,
+                //     obj => {
+                //       // return isVFile(obj) && obj.type === 'VBufferGeometry';
+                //       return Boolean(obj?.normal) && Boolean(obj?.position);
+                //     },
+                //     (vfile, path) => {
+                //       console.log('vfile', path.join('/'), vfile);
+                //     },
+                //   );
+                // });
+              });
+            }}
+          >
+            To Asset
+          </button>
+          <button
+            onClick={() => {
+              const start = performance.now();
+              const id = '676b1495c15b43585b81db633f4d042ff6e0f8f7';
+              const vremotefile: VRemoteFile = {
+                id,
+                format: 'json',
+                isVRemoteFile: true,
+              };
+              Asset.fromVRemoteFile(vremotefile)
+                .prepare()
+                .then(async a => {
+                  const end = performance.now();
+                  console.log('Asset fromId', end - start, 'ms', a);
+
+                  const infl = await a.vfileInflated();
+                  iterateWithPredicate<VRemoteFile>(
+                    infl,
+                    isVRemoteFile,
+                    vremotefile => {
+                      console.log('vremote file', vremotefile);
+                    },
+                  );
+                  console.log('inflated', infl);
+
+                  const loadStart = performance.now();
+                  return a.load<THREE.Group>().then(g => {
+                    const loadEnd = performance.now();
+                    console.log('Asset load', loadEnd - loadStart, 'ms', g);
+                    VRenderer.scene.add(g);
+                  });
+                });
+            }}
+          >
+            Load Asset
+          </button>
+          <button
+            onClick={() => {
               setUseEnv(prev => !prev);
             }}
           >
-            ENV : {useEnv ? 'OFF' : 'ON'}
+            ENV : {useEnv ? 'ON -> OFF' : 'OFF -> ON'}
           </button>
+
           <button
             onClick={() => {
               const urls = [
@@ -335,11 +557,11 @@ function TestPage() {
                 '주방DP METAL2.glb',
                 '주방DP 냉장고수납장.glb',
               ];
-              const loader = new VGLTFLoader();
+              const loader = VGLTFLoader.instance;
               urls.forEach(url =>
                 loader.load(url, gltf => {
                   console.log(gltf.scene);
-                  sceneRef.current.add(gltf.scene);
+                  VRenderer.scene.add(gltf.scene);
                 }),
               );
             }}
@@ -347,19 +569,30 @@ function TestPage() {
             GLB쌩로드
           </button>
         </div>
-        <ObjectViewer data={asset}></ObjectViewer>
+        {/* <ObjectViewer data={asset}></ObjectViewer> */}
+        <ul>
+          {asset.map((a, i) => {
+            return (
+              <li key={`list-${a.id}`}>
+                {i + 1}. {a.fileName} -{' '}
+                {formatNumber(a.file.size / (1024 * 1024))}mb
+              </li>
+            );
+          })}
+        </ul>
       </div>
-      <div className="flex-1 h-full">
-        <Canvas
+      <div className="flex-1 h-full" ref={canvasContainerRef}>
+        {/* <Canvas
           scene={sceneRef.current}
-          gl={{
-            powerPreference: 'high-performance',
-          }}
+          gl={glRef.current}
+          camera={camRef.current}
         >
           <CallLoader></CallLoader>
-          <OrbitControls></OrbitControls>
+          <OrbitControls
+            args={[camRef.current, glRef.current.domElement]}
+          ></OrbitControls>
           {useEnv && <Environment preset="apartment"></Environment>}
-        </Canvas>
+        </Canvas> */}
       </div>
     </div>
   );

@@ -17,6 +17,7 @@ type AwaitablePartial<T> = {
 };
 
 THREE.Material.prototype.toAsset = async function () {
+  await this.updateHashPrecise();
   const id = this.vid;
   const asset = Asset.fromId(id);
   if (asset.vfile) {

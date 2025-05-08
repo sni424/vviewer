@@ -10,6 +10,7 @@ declare module 'three' {
   interface BufferGeometry {
     get hash(): string;
     updateHash(): string;
+    updateHashPrecise(): Promise<string>;
 
     toAsset(): Promise<Asset>;
   }
@@ -59,8 +60,40 @@ THREE.BufferGeometry.prototype.updateHash = function (): string {
   return finalhash;
 };
 
+THREE.BufferGeometry.prototype.updateHashPrecise =
+  async function (): Promise<string> {
+    const geometry = this;
+    const hashInputParts: string[] = [];
+
+    // 인덱스 포함 (있다면)
+    if (geometry.index) {
+      const hash = await Hasher.hashPrecisely(geometry.index.array);
+      hashInputParts.push(hash);
+    }
+
+    // 각 속성에 대해 데이터 추출
+    for (const [_, attr] of Object.entries(geometry.attributes)) {
+      const typedArray = (attr as any).array;
+      const hash = await Hasher.hashPrecisely(typedArray.buffer);
+      hashInputParts.push(hash);
+    }
+
+    const finalhash = await Hasher.hashPrecisely(hashInputParts);
+
+    if (!this.vUserData) {
+      this.vUserData = {} as VUserData;
+    }
+
+    this.vUserData.hash = finalhash;
+    if (!this.vUserData.id) {
+      this.vUserData.id = finalhash;
+    }
+    return finalhash;
+  };
+
 THREE.BufferGeometry.prototype.toAsset = async function () {
-  const id = this.vid;
+  // 정확하게 데이터를 해시한 id
+  const id = await this.updateHashPrecise();
   const asset = Asset.fromId(id);
   if (asset.vfile) {
     // 이미 Asset이 존재함
@@ -88,7 +121,7 @@ THREE.BufferGeometry.prototype.toAsset = async function () {
     version: this._version,
   };
 
-  data.uuid = this.vid;
+  data.uuid = id;
   data.type = this.type;
   if (this.name !== '') data.name = this.name;
   if (Object.keys(this.userData).length > 0) data.userData = this.userData;
@@ -112,7 +145,7 @@ THREE.BufferGeometry.prototype.toAsset = async function () {
   if (index !== null) {
     data.data.index = {
       type: index.array.constructor.name,
-      array: AssetMgr.setDataArray(index.array),
+      array: await AssetMgr.setDataArray(index.array),
     };
   }
 
@@ -125,7 +158,7 @@ THREE.BufferGeometry.prototype.toAsset = async function () {
       console.log(attribute);
       debugger;
     }
-    data.data.attributes[key] = attribute.toAsset();
+    data.data.attributes[key] = await attribute.toAsset();
   }
 
   const morphAttributes = {};
@@ -171,7 +204,7 @@ THREE.BufferGeometry.prototype.toAsset = async function () {
 
   const retval: VFile<VBufferGeometry> = {
     isVFile: true,
-    id: this.vid,
+    id,
     type: 'VBufferGeometry',
     data: data as VBufferGeometry,
   };

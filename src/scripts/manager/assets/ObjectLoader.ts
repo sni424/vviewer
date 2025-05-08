@@ -1,22 +1,27 @@
 import { THREE } from 'VTHREE';
+import Asset from '../Asset';
 import BufferGeometryLoader from './BufferGeometryLoader';
 import MaterialLoader from './MaterialLoader';
 import TextureLoader from './TextureLoader';
-import { VFile, VRemoteFile } from './VFile';
+import { isVRemoteFile, VFile, VRemoteFile } from './VFile';
 
 const OBJECT3D_TYPES = ['VObject3D', 'VMesh', 'VGroup', 'VScene'];
 
 export default async function ObjectLoader(
   vfile: VFile | VRemoteFile,
 ): Promise<THREE.Object3D> {
+  if (isVRemoteFile(vfile)) {
+    vfile = await Asset.fromVRemoteFile(vfile as VRemoteFile).vfileAsync;
+  }
+
   const { id, type, data } = vfile as any;
 
   // if (data.uuid !== id) {
   //   console.error(vfile);
   //   throw new Error('uuid가 다릅니다');
   // }
-
   if (!OBJECT3D_TYPES.includes(type)) {
+    debugger;
     throw new Error('VObject3D가 아닙니다');
   }
 

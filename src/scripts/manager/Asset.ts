@@ -1,4 +1,4 @@
-import AssetMgr from './AssetMgr';
+import AssetMgr, { AssetUploadOption } from './AssetMgr';
 import { iterateWithPredicate } from './assets/AssetUtils';
 import Hasher from './assets/Hasher';
 import { CachePayload } from './assets/VCache';
@@ -12,18 +12,36 @@ export default class Asset {
     return AssetMgr.cache.get(this.id)?.payload?.vfile!;
   }
 
+  get vfileAsync(): Promise<VFile> {
+    return AssetMgr.getAsync<VFile>(this.id, 'vfile')!;
+  }
+
   get vremotefile(): VRemoteFile {
     return AssetMgr.cache.get(this.id)?.payload?.vremotefile!;
   }
+  get vremotefileAsync(): Promise<VRemoteFile> {
+    return AssetMgr.getAsync<VRemoteFile>(this.id, 'vremotefile')!;
+  }
+
   get file(): File {
     return AssetMgr.cache.get(this.id)?.payload?.file!;
   }
   get inputBuffer(): ArrayBuffer {
     return AssetMgr.cache.get(this.id)?.payload?.inputBuffer!;
   }
+
+  get inputBufferAsync(): Promise<ArrayBuffer> {
+    return AssetMgr.getAsync<ArrayBuffer>(this.id, 'inputBuffer')!;
+  }
+
   get result(): any {
     return AssetMgr.cache.get(this.id)?.payload?.result!;
   }
+
+  get resultAsync(): Promise<any> {
+    return AssetMgr.getAsync(this.id, 'result')!;
+  }
+
   get payload(): Partial<CachePayload<any>> {
     return AssetMgr.cache.get(this.id)?.payload!;
   }
@@ -36,6 +54,8 @@ export default class Asset {
 
     const vfile = structuredClone(this.vfile);
 
+    const proms: Promise<any>[] = [];
+
     iterateWithPredicate<VRemoteFile>(
       vfile,
       isVRemoteFile,
@@ -44,15 +64,27 @@ export default class Asset {
           return;
         }
 
-        const asset = await Asset.fromVRemoteFile(value).prepare();
-        const toChange = await asset.vfileInflated()!;
+        const toChangeProm = Asset.fromVRemoteFile(value)
+          .prepare()
+          .then(async asset => (await asset.vfileInflated())!);
 
-        const target = path.reduce((acc, key) => (acc as any)[key], vfile);
-        Object.assign(target, toChange);
+        proms.push(toChangeProm);
+        toChangeProm.then(toChange => {
+          if (path.length > 0) {
+            const pathToPop = path.slice(0, -1);
+            const target = pathToPop.reduce(
+              (acc, key) => (acc as any)[key],
+              vfile,
+            );
+
+            // 가장 마지막 요소인 VRemoteFile을 VFile로 갈아끼우기
+            (target as any)[path[path.length - 1]] = toChange;
+          }
+        });
       },
     );
 
-    return vfile;
+    return Promise.all(proms).then(() => vfile);
   }
 
   // VFile인 경우 VFile 내부에 VRemoteFile이 있는 경우
@@ -74,6 +106,19 @@ export default class Asset {
   // 2. VFile 또는 VRemoteFile인 경우 재귀적으로 VFile을 다운로드
   async prepare(): Promise<this> {
     await AssetMgr.cache.getAsync<any>(this.id);
+
+    if (this.vfile) {
+      const proms: Promise<any>[] = [];
+      iterateWithPredicate<VRemoteFile>(
+        this.vfile,
+        isVRemoteFile,
+        async (value, path) => {
+          const childPromise = Asset.fromVRemoteFile(value).prepare();
+          proms.push(childPromise);
+        },
+      );
+      await Promise.all(proms);
+    }
     return this;
   }
 
@@ -162,5 +207,9 @@ export default class Asset {
     const mapname = this.fileName?.toLowerCase();
 
     return Asset._maps.includes(mapname as string);
+  }
+
+  async upload(params?: AssetUploadOption) {
+    return AssetMgr.upload(this, params);
   }
 }

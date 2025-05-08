@@ -1,9 +1,9 @@
 import { getVKTX2Loader } from 'src/scripts/loaders/VKTX2Loader';
 import { THREE } from 'VTHREE';
-import _Asset from '../_Asset';
+import Asset from '../Asset';
 import { getTypedArray } from './AssetUtils';
 import { deserialize } from './Serializer';
-import { isVRemoteFile, VFile, VRemoteFile } from './VFile';
+import { isVFile, isVRemoteFile, VFile, VRemoteFile } from './VFile';
 import { VTexture, VTextureSource } from './VTexture';
 import Workers from './Workers';
 
@@ -251,23 +251,24 @@ async function createCommonTexture(data: VTexture): Promise<THREE.Texture> {
 export default async function TextureLoader(
   file: VFile | VRemoteFile,
 ): Promise<THREE.Texture> {
-  return _Asset.vfile<VFile<VTexture>>(file as any).then(async textureFile => {
-    if (!textureFile) {
-      debugger;
-    }
-    if (!TEXTURE_KEYS.includes(textureFile.type)) {
-      throw new Error('VTexture가 아닙니다');
-    }
+  const vfile = (
+    isVFile(file)
+      ? file
+      : await Asset.fromVRemoteFile(file as VRemoteFile).vfileAsync
+  ) as VFile<VTexture>;
 
-    const { id, type, data } = textureFile;
-    if (type === 'VTexture') {
-      return createCommonTexture(data);
-    } else if (type === 'VDataTexture') {
-      return createDataTexture(data);
-    } else if (type === 'VCompressedTexture') {
-      return createCompressedTexture(data);
-    }
+  if (!TEXTURE_KEYS.includes(vfile.type)) {
+    throw new Error('VTexture가 아닙니다');
+  }
 
-    throw new Error('지원하지 않는 텍스쳐 타입입니다');
-  });
+  const { id, type, data } = vfile;
+  if (type === 'VTexture') {
+    return createCommonTexture(data);
+  } else if (type === 'VDataTexture') {
+    return createDataTexture(data);
+  } else if (type === 'VCompressedTexture') {
+    return createCompressedTexture(data);
+  }
+
+  throw new Error('지원하지 않는 텍스쳐 타입입니다');
 }

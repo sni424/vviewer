@@ -8,22 +8,22 @@ import {
 
 declare module 'three' {
   interface BufferAttribute {
-    toAsset(): VBufferAttribute;
+    toAsset(): Promise<VBufferAttribute>;
   }
 }
 
 declare module 'three' {
   interface InterleavedBufferAttribute {
-    toAsset(): VInterleavedBufferAttribute;
+    toAsset(): Promise<VInterleavedBufferAttribute>;
   }
 
   interface InterleavedBuffer {
-    toAsset(): VInterleavedBuffer;
+    toAsset(): Promise<VInterleavedBuffer>;
   }
 }
 
-THREE.BufferAttribute.prototype.toAsset = function () {
-  const array = AssetMgr.setDataArray(this.array);
+THREE.BufferAttribute.prototype.toAsset = async function () {
+  const array = await AssetMgr.setDataArray(this.array);
 
   const attributeData: VBufferAttribute = {
     itemSize: this.itemSize,
@@ -39,21 +39,21 @@ THREE.BufferAttribute.prototype.toAsset = function () {
   return attributeData;
 };
 
-THREE.InterleavedBufferAttribute.prototype.toAsset = function () {
+THREE.InterleavedBufferAttribute.prototype.toAsset = async function () {
   const retval = {
     isInterleavedBufferAttribute: true as const,
     itemSize: this.itemSize,
-    data: this.data.toAsset(),
+    data: await this.data.toAsset(),
     offset: this.offset,
     normalized: this.normalized,
   };
   return retval;
 };
 
-THREE.InterleavedBuffer.prototype.toAsset = function () {
+THREE.InterleavedBuffer.prototype.toAsset = async function () {
   const retval: VInterleavedBuffer = {
     uuid: this.uuid,
-    buffer: AssetMgr.setDataArray(this.array.buffer as ArrayBuffer),
+    buffer: await AssetMgr.setDataArray(this.array.buffer as ArrayBuffer),
     type: this.array.constructor.name,
     stride: this.stride,
   };
