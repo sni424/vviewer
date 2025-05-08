@@ -165,7 +165,7 @@ function RoomSetting() {
       .then(results => {
         console.timeEnd();
         console.log('processExteriorMeshes', results);
-
+        setExteriorMeshes(results);
         setFilterOcclusion(pre => ({
           meshArray: meshNameArray,
           pointArray: pre?.pointArray ?? [],

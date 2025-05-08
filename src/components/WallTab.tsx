@@ -26,6 +26,7 @@ import {
   resetColor,
 } from '../scripts/utils';
 import { WallCreateOption, WallPointView, Walls, WallView } from '../types';
+import wallJson from '/src/assets/walls.json?url';
 
 function WallDetail({
   wallView,
@@ -355,6 +356,16 @@ function WallTab() {
     });
   };
 
+  async function wallJsonData(): Promise<any> {
+    const response = await fetch(wallJson);
+    const data = await response.json();
+    if (data) {
+      setWallOptionAtom(wallsToWallOption(data));
+    } else {
+      console.warn('no navDpOcclusion');
+    }
+  }
+
   return (
     <div className="w-full h-full overflow-y-auto">
       {/* 상단 메뉴 */}
@@ -447,10 +458,11 @@ function WallTab() {
             <button
               type="button"
               onClick={() => {
-                loadJson<Walls>(wallJsonName).then(walls => {
-                  // setWallAtom(walls);
-                  setWallOptionAtom(wallsToWallOption(walls));
-                });
+                wallJsonData();
+                // loadJson<Walls>(wallJsonName).then(walls => {
+                //   // setWallAtom(walls);
+                //   setWallOptionAtom(wallsToWallOption(walls));
+                // });
               }}
             >
               불러오기
