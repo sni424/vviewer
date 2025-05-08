@@ -32,13 +32,26 @@ class VRTLoader implements MaxLoader<THREE.Texture> {
     const texture = await this.imageLoader.loadFromFileName(json.image.vri);
 
     texture.channel = json.channel;
-    texture.flipY = json.flipY;
-    texture.colorSpace = json.colorSpace;
-    texture.minFilter = THREE.LinearMipMapLinearFilter;
-    texture.magFilter = THREE.LinearFilter;
-    texture.wrapT = THREE.RepeatWrapping;
-    texture.wrapS = THREE.RepeatWrapping;
-    texture.unpackAlignment = 4;
+
+    if (json.channel === 1) {
+      texture.flipY = true;
+      texture.minFilter = THREE.LinearMipmapLinearFilter;
+      texture.magFilter = THREE.LinearFilter;
+      texture.format = THREE.RGBAFormat;
+      texture.type = THREE.HalfFloatType;
+      texture.vUserData.mimeType = 'image/ktx2';
+    } else {
+      texture.flipY = json.flipY;
+      texture.colorSpace = json.colorSpace;
+      texture.minFilter = THREE.LinearMipMapLinearFilter;
+      texture.magFilter = THREE.LinearFilter;
+      texture.wrapT = THREE.RepeatWrapping;
+      texture.wrapS = THREE.RepeatWrapping;
+      texture.unpackAlignment = 4;
+      texture.anisotropy = 16
+    }
+
+    texture.needsUpdate = true;
 
     maxFile.loaded = true;
     maxFile.resultData = texture;

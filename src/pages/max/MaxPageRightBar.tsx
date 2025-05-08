@@ -24,6 +24,7 @@ const MaxPageRightBar = ({
   const [wireframe, setWireframe] = useState<boolean>(false);
   const [metalness, setMetalness] = useState<number>(0);
   const [roughness, setRoughness] = useState<number>(1);
+  const [lightMapIntensity, setLightMapIntensity] = useState<number>(1);
   const { handleMaxFile } = useMaxFileController();
   const [_, render] = useState(0);
   const [meshes, setMeshes] = useState<{ name: string; mesh: THREE.Mesh }[]>(
@@ -63,6 +64,17 @@ const MaxPageRightBar = ({
       }
     }
   }, [reflectMode, metalness, roughness]);
+
+  useEffect(() => {
+    if (scene) {
+      scene.traverseAll(o => {
+        if (o.type === 'Mesh') {
+          const mat = (o as THREE.Mesh).matPhysical;
+          mat.lightMapIntensity = lightMapIntensity;
+        }
+      });
+    }
+  }, [lightMapIntensity]);
 
   async function load(maxFile: MaxFile) {
     handleMaxFile(maxFile).then(() => {
@@ -158,6 +170,19 @@ const MaxPageRightBar = ({
           const mat = (o as THREE.Mesh).matPhysical;
           if (!mat.vUserData.isMultiMaterial) {
             mat.color = new THREE.Color('white');
+          }
+        }
+      });
+    }
+  }
+
+  function allColorOriginal() {
+    if (scene) {
+      scene.traverseAll(o => {
+        if (o.type === 'Mesh') {
+          const mat = (o as THREE.Mesh).matPhysical;
+          if (!mat.vUserData.isMultiMaterial && mat.vUserData.originalColor) {
+            mat.color = new THREE.Color(`#${mat.vUserData.originalColor}`);
           }
         }
       });
@@ -284,6 +309,7 @@ const MaxPageRightBar = ({
                   original Reflect
                 </button>
                 <button onClick={allColorWhite}>color White</button>
+                <button onClick={allColorOriginal}>color Original</button>
                 <button onClick={showOnlyDiffuse}>only diffuse</button>
                 <button onClick={hasDiffuseElse}>debug</button>
               </div>
@@ -304,6 +330,15 @@ const MaxPageRightBar = ({
                   }}/>
                   <input type="number" disabled={!reflectMode} min={0} max={1} step={0.01} value={roughness} onChange={(e) => {
                     setRoughness(parseFloat(e.target.value))
+                  }}/>
+                </div>
+                <div className="flex gap-x-0.5 text-sm">
+                  <strong className="text-sm">lmIntensity</strong>
+                  <input type="range" min={0} max={10} step={0.01} value={lightMapIntensity} onChange={(e) => {
+                    setLightMapIntensity(parseFloat(e.target.value))
+                  }}/>
+                  <input type="number" min={0} max={10} step={0.01} value={lightMapIntensity} onChange={(e) => {
+                    setLightMapIntensity(parseFloat(e.target.value))
                   }}/>
                 </div>
               </div>

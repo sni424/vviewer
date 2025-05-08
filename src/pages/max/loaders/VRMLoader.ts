@@ -53,6 +53,13 @@ class VRMLoader implements MaxLoader<THREE.MeshPhysicalMaterial> {
       }
     }
 
+    // test
+    // const lightmap = physicalParams.lightMap;
+    // if (lightmap) {
+    //   lightmap.channel = 0;
+    // }
+    // physicalParams.map = lightmap;
+
     for (const key of others) {
       const value = json[key as keyof MaxMaterialJSON];
       console.log(`checking key ${key}, `, value);

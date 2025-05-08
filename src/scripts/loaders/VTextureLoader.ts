@@ -130,6 +130,13 @@ export default class VTextureLoader {
         texture.needsUpdate = true;
         return texture;
       });
+    } else if (isHdr) {
+      return new EXRLoader().loadAsync(url).then(texture => {
+        texture.flipY = flipY;
+        texture.channel = inputOption.channel;
+        texture.needsUpdate = true;
+        return texture;
+      });
     } else {
       console.error('Invalid File Format : ', fileOrUrl);
       throw new Error('Invalid File Format : ' + fileOrUrl);
