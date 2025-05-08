@@ -54,6 +54,8 @@ const CameraManager: React.FC<UnifiedCameraControlsProps> = ({
 
   const setLastCameraInfo = useSetAtom(lastCameraInfoAtom);
 
+  console.log('camera', camera);
+
   // 카메라 이동 및 회전시 카메라 데이터 저장장
   const updateCameraInfo = () => {
     if (

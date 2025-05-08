@@ -491,3 +491,14 @@ export type IncludeRoomType = {
 
 export type Point2D = [number, number];
 export type Point3D = [number, number, number];
+
+export type MeshInfoType = {
+  name: string;
+  box: { min: THREE.Vector3; max: THREE.Vector3 };
+  point: [number, number][];
+};
+
+export type occlusionType = {
+  navPoint: Point2D;
+  dpName: string[];
+};
