@@ -4,13 +4,15 @@ import VGLTFLoader from 'src/scripts/loaders/VGLTFLoader';
 import Asset from 'src/scripts/manager/Asset';
 import AssetMgr from 'src/scripts/manager/AssetMgr';
 import { isDataArray } from 'src/scripts/manager/assets/AssetTypes';
-import { iterateWithPredicate } from 'src/scripts/manager/assets/AssetUtils';
-import { isVRemoteFile, VRemoteFile } from 'src/scripts/manager/assets/VFile';
+import { VFile, VRemoteFile } from 'src/scripts/manager/assets/VFile';
+import { VScene } from 'src/scripts/manager/assets/VScene';
 import { formatNumber } from 'src/scripts/utils';
 import { RGBELoader } from 'three/examples/jsm/Addons.js';
 import { THREE } from 'VTHREE';
 import useTestModelDragAndDrop from './useTestModelDragAndDrop';
 import VRenderer from './VRenderer';
+
+const SCENE_ID = 'TEST_SCENE';
 
 const mgr = AssetMgr;
 const print = console.log;
@@ -447,24 +449,41 @@ function TestPage() {
             GLB만 로드
           </button>
           <button
-            onClick={() => {
+            onClick={async () => {
               const start = performance.now();
-              VRenderer.scene.toAsset().then(sceneAsset => {
+              const theGroup = new THREE.Group();
+              const meshAssetStart = performance.now();
+              VRenderer.scene.flattendMeshes().forEach(m => {
+                theGroup.add(m);
+              });
+
+              theGroup.toAsset().then(sceneAsset => {
                 const end = performance.now();
+                console.log('toAsset', end - meshAssetStart, 'ms', sceneAsset);
 
-                console.log('toAsset', end - start, 'ms');
+                const thisScene: VFile<VScene> = {
+                  id: SCENE_ID,
+                  type: 'VScene',
+                  isVFile: true,
+                  data: {
+                    id: SCENE_ID,
+                    root: sceneAsset.vfile,
+                  },
+                };
 
-                const uploadStart = performance.now();
-                sceneAsset.upload().then(() => {
-                  const uploadEnd = performance.now();
-                  console.log('Scene id : ', sceneAsset.id);
-                  console.log(
-                    'Upload',
-                    uploadEnd - uploadStart,
-                    'ms',
-                    sceneAsset,
-                  );
-                });
+                const sceneUploadStart = performance.now();
+                Asset.fromVFile(thisScene)
+                  .upload()
+                  .then(() => {
+                    const sceneUploadEnd = performance.now();
+                    console.log(
+                      'Scene upload',
+                      sceneUploadEnd - sceneUploadStart,
+                      'ms',
+                      thisScene,
+                    );
+                    alert('FInished');
+                  });
 
                 // console.log('toAsset', end - start, 'ms', sceneAsset);
                 // const startInflate = performance.now();
@@ -496,30 +515,46 @@ function TestPage() {
           <button
             onClick={() => {
               const start = performance.now();
-              const id = '676b1495c15b43585b81db633f4d042ff6e0f8f7';
+              // const id = '676b1495c15b43585b81db633f4d042ff6e0f8f7';
               const vremotefile: VRemoteFile = {
-                id,
+                id: SCENE_ID,
                 format: 'json',
                 isVRemoteFile: true,
               };
+              const target = '9091745aa44bef0fe1246aca728263e21c96de0c';
               Asset.fromVRemoteFile(vremotefile)
                 .prepare()
                 .then(async a => {
                   const end = performance.now();
                   console.log('Asset fromId', end - start, 'ms', a);
 
-                  const infl = await a.vfileInflated();
-                  iterateWithPredicate<VRemoteFile>(
-                    infl,
-                    isVRemoteFile,
-                    vremotefile => {
-                      console.log('vremote file', vremotefile);
-                    },
-                  );
-                  console.log('inflated', infl);
+                  // const infl = await a.vfileInflated();
+                  // iterateWithPredicate(
+                  //   infl,
+                  //   o => {
+                  //     return o?.id === target;
+                  //   },
+                  //   (o, path, parent) => {
+                  //     debugger;
+                  //   },
+                  // );
+
+                  // const infl = await a.vfileInflated();
+                  // iterateWithPredicate<VRemoteFile>(
+                  //   infl,
+                  //   isVRemoteFile,
+                  //   vremotefile => {
+                  //     console.log('vremote file', vremotefile);
+                  //   },
+                  // );
+                  // console.log('inflated', infl);
+
+                  const scene: VFile<VScene> = a.vfile;
+                  console.log('scene', scene);
+                  const rootObj = Asset.fromVFile(scene.data.root);
 
                   const loadStart = performance.now();
-                  return a.load<THREE.Group>().then(g => {
+                  return rootObj.load<THREE.Group>().then(g => {
                     const loadEnd = performance.now();
                     console.log('Asset load', loadEnd - loadStart, 'ms', g);
                     VRenderer.scene.add(g);
@@ -528,6 +563,23 @@ function TestPage() {
             }}
           >
             Load Asset
+          </button>
+          <button
+            onClick={() => {
+              const id = '9091745aa44bef0fe1246aca728263e21c96de0c';
+              const remote: VRemoteFile = {
+                id,
+                format: 'buffer',
+                isVRemoteFile: true,
+              };
+              Asset.fromVRemoteFile(remote)
+                .prepare()
+                .then(a => {
+                  console.log(a.payload);
+                });
+            }}
+          >
+            DEBUGGING
           </button>
           <button
             onClick={() => {

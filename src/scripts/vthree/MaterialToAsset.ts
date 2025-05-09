@@ -18,26 +18,31 @@ type AwaitablePartial<T> = {
 
 THREE.Material.prototype.toAsset = async function () {
   await this.updateHashPrecise();
-  const id = this.vid;
-  const asset = Asset.fromId(id);
-  if (asset.vfile) {
-    // 이미 Asset이 존재함
-
-    if (asset.result !== this) {
-      // result는 있는데 나와 같지 않을 수 없음.
-      // 다시 말해 에러
-      debugger;
-    }
-
-    if (asset.vfile.data?.version === this._version) {
-      console.warn(
-        'Material.toAsset() : version이 같음. 다시 할 필요 없음',
-        this,
-      );
-      return asset;
-    }
-    console.warn('Material.toAsset() : version이 다름. 다시 해야함', this);
+  const hashedAsset = Asset.fromId(this.hash);
+  if (hashedAsset.result) {
+    return hashedAsset;
   }
+
+  // const id = this.hash;
+  // const asset = Asset.fromId(id);
+  // if (asset.vfile) {
+  //   // 이미 Asset이 존재함
+
+  //   // if (asset.result !== this) {
+  //   //   // result는 있는데 나와 같지 않을 수 없음.
+  //   //   // 다시 말해 에러
+  //   //   debugger;
+  //   // }
+
+  //   if (asset.vfile.data?.version === this._version) {
+  //     console.warn(
+  //       'Material.toAsset() : version이 같음. 다시 할 필요 없음',
+  //       this,
+  //     );
+  //     return asset;
+  //   }
+  //   console.warn('Material.toAsset() : version이 다름. 다시 해야함', this);
+  // }
 
   const data: AwaitablePartial<VMaterial> = {
     version: this._version,
@@ -49,7 +54,7 @@ THREE.Material.prototype.toAsset = async function () {
   const points = this as THREE.PointsMaterial;
 
   // standard Material serialization
-  data.uuid = mat.vid;
+  data.uuid = mat.hash;
   data.type = mat.type;
 
   // handle maps first
@@ -305,7 +310,7 @@ THREE.Material.prototype.toAsset = async function () {
 
   const retval: VFile<VMaterial> = {
     isVFile: true,
-    id: this.vid,
+    id: this.hash,
     type: 'VMaterial',
     data: data as VMaterial,
   };
@@ -314,5 +319,14 @@ THREE.Material.prototype.toAsset = async function () {
 
   AssetMgr.setVFile(prom, false);
   AssetMgr.setResult(retval.id, this);
+
+  // hashedAsset.payload.result = this;
+  // hashedAsset.payload.vfile = retval;
+  // hashedAsset.payload.vremotefile = {
+  //   id: retval.id,
+  //   format: 'json',
+  //   isVRemoteFile: true,
+  // };
+
   return Asset.fromVFile(prom);
 };

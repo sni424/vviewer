@@ -125,7 +125,10 @@ export default class AssetMgr {
       withChildren: withChildren ? 'true' : 'false',
     });
 
-    return fetch(`http://localhost:4000/retrieve?${queryParams}`)
+    // const serverUrl = 'http://localhost:4000/retrieve';
+    const serverUrl = 'https://stan-vite-server.jp.ngrok.io';
+
+    return fetch(`${serverUrl}/retrieve?${queryParams}`)
       .then(res => res.json())
       .then(res => {
         if (withChildren) {
@@ -139,8 +142,17 @@ export default class AssetMgr {
       });
   }
 
+  static bucketUrl = null;
   static async _downloadBinary(id: string) {
-    const getFilePath = (path: string) => `/${AssetMgr.projectId}/${path}`;
+    const getFilePath = (path: string) => {
+      if (AssetMgr.bucketUrl === null) {
+        AssetMgr.bucketUrl = import.meta.env.VITE_S3_DEV_URL;
+        if (!AssetMgr.bucketUrl) {
+          throw new Error('VITE_S3_DEV_URL is not defined');
+        }
+      }
+      return `${AssetMgr.bucketUrl}/${AssetMgr.projectId}/${path}`;
+    };
 
     if (!AssetMgr.projectId) {
       debugger;
@@ -538,6 +550,24 @@ export default class AssetMgr {
     }).then(res => res.json() as Promise<UploadResponse>);
   }
 
+  static async __uploadBinary(vremotefile: VRemoteFile, dataArray: DataArray) {
+    const filepath = `${AssetMgr.projectId}/${vremotefile.id}`;
+
+    const buffer: ArrayBuffer = isTypedArray(dataArray)
+      ? ((dataArray as TypedArray).buffer as ArrayBuffer)
+      : (dataArray as ArrayBuffer);
+
+    const fd = new FormData();
+    fd.append('files', new Blob([buffer]), filepath);
+    return fetch(import.meta.env.VITE_UPLOAD_URL as string, {
+      method: 'POST',
+      body: fd,
+      headers: {
+        Accept: 'multipart/form-data',
+      },
+    });
+  }
+
   static async _uploadBinary(vremotefile: VRemoteFile, dataArray: DataArray) {
     const filepath = `${AssetMgr.projectId}/${vremotefile.id}`;
     const formData = new FormData();
@@ -667,7 +697,7 @@ export default class AssetMgr {
     iterateWithPredicate<VRemoteFile>(
       vfile,
       isVRemoteFile,
-      async (vremotefile, path) => {
+      async (vremotefile, [parent, key]) => {
         if (!replaceBuffer) {
           // !replaceBuffer = VFile만 대체하는 경우
           if (vremotefile.format !== 'json') {
@@ -676,14 +706,15 @@ export default class AssetMgr {
         }
 
         const prom = AssetMgr.getVRemoteFile(vremotefile).then(value => {
-          const pathToPop = path.slice(0, -1);
-          const target = pathToPop.reduce(
-            (acc, key) => (acc as any)[key],
-            vfile,
-          );
+          // const pathToPop = path.slice(0, -1);
+          // const target = pathToPop.reduce(
+          //   (acc, key) => (acc as any)[key],
+          //   vfile,
+          // );
 
-          // 가장 마지막 요소인 VRemoteFile을 VFile로 갈아끼우기
-          (target as any)[path[path.length - 1]] = value;
+          // // 가장 마지막 요소인 VRemoteFile을 VFile로 갈아끼우기
+          // (target as any)[path[path.length - 1]] = value;
+          parent[key] = value;
         });
         proms.push(prom);
       },

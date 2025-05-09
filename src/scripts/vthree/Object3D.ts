@@ -1,10 +1,10 @@
 import { RootState } from '@react-three/fiber';
-import objectHash from 'object-hash';
 import * as THREE from 'three';
 import type { TransformControlsPlane } from 'three/examples/jsm/controls/TransformControls.js';
 import { Layer } from '../../Constants';
 import Asset from '../manager/Asset';
 import AssetMgr from '../manager/AssetMgr';
+import Hasher from '../manager/assets/Hasher';
 import { VFile } from '../manager/assets/VFile';
 import { VObject3D, VObject3DType } from '../manager/assets/VObject3D';
 import { resetGL } from '../utils';
@@ -264,7 +264,7 @@ THREE.Object3D.prototype.updateHash = function (path = ''): string {
     }
   });
 
-  const hash = objectHash(hashMap);
+  const hash = Hasher.hash(hashMap);
   this.vUserData.hash = hash;
   if (!this.vUserData.id) {
     this.vUserData.id = hash;
@@ -272,6 +272,62 @@ THREE.Object3D.prototype.updateHash = function (path = ''): string {
 
   return hash;
 };
+
+THREE.Object3D.prototype.updateHashPrecise =
+  async function (): Promise<string> {
+    if (!this.userData) {
+      this.userData = {};
+    }
+
+    // 자신에 대해 하기 전에 자식들을 다 돈다
+    const childrenHashes = await Promise.all(
+      this.children.map(child => child.updateHashPrecise()),
+    );
+
+    const excludes = ['uuid', 'id'];
+    const rawKeys = Object.keys(this) as (keyof THREE.MeshPhysicalMaterial)[];
+
+    const filteredKeys = rawKeys
+      .filter(key => !excludes.includes(key))
+      .filter(key => !key.startsWith('_'));
+
+    // type Primitive = string | number | boolean | null | undefined;
+
+    const hashMap: Record<string, any> = { childrenHashes };
+
+    // 기본 정보
+    const resolvedPath = this.parentPath;
+    const fileName = this.vUserData?.fileName ?? '';
+    hashMap.path = resolvedPath;
+    hashMap.fileName = fileName;
+
+    filteredKeys.forEach(key => {
+      const value = (this as any)[key];
+      const typeofValue = typeof value;
+      if (
+        typeofValue === 'string' ||
+        typeofValue === 'number' ||
+        typeofValue === 'boolean' ||
+        typeofValue === 'undefined' ||
+        value === null
+      ) {
+        hashMap[key] = value;
+      } else if (
+        (value as THREE.BufferGeometry).isBufferGeometry ||
+        (value as THREE.Material).isMaterial
+      ) {
+        hashMap[key] = value.hash;
+      }
+    });
+
+    const hash = await Hasher.hashPrecisely(hashMap);
+    this.vUserData.hash = hash;
+    if (!this.vUserData.id) {
+      this.vUserData.id = hash;
+    }
+
+    return hash;
+  };
 
 const getVObjectType = (type: string | THREE.Object3D): VObject3DType => {
   if (typeof type === 'string') {
@@ -291,26 +347,32 @@ const getVObjectType = (type: string | THREE.Object3D): VObject3DType => {
 };
 
 THREE.Object3D.prototype.toAsset = async function () {
-  const id = this.vid;
-  const asset = Asset.fromId(id);
-  if (asset.vfile) {
-    // 이미 Asset이 존재함
-
-    if (asset.result !== this) {
-      // result는 있는데 나와 같지 않을 수 없음.
-      // 다시 말해 에러
-      debugger;
-    }
-
-    if (asset.vfile.data?.version === this._version) {
-      console.warn(
-        'Object3D.toAsset() : version이 같음. 다시 할 필요 없음',
-        this,
-      );
-      return asset;
-    }
-    console.warn('Object3D.toAsset() : version이 다름. 다시 해야함', this);
+  await this.updateHashPrecise();
+  const hashedAsset = Asset.fromId(this.hash);
+  if (hashedAsset.result) {
+    return hashedAsset;
   }
+
+  // const id = this.vid;
+  // const asset = Asset.fromId(id);
+  // if (asset.vfile) {
+  //   // 이미 Asset이 존재함
+
+  //   if (asset.result !== this) {
+  //     // result는 있는데 나와 같지 않을 수 없음.
+  //     // 다시 말해 에러
+  //     debugger;
+  //   }
+
+  //   if (asset.vfile.data?.version === this._version) {
+  //     console.warn(
+  //       'Object3D.toAsset() : version이 같음. 다시 할 필요 없음',
+  //       this,
+  //     );
+  //     return asset;
+  //   }
+  //   console.warn('Object3D.toAsset() : version이 다름. 다시 해야함', this);
+  // }
 
   const object: Partial<VObject3D> = {
     version: this._version,
@@ -325,7 +387,7 @@ THREE.Object3D.prototype.toAsset = async function () {
   const line = o3 as THREE.Line;
   const points = o3 as THREE.Points;
 
-  object.uuid = this.vid;
+  object.uuid = this.hash;
   object.type = this.type;
 
   if (this.name !== '') object.name = this.name;
@@ -521,7 +583,7 @@ THREE.Object3D.prototype.toAsset = async function () {
 
   const retval: VFile<VObject3D> = {
     isVFile: true,
-    id: this.vid,
+    id: this.hash,
     type: getVObjectType(this.type),
     data: object as VObject3D,
   };
@@ -529,31 +591,39 @@ THREE.Object3D.prototype.toAsset = async function () {
   // Asset.fromVFile내부에서 AssetMgr.set()을 불러주므로 따로 setVFile()할 필요 없음
   AssetMgr.setVFile(retval, false);
   AssetMgr.setResult(retval.id, this);
+
+  // hashedAsset.payload.result = this;
+  // hashedAsset.payload.vfile = retval;
+  // hashedAsset.payload.vremotefile = {
+  //   id: this.hash,
+  //   format: 'json',
+  //   isVRemoteFile: true,
+  // };
+
   return Asset.fromVFile(retval);
 };
 
-THREE.Object3D.prototype.flattendMeshes = function () {
+THREE.Object3D.prototype.flattendMeshes = function (): THREE.Mesh[] {
   const meshes: THREE.Mesh[] = [];
 
-  this.updateMatrixWorld(true); // 반드시! worldMatrix 업데이트 먼저
+  this.updateMatrixWorld(true); // 월드 행렬 갱신 필수
 
   this.traverse(object => {
     if ((object as THREE.Mesh).isMesh) {
       const mesh = object as THREE.Mesh;
 
-      // 로컬 -> 글로벌 변환 적용
-      mesh.updateWorldMatrix(false, false);
-
-      // geometry를 변환된 matrixWorld를 적용해서 bake
-      const clonedGeometry = mesh.geometry.clone();
-      clonedGeometry.applyMatrix4(mesh.matrixWorld);
-
-      const newMesh = new THREE.Mesh(clonedGeometry, mesh.material);
+      // worldMatrix 기준으로 위치만 bake, geometry는 그대로
+      const newMesh = new THREE.Mesh(mesh.geometry, mesh.material);
       newMesh.name = mesh.name;
-      newMesh.matrix.identity(); // 이제 로컬에서 변환 0
-      newMesh.position.set(0, 0, 0);
-      newMesh.rotation.set(0, 0, 0);
-      newMesh.scale.set(1, 1, 1);
+
+      // 원본의 worldMatrix를 그대로 복사해서 localMatrix로 설정
+      newMesh.matrix.copy(mesh.matrixWorld);
+      newMesh.matrix.decompose(
+        newMesh.position,
+        newMesh.quaternion,
+        newMesh.scale,
+      );
+      newMesh.matrixAutoUpdate = false; // matrix 직접 제어
 
       meshes.push(newMesh);
     }

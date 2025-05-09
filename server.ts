@@ -1,7 +1,17 @@
 import * as crypto from 'crypto';
-import { mkdirSync } from 'fs';
 import { MongoClient, ObjectId } from 'mongodb';
 import { basename, dirname, join, normalize } from 'path';
+import { uploadArrayBuffer } from './serverUtils';
+
+const PORT = 4000;
+const ALLOWED_ORIGINS = [
+  'http://localhost:4173',
+  'http://localhost:5173',
+  'http://127.0.0.1:4173',
+  'http://127.0.0.1:5173',
+  'https://stan-vite.jp.ngrok.io',
+  'https://stan-vite-build.jp.ngrok.io',
+];
 
 const TYPED_ARRAYS = {
   Int8Array: Int8Array,
@@ -130,13 +140,7 @@ function createObjectId(input: string): ObjectId {
   const hex = stringTo24Hex(input);
   return new ObjectId(hex);
 }
-const PORT = 4000;
-const ALLOWED_ORIGINS = [
-  'http://localhost:4173',
-  'http://localhost:5173',
-  'http://127.0.0.1:4173',
-  'http://127.0.0.1:5173',
-];
+
 const MONGODB_URI = process.env.MONGO_URL!;
 const DB_NAME = 'file_uploads';
 
@@ -264,19 +268,9 @@ const server = Bun.serve({
         } else {
           // Handle binary data
           const arrayBuffer = await data.arrayBuffer();
-          // Store binary in MongoDB as Binary
-          // await collection.insertOne({
-          //   filepath: virtualPath,
-          //   type: 'binary',
-          //   data: new Binary(Buffer.from(arrayBuffer)),
-          //   createdAt: new Date(),
-          // });
-          // console.log(`  - Binary document saved: ${virtualPath}`);
 
-          // save to local
-          const fs = Bun.file('public/' + safePath);
-          mkdirSync('public/' + dirPath, { recursive: true });
-          await fs.write(arrayBuffer);
+          await uploadArrayBuffer(safePath, arrayBuffer);
+
           console.log(`  - Binary file saved: ${virtualPath}`);
           // const fs = Bun.file(virtualPath);
         }
@@ -388,7 +382,7 @@ const server = Bun.serve({
           iterateWithPredicate<VRemoteFile>(file, isVRemoteFile, value => {
             vremotefiles.add(value);
             if (value.format === 'json') {
-              console.log('Children found : ', value);
+              // console.log('Children found : ', value);
               proms.push(getChildren(value.id).then(() => value.id));
             }
           });
@@ -407,7 +401,7 @@ const server = Bun.serve({
           vremotefiles: Array.from(vremotefiles),
           vfiles: Array.from(vfiles),
         };
-        console.log('Final retval:', retval);
+        // console.log('Final retval:', retval);
 
         return new Response(JSON.stringify(retval), {
           status: 200,

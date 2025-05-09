@@ -188,21 +188,34 @@ export function isThreeObject(obj: any): boolean {
 export function iterateWithPredicate<T = any>(
   obj: any,
   predicate: (val: any) => boolean,
-  callback: (value: T, path: string[]) => void,
+  callback: (value: T, parent: any, path: string[]) => void,
   path: string[] = [],
+  parent?: [object, string | number], // 부모 객체와 나를 가리키는 키, 즉 나 = parent[0][parent[1]]
 ) {
   if (predicate(obj)) {
-    callback(obj, path);
+    callback(obj, parent, path);
   }
 
   if (Array.isArray(obj)) {
     obj.forEach((item, index) =>
-      iterateWithPredicate(item, predicate, callback, [...path, String(index)]),
+      iterateWithPredicate(
+        item,
+        predicate,
+        callback,
+        [...path, String(index)],
+        [obj, index],
+      ),
     );
   } else if (obj && typeof obj === 'object' && !isDataArray(obj)) {
     // console.log('iterating object', obj);
     for (const [key, val] of Object.entries(obj)) {
-      iterateWithPredicate(val, predicate, callback, [...path, key]);
+      iterateWithPredicate(
+        val,
+        predicate,
+        callback,
+        [...path, key],
+        [obj, key],
+      );
     }
   }
 }

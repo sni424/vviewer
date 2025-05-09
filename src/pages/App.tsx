@@ -11,12 +11,19 @@ const MyRoutes = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const checkWidth = () => {
-      if (window.innerWidth < 600) {
-        navigate('/mobile');
-      }
-    };
-    checkWidth();
+    // url path from host
+    const urlpath = window.location.pathname.split('/')[1];
+    console.log('urlpath', urlpath);
+    if (urlpath.trim() !== '') {
+      navigate('/' + urlpath);
+    } else {
+      const checkWidth = () => {
+        if (window.innerWidth < 600) {
+          navigate('/test');
+        }
+      };
+      checkWidth();
+    }
   }, []);
 
   return (

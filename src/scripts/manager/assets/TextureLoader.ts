@@ -202,10 +202,15 @@ async function createCommonTexture(data: VTexture): Promise<THREE.Texture> {
   if (image.width && image.height) {
     const { data: imageArrayBuffer, width, height } = image;
     const arrayBuffer = await handleArrayBuffer(imageArrayBuffer);
-    const uint8Array = new Uint8ClampedArray(arrayBuffer);
-    const imageData = new ImageData(uint8Array, width, height);
-    const bitmap = await createImageBitmap(imageData);
+    // const uint8Array = new Uint8ClampedArray(arrayBuffer);
+    // const imageData = new ImageData(uint8Array, width, height);
+    // const bitmap = await createImageBitmap(imageData);
+    // texture = new THREE.Texture(bitmap);
+
+    const blob = new Blob([arrayBuffer], { type: 'image/png' });
+    const bitmap = await createImageBitmap(blob);
     texture = new THREE.Texture(bitmap);
+
     // VTextureSource
   } else {
     const arrayBuffer = await handleArrayBuffer(data.image);

@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "serve": "bun --watch run viteserver.ts",
     "server": "bun --watch run server.ts",
     "_lint": "eslint .",
     "format": "prettier --write --cache .",

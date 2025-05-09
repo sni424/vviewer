@@ -59,7 +59,7 @@ export default class Asset {
     iterateWithPredicate<VRemoteFile>(
       vfile,
       isVRemoteFile,
-      async (value, path) => {
+      async (value, [parent, key]) => {
         if (value.format !== 'json') {
           return;
         }
@@ -70,16 +70,7 @@ export default class Asset {
 
         proms.push(toChangeProm);
         toChangeProm.then(toChange => {
-          if (path.length > 0) {
-            const pathToPop = path.slice(0, -1);
-            const target = pathToPop.reduce(
-              (acc, key) => (acc as any)[key],
-              vfile,
-            );
-
-            // 가장 마지막 요소인 VRemoteFile을 VFile로 갈아끼우기
-            (target as any)[path[path.length - 1]] = toChange;
-          }
+          parent[key] = toChange;
         });
       },
     );

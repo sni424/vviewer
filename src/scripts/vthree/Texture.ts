@@ -79,26 +79,33 @@ const handleImageData = async (
 
 THREE.Texture.prototype.toAsset = async function () {
   await this.updateHashPrecise();
-  const id = this.vid;
-  const asset = Asset.fromId(id);
-  if (asset.vfile) {
-    // 이미 Asset이 존재함
-
-    if (asset.result !== this) {
-      // result는 있는데 나와 같지 않을 수 없음.
-      // 다시 말해 에러
-      debugger;
-    }
-
-    if (asset.vfile.data?.version === this._version) {
-      console.warn(
-        'Texture.toAsset() : version이 같음. 다시 할 필요 없음',
-        this,
-      );
-      return asset;
-    }
-    console.warn('Texture.toAsset() : version이 다름. 다시 해야함', this);
+  const hashedAsset = Asset.fromId(this.hash);
+  if (hashedAsset.result) {
+    console.warn(`텍스쳐 해시 존재 : ${this.id}`);
+    return hashedAsset;
   }
+
+  // const id = this.vid;
+  // const asset = Asset.fromId(id);
+  // if (asset.vfile) {
+  //   // 이미 Asset이 존재함
+
+  //   // if (asset.result !== this) {
+  //   // result는 있는데 나와 같지 않을 수 없음.
+  //   // 다시 말해 에러
+
+  //   // debugger;
+  //   // }
+
+  //   if (asset.vfile.data?.version === this._version) {
+  //     console.warn(
+  //       'Texture.toAsset() : version이 같음. 다시 할 필요 없음',
+  //       this,
+  //     );
+  //     return asset;
+  //   }
+  //   console.warn('Texture.toAsset() : version이 다름. 다시 해야함', this);
+  // }
 
   // const image = await AssetMgr.get<THREE.Texture>(this.hash);
   // if (!image) image = await handleImageData(this);
@@ -110,7 +117,7 @@ THREE.Texture.prototype.toAsset = async function () {
   const output: VTexture = {
     version: this._version,
     // uuid: this.uuid,
-    uuid: this.vid,
+    uuid: this.hash,
     name: this.name,
 
     image,
@@ -167,6 +174,14 @@ THREE.Texture.prototype.toAsset = async function () {
 
   AssetMgr.setVFile(retval, false);
   AssetMgr.setResult(retval.id, this);
+
+  // hashedAsset.payload.result = this;
+  // hashedAsset.payload.vfile = retval;
+  // hashedAsset.payload.vremotefile = {
+  //   id: retval.id,
+  //   format: 'json',
+  //   isVRemoteFile: true,
+  // };
 
   return Asset.fromVFile(retval);
 };

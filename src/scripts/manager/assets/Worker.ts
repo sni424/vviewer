@@ -102,7 +102,7 @@ self.onmessage = async (e: MessageEvent<WorkerTask>) => {
     try {
       const { url, inflate } = data;
       console.log('worker fetch url:', url);
-      const buffer = await fetchArrayBuffer(url);
+      const buffer = await fetchArrayBuffer(url, {});
       console.log('worker fetch buffer:', buffer);
 
       const result = inflate
@@ -153,10 +153,21 @@ self.onmessage = async (e: MessageEvent<WorkerTask>) => {
     const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
     const ctx = canvas.getContext('2d')!;
     ctx.drawImage(bitmap, 0, 0);
-    const imageData = ctx.getImageData(0, 0, bitmap.width, bitmap.height);
-    const arrayBuffer = imageData.data.buffer;
+
     const width = bitmap.width;
     const height = bitmap.height;
+
+    // PNG Blob 생성
+    const blob = await canvas.convertToBlob({ type: 'image/png' });
+
+    // Blob → ArrayBuffer 변환
+    const arrayBuffer = await blob.arrayBuffer();
+
+    // // 일반 bmp 형식
+    // {
+    //   const imageData = ctx.getImageData(0, 0, bitmap.width, bitmap.height);
+    //   const arrayBuffer = imageData.data.buffer;
+    // }
 
     (self as any).postMessage(
       {
