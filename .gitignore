@@ -28,3 +28,4 @@ deploy.bat
 git config core.filemode false
 
 public/test
+public/**/*.glb
