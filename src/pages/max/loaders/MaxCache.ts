@@ -5,7 +5,7 @@ export type LoadingStatus = 'waiting' | 'progress' | 'done';
 const MaxCache = {
   enabled: true,
 
-  files: new Map<{ name: string; type: MaxFileType }, MaxFileData>(),
+  files: new Map<string, MaxFileData>(),
 
   add: function (maxFile: MaxFile) {
     if (!this.enabled) return;
@@ -29,15 +29,19 @@ const MaxCache = {
   },
 
   hasByNameAndType(name: string, type: MaxFileType): boolean {
-    return this.files.has({ name, type });
+    return this.files.has(keyBuilder(name, type));
   },
 
   getByNameAndType(name: string, type: MaxFileType): MaxFileData | null {
     if (this.hasByNameAndType(name, type)) {
-      return this.files.get({ name, type }) as MaxFileData;
+      return this.files.get(keyBuilder(name, type)) as MaxFileData;
     } else {
       return null;
     }
+  },
+
+  setByNameAndType(name: string, type: MaxFileType, data: MaxFileData): void {
+    this.files.set(keyBuilder(name, type), data);
   },
 
   remove: function (maxFile: MaxFile): void {
@@ -53,13 +57,18 @@ const MaxCache = {
   },
 };
 
+function keyBuilder(name: string, type: MaxFileType) {
+  return `name:[${name}]-type:[${type}]`;
+}
+
 function getKeyFromMaxFile(maxFile: MaxFile) {
   const { originalFile, type } = maxFile;
 
   // console.log( 'THREE.Cache', 'Adding key:', key );
   const name = originalFile.name;
 
-  return { name, type };
+  // return { name, type };
+  return keyBuilder(name, type);
 }
 
 export { MaxCache };

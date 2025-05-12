@@ -1,10 +1,10 @@
-import { MaxLoader } from 'src/pages/max/loaders/MaxLoader.ts';
-import * as THREE from 'VTHREE';
-import { MaxFile, MaxFileType } from 'src/pages/max/maxAtoms.ts';
-import { BufferGeometry } from 'three';
 import { MaxCache } from 'src/pages/max/loaders/MaxCache.ts';
 import { MaxConstants } from 'src/pages/max/loaders/MaxConstants.ts';
-import { resolveMaxFile } from 'src/pages/max/loaders/MaxUtils.ts';
+import { MaxLoader } from 'src/pages/max/loaders/MaxLoader.ts';
+import { MaxFile, MaxFileType } from 'src/pages/max/maxAtoms.ts';
+import Workers from 'src/scripts/workers/Workers';
+import { BufferGeometry } from 'three';
+import * as THREE from 'VTHREE';
 
 class VRGLoader implements MaxLoader<THREE.BufferGeometry> {
   readonly type: MaxFileType = 'geometry';
@@ -55,9 +55,11 @@ class VRGLoader implements MaxLoader<THREE.BufferGeometry> {
         .replace(/%20/g, '+');
     console.log('fileName', filename);
     console.log('targetURL', targetURL);
-    const file = await resolveMaxFile(targetURL, filename, this.type);
+    // const file = await resolveMaxFile(targetURL, filename, this.type);
 
-    return await this.load(file);
+    // return await this.load(file);
+
+    return Workers.geometryDeserialize(targetURL);
   }
 }
 
@@ -102,53 +104,77 @@ function unquantizeSigned(val: number, bits: number): number {
 function parseVXQ0(view: DataView): THREE.BufferGeometry {
   let offset = 4; // VXQ0 시그니처 후
 
-  const totalVerts = view.getInt32(offset, true); offset += 4;
-  const numFaces = view.getInt32(offset, true); offset += 4;
+  const totalVerts = view.getInt32(offset, true);
+  offset += 4;
+  const numFaces = view.getInt32(offset, true);
+  offset += 4;
   offset += 8; // normal, uv 수 (사용하지 않음)
 
-  const minX = view.getFloat32(offset, true); offset += 4;
-  const minY = view.getFloat32(offset, true); offset += 4;
-  const minZ = view.getFloat32(offset, true); offset += 4;
-  const maxX = view.getFloat32(offset, true); offset += 4;
-  const maxY = view.getFloat32(offset, true); offset += 4;
-  const maxZ = view.getFloat32(offset, true); offset += 4;
+  const minX = view.getFloat32(offset, true);
+  offset += 4;
+  const minY = view.getFloat32(offset, true);
+  offset += 4;
+  const minZ = view.getFloat32(offset, true);
+  offset += 4;
+  const maxX = view.getFloat32(offset, true);
+  offset += 4;
+  const maxY = view.getFloat32(offset, true);
+  offset += 4;
+  const maxZ = view.getFloat32(offset, true);
+  offset += 4;
 
   // --- UV 채널 수 및 bounds 읽기 ---
-  const uvChannelCount = view.getInt32(offset, true); offset += 4;
+  const uvChannelCount = view.getInt32(offset, true);
+  offset += 4;
   const uvBounds: [number, number, number, number][] = [];
 
   for (let i = 0; i < uvChannelCount; i++) {
-    const minU = view.getFloat32(offset, true); offset += 4;
-    const maxU = view.getFloat32(offset, true); offset += 4;
-    const minV = view.getFloat32(offset, true); offset += 4;
-    const maxV = view.getFloat32(offset, true); offset += 4;
+    const minU = view.getFloat32(offset, true);
+    offset += 4;
+    const maxU = view.getFloat32(offset, true);
+    offset += 4;
+    const minV = view.getFloat32(offset, true);
+    offset += 4;
+    const maxV = view.getFloat32(offset, true);
+    offset += 4;
     uvBounds.push([minU, maxU, minV, maxV]);
   }
 
   const positions = new Float32Array(totalVerts * 3);
   const normals = new Float32Array(totalVerts * 3);
-  const uvChannels = Array.from({ length: uvChannelCount }, () => new Float32Array(totalVerts * 2));
+  const uvChannels = Array.from(
+    { length: uvChannelCount },
+    () => new Float32Array(totalVerts * 2),
+  );
 
   for (let i = 0; i < totalVerts; i++) {
-    const x = unquantizeSigned(view.getInt16(offset, true), 16); offset += 2;
-    const y = unquantizeSigned(view.getInt16(offset, true), 16); offset += 2;
-    const z = unquantizeSigned(view.getInt16(offset, true), 16); offset += 2;
+    const x = unquantizeSigned(view.getInt16(offset, true), 16);
+    offset += 2;
+    const y = unquantizeSigned(view.getInt16(offset, true), 16);
+    offset += 2;
+    const z = unquantizeSigned(view.getInt16(offset, true), 16);
+    offset += 2;
 
-    positions.set([
-      x * (maxX - minX) / 2 + (minX + maxX) / 2,
-      y * (maxY - minY) / 2 + (minY + maxY) / 2,
-      z * (maxZ - minZ) / 2 + (minZ + maxZ) / 2,
-    ], i * 3);
+    positions.set(
+      [
+        (x * (maxX - minX)) / 2 + (minX + maxX) / 2,
+        (y * (maxY - minY)) / 2 + (minY + maxY) / 2,
+        (z * (maxZ - minZ)) / 2 + (minZ + maxZ) / 2,
+      ],
+      i * 3,
+    );
 
     offset += 6; // dummy index
 
     for (let ch = 0; ch < uvChannelCount; ch++) {
-      const u_raw = view.getUint16(offset, true); offset += 2;
-      const v_raw = view.getUint16(offset, true); offset += 2;
+      const u_raw = view.getUint16(offset, true);
+      offset += 2;
+      const v_raw = view.getUint16(offset, true);
+      offset += 2;
       const [minU, maxU, minV, maxV] = uvBounds[ch];
 
-      const u = u_raw / 65535 * (maxU - minU) + minU;
-      const v = v_raw / 65535 * (maxV - minV) + minV;
+      const u = (u_raw / 65535) * (maxU - minU) + minU;
+      const v = (v_raw / 65535) * (maxV - minV) + minV;
 
       uvChannels[ch].set([u, v], i * 2);
     }
@@ -174,23 +200,37 @@ function parseVXQ0(view: DataView): THREE.BufferGeometry {
 function parseVXQ1(view: DataView): THREE.BufferGeometry {
   let offset = 4; // Skip magic number 'VXQ1'
 
-  const vertexCount = view.getInt32(offset, true); offset += 4;
-  const faceCount = view.getInt32(offset, true); offset += 4;
-  const uvCount = view.getInt32(offset, true); offset += 4;
-  const normalCount = view.getInt32(offset, true); offset += 4;
+  const vertexCount = view.getInt32(offset, true);
+  offset += 4;
+  const faceCount = view.getInt32(offset, true);
+  offset += 4;
+  const uvCount = view.getInt32(offset, true);
+  offset += 4;
+  const normalCount = view.getInt32(offset, true);
+  offset += 4;
 
-  const minX = view.getFloat32(offset, true); offset += 4;
-  const minY = view.getFloat32(offset, true); offset += 4;
-  const minZ = view.getFloat32(offset, true); offset += 4;
-  const maxX = view.getFloat32(offset, true); offset += 4;
-  const maxY = view.getFloat32(offset, true); offset += 4;
-  const maxZ = view.getFloat32(offset, true); offset += 4;
+  const minX = view.getFloat32(offset, true);
+  offset += 4;
+  const minY = view.getFloat32(offset, true);
+  offset += 4;
+  const minZ = view.getFloat32(offset, true);
+  offset += 4;
+  const maxX = view.getFloat32(offset, true);
+  offset += 4;
+  const maxY = view.getFloat32(offset, true);
+  offset += 4;
+  const maxZ = view.getFloat32(offset, true);
+  offset += 4;
 
   // === UV range ===
-  const uvMinX = view.getFloat32(offset, true); offset += 4;
-  const uvMaxX = view.getFloat32(offset, true); offset += 4;
-  const uvMinY = view.getFloat32(offset, true); offset += 4;
-  const uvMaxY = view.getFloat32(offset, true); offset += 4;
+  const uvMinX = view.getFloat32(offset, true);
+  offset += 4;
+  const uvMaxX = view.getFloat32(offset, true);
+  offset += 4;
+  const uvMinY = view.getFloat32(offset, true);
+  offset += 4;
+  const uvMaxY = view.getFloat32(offset, true);
+  offset += 4;
 
   const positions: number[] = [];
   const indices: number[] = [];
@@ -198,9 +238,12 @@ function parseVXQ1(view: DataView): THREE.BufferGeometry {
   const normals: number[] = [];
 
   for (let i = 0; i < vertexCount; i++) {
-    const x = view.getInt16(offset, true); offset += 2;
-    const y = view.getInt16(offset, true); offset += 2;
-    const z = view.getInt16(offset, true); offset += 2;
+    const x = view.getInt16(offset, true);
+    offset += 2;
+    const y = view.getInt16(offset, true);
+    offset += 2;
+    const z = view.getInt16(offset, true);
+    offset += 2;
     positions.push(
       denormalizeSigned(x / 32767, minX, maxX),
       denormalizeSigned(y / 32767, minY, maxY),
@@ -212,7 +255,7 @@ function parseVXQ1(view: DataView): THREE.BufferGeometry {
     indices.push(
       view.getUint16(offset, true),
       view.getUint16(offset + 2, true),
-      view.getUint16(offset + 4, true)
+      view.getUint16(offset + 4, true),
     );
     offset += 6;
   }
@@ -220,8 +263,10 @@ function parseVXQ1(view: DataView): THREE.BufferGeometry {
   for (let i = 0; i < faceCount; i++) offset += 6; // Skip UV face indices
 
   for (let i = 0; i < uvCount; i++) {
-    const uNorm = dequantizeUnsigned(view.getUint16(offset, true)); offset += 2;
-    const vNorm = dequantizeUnsigned(view.getUint16(offset, true)); offset += 2;
+    const uNorm = dequantizeUnsigned(view.getUint16(offset, true));
+    offset += 2;
+    const vNorm = dequantizeUnsigned(view.getUint16(offset, true));
+    offset += 2;
     const u = denormalize(uNorm, uvMinX, uvMaxX);
     const v = denormalize(vNorm, uvMinY, uvMaxY);
     uvs.push(u, 1.0 - v);
@@ -235,7 +280,10 @@ function parseVXQ1(view: DataView): THREE.BufferGeometry {
   }
 
   const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setAttribute(
+    'position',
+    new THREE.Float32BufferAttribute(positions, 3),
+  );
   geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
   geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
   geometry.setIndex(indices);

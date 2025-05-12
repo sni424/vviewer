@@ -101,10 +101,10 @@ export type MATERIAL_SHADER = {
       };
       highlightBurnFactor: {
         value: number;
-      }
+      };
     };
     defines: {};
-  }
+  };
 };
 
 export type MATERIAL_UNIFORM_VALUE<K extends string> = {
@@ -163,10 +163,12 @@ export interface VUserData {
 
   transmission?: number;
 
+  ktx2Buffer?: ArrayBuffer; // ktx2 텍스쳐 로드 시 데이터 저장해두는 곳
+
   isMultiMaterial?: boolean;
   originalMetalness?: number;
   originalRoughness?: number;
-  tempMaps?: {[key: string]: THREE.Texture | null}
+  tempMaps?: { [key: string]: THREE.Texture | null };
 }
 
 export const MATERIAL_DEFINES = [
@@ -252,8 +254,8 @@ export const DEFAULT_MATERIAL_SHADER: MATERIAL_SHADER = {
       uUseHighlightBurn: { value: false },
       highlightBurnFactor: { value: 0.001 },
     },
-    defines: {}
-  }
+    defines: {},
+  },
 };
 
 export const defaultUniforms: {

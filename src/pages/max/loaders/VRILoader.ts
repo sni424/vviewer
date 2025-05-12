@@ -1,12 +1,12 @@
+import { MaxCache } from 'src/pages/max/loaders/MaxCache.ts';
+import { MaxConstants } from 'src/pages/max/loaders/MaxConstants.ts';
 import { MaxLoader } from 'src/pages/max/loaders/MaxLoader.ts';
-import * as THREE from 'VTHREE';
 import { MaxFile, MaxFileType } from 'src/pages/max/maxAtoms.ts';
 import VKTX2Loader, {
   getVKTX2Loader,
 } from 'src/scripts/loaders/VKTX2Loader.ts';
-import { MaxCache } from 'src/pages/max/loaders/MaxCache.ts';
-import { MaxConstants } from 'src/pages/max/loaders/MaxConstants.ts';
-import { resolveMaxFile } from 'src/pages/max/loaders/MaxUtils.ts';
+import Workers from 'src/scripts/workers/Workers';
+import * as THREE from 'VTHREE';
 
 class VRILoader implements MaxLoader<THREE.Texture> {
   readonly type: MaxFileType = 'image';
@@ -31,6 +31,24 @@ class VRILoader implements MaxLoader<THREE.Texture> {
     return await this.loader.loadAsync(objectURL);
   }
 
+  async loadFromBuffer(
+    arrayBuffer: ArrayBuffer,
+    key: string, // 파일네임
+  ): Promise<THREE.Texture> {
+    if (key && MaxCache.hasByNameAndType(key, this.type)) {
+      return MaxCache.getByNameAndType(key, this.type) as THREE.Texture;
+    }
+
+    return new Promise(res =>
+      this.loader.parse(arrayBuffer, (texture: THREE.Texture) => {
+        if (key) {
+          MaxCache.setByNameAndType(key, this.type, texture);
+        }
+        res(texture);
+      }),
+    );
+  }
+
   async loadFromFileName(filename: string): Promise<THREE.Texture> {
     if (filename === null) {
       throw new Error('filename is null');
@@ -45,9 +63,12 @@ class VRILoader implements MaxLoader<THREE.Texture> {
       encodeURIComponent(filename)
         // S3는 공백을 + 로 반환하므로 맞춰줌 (optional)
         .replace(/%20/g, '+');
-    const file = await resolveMaxFile(targetURL, filename, this.type);
+    // const file = await resolveMaxFile(targetURL, filename, this.type);
 
-    return await this.load(file);
+    // return await this.load(file);
+
+    const buffer = await Workers.fetch(targetURL);
+    return this.loadFromBuffer(buffer, filename);
   }
 }
 
