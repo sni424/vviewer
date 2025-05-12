@@ -1,3 +1,4 @@
+import 'VTHREE';
 import * as THREE from 'VTHREE';
 import { MaxLoader } from 'src/pages/max/loaders/MaxLoader.ts';
 import { MaxFile, MaxFileType } from 'src/pages/max/maxAtoms.ts';
@@ -102,6 +103,7 @@ class VRMLoader implements MaxLoader<THREE.MeshPhysicalMaterial> {
     material.vUserData.originalColor = material.color.getHexString();
     material.vUserData.originalMetalness = material.metalness;
     material.vUserData.originalRoughness = material.roughness;
+    material.vUserData.isVMaterial = true;
 
 
     maxFile.loaded = true;

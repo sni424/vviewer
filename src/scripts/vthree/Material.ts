@@ -271,7 +271,9 @@ THREE.Material.prototype.onBeforeCompile = function (
   this._removeUniform = [];
 
   // 컴파일 시 this.uniform 호출 가능
+  console.log('before insert uniform');
   this.uniform = shader.uniforms as any;
+  console.log('after insert uniform ', this.uniform);
 };
 
 THREE.Material.prototype.setDefines = function (
@@ -722,6 +724,9 @@ THREE.Material.prototype.apply = function <T extends keyof MaterialApplyType>(
   key: T,
   params: MaterialApplyType[T],
 ) {
+  if (!this.uniform) {
+    this.uniform = defaultUniforms;
+  }
   switch (key) {
     case 'meshTransition':
       this.prepareMeshTransition(params as MaterialApplyType['meshTransition']);

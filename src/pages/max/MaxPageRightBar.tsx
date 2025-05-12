@@ -5,11 +5,15 @@ import {
   useEffect,
   useState,
 } from 'react';
-import { useAtom } from 'jotai';
+import { useAtom, useAtomValue } from 'jotai';
 import { MaxFile, maxFileAtom, MaxFileType } from 'src/pages/max/maxAtoms.ts';
 import useMaxFileController from 'src/pages/max/UseMaxFileController.ts';
 import * as THREE from 'VTHREE';
 import { EnvController } from 'src/components/mobile/MobileControlPanel.tsx';
+import { GeneralPostProcessingControl, TestControl, AnisotropyControl } from 'src/components/SceneInfo';
+import { threeExportsAtom } from 'src/scripts/atoms.ts';
+import { Layer } from 'src/Constants.ts';
+import { recompileAsync } from 'src/scripts/atomUtils.ts';
 
 const MaxPageRightBar = ({
   expanded,
@@ -31,6 +35,7 @@ const MaxPageRightBar = ({
     [],
   );
   const [reflectMode, setReflectMode] = useState<boolean>(false);
+  const threeExports = useAtomValue(threeExportsAtom);
 
   function rerender() {
     render(pre => pre + 1);
@@ -94,6 +99,7 @@ const MaxPageRightBar = ({
         });
         setMeshes(pre => [...pre, { name: originalFile.name, mesh: mesh }]);
       } else if (type === 'object') {
+        resultData.layers.enable(Layer.Model)
         setMeshes(pre => [
           ...pre,
           { name: originalFile.name, mesh: resultData },
@@ -197,11 +203,32 @@ const MaxPageRightBar = ({
           const mapKeys = Object.keys(mat).filter(key => {
             return key.toLowerCase().endsWith('map');
           });
+
+          const liveKeys = ['map', 'lightMap']
           mapKeys.forEach(key => {
-            if (key !== 'map' && mat[key] !== null) {
+            if (!liveKeys.includes(key) && mat[key] !== null) {
+              if (!mat.vUserData.tempMaps) mat.vUserData.tempMaps = {};
+              mat.vUserData.tempMaps[key] = mat[key] as THREE.Texture;
               mat[key] = null;
             }
           });
+          mat.needsUpdate = true;
+        }
+      });
+    }
+  }
+
+  function showAllMaps() {
+    if (scene) {
+      scene.traverseAll(o => {
+        if (o.type === 'Mesh') {
+          const mat = (o as THREE.Mesh).matPhysical;
+          const tempMaps = mat.vUserData.tempMaps;
+          if (tempMaps) {
+            Object.keys(tempMaps).forEach(key => {
+              mat[key] = tempMaps[key];
+            })
+          }
           mat.needsUpdate = true;
         }
       });
@@ -242,7 +269,7 @@ const MaxPageRightBar = ({
         </button>
       )}
       <div
-        className="absolute w-[25%] top-0 h-full z-50 bg-[#ffffff] transition-all border-l border-l-gray"
+        className="absolute w-[25%] overflow-y-auto top-0 h-full z-50 bg-[#ffffff] transition-all border-l border-l-gray"
         style={{ right: expanded ? 0 : '-25%' }}
       >
         <div className="relative p-2">
@@ -253,8 +280,6 @@ const MaxPageRightBar = ({
             >
               {'>'}
             </button>
-            <button onClick={loadAll}>모두 로드</button>
-            <button onClick={addAll}>geometry 전체 추가</button>
             <button
               onClick={() => {
                 setWireframe(pre => !pre);
@@ -270,6 +295,8 @@ const MaxPageRightBar = ({
                 {' '}
                 {files.filter(f => f.loaded).length} / {files.length}개
               </span>
+              <button onClick={loadAll}>모두 로드</button>
+              <button onClick={addAll}>geometry 전체 추가</button>
             </div>
             <div className="p-1 h-[300px] w-full max-h-[300px] overflow-y-auto">
               {files.map(maxFile => {
@@ -301,7 +328,7 @@ const MaxPageRightBar = ({
               <span className="text-sm">{materials.length}개</span>
             </div>
             <div>
-              <div className="flex gap-x-1 border-b border-gray-400 p-1 border-x">
+              <div className="flex gap-x-1 border-b grid-cols-3 border-gray-400 p-1 border-x">
                 <button onClick={allMaterialDefaultReflect}>
                   input Reflect
                 </button>
@@ -311,7 +338,9 @@ const MaxPageRightBar = ({
                 <button onClick={allColorWhite}>color White</button>
                 <button onClick={allColorOriginal}>color Original</button>
                 <button onClick={showOnlyDiffuse}>only diffuse</button>
+                <button onClick={showAllMaps}>all maps</button>
                 <button onClick={hasDiffuseElse}>debug</button>
+                <button onClick={recompileAsync}>리컴파일</button>
               </div>
               <div className="w-full flex flex-col gap-x-1 p-1">
                 <div className="flex gap-x-0.5 text-sm">
@@ -383,6 +412,16 @@ const MaxPageRightBar = ({
           <section className="text-sm px-1">
             <EnvController />
           </section>
+          {
+            threeExports &&
+            (
+              <section className="text-sm px-1">
+                <TestControl />
+                <AnisotropyControl></AnisotropyControl>
+                <GeneralPostProcessingControl></GeneralPostProcessingControl>
+              </section>
+            )
+          }
         </div>
       </div>
     </>

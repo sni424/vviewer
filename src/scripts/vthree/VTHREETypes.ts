@@ -166,6 +166,7 @@ export interface VUserData {
   isMultiMaterial?: boolean;
   originalMetalness?: number;
   originalRoughness?: number;
+  tempMaps?: {[key: string]: THREE.Texture | null}
 }
 
 export const MATERIAL_DEFINES = [

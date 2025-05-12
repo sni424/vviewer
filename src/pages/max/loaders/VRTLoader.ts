@@ -49,6 +49,7 @@ class VRTLoader implements MaxLoader<THREE.Texture> {
       texture.wrapS = THREE.RepeatWrapping;
       texture.unpackAlignment = 4;
       texture.anisotropy = 16
+      texture.vUserData.mimeType = 'image/ktx2';
     }
 
     texture.needsUpdate = true;

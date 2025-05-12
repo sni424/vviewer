@@ -4,6 +4,8 @@ import MaxPageMain from 'src/pages/max/MaxPageMain.tsx';
 import MaxPageBelowController from 'src/pages/max/MaxPageBelowController.tsx';
 import useMaxFileManager from 'src/pages/max/UseMaxFileController.ts';
 import * as THREE from 'VTHREE';
+import MaterialPanelContainer from 'src/components/MaterialPanel.tsx';
+import Modal from 'src/components/Modal.tsx';
 
 const MaxPage = () => {
   const [rightBarExpanded, setRightBarExpanded] = useState(true);
@@ -14,7 +16,7 @@ const MaxPage = () => {
 
   return (
     <div
-      className="w-[100vw] max-w-[100vw] overflow-x-hidden h-[100vh] relative"
+      className="w-[100vw] max-w-[100vw] text-sm overflow-x-hidden h-[100vh] relative overflow-y-hidden"
       style={{ border: isDragging ? '2px black dashed' : 'none' }}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
@@ -29,6 +31,8 @@ const MaxPage = () => {
         setExpanded={setRightBarExpanded}
       />
       <MaxPageBelowController />
+      <MaterialPanelContainer></MaterialPanelContainer>
+      <Modal></Modal>
     </div>
   );
 };

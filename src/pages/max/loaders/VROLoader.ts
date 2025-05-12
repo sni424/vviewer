@@ -47,6 +47,7 @@ class VROLoader implements MaxLoader<THREE.Object3D> {
 
 
       const mesh = new THREE.Mesh(geometry, material);
+      mesh.frustumCulled = false;
       mesh.name = object.name;
       object.position[0] = object.position[0] / 1000;
       object.position[1] = object.position[1] / 1000;
