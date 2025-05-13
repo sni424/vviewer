@@ -1,11 +1,11 @@
-import { MaxCache } from 'src/pages/max/loaders/MaxCache.ts';
 import { MaxLoader } from 'src/pages/max/loaders/MaxLoader.ts';
-import VRGLoader from 'src/pages/max/loaders/VRGLoader.ts';
-import VRMLoader from 'src/pages/max/loaders/VRMLoader.ts';
-import { MaxObjectJSON } from 'src/pages/max/types';
-import { fileToJson } from 'src/scripts/atomUtils.ts';
 import * as THREE from 'VTHREE';
 import { MaxFile, MaxFileType } from '../maxAtoms';
+import VRGLoader from 'src/pages/max/loaders/VRGLoader.ts';
+import VRMLoader from 'src/pages/max/loaders/VRMLoader.ts';
+import { MaxCache } from 'src/pages/max/loaders/MaxCache.ts';
+import { fileToJson } from 'src/scripts/atomUtils.ts';
+import { MaxObjectJSON } from 'src/pages/max/types';
 
 class VROLoader implements MaxLoader<THREE.Object3D> {
   constructor() {}
@@ -44,6 +44,7 @@ class VROLoader implements MaxLoader<THREE.Object3D> {
           metalness: 0,
         });
         material.vUserData.isMultiMaterial = true;
+        material.vUserData.isVMaterial = true;
         if (object.material) {
           material = await this.materialLoader.loadFromFileName(
             object.material,

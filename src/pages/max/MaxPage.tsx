@@ -6,6 +6,7 @@ import useMaxFileManager from 'src/pages/max/UseMaxFileController.ts';
 import * as THREE from 'VTHREE';
 import MaterialPanelContainer from 'src/components/MaterialPanel.tsx';
 import Modal from 'src/components/Modal.tsx';
+import MeshInfoPanel from 'src/components/MeshInfoPanel.tsx';
 
 const MaxPage = () => {
   const [rightBarExpanded, setRightBarExpanded] = useState(true);
@@ -33,6 +34,7 @@ const MaxPage = () => {
       <MaxPageBelowController />
       <MaterialPanelContainer></MaterialPanelContainer>
       <Modal></Modal>
+      <MeshInfoPanel></MeshInfoPanel>
     </div>
   );
 };

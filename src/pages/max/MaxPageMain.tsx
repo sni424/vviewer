@@ -28,6 +28,7 @@ const MaxPageMain = ({setScene}: {
           width: '100%',
           height: '100%',
         }}
+        camera={{fov: 45}}
         onCreated={state => {
           getVKTX2Loader(state.gl);
           state.scene.background = new THREE.Color('gray');

@@ -4,7 +4,11 @@ import { ColorPicker, ColorService, useColor } from 'react-color-palette';
 //@ts-ignore
 import 'react-color-palette/css';
 import { THREE } from 'VTHREE';
-import { AOMAP_INTENSITY_MAX, LIGHTMAP_INTENSITY_MAX } from '../Constants';
+import {
+  AOMAP_INTENSITY_MAX,
+  BUMP_SCALE_MAX,
+  LIGHTMAP_INTENSITY_MAX,
+} from '../Constants';
 import {
   materialSelectedAtom,
   selectedAtom,
@@ -85,8 +89,10 @@ const MapInfo = (props: MapInfoProps) => {
   } = props;
   const texture = material[mapKey as keyof THREE.Material] as THREE.Texture;
   const [channel, setChannel] = useState(texture?.channel ?? -1);
+  const [flipY, setFlipY] = useState<boolean>(texture?.flipY ?? false);
   const setMaterialSelected = useSetAtom(materialSelectedAtom);
   const threeExports = useAtomValue(threeExportsAtom)!;
+  const uuid = texture?.uuid;
 
   const materialRangeKey = materialRange?.matKey as keyof THREE.Material;
   const materialValue = materialRangeKey
@@ -183,6 +189,13 @@ const MapInfo = (props: MapInfoProps) => {
     }
   };
 
+  useEffect(() => {
+    if (texture) {
+      setFlipY(texture.flipY);
+      setChannel(texture.channel)
+    }
+  }, [texture]);
+
   return (
     <div
       key={`mapinfo-${props.matKey}-${props.material.uuid}`}
@@ -235,6 +248,24 @@ const MapInfo = (props: MapInfoProps) => {
             }}
           >
             +1
+          </button>
+        </div>
+      )}
+      {texture && (
+        <div style={{ fontSize: 11, display: 'flex' }}>
+          <div>FlipY: {flipY ? 'O' : 'X'}</div>
+          <button
+            style={{ fontSize: 11, height: 18, marginLeft: 8 }}
+            onClick={() => {
+              setFlipY(pre => {
+                texture.flipY = !pre;
+                texture.needsUpdate = true;
+                material.needsUpdate = true;
+                return !pre;
+              });
+            }}
+          >
+            flip Y
           </button>
         </div>
       )}
@@ -413,6 +444,19 @@ const MapSection = ({ mat }: { mat: THREE.MeshPhysicalMaterial }) => {
             }}
           ></MapInfo>
           <MapInfo
+            label="Bump"
+            material={mat}
+            matKey="bumpMap"
+            materialRange={{
+              matKey: 'bumpScale',
+              onChange: value => {
+                mat.bumpScale = value;
+                mat.needsUpdate = true;
+              },
+              max: BUMP_SCALE_MAX,
+            }}
+          ></MapInfo>
+          <MapInfo
             label="AO"
             material={mat}
             matKey="aoMap"
@@ -457,11 +501,7 @@ const MapSection = ({ mat }: { mat: THREE.MeshPhysicalMaterial }) => {
 
           <ColorInfo mat={mat} />
           <OpacityPanel mat={mat} />
-          {
-            mat.emissive !== undefined && (
-              <EmissiveInfo mat={mat} />
-            )
-          }
+          {mat.emissive !== undefined && <EmissiveInfo mat={mat} />}
         </div>
       </div>
     </section>

@@ -3,7 +3,7 @@ const S3_BASE_URL = import.meta.env.VITE_MAX_URL;
  * TEST7 => 재질 분할 전 최종본
  * TEST8 => 재질 분할 시작
  * TEST9 => 라이트맵 넣음
- * TEST10 => Glossiness Channel Invert
+ * TEST10 => Glossiness Channel Invert + VRayDirt Fix
  * **/
 const DEFAULT_PATH = S3_BASE_URL + 'projects/test9/';
 export const MaxConstants = {
