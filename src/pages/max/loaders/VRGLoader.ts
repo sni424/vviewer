@@ -13,25 +13,28 @@ class VRGLoader implements MaxLoader<THREE.BufferGeometry> {
 
   async load(maxFile: MaxFile): Promise<BufferGeometry> {
     const { originalFile, loaded, resultData, type } = maxFile;
-    if ((loaded && resultData) || MaxCache.has(maxFile)) {
+    if (MaxCache.has(maxFile)) {
       // Return data from Cache
-      return MaxCache.get(maxFile) as THREE.BufferGeometry;
+      return MaxCache.get(maxFile) as Promise<THREE.BufferGeometry>;
     }
 
-    if (type !== this.type) {
-      throw new Error(
-        'wrong Type of Max File Income for ' + this.type + ' : ' + type,
-      );
-    }
+    const prom = new Promise<THREE.BufferGeometry>(async res => {
+      if (type !== this.type) {
+        throw new Error(
+          'wrong Type of Max File Income for ' + this.type + ' : ' + type,
+        );
+      }
 
-    const geometry = await loadSmartGeometry(originalFile);
+      const geometry = await loadSmartGeometry(originalFile);
 
-    maxFile.loaded = true;
-    maxFile.resultData = geometry;
+      maxFile.loaded = true;
+      maxFile.resultData = geometry;
+      return res(geometry);
+    });
 
-    MaxCache.add(maxFile);
+    MaxCache.addPromise(maxFile, prom);
 
-    return geometry;
+    return prom;
   }
 
   async loadFromFileName(
@@ -45,21 +48,26 @@ class VRGLoader implements MaxLoader<THREE.BufferGeometry> {
       return MaxCache.getByNameAndType(
         filename,
         this.type,
-      ) as THREE.BufferGeometry;
+      ) as Promise<THREE.BufferGeometry>;
     }
 
-    const targetURL =
-      MaxConstants.GEOMETRY_PATH +
-      encodeURIComponent(filename)
-        // S3는 공백을 + 로 반환하므로 맞춰줌 (optional)
-        .replace(/%20/g, '+');
-    console.log('fileName', filename);
-    console.log('targetURL', targetURL);
-    // const file = await resolveMaxFile(targetURL, filename, this.type);
+    const prom = new Promise<THREE.BufferGeometry>(async res => {
+      const targetURL =
+        MaxConstants.GEOMETRY_PATH +
+        encodeURIComponent(filename)
+          // S3는 공백을 + 로 반환하므로 맞춰줌 (optional)
+          .replace(/%20/g, '+');
+      console.log('fileName', filename);
+      console.log('targetURL', targetURL);
+      // const file = await resolveMaxFile(targetURL, filename, this.type);
 
-    // return await this.load(file);
+      // return await this.load(file);
 
-    return Workers.geometryDeserialize(targetURL);
+      return res(Workers.geometryDeserialize(targetURL));
+    });
+
+    MaxCache.addPromiseByNameAndType(filename, 'geometry', prom);
+    return prom;
   }
 }
 

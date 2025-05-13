@@ -16,19 +16,29 @@ class VRILoader implements MaxLoader<THREE.Texture> {
 
   async load(maxFile: MaxFile): Promise<THREE.Texture> {
     const { originalFile, loaded, resultData, type } = maxFile;
-    if ((loaded && resultData) || MaxCache.has(maxFile)) {
+    if (MaxCache.has(maxFile)) {
       // Return data from Cache
-      return MaxCache.get(maxFile) as THREE.Texture;
+      return MaxCache.get(maxFile) as Promise<THREE.Texture>;
     }
 
-    if (type !== this.type) {
-      throw new Error(
-        `wrong Type of Max File Income for ${this.type} : ${type}`,
-      );
-    }
+    const prom = new Promise<THREE.Texture>(async res => {
+      if (type !== this.type) {
+        throw new Error(
+          `wrong Type of Max File Income for ${this.type} : ${type}`,
+        );
+      }
 
-    const objectURL = URL.createObjectURL(originalFile);
-    return await this.loader.loadAsync(objectURL);
+      const objectURL = URL.createObjectURL(originalFile);
+      const t = await this.loader.loadAsync(objectURL);
+      URL.revokeObjectURL(objectURL);
+
+      maxFile.loaded = true;
+      maxFile.resultData = t;
+      return res(t);
+    });
+
+    MaxCache.addPromise(maxFile, prom);
+    return prom;
   }
 
   async loadFromBuffer(
@@ -36,17 +46,20 @@ class VRILoader implements MaxLoader<THREE.Texture> {
     key: string, // 파일네임
   ): Promise<THREE.Texture> {
     if (key && MaxCache.hasByNameAndType(key, this.type)) {
-      return MaxCache.getByNameAndType(key, this.type) as THREE.Texture;
+      return MaxCache.getByNameAndType(
+        key,
+        this.type,
+      ) as Promise<THREE.Texture>;
     }
 
-    return new Promise(res =>
-      this.loader.parse(arrayBuffer, (texture: THREE.Texture) => {
-        if (key) {
-          MaxCache.setByNameAndType(key, this.type, texture);
-        }
-        res(texture);
-      }),
-    );
+    const prom = new Promise<THREE.Texture>(res => {
+      return this.loader.parse(arrayBuffer, (texture: THREE.Texture) => {
+        return res(texture);
+      });
+    });
+
+    MaxCache.addPromiseByNameAndType(key, this.type, prom);
+    return prom;
   }
 
   async loadFromFileName(filename: string): Promise<THREE.Texture> {
@@ -55,7 +68,10 @@ class VRILoader implements MaxLoader<THREE.Texture> {
     }
 
     if (MaxCache.hasByNameAndType(filename, this.type)) {
-      return MaxCache.getByNameAndType(filename, this.type) as THREE.Texture;
+      return MaxCache.getByNameAndType(
+        filename,
+        this.type,
+      ) as Promise<THREE.Texture>;
     }
 
     const targetURL =

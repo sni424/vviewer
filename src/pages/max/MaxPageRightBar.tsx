@@ -1,19 +1,17 @@
-import {
-  Dispatch,
-  RefObject,
-  SetStateAction,
-  useEffect,
-  useState,
-} from 'react';
 import { useAtom, useAtomValue } from 'jotai';
+import { Dispatch, SetStateAction, useEffect, useRef, useState } from 'react';
+import { EnvController } from 'src/components/mobile/MobileControlPanel.tsx';
+import {
+  AnisotropyControl,
+  GeneralPostProcessingControl,
+  TestControl,
+} from 'src/components/SceneInfo';
+import { Layer } from 'src/Constants.ts';
 import { MaxFile, maxFileAtom, MaxFileType } from 'src/pages/max/maxAtoms.ts';
 import useMaxFileController from 'src/pages/max/UseMaxFileController.ts';
-import * as THREE from 'VTHREE';
-import { EnvController } from 'src/components/mobile/MobileControlPanel.tsx';
-import { GeneralPostProcessingControl, TestControl, AnisotropyControl } from 'src/components/SceneInfo';
 import { threeExportsAtom } from 'src/scripts/atoms.ts';
-import { Layer } from 'src/Constants.ts';
 import { recompileAsync } from 'src/scripts/atomUtils.ts';
+import * as THREE from 'VTHREE';
 
 const MaxPageRightBar = ({
   expanded,
@@ -81,8 +79,10 @@ const MaxPageRightBar = ({
     }
   }, [lightMapIntensity]);
 
+  const meshRef = useRef<{ name: string; mesh: THREE.Mesh }[]>([]);
+
   async function load(maxFile: MaxFile) {
-    handleMaxFile(maxFile).then(() => {
+    return handleMaxFile(maxFile).then(() => {
       const { originalFile, type, resultData } = maxFile;
       if (type === 'geometry') {
         const mesh = new THREE.Mesh();
@@ -98,14 +98,16 @@ const MaxPageRightBar = ({
           side: THREE.DoubleSide,
         });
         setMeshes(pre => [...pre, { name: originalFile.name, mesh: mesh }]);
+        // meshRef.current.push({ name: originalFile.name, mesh: mesh });
       } else if (type === 'object') {
-        resultData.layers.enable(Layer.Model)
+        resultData.layers.enable(Layer.Model);
         setMeshes(pre => [
           ...pre,
           { name: originalFile.name, mesh: resultData },
         ]);
+        // meshRef.current.push({ name: originalFile.name, mesh: resultData });
       }
-      rerender();
+      // rerender();
     });
   }
 
@@ -122,9 +124,25 @@ const MaxPageRightBar = ({
   }
 
   function loadAll() {
-    files.forEach((file, index) => {
-      if (!file.loaded) load(file);
+    const start = performance.now();
+    Promise.all(files.filter(f => !f.loaded).map(f => load(f))).finally(() => {
+      const end = performance.now();
+      // setMeshes([...meshRef.current]);
+
+      alert('모두 로드 완료 : ' + (end - start) + 'ms');
     });
+    // const start = performance.now();
+    // const proms: Promise<any>[] = [];
+    // files.forEach(f => {
+    //   if (!f.loaded) {
+    //     proms.push(load(f));
+    //   }
+    // });
+    // Promise.all(proms).finally(() => {
+    //   const end = performance.now();
+    //   // setMeshes([...meshRef.current]);
+    //   alert('모두 로드 완료 : ' + (end - start) + 'ms');
+    // });
   }
 
   function addToScene(maxFile: MaxFile) {
@@ -204,12 +222,12 @@ const MaxPageRightBar = ({
             return key.toLowerCase().endsWith('map');
           });
 
-          const liveKeys = ['map', 'lightMap']
+          const liveKeys = ['map', 'lightMap'];
           mapKeys.forEach(key => {
-            if (!liveKeys.includes(key) && mat[key] !== null) {
+            if (!liveKeys.includes(key) && (mat as any)[key] !== null) {
               if (!mat.vUserData.tempMaps) mat.vUserData.tempMaps = {};
-              mat.vUserData.tempMaps[key] = mat[key] as THREE.Texture;
-              mat[key] = null;
+              mat.vUserData.tempMaps[key] = (mat as any)[key] as THREE.Texture;
+              (mat as any)[key] = null;
             }
           });
           mat.needsUpdate = true;
@@ -226,8 +244,8 @@ const MaxPageRightBar = ({
           const tempMaps = mat.vUserData.tempMaps;
           if (tempMaps) {
             Object.keys(tempMaps).forEach(key => {
-              mat[key] = tempMaps[key];
-            })
+              (mat as any)[key] = tempMaps[key];
+            });
           }
           mat.needsUpdate = true;
         }
@@ -247,7 +265,7 @@ const MaxPageRightBar = ({
                 isThisHasOtherMap = true;
               }
             }
-          })
+          });
           if (isThisHasOtherMap) {
             console.log('other map found : ', mat);
           }
@@ -345,30 +363,76 @@ const MaxPageRightBar = ({
               <div className="w-full flex flex-col gap-x-1 p-1">
                 <div className="flex gap-x-0.5 text-sm">
                   <strong className="text-sm">Metalness</strong>
-                  <input type="range" disabled={!reflectMode} min={0} max={1} step={0.01} value={metalness} onChange={(e) => {
-                    setMetalness(parseFloat(e.target.value))
-                  }}/>
-                  <input type="number" disabled={!reflectMode} min={0} max={1} step={0.01} value={metalness} onChange={(e) => {
-                    setMetalness(parseFloat(e.target.value))
-                  }}/>
+                  <input
+                    type="range"
+                    disabled={!reflectMode}
+                    min={0}
+                    max={1}
+                    step={0.01}
+                    value={metalness}
+                    onChange={e => {
+                      setMetalness(parseFloat(e.target.value));
+                    }}
+                  />
+                  <input
+                    type="number"
+                    disabled={!reflectMode}
+                    min={0}
+                    max={1}
+                    step={0.01}
+                    value={metalness}
+                    onChange={e => {
+                      setMetalness(parseFloat(e.target.value));
+                    }}
+                  />
                 </div>
                 <div className="flex gap-x-0.5 text-sm">
                   <strong className="text-sm">roughness</strong>
-                  <input type="range" disabled={!reflectMode} min={0} max={1} step={0.01} value={roughness} onChange={(e) => {
-                    setRoughness(parseFloat(e.target.value))
-                  }}/>
-                  <input type="number" disabled={!reflectMode} min={0} max={1} step={0.01} value={roughness} onChange={(e) => {
-                    setRoughness(parseFloat(e.target.value))
-                  }}/>
+                  <input
+                    type="range"
+                    disabled={!reflectMode}
+                    min={0}
+                    max={1}
+                    step={0.01}
+                    value={roughness}
+                    onChange={e => {
+                      setRoughness(parseFloat(e.target.value));
+                    }}
+                  />
+                  <input
+                    type="number"
+                    disabled={!reflectMode}
+                    min={0}
+                    max={1}
+                    step={0.01}
+                    value={roughness}
+                    onChange={e => {
+                      setRoughness(parseFloat(e.target.value));
+                    }}
+                  />
                 </div>
                 <div className="flex gap-x-0.5 text-sm">
                   <strong className="text-sm">lmIntensity</strong>
-                  <input type="range" min={0} max={10} step={0.01} value={lightMapIntensity} onChange={(e) => {
-                    setLightMapIntensity(parseFloat(e.target.value))
-                  }}/>
-                  <input type="number" min={0} max={10} step={0.01} value={lightMapIntensity} onChange={(e) => {
-                    setLightMapIntensity(parseFloat(e.target.value))
-                  }}/>
+                  <input
+                    type="range"
+                    min={0}
+                    max={10}
+                    step={0.01}
+                    value={lightMapIntensity}
+                    onChange={e => {
+                      setLightMapIntensity(parseFloat(e.target.value));
+                    }}
+                  />
+                  <input
+                    type="number"
+                    min={0}
+                    max={10}
+                    step={0.01}
+                    value={lightMapIntensity}
+                    onChange={e => {
+                      setLightMapIntensity(parseFloat(e.target.value));
+                    }}
+                  />
                 </div>
               </div>
             </div>
@@ -412,16 +476,13 @@ const MaxPageRightBar = ({
           <section className="text-sm px-1">
             <EnvController />
           </section>
-          {
-            threeExports &&
-            (
-              <section className="text-sm px-1">
-                <TestControl />
-                <AnisotropyControl></AnisotropyControl>
-                <GeneralPostProcessingControl></GeneralPostProcessingControl>
-              </section>
-            )
-          }
+          {threeExports && (
+            <section className="text-sm px-1">
+              <TestControl />
+              <AnisotropyControl></AnisotropyControl>
+              <GeneralPostProcessingControl></GeneralPostProcessingControl>
+            </section>
+          )}
         </div>
       </div>
     </>

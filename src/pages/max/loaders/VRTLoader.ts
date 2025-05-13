@@ -1,12 +1,12 @@
-import { MaxLoader } from 'src/pages/max/loaders/MaxLoader.ts';
-import * as THREE from 'VTHREE';
-import { MaxFile, MaxFileType } from 'src/pages/max/maxAtoms.ts';
 import { MaxCache } from 'src/pages/max/loaders/MaxCache.ts';
-import VRILoader from 'src/pages/max/loaders/VRILoader.ts';
 import { MaxConstants } from 'src/pages/max/loaders/MaxConstants.ts';
+import { MaxLoader } from 'src/pages/max/loaders/MaxLoader.ts';
+import { resolveMaxFile } from 'src/pages/max/loaders/MaxUtils.ts';
+import VRILoader from 'src/pages/max/loaders/VRILoader.ts';
+import { MaxFile, MaxFileType } from 'src/pages/max/maxAtoms.ts';
 import { MaxTextureJSON } from 'src/pages/max/types';
 import { fileToJson } from 'src/scripts/atomUtils.ts';
-import { resolveMaxFile } from 'src/pages/max/loaders/MaxUtils.ts';
+import * as THREE from 'VTHREE';
 
 class VRTLoader implements MaxLoader<THREE.Texture> {
   readonly type: MaxFileType = 'texture';
@@ -16,9 +16,9 @@ class VRTLoader implements MaxLoader<THREE.Texture> {
 
   async load(maxFile: MaxFile): Promise<THREE.Texture> {
     const { originalFile, loaded, resultData, type } = maxFile;
-    if ((loaded && resultData) || MaxCache.has(maxFile)) {
+    if (MaxCache.has(maxFile)) {
       // Return data from Cache
-      return MaxCache.get(maxFile) as THREE.Texture;
+      return MaxCache.get(maxFile) as Promise<THREE.Texture>;
     }
 
     if (type !== this.type) {
@@ -27,39 +27,42 @@ class VRTLoader implements MaxLoader<THREE.Texture> {
       );
     }
 
-    const json: MaxTextureJSON = await fileToJson(originalFile);
+    const prom = new Promise<THREE.Texture>(async res => {
+      const json: MaxTextureJSON = await fileToJson(originalFile);
 
-    const texture = await this.imageLoader.loadFromFileName(json.image.vri);
+      const texture = await this.imageLoader.loadFromFileName(json.image.vri);
 
-    texture.channel = json.channel;
+      texture.channel = json.channel;
 
-    if (json.channel === 1) {
-      texture.flipY = true;
-      texture.minFilter = THREE.LinearMipmapLinearFilter;
-      texture.magFilter = THREE.LinearFilter;
-      texture.format = THREE.RGBAFormat;
-      texture.type = THREE.HalfFloatType;
-      texture.vUserData.mimeType = 'image/ktx2';
-    } else {
-      texture.flipY = json.flipY;
-      texture.colorSpace = json.colorSpace;
-      texture.minFilter = THREE.LinearMipMapLinearFilter;
-      texture.magFilter = THREE.LinearFilter;
-      texture.wrapT = THREE.RepeatWrapping;
-      texture.wrapS = THREE.RepeatWrapping;
-      texture.unpackAlignment = 4;
-      texture.anisotropy = 16
-      texture.vUserData.mimeType = 'image/ktx2';
-    }
+      if (json.channel === 1) {
+        texture.flipY = true;
+        texture.minFilter = THREE.LinearMipmapLinearFilter;
+        texture.magFilter = THREE.LinearFilter;
+        texture.format = THREE.RGBAFormat;
+        texture.type = THREE.HalfFloatType;
+        texture.vUserData.mimeType = 'image/ktx2';
+      } else {
+        texture.flipY = json.flipY;
+        texture.colorSpace = json.colorSpace;
+        texture.minFilter = THREE.LinearMipMapLinearFilter;
+        texture.magFilter = THREE.LinearFilter;
+        texture.wrapT = THREE.RepeatWrapping;
+        texture.wrapS = THREE.RepeatWrapping;
+        texture.unpackAlignment = 4;
+        texture.anisotropy = 16;
+        texture.vUserData.mimeType = 'image/ktx2';
+      }
 
-    texture.needsUpdate = true;
+      texture.needsUpdate = true;
 
-    maxFile.loaded = true;
-    maxFile.resultData = texture;
+      maxFile.loaded = true;
+      maxFile.resultData = texture;
+      return res(texture);
+    });
 
-    MaxCache.add(maxFile);
+    MaxCache.addPromise(maxFile, prom);
 
-    return texture;
+    return prom;
   }
 
   async loadFromFileName(filename: string): Promise<THREE.Texture> {
@@ -68,7 +71,10 @@ class VRTLoader implements MaxLoader<THREE.Texture> {
     }
 
     if (MaxCache.hasByNameAndType(filename, this.type)) {
-      return MaxCache.getByNameAndType(filename, this.type) as THREE.Texture;
+      return MaxCache.getByNameAndType(
+        filename,
+        this.type,
+      ) as Promise<THREE.Texture>;
     }
 
     const targetURL =

@@ -1,11 +1,11 @@
+import { MaxCache } from 'src/pages/max/loaders/MaxCache.ts';
 import { MaxLoader } from 'src/pages/max/loaders/MaxLoader.ts';
-import * as THREE from 'VTHREE';
-import { MaxFile, MaxFileType } from '../maxAtoms';
 import VRGLoader from 'src/pages/max/loaders/VRGLoader.ts';
 import VRMLoader from 'src/pages/max/loaders/VRMLoader.ts';
-import { MaxCache } from 'src/pages/max/loaders/MaxCache.ts';
-import { fileToJson } from 'src/scripts/atomUtils.ts';
 import { MaxObjectJSON } from 'src/pages/max/types';
+import { fileToJson } from 'src/scripts/atomUtils.ts';
+import * as THREE from 'VTHREE';
+import { MaxFile, MaxFileType } from '../maxAtoms';
 
 class VROLoader implements MaxLoader<THREE.Object3D> {
   constructor() {}
@@ -19,9 +19,9 @@ class VROLoader implements MaxLoader<THREE.Object3D> {
     maxFile: MaxFile,
   ): Promise<THREE.Object3D<THREE.Object3DEventMap>> {
     const { originalFile, loaded, resultData, type } = maxFile;
-    if ((loaded && resultData) || MaxCache.has(maxFile)) {
+    if (MaxCache.has(maxFile)) {
       // Return data from Cache
-      return MaxCache.get(maxFile) as THREE.Object3D;
+      return MaxCache.get(maxFile) as Promise<THREE.Object3D>;
     }
 
     if (type !== this.type) {
@@ -30,52 +30,57 @@ class VROLoader implements MaxLoader<THREE.Object3D> {
       );
     }
 
-    const object: MaxObjectJSON = await fileToJson(originalFile);
+    const prom = new Promise<THREE.Object3D>(async res => {
+      const object: MaxObjectJSON = await fileToJson(originalFile);
 
-    if (this.isMesh(object)) {
-      const geometry = await this.geometryLoader.loadFromFileName(
-        object.geometry,
-      );
-
-      let material = new THREE.MeshPhysicalMaterial({color: 'blue', roughness: 1, metalness: 0});
-      material.vUserData.isMultiMaterial = true;
-      if (object.material) {
-        material = await this.materialLoader.loadFromFileName(
-          object.material,
+      if (this.isMesh(object)) {
+        const geometry = await this.geometryLoader.loadFromFileName(
+          object.geometry,
         );
+
+        let material = new THREE.MeshPhysicalMaterial({
+          color: 'blue',
+          roughness: 1,
+          metalness: 0,
+        });
+        material.vUserData.isMultiMaterial = true;
+        if (object.material) {
+          material = await this.materialLoader.loadFromFileName(
+            object.material,
+          );
+        }
+
+        const mesh = new THREE.Mesh(geometry, material);
+        mesh.frustumCulled = false;
+        mesh.name = object.name;
+        object.position[0] = object.position[0] / 1000;
+        object.position[1] = object.position[1] / 1000;
+        object.position[2] = object.position[2] / 1000;
+        mesh.position.fromArray([0, 0, 0]);
+        mesh.scale.fromArray([0.001, 0.001, 0.001]);
+        mesh.quaternion.fromArray(object.rotation);
+        mesh.rotation.set(0, 0, 0);
+
+        maxFile.loaded = true;
+        maxFile.resultData = mesh;
+
+        return res(mesh);
+      } else {
+        const o = new THREE.Object3D();
+        o.name = object.name;
+        o.position.fromArray(object.position);
+        o.scale.fromArray(object.scale);
+        o.quaternion.fromArray(object.rotation);
+
+        maxFile.loaded = true;
+        maxFile.resultData = o;
+
+        return res(o);
       }
+    });
+    MaxCache.addPromise(maxFile, prom);
 
-
-      const mesh = new THREE.Mesh(geometry, material);
-      mesh.frustumCulled = false;
-      mesh.name = object.name;
-      object.position[0] = object.position[0] / 1000;
-      object.position[1] = object.position[1] / 1000;
-      object.position[2] = object.position[2] / 1000;
-      mesh.position.fromArray([0, 0, 0]);
-      mesh.scale.fromArray([0.001, 0.001, 0.001]);
-      mesh.quaternion.fromArray(object.rotation);
-      mesh.rotation.set(0, 0, 0)
-
-      maxFile.loaded = true;
-      maxFile.resultData = mesh;
-
-      MaxCache.add(maxFile);
-
-      return mesh;
-    } else {
-      const o = new THREE.Object3D();
-      o.name = object.name;
-      o.position.fromArray(object.position);
-      o.scale.fromArray(object.scale);
-      o.quaternion.fromArray(object.rotation);
-
-      maxFile.loaded = true;
-      maxFile.resultData = o;
-
-      MaxCache.add(maxFile);
-      return o;
-    }
+    return prom;
   }
 
   private isMesh(json: MaxObjectJSON) {

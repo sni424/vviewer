@@ -5,14 +5,33 @@ export type LoadingStatus = 'waiting' | 'progress' | 'done';
 const MaxCache = {
   enabled: true,
 
-  files: new Map<string, MaxFileData>(),
+  files: new Map<string, Promise<MaxFileData>>(),
 
   add: function (maxFile: MaxFile) {
     if (!this.enabled) return;
 
     const { resultData } = maxFile;
 
-    this.files.set(getKeyFromMaxFile(maxFile), resultData);
+    this.files.set(
+      getKeyFromMaxFile(maxFile),
+      resultData instanceof Promise ? resultData : Promise.resolve(resultData),
+    );
+  },
+
+  addPromise: function (maxFile: MaxFile, data: Promise<MaxFileData>) {
+    if (!this.enabled) return;
+
+    this.files.set(getKeyFromMaxFile(maxFile), data);
+  },
+
+  addPromiseByNameAndType: function (
+    name: string,
+    type: MaxFileType,
+    data: Promise<MaxFileData>,
+  ) {
+    if (!this.enabled) return;
+
+    this.files.set(keyBuilder(name, type), data);
   },
 
   has: function (maxFile: MaxFile): boolean {
@@ -21,27 +40,33 @@ const MaxCache = {
     return this.files.has(getKeyFromMaxFile(maxFile));
   },
 
-  get: function (maxFile: MaxFile): MaxFileData | null {
+  get: async function (maxFile: MaxFile): Promise<MaxFileData | null> {
     if (!this.enabled) return null;
 
-    if (!this.has(maxFile)) return null;
-    else return this.files.get(getKeyFromMaxFile(maxFile)) as MaxFileData;
+    return this.files.get(getKeyFromMaxFile(maxFile)) ?? null;
   },
 
   hasByNameAndType(name: string, type: MaxFileType): boolean {
     return this.files.has(keyBuilder(name, type));
   },
 
-  getByNameAndType(name: string, type: MaxFileType): MaxFileData | null {
-    if (this.hasByNameAndType(name, type)) {
-      return this.files.get(keyBuilder(name, type)) as MaxFileData;
-    } else {
-      return null;
-    }
+  getByNameAndType: async function (
+    name: string,
+    type: MaxFileType,
+  ): Promise<MaxFileData | null> {
+    return this.files.get(keyBuilder(name, type)) ?? null;
   },
 
-  setByNameAndType(name: string, type: MaxFileType, data: MaxFileData): void {
-    this.files.set(keyBuilder(name, type), data);
+  setByNameAndType(
+    name: string,
+    type: MaxFileType,
+    data: MaxFileData | Promise<MaxFileData>,
+  ): void {
+    if (data instanceof Promise) {
+      this.files.set(keyBuilder(name, type), data);
+    } else {
+      this.files.set(keyBuilder(name, type), Promise.resolve(data));
+    }
   },
 
   remove: function (maxFile: MaxFile): void {
@@ -61,7 +86,7 @@ function keyBuilder(name: string, type: MaxFileType) {
   return `name:[${name}]-type:[${type}]`;
 }
 
-function getKeyFromMaxFile(maxFile: MaxFile) {
+export function getKeyFromMaxFile(maxFile: MaxFile) {
   const { originalFile, type } = maxFile;
 
   // console.log( 'THREE.Cache', 'Adding key:', key );
