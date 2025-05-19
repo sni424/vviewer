@@ -28,7 +28,10 @@ class VRTLoader implements MaxLoader<THREE.Texture> {
     }
 
     const prom = new Promise<THREE.Texture>(async res => {
-      const json: MaxTextureJSON = await fileToJson(originalFile);
+      const json: MaxTextureJSON =
+        originalFile instanceof File
+          ? await fileToJson(originalFile)
+          : originalFile;
 
       const texture = await this.imageLoader.loadFromFileName(json.image.vri);
 

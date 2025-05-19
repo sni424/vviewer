@@ -21,7 +21,20 @@ const MaxCache = {
   addPromise: function (maxFile: MaxFile, data: Promise<MaxFileData>) {
     if (!this.enabled) return;
 
-    this.files.set(getKeyFromMaxFile(maxFile), data);
+    // case 1.
+    const { originalFile, type, fileName } = maxFile;
+    if (originalFile instanceof File && type) {
+      this.files.set(getKeyFromMaxFile(maxFile), data);
+      return;
+    }
+
+    // case 2.
+    if (fileName && type) {
+      this.files.set(keyBuilder(fileName, type), data);
+      return;
+    }
+
+    throw new Error('MaxCache.addPromise: Invalid MaxFile');
   },
 
   addPromiseByNameAndType: function (
@@ -34,19 +47,50 @@ const MaxCache = {
     this.files.set(keyBuilder(name, type), data);
   },
 
-  has: function (maxFile: MaxFile): boolean {
+  has: function (key: any): boolean {
     if (!this.enabled) return false;
 
-    return this.files.has(getKeyFromMaxFile(maxFile));
+    if (key === null || key === undefined) {
+      return false;
+    }
+
+    if (typeof key === 'object') {
+      // assume MaxFile
+      const { originalFile, type, fileName } = key;
+
+      if (originalFile instanceof File && type) {
+        return this.files.has(getKeyFromMaxFile(key));
+      }
+
+      if (fileName && type) {
+        return this.files.has(keyBuilder(fileName, type));
+      }
+    }
+
+    return this.files.has(key);
   },
 
   get: async function (maxFile: MaxFile): Promise<MaxFileData | null> {
     if (!this.enabled) return null;
 
-    return this.files.get(getKeyFromMaxFile(maxFile)) ?? null;
+    // case 1.
+    const { originalFile, type, fileName } = maxFile;
+    if (originalFile instanceof File && type) {
+      return this.files.get(getKeyFromMaxFile(maxFile)) ?? null;
+    }
+
+    // case 2.
+    if (fileName && type) {
+      return this.files.get(keyBuilder(fileName, type)) ?? null;
+    }
+
+    return null;
   },
 
-  hasByNameAndType(name: string, type: MaxFileType): boolean {
+  hasByNameAndType(name: string | undefined, type: MaxFileType): boolean {
+    if (name === undefined) {
+      return false;
+    }
     return this.files.has(keyBuilder(name, type));
   },
 
@@ -88,6 +132,10 @@ function keyBuilder(name: string, type: MaxFileType) {
 
 export function getKeyFromMaxFile(maxFile: MaxFile) {
   const { originalFile, type } = maxFile;
+
+  if (!originalFile || !type) {
+    debugger;
+  }
 
   // console.log( 'THREE.Cache', 'Adding key:', key );
   const name = originalFile.name;

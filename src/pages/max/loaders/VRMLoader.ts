@@ -29,7 +29,10 @@ class VRMLoader implements MaxLoader<THREE.MeshPhysicalMaterial> {
     }
 
     const prom = new Promise<THREE.MeshPhysicalMaterial>(async res => {
-      const json: MaxMaterialJSON = await fileToJson(originalFile);
+      const json: MaxMaterialJSON =
+        originalFile instanceof File
+          ? await fileToJson(originalFile)
+          : originalFile;
 
       const maps = Object.keys(json).filter(key =>
         key.toLowerCase().endsWith('map'),
@@ -46,7 +49,8 @@ class VRMLoader implements MaxLoader<THREE.MeshPhysicalMaterial> {
       for (const mapKey of maps) {
         const value = json[mapKey as keyof MaxMaterialJSON];
         if (typeof value === 'string') {
-          const texture = await this.textureLoader.loadFromFileName(value);
+          const basename = decodeURIComponent(value.split('/').pop()!);
+          const texture = await this.textureLoader.loadFromFileName(basename);
           if (mapKey === 'baseColorMap') {
             physicalParams.map = texture;
           } else {

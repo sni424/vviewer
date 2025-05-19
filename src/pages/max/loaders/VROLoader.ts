@@ -1,11 +1,11 @@
+import { MaxCache } from 'src/pages/max/loaders/MaxCache.ts';
 import { MaxLoader } from 'src/pages/max/loaders/MaxLoader.ts';
-import * as THREE from 'VTHREE';
-import { MaxFile, MaxFileType } from '../maxAtoms';
 import VRGLoader from 'src/pages/max/loaders/VRGLoader.ts';
 import VRMLoader from 'src/pages/max/loaders/VRMLoader.ts';
-import { MaxCache } from 'src/pages/max/loaders/MaxCache.ts';
-import { fileToJson } from 'src/scripts/atomUtils.ts';
 import { MaxObjectJSON } from 'src/pages/max/types';
+import { fileToJson } from 'src/scripts/atomUtils.ts';
+import * as THREE from 'VTHREE';
+import { MaxFile, MaxFileType } from '../maxAtoms';
 
 class VROLoader implements MaxLoader<THREE.Object3D> {
   constructor() {}
@@ -31,7 +31,10 @@ class VROLoader implements MaxLoader<THREE.Object3D> {
     }
 
     const prom = new Promise<THREE.Object3D>(async res => {
-      const object: MaxObjectJSON = await fileToJson(originalFile);
+      const object: MaxObjectJSON =
+        originalFile instanceof File
+          ? await fileToJson(originalFile)
+          : originalFile;
 
       if (this.isMesh(object)) {
         const geometry = await this.geometryLoader.loadFromFileName(

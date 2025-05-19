@@ -298,8 +298,10 @@ function parseVXQ1(view: DataView): THREE.BufferGeometry {
   return geometry;
 }
 
-async function loadSmartGeometry(file: File): Promise<THREE.BufferGeometry> {
-  const arrayBuffer = await file.arrayBuffer();
+async function loadSmartGeometry(
+  file: File | ArrayBuffer,
+): Promise<THREE.BufferGeometry> {
+  const arrayBuffer = file instanceof File ? await file.arrayBuffer() : file;
   const dataView = new DataView(arrayBuffer);
   let offset = 0;
 

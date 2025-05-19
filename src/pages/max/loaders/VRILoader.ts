@@ -15,8 +15,11 @@ class VRILoader implements MaxLoader<THREE.Texture> {
   constructor() {}
 
   async load(maxFile: MaxFile): Promise<THREE.Texture> {
-    const { originalFile, loaded, resultData, type } = maxFile;
-    if (MaxCache.has(maxFile)) {
+    const { originalFile, loaded, resultData, type, fileName } = maxFile;
+    if (
+      MaxCache.has(maxFile) ||
+      MaxCache.hasByNameAndType(fileName, this.type)
+    ) {
       // Return data from Cache
       return MaxCache.get(maxFile) as Promise<THREE.Texture>;
     }
