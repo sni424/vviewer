@@ -90,6 +90,7 @@ const MapInfo = (props: MapInfoProps) => {
   const texture = material[mapKey as keyof THREE.Material] as THREE.Texture;
   const [channel, setChannel] = useState(texture?.channel ?? -1);
   const [flipY, setFlipY] = useState<boolean>(texture?.flipY ?? false);
+  const [minFilter, setMinFilter] = useState<number>(texture?.minFilter ?? 0);
   const setMaterialSelected = useSetAtom(materialSelectedAtom);
   const threeExports = useAtomValue(threeExportsAtom)!;
   const uuid = texture?.uuid;
@@ -269,6 +270,32 @@ const MapInfo = (props: MapInfoProps) => {
           </button>
         </div>
       )}
+      {/*{texture && (*/}
+      {/*  <div style={{ fontSize: 11, display: 'flex' }}>*/}
+      {/*    <div>minFilter: {minFilter === 1006 ? 'Linear' : minFilter}</div>*/}
+      {/*    <button*/}
+      {/*      style={{ fontSize: 11, height: 18, marginLeft: 8 }}*/}
+      {/*      onClick={() => {*/}
+      {/*        setMinFilter(pre => {*/}
+      {/*          if (pre === 1006) {*/}
+      {/*            const target = 1008*/}
+      {/*            texture.minFilter = target;*/}
+      {/*            texture.needsUpdate = true;*/}
+      {/*            return target*/}
+      {/*          } else {*/}
+      {/*            const target = 1006*/}
+      {/*            texture.minFilter = target;*/}
+      {/*            texture.needsUpdate = true;*/}
+      {/*            return target*/}
+      {/*          }*/}
+      {/*        })*/}
+
+      {/*      }}*/}
+      {/*    >*/}
+      {/*      minFilter*/}
+      {/*    </button>*/}
+      {/*  </div>*/}
+      {/*)}*/}
       {materialRange && materialValue !== undefined && (
         <div style={{ display: 'flex', width: '100%', gap: 8 }}>
           <div
@@ -496,12 +523,24 @@ const MapSection = ({ mat }: { mat: THREE.MeshPhysicalMaterial }) => {
             }}
           ></MapInfo>
           {isPhysical && (
+            <MapInfo material={mat} matKey='specularColorMap' label="Specular Color Map" materialRange={{
+              matKey: 'specularIntensity',
+              onChange: value => {
+                mat.specularIntensity = value;
+                mat.needsUpdate = true;
+              },
+              max: 1
+            }}/>
+          )}
+          {isPhysical && (
             <MaterialPhysicalPanels mat={mat as THREE.MeshPhysicalMaterial} />
           )}
 
           <ColorInfo mat={mat} />
           <OpacityPanel mat={mat} />
           {mat.emissive !== undefined && <EmissiveInfo mat={mat} />}
+          {mat.specularColor !== undefined && <SpecularColorInfo mat={mat} />}
+
         </div>
       </div>
     </section>
@@ -578,20 +617,6 @@ const EmissiveInfo = ({ mat }: { mat: THREE.Material }) => {
     >
       <div className="flex gap-8">
         <strong>emissive색상</strong>
-        {/* <button
-          style={{ fontSize: 10 }}
-          onClick={() => {
-            const hex = `#${originalColor}`;
-            mat.emissive.set(hex);
-            setDiffuseColor({
-              hex: `#${originalColor}`,
-              rgb: ColorService.toRgb(hex),
-              hsv: ColorService.toHsv(hex),
-            });
-          }}
-        >
-          원래대로
-        </button> */}
       </div>
       <div className="flex gap-2">
         <div
@@ -614,12 +639,51 @@ const EmissiveInfo = ({ mat }: { mat: THREE.Material }) => {
   );
 };
 
+const SpecularColorInfo = ({ mat }: { mat: THREE.Material }) => {
+  const [diffuseColor, setDiffuseColor] = useColor(
+    `#${mat.specularColor.getHexString()}`,
+  );
+  // const originalColor = mat.vUserData.originalColor;
+
+  return (
+    <div
+      key={`colorInfo-${mat.uuid}`}
+      style={{
+        fontSize: 11,
+        width: '100%',
+        boxSizing: 'border-box',
+      }}
+    >
+      <div className="flex gap-8">
+        <strong>specular색상</strong>
+      </div>
+      <div className="flex gap-2">
+        <div
+          className="w-[60px] h-[60px] mt-2 cursor-pointer"
+          style={{ backgroundColor: diffuseColor.hex }}
+        ></div>
+        <div className="w-[120px] mt-2">
+          <ColorPicker
+            height={50} // 높이 px단위로 설정 (디폴트: 200)
+            hideAlpha={true} // 투명도 조절바 숨김 (디폴트: 안숨김)
+            color={diffuseColor} // 현재 지정된 컬러
+            onChange={color => {
+              mat.specularColor.set(color.hex);
+              setDiffuseColor(color);
+            }} // 컬러 변경될 때마다 실행할 이벤트
+          />
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const OpacityPanel = ({ mat }: { mat: THREE.Material }) => {
   const [opacity, setOpacity] = useState(mat.opacity);
   const [transparent, setTransparent] = useState(mat.transparent);
   const [depthWrite, setDepthWrite] = useState(mat.depthWrite);
   const [depthTest, setDepthTest] = useState(mat.depthTest);
-  const [transmissonValue, setTransmissonValue] = useState(
+  const [transmissionValue, setTransmissionValue] = useState(
     mat.transmission ?? 0,
   );
   const [thickNessValue, setThickNessValue] = useState(mat.thickness ?? 0);
@@ -627,7 +691,7 @@ const OpacityPanel = ({ mat }: { mat: THREE.Material }) => {
   useEffect(() => {
     setTransparent(mat.transparent);
     setOpacity(mat.opacity);
-    setTransmissonValue(mat.transmission ?? 0);
+    setTransmissionValue(mat.transmission ?? 0);
     setThickNessValue(mat.thickness ?? 0);
   }, [mat]);
 
@@ -711,10 +775,10 @@ const OpacityPanel = ({ mat }: { mat: THREE.Material }) => {
                   min={0}
                   max={1}
                   step={0.01}
-                  value={transmissonValue}
+                  value={transmissionValue}
                   onChange={e => {
                     const value = parseFloat(e.target.value);
-                    setTransmissonValue(value);
+                    setTransmissionValue(value);
                     mat.transmission = value;
                     mat.needsUpdate = true;
                   }}
@@ -726,10 +790,10 @@ const OpacityPanel = ({ mat }: { mat: THREE.Material }) => {
                 min={0}
                 max={1}
                 step={0.01}
-                value={transmissonValue}
+                value={transmissionValue}
                 onChange={e => {
                   const value = parseFloat(e.target.value);
-                  setTransmissonValue(value);
+                  setTransmissionValue(value);
                   mat.transmission = value;
                   mat.needsUpdate = true;
                 }}
@@ -749,8 +813,8 @@ const OpacityPanel = ({ mat }: { mat: THREE.Material }) => {
                     width: '100%',
                   }}
                   type="range"
-                  min={-50}
-                  max={50}
+                  min={-5}
+                  max={5}
                   step={0.01}
                   value={thickNessValue}
                   onChange={e => {
@@ -764,8 +828,8 @@ const OpacityPanel = ({ mat }: { mat: THREE.Material }) => {
               <input
                 style={{ width: 35, borderRadius: 4 }}
                 type="number"
-                min={-50}
-                max={50}
+                min={-5}
+                max={5}
                 step={0.01}
                 value={thickNessValue}
                 onChange={e => {
@@ -887,9 +951,23 @@ const MaterialPhysicalPanels = ({
   mat: THREE.MeshPhysicalMaterial;
 }) => {
   const [specular, setSpecular] = useState<number>(mat.specularIntensity);
+  const [reflectivity, setReflectivity] = useState<number>(mat.reflectivity);
   return (
-    <div className="w-full py-2.5">
-      <strong>Specular</strong>
+    <div className="w-full">
+      <MapInfo
+        label="Displacement Map"
+        material={mat}
+        matKey="displacementMap"
+        materialRange={{
+          matKey: 'displacementScale',
+          onChange: value => {
+            mat.displacementScale = value;
+            mat.needsUpdate = true;
+          },
+          max: 10,
+        }}
+      ></MapInfo>
+      <strong>Reflectivity</strong>
       <div style={{ display: 'flex', width: '100%', gap: 8 }}>
         <div
           style={{
@@ -905,11 +983,11 @@ const MaterialPhysicalPanels = ({
             min={0}
             max={1}
             step={0.01}
-            value={specular}
+            value={reflectivity}
             onChange={e => {
               const value = parseFloat(e.target.value);
-              mat.specularIntensity = value;
-              setSpecular(value);
+              mat.reflectivity = value;
+              setReflectivity(value);
               mat.needsUpdate = true;
             }}
           />
@@ -920,15 +998,55 @@ const MaterialPhysicalPanels = ({
           min={0}
           max={1}
           step={0.01}
-          value={specular}
+          value={reflectivity}
           onChange={e => {
             const value = parseFloat(e.target.value);
-            mat.specularIntensity = value;
-            setSpecular(value);
+            mat.reflectivity = value;
+            setReflectivity(value);
             mat.needsUpdate = true;
           }}
         />
       </div>
+      {/*<strong>Specular</strong>*/}
+      {/*<div style={{ display: 'flex', width: '100%', gap: 8 }}>*/}
+      {/*  <div*/}
+      {/*    style={{*/}
+      {/*      flex: 1,*/}
+      {/*      minWidth: 0,*/}
+      {/*    }}*/}
+      {/*  >*/}
+      {/*    <input*/}
+      {/*      style={{*/}
+      {/*        width: '100%',*/}
+      {/*      }}*/}
+      {/*      type="range"*/}
+      {/*      min={0}*/}
+      {/*      max={1}*/}
+      {/*      step={0.01}*/}
+      {/*      value={specular}*/}
+      {/*      onChange={e => {*/}
+      {/*        const value = parseFloat(e.target.value);*/}
+      {/*        mat.specularIntensity = value;*/}
+      {/*        setSpecular(value);*/}
+      {/*        mat.needsUpdate = true;*/}
+      {/*      }}*/}
+      {/*    />*/}
+      {/*  </div>*/}
+      {/*  <input*/}
+      {/*    style={{ width: 35, borderRadius: 4 }}*/}
+      {/*    type="number"*/}
+      {/*    min={0}*/}
+      {/*    max={1}*/}
+      {/*    step={0.01}*/}
+      {/*    value={specular}*/}
+      {/*    onChange={e => {*/}
+      {/*      const value = parseFloat(e.target.value);*/}
+      {/*      mat.specularIntensity = value;*/}
+      {/*      setSpecular(value);*/}
+      {/*      mat.needsUpdate = true;*/}
+      {/*    }}*/}
+      {/*  />*/}
+      {/*</div>*/}
     </div>
   );
 };

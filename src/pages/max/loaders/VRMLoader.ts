@@ -31,6 +31,16 @@ class VRMLoader implements MaxLoader<THREE.MeshPhysicalMaterial> {
     const prom = new Promise<THREE.MeshPhysicalMaterial>(async res => {
       const json: MaxMaterialJSON = await fileToJson(originalFile);
 
+      // 우선 bump 관련 값 보간
+      if (json.bumpScale > 2) {
+        json.bumpScale = json.bumpScale * 0.02;
+      }
+
+      if (!json.normalScale) {
+        const bumpScale = json.bumpScale;
+        json.normalScale = [bumpScale, -bumpScale];
+      }
+
       const maps = Object.keys(json).filter(key =>
         key.toLowerCase().endsWith('map'),
       );
@@ -42,18 +52,27 @@ class VRMLoader implements MaxLoader<THREE.MeshPhysicalMaterial> {
       console.log(`others : ${others}`);
 
       const physicalParams = {} as TargetParams;
+      const specializedVrayMaps = ['reflectionMap', 'glossinessMap'];
 
       for (const mapKey of maps) {
         const value = json[mapKey as keyof MaxMaterialJSON];
         if (typeof value === 'string') {
           const texture = await this.textureLoader.loadFromFileName(value);
-          if (mapKey === 'baseColorMap') {
+          if (specializedVrayMaps.includes(mapKey)) {
+            if (mapKey === 'reflectionMap') {
+              physicalParams.specularColorMap = texture;
+            } else if (mapKey === 'glossinessMap') {
+              // Reflection Glossiness 일단 PASS
+            }
+          } else if (mapKey === 'baseColorMap') {
             physicalParams.map = texture;
           } else {
             physicalParams[mapKey as keyof TargetParams] = texture;
           }
         }
       }
+
+
 
       // test
       // const lightmap = physicalParams.lightMap;
@@ -94,7 +113,9 @@ class VRMLoader implements MaxLoader<THREE.MeshPhysicalMaterial> {
       console.log(json, physicalParams);
       physicalParams.depthWrite = true;
       physicalParams.depthTest = true;
-      physicalParams.metalnessMap = physicalParams.roughnessMap;
+      // if (!physicalParams.metalnessMap) {
+      //   physicalParams.metalnessMap = physicalParams.roughnessMap;
+      // }
 
       // physicalParams.transmission = 0;
       // physicalParams.color = new THREE.Color(1, 1, 1);
@@ -105,6 +126,9 @@ class VRMLoader implements MaxLoader<THREE.MeshPhysicalMaterial> {
       material.vUserData.originalMetalness = material.metalness;
       material.vUserData.originalRoughness = material.roughness;
       material.vUserData.isVMaterial = true;
+      material.dithering = true;
+
+      material.needsUpdate = true;
 
       maxFile.loaded = true;
       maxFile.resultData = material;

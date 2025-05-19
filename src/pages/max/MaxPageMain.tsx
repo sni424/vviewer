@@ -28,7 +28,7 @@ const MaxPageMain = ({setScene}: {
           width: '100%',
           height: '100%',
         }}
-        camera={{fov: 45}}
+        // camera={{fov: 45}}
         onCreated={state => {
           getVKTX2Loader(state.gl);
           state.scene.background = new THREE.Color('gray');
@@ -47,22 +47,28 @@ const MaxPageMain = ({setScene}: {
         <SelectBox></SelectBox>
         {/*<ambientLight color={'#ffffff'} intensity={1}/>*/}
         <UnifiedCameraControls />
-        {/*<mesh position={[0, 10, 0]}>*/}
-        {/*  <boxGeometry args={[4, 4, 4]}></boxGeometry>*/}
-        {/*  <meshStandardMaterial*/}
-        {/*    color={'#97efff'}*/}
-        {/*    metalness={0.5}*/}
-        {/*    roughness={0}*/}
-        {/*  ></meshStandardMaterial>*/}
-        {/*</mesh>*/}
-        {/*<mesh position={[8, 10, 0]}>*/}
-        {/*  <sphereGeometry args={[2, 128, 64]}></sphereGeometry>*/}
-        {/*  <meshStandardMaterial*/}
-        {/*    color={'#97efff'}*/}
-        {/*    metalness={0.5}*/}
-        {/*    roughness={0}*/}
-        {/*  ></meshStandardMaterial>*/}
-        {/*</mesh>*/}
+        <mesh position={[0, 10, 0]}>
+          <boxGeometry args={[4, 4, 4]}></boxGeometry>
+          <meshStandardMaterial
+            color={'#97efff'}
+            metalness={0.5}
+            roughness={0}
+            vUserData={{
+              isVMaterial: true
+            }}
+          ></meshStandardMaterial>
+        </mesh>
+        <mesh position={[8, 10, 0]}>
+          <sphereGeometry args={[2, 128, 64]}></sphereGeometry>
+          <meshStandardMaterial
+            color={'#97efff'}
+            metalness={0.5}
+            roughness={0}
+            vUserData={{
+              isVMaterial: true
+            }}
+          ></meshStandardMaterial>
+        </mesh>
       </Canvas>
     </div>
   );

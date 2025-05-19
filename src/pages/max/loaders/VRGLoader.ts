@@ -5,6 +5,7 @@ import { MaxFile, MaxFileType } from 'src/pages/max/maxAtoms.ts';
 import Workers from 'src/scripts/workers/Workers';
 import { BufferGeometry } from 'three';
 import * as THREE from 'VTHREE';
+import * as BufferGeometryUtils from 'three/addons/utils/BufferGeometryUtils.js'
 
 class VRGLoader implements MaxLoader<THREE.BufferGeometry> {
   readonly type: MaxFileType = 'geometry';
@@ -193,7 +194,7 @@ function parseVXQ0(view: DataView): THREE.BufferGeometry {
     normals.set([nx, ny, nz], i * 3);
   }
 
-  const geometry = new THREE.BufferGeometry();
+  let geometry = new THREE.BufferGeometry();
   geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
   geometry.setAttribute('normal', new THREE.BufferAttribute(normals, 3));
 
@@ -201,6 +202,21 @@ function parseVXQ0(view: DataView): THREE.BufferGeometry {
     const name = idx === 0 ? 'uv' : `uv${idx}`;
     geometry.setAttribute(name, new THREE.BufferAttribute(uvs, 2));
   });
+
+  geometry.computeBoundingBox();
+  geometry.computeBoundingSphere();
+  //
+  // geometry = BufferGeometryUtils.mergeVertices(geometry);
+  // geometry.computeVertexNormals();
+
+  // normal map 쓸 경우
+  if (geometry.getAttribute('uv') && geometry.getAttribute('normal')) {
+    try {
+      geometry.computeTangents();
+    } catch (e) {
+      console.warn('Tangent computation failed:', e);
+    }
+  }
 
   return geometry;
 }

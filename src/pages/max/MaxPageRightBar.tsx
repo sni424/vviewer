@@ -12,6 +12,7 @@ import useMaxFileController from 'src/pages/max/UseMaxFileController.ts';
 import { threeExportsAtom } from 'src/scripts/atoms.ts';
 import { recompileAsync } from 'src/scripts/atomUtils.ts';
 import * as THREE from 'VTHREE';
+import { gsap } from 'gsap';
 
 const MaxPageRightBar = ({
   expanded,
@@ -79,6 +80,20 @@ const MaxPageRightBar = ({
     }
   }, [lightMapIntensity]);
 
+  function geometryTest() {
+    if (scene) {
+      scene.traverseAll(o => {
+        if (o.type === 'Mesh') {
+          const geo =  (o as THREE.Mesh).geometry;
+          geo.computeVertexNormals();
+          geo.computeBoundingBox();
+          geo.computeBoundingSphere();
+          geo.normalizeNormals();
+        }
+      });
+    }
+  }
+
   const meshRef = useRef<{ name: string; mesh: THREE.Mesh }[]>([]);
 
   async function load(maxFile: MaxFile) {
@@ -97,6 +112,7 @@ const MaxPageRightBar = ({
           roughness: 1,
           side: THREE.DoubleSide,
         });
+        mesh.material.vUserData.isVMaterial = true;
         setMeshes(pre => [...pre, { name: originalFile.name, mesh: mesh }]);
         // meshRef.current.push({ name: originalFile.name, mesh: mesh });
       } else if (type === 'object') {
@@ -107,7 +123,7 @@ const MaxPageRightBar = ({
         ]);
         // meshRef.current.push({ name: originalFile.name, mesh: resultData });
       }
-      // rerender();
+      rerender();
     });
   }
 
@@ -276,6 +292,17 @@ const MaxPageRightBar = ({
 
   const sceneAddTypes: MaxFileType[] = ['geometry', 'object'];
 
+  function animateFOV(toFOV: number, camera: THREE.PerspectiveCamera, duration = 1) {
+    gsap.to(camera, {
+      fov: toFOV,
+      duration,
+      ease: "power2.out",
+      onUpdate: () => {
+        camera.updateProjectionMatrix(); // 변경 사항 적용
+      }
+    });
+  }
+
   return (
     <>
       {!expanded && (
@@ -359,6 +386,7 @@ const MaxPageRightBar = ({
                 <button onClick={showAllMaps}>all maps</button>
                 <button onClick={hasDiffuseElse}>debug</button>
                 <button onClick={recompileAsync}>리컴파일</button>
+                <button onClick={geometryTest}>geo</button>
               </div>
               <div className="w-full flex flex-col gap-x-1 p-1">
                 <div className="flex gap-x-0.5 text-sm">
@@ -473,6 +501,25 @@ const MaxPageRightBar = ({
               })}
             </div>
           </section>
+          {threeExports && (
+            <section className="text-sm px-1 flex flex-col my-1">
+              <strong>Camera FOV</strong>
+              <div className="flex gap-x-1 my-1">
+                <button onClick={() => {
+                  const camera = threeExports!.camera as THREE.PerspectiveCamera;
+                  animateFOV(75, camera);
+                }}>Three.js</button>
+                <button onClick={() => {
+                  const camera = threeExports!.camera as THREE.PerspectiveCamera;
+                  animateFOV(45, camera);
+                }}>Max</button>
+                <button onClick={() => {
+                  const camera = threeExports!.camera as THREE.PerspectiveCamera;
+                  animateFOV(55, camera);
+                }}>Viz4d</button>
+              </div>
+            </section>
+          )}
           <section className="text-sm px-1">
             <EnvController />
           </section>

@@ -16,8 +16,10 @@ export type MaxMaterialJSON = {
   refractionMap: string | null;
   glossinessMap: string | null;
   emissive: ColorJSON;
+  emissiveIntensity: number | null;
   emissiveMap: string | null;
   normalMap: string | null;
+  normalScale: [number, number] | null;
   bumpMap: string | null;
   bumpScale: number;
   lightMap: string | null;

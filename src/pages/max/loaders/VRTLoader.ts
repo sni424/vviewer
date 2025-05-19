@@ -42,7 +42,7 @@ class VRTLoader implements MaxLoader<THREE.Texture> {
         texture.type = THREE.HalfFloatType;
         texture.vUserData.mimeType = 'image/ktx2';
       } else {
-        texture.flipY = json.flipY;
+        texture.flipY = true;
         texture.colorSpace = json.colorSpace;
         texture.minFilter = THREE.LinearMipMapLinearFilter;
         texture.magFilter = THREE.LinearFilter;
