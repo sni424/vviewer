@@ -13,6 +13,10 @@ import { threeExportsAtom } from 'src/scripts/atoms.ts';
 import { recompileAsync } from 'src/scripts/atomUtils.ts';
 import * as THREE from 'VTHREE';
 import { gsap } from 'gsap';
+import { MaxConstants } from 'src/pages/max/loaders/MaxConstants.ts';
+import VTextureLoader from 'src/scripts/loaders/VTextureLoader.ts';
+
+const VIZ4D_LIGHT_MAPS = ['c1_C01.exr', 'c2_BAE.exr', 'c3_C47.exr', 'c4_3E9.exr', 'c5_231.exr', 'c6_ECC.exr', 'c7_327.exr', 'c8_DAE.exr', 'msm1_439.exr', 'msm2_5D2.exr', 'msm3_26E.exr'];
 
 const MaxPageRightBar = ({
   expanded,
@@ -35,6 +39,9 @@ const MaxPageRightBar = ({
   );
   const [reflectMode, setReflectMode] = useState<boolean>(false);
   const threeExports = useAtomValue(threeExportsAtom);
+
+  const [vizLightMaps, setVizLightMaps] = useState<{[key: string] : THREE.Texture}>({})
+  const [lightMapsLoaded, setLightMapsLoaded] = useState(false);
 
   function rerender() {
     render(pre => pre + 1);
@@ -303,6 +310,136 @@ const MaxPageRightBar = ({
     });
   }
 
+  function showLocalLightMapApplies() {
+    if (scene) {
+      const applies: {[key: string]: string} = {};
+      scene.traverseAll(o => {
+        if (o.type === 'Mesh') {
+          const mat = (o as THREE.Mesh).matPhysical;
+          if (mat.lightMap && mat.vUserData.viz4dLightMap) {
+            applies[mat.name] = mat.vUserData.viz4dLightMap
+          }
+        }
+      })
+
+      console.log('applies', applies);
+      const arr:string[] = [];
+      Object.values(applies).forEach((value) => {
+        if (!arr.includes(value)) {
+          arr.push(value);
+        }
+      })
+
+      arr.sort();
+
+      console.log('maps', arr)
+    }
+  }
+
+  function exportLightMapOutputs() {
+    if (scene) {
+      const applies: {[key: string]: string} = {};
+      scene.traverseAll(o => {
+        if (o.type === 'Mesh') {
+          const mat = (o as THREE.Mesh).matPhysical;
+          if (mat.lightMap && mat.vUserData.viz4dLightMap) {
+            applies[mat.name] = mat.vUserData.viz4dLightMap
+          }
+        }
+      })
+
+      console.log('applies', applies);
+      saveJSON(applies);
+    }
+  }
+
+  async function loadCustomLightMaps() {
+    if (lightMapsLoaded) {
+      alert('이미 불러왓슴')
+      return;
+    }
+    const url = MaxConstants.base + "lightmaps/"
+
+    const textures: { [key: string]: THREE.Texture } = Object.fromEntries(
+      await Promise.all(
+        VIZ4D_LIGHT_MAPS.map(async (uri) => {
+          const tex = await VTextureLoader.loadAsync(url + uri, threeExports);
+          tex.flipY = false;
+          tex.needsUpdate = true;
+          return [uri, tex]; // [key, value] 형태로 반환
+        })
+      )
+    );
+
+    setVizLightMaps(textures);
+    setLightMapsLoaded(true);
+    alert('완료!')
+  }
+
+  function importLightMapApplies() {
+    if (!lightMapsLoaded) {
+      alert('라이트맵을 먼저 불러오세요.');
+      return;
+    }
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+
+    input.addEventListener('change', (event) => {
+      const file = (event.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const result = reader.result as string;
+          const data = JSON.parse(result);
+          console.log('✅ JSON loaded:', data);
+
+          const mats = Object.keys(data);
+          // 여기서 data 를 활용하세요
+          // applyLightMapData(data); 같은 식으로
+          if (scene) {
+            const applies: {[key: string]: string} = data;
+            scene.traverseAll(o => {
+              if (o.type === 'Mesh') {
+                const mat = (o as THREE.Mesh).matPhysical;
+                if (!mat.lightMap) {
+                  if (mats.includes(mat.name)) {
+                    const targetLightMap = vizLightMaps[data[mat.name]];
+                    console.log('this lightmap ', data[mat.name], targetLightMap)
+                    mat.lightMap = targetLightMap;
+                    mat.needsUpdate = true;
+                  }
+                }
+              }
+            })
+
+
+          }
+        } catch (e) {
+          console.error('❌ JSON 파싱 오류:', e);
+        }
+      };
+      reader.readAsText(file);
+    });
+
+    input.click(); // 파일 선택창 열기
+  }
+
+  function saveJSON(obj: any, filename = 'data.json') {
+    const json = JSON.stringify(obj, null, 2); // 보기 좋게 들여쓰기 포함
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+
+    URL.revokeObjectURL(url);
+  }
+
   return (
     <>
       {!expanded && (
@@ -499,6 +636,15 @@ const MaxPageRightBar = ({
                   </div>
                 );
               })}
+            </div>
+          </section>
+          <section className="text-sm px-1 flex flex-col my-1">
+            <strong>viz4d lightMap</strong>
+            <div className="flex gap-x-1 py-1">
+              <button onClick={showLocalLightMapApplies}>적용 정보 보기</button>
+              <button onClick={exportLightMapOutputs}>적용 정보 내보내기</button>
+              <button onClick={importLightMapApplies}>적용 정보 가져오기</button>
+              <button onClick={loadCustomLightMaps}>라이트맵 불러오기</button>
             </div>
           </section>
           {threeExports && (

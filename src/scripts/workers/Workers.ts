@@ -458,16 +458,24 @@ export default class Workers {
           const { positions, normals, uvs, indices } = data;
 
           const geometry = new THREE.BufferGeometry();
-          geometry.setAttribute(
-            'position',
-            new THREE.Float32BufferAttribute(positions, 3),
-          );
-          geometry.setAttribute(
-            'normal',
-            new THREE.Float32BufferAttribute(normals, 3),
-          );
-          geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
-          geometry.setIndex(indices);
+          geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+          geometry.setAttribute('normal', new THREE.BufferAttribute(normals, 3));
+          uvs.forEach((uvs, i) => {
+            const name = i === 0 ? 'uv' : `uv${i}`;
+            geometry.setAttribute(name, new THREE.BufferAttribute(uvs, 2));
+          });
+          geometry.setIndex(new THREE.BufferAttribute(indices, 1));
+
+          geometry.computeBoundingBox();
+          geometry.computeBoundingSphere();
+
+          try {
+            if (geometry.getAttribute('uv') && geometry.getAttribute('normal')) {
+              geometry.computeTangents();
+            }
+          } catch (e) {
+            console.warn('Tangent computation failed:', e);
+          }
 
           t.resolve(geometry);
         } else {

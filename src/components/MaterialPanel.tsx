@@ -42,11 +42,14 @@ const setMap = (
   material: THREE.Material,
   mapKey: string,
   texture: THREE.Texture | null,
+  fileName?: string
 ) => {
+  console.log('setMap', mapKey, texture, fileName, material);
   const mat = material.physical;
   const dstKey = mapKey as keyof THREE.MeshPhysicalMaterial;
   if (dstKey === 'lightMap') {
     mat.lightMap = texture;
+    mat.vUserData.viz4dLightMap = fileName;
   } else if (dstKey === 'map') {
     mat.map = texture;
   } else if (dstKey === 'emissiveMap') {
@@ -149,19 +152,21 @@ const MapInfo = (props: MapInfoProps) => {
     setIsDragging(false);
     const file = e.dataTransfer.files[0];
     if (file) {
+      const fileName = file.name;
+      console.log('dropped file', fileName, file);
       const isEnvMap = props.matKey === 'envMap';
       if (isEnvMap) {
         if (
           !(
-            file.name.toLowerCase().endsWith('hdr') ||
-            file.name.toLowerCase().endsWith('exr') ||
-            file.name.toLowerCase().endsWith('png')
+            fileName.toLowerCase().endsWith('hdr') ||
+            fileName.toLowerCase().endsWith('exr') ||
+            fileName.toLowerCase().endsWith('png')
           )
         ) {
           alert('환경맵은 HDR/EXR/PNG 형식만 지원합니다.');
           return;
         }
-        if (file.name.toLowerCase().endsWith('png')) {
+        if (fileName.toLowerCase().endsWith('png')) {
           loadPNGAsENV(URL.createObjectURL(file), threeExports.gl).then(
             texture => {
               setMap(material, mapKey, texture);
@@ -169,20 +174,21 @@ const MapInfo = (props: MapInfoProps) => {
           );
         } else {
           loadHDRTexture(URL.createObjectURL(file)).then(texture => {
+            console.log(fileName);
             setMap(material, mapKey, texture);
           });
         }
       } else {
         const acceptedExtensions = ['.png', '.jpg', '.exr', '.hdr'];
         if (
-          !acceptedExtensions.some(ext => file.name.toLowerCase().endsWith(ext))
+          !acceptedExtensions.some(ext => fileName.toLowerCase().endsWith(ext))
         ) {
           alert('다음 확장자만 적용 가능 : ' + acceptedExtensions.join(', '));
           return;
         }
 
         VTextureLoader.loadAsync(file, threeExports).then(texture => {
-          setMap(material, mapKey, texture);
+          setMap(material, mapKey, texture, fileName);
         });
       }
 

@@ -7,8 +7,9 @@ const S3_BASE_URL = import.meta.env.VITE_MAX_URL;
  * TEST14 => Viz4d 와 비교용
  * TEST15 => Viz4d max uv exported
  * TEST16 => Test 15 에서 Geometry 추출 시 Normal 계산 방식 수정본
+ * TEST17 => Geometry Indexed
  * **/
-const DEFAULT_PATH = S3_BASE_URL + 'projects/test16/';
+const DEFAULT_PATH = S3_BASE_URL + 'projects/test17/';
 export const MaxConstants = {
   base: S3_BASE_URL,
   DEFAULT_PATH: DEFAULT_PATH,
