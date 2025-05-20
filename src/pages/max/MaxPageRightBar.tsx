@@ -15,6 +15,7 @@ import * as THREE from 'VTHREE';
 import { gsap } from 'gsap';
 import { MaxConstants } from 'src/pages/max/loaders/MaxConstants.ts';
 import VTextureLoader from 'src/scripts/loaders/VTextureLoader.ts';
+import ReflectionProbe from 'src/scripts/ReflectionProbe.ts';
 
 const VIZ4D_LIGHT_MAPS = ['c1_C01.exr', 'c2_BAE.exr', 'c3_C47.exr', 'c4_3E9.exr', 'c5_231.exr', 'c6_ECC.exr', 'c7_327.exr', 'c8_DAE.exr', 'msm1_439.exr', 'msm2_5D2.exr', 'msm3_26E.exr'];
 
@@ -42,6 +43,7 @@ const MaxPageRightBar = ({
 
   const [vizLightMaps, setVizLightMaps] = useState<{[key: string] : THREE.Texture}>({})
   const [lightMapsLoaded, setLightMapsLoaded] = useState(false);
+  const [innerProbe, setInnerProbe] = useState<ReflectionProbe | null>(null);
 
   function rerender() {
     render(pre => pre + 1);
@@ -409,6 +411,7 @@ const MaxPageRightBar = ({
                     const targetLightMap = vizLightMaps[data[mat.name]];
                     console.log('this lightmap ', data[mat.name], targetLightMap)
                     mat.lightMap = targetLightMap;
+                    mat.vUserData.viz4dLightMap = data[mat.name];
                     mat.needsUpdate = true;
                   }
                 }
@@ -440,6 +443,78 @@ const MaxPageRightBar = ({
     URL.revokeObjectURL(url);
   }
 
+  function getMyCameraPosition() {
+    if (threeExports) {
+      const camera = threeExports.camera;
+      const position = camera.matrix;
+
+      alert('Camera position : ' +position.toArray() );
+
+      return position;
+    } else {
+      alert('camera not found');
+      return null;
+    }
+  }
+
+  function createProbe() {
+    if (threeExports) {
+      const {scene, gl, camera} = threeExports;
+      // 먼저 기존 프로브 제거
+
+      if (innerProbe) {
+        innerProbe.removeFromScene();
+        setInnerProbe(null);
+      }
+
+      const size = new THREE.Vector3(-14.7, 2.9, 11.04);
+      const position =  new THREE.Vector3(0.5, 1.09, -0.09);
+
+      const probe = new ReflectionProbe(gl, scene, camera, 512);
+      probe.setCenterAndSize(position, size);
+      probe.addToScene(true);
+      scene.traverseAll(o => {
+        if (o.type === 'Mesh') {
+          const mat = (o as THREE.Mesh).matPhysical;
+          // mat.prepareProbe({probeCount: 1, usePmrem:false})
+          mat.apply('probe', {probes: [probe]});
+          mat.needsUpdate = true;
+        }
+      })
+
+      setInnerProbe(probe);
+    }
+  }
+
+  function removeProbe() {
+    if (threeExports) {
+      const {scene} = threeExports;
+      const objsToRemove: THREE.Object3D[] = [];
+      scene.traverseAll(o => {
+        if (o.vUserData.isProbeMesh) {
+          objsToRemove.push(o);
+        }
+        if (o.type === 'Mesh') {
+          if (!o.vUserData.isProbeMesh) {
+            const mat = (o as THREE.Mesh).matPhysical;
+            mat.remove('probe');
+            mat.needsUpdate = true;
+          }
+        }
+      })
+
+      objsToRemove.forEach(obj => {
+        obj.removeFromParent();
+      })
+    }
+  }
+
+  function getNowProbePositionAndSize() {
+    if (threeExports) {
+      console.log(scene)
+    }
+  }
+
   return (
     <>
       {!expanded && (
@@ -469,6 +544,10 @@ const MaxPageRightBar = ({
             >
               wireFrame {wireframe ? 'ON' : 'OFF'}
             </button>
+            <button onClick={getMyCameraPosition}>My position</button>
+            <button onClick={createProbe}>probe test</button>
+            <button onClick={removeProbe}>removeProbe</button>
+            <button onClick={getNowProbePositionAndSize}>debug</button>
           </div>
           <section className="p-1 my-1 text-sm">
             <div className="border-b border-gray-400 w-full p-1 flex gap-x-2 items-center">
