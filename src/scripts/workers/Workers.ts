@@ -385,10 +385,10 @@ export default class Workers {
           data:
             | {
                 format: 'VXQ1';
-                positions: number[];
-                normals: number[];
-                uvs: number[];
-                indices: number[];
+                positions: Float32Array;
+                normals: Float32Array;
+                uvs: Float32Array[];
+                indices: Int32Array;
               }
             | {
                 format: 'VXQ0';
@@ -460,9 +460,9 @@ export default class Workers {
           const geometry = new THREE.BufferGeometry();
           geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
           geometry.setAttribute('normal', new THREE.BufferAttribute(normals, 3));
-          uvs.forEach((uvs, i) => {
+          uvs.forEach((uv, i) => {
             const name = i === 0 ? 'uv' : `uv${i}`;
-            geometry.setAttribute(name, new THREE.BufferAttribute(uvs, 2));
+            geometry.setAttribute(name, new THREE.BufferAttribute(uv, 2));
           });
           geometry.setIndex(new THREE.BufferAttribute(indices, 1));
 
