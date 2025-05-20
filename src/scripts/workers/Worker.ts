@@ -4,6 +4,7 @@ import { loadSmartGeometry } from './WorkerUtils';
 
 export type WorkerTask =
   | WorkerTaskFetch
+  | WorkerTaskFetchJson
   | WorkerTaskExr
   | WorkerTaskBitmapToArrayBuffer
   | WorkerTaskCompress
@@ -16,6 +17,14 @@ export type WorkerTaskFetch = {
   data: {
     url: string;
     inflate: boolean;
+  };
+};
+
+export type WorkerTaskFetchJson = {
+  id: number;
+  action: 'fetchJson';
+  data: {
+    url: string;
   };
 };
 
@@ -116,9 +125,9 @@ self.onmessage = async (e: MessageEvent<WorkerTask>) => {
   if (action === 'fetch') {
     try {
       const { url, inflate } = data;
-      console.log('worker fetch url:', url);
+      // console.log('worker fetch url:', url);
       const buffer = await fetchArrayBuffer(url, {});
-      console.log('worker fetch buffer:', buffer);
+      // console.log('worker fetch buffer:', buffer);
 
       const result = inflate
         ? pako.inflate(new Uint8Array(buffer)).buffer
@@ -126,6 +135,15 @@ self.onmessage = async (e: MessageEvent<WorkerTask>) => {
       (self as any).postMessage({ id, action: 'fetch', data: result }, [
         result,
       ]);
+    } catch (err) {
+      console.error('Worker error : ', err);
+      (self as any).postMessage({ id, error: (err as any).message });
+    }
+  } else if (action === 'fetchJson') {
+    try {
+      const { url } = data;
+      const json = await fetch(url).then(res => res.json());
+      (self as any).postMessage({ id, action: 'fetchJson', data: json });
     } catch (err) {
       console.error('Worker error : ', err);
       (self as any).postMessage({ id, error: (err as any).message });

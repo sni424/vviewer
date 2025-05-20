@@ -79,7 +79,7 @@ class VRTLoader implements MaxLoader<THREE.Texture> {
         this.type,
       ) as Promise<THREE.Texture>;
     }
-
+    debugger;
     const targetURL =
       MaxConstants.TEXTURE_PATH +
       encodeURIComponent(filename)

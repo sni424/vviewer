@@ -1,5 +1,4 @@
 import { MaxCache } from 'src/pages/max/loaders/MaxCache.ts';
-import { MaxConstants } from 'src/pages/max/loaders/MaxConstants.ts';
 import { MaxLoader } from 'src/pages/max/loaders/MaxLoader.ts';
 import { MaxFile, MaxFileType } from 'src/pages/max/maxAtoms.ts';
 import VKTX2Loader, {
@@ -77,11 +76,19 @@ class VRILoader implements MaxLoader<THREE.Texture> {
       ) as Promise<THREE.Texture>;
     }
 
-    const targetURL =
-      MaxConstants.IMAGE_PATH +
-      encodeURIComponent(filename)
-        // S3는 공백을 + 로 반환하므로 맞춰줌 (optional)
-        .replace(/%20/g, '+');
+    console.warn('Cache missed : ', filename);
+
+    const s3url = import.meta.env.VITE_S3_DEV_URL;
+    const projectName = 'max_test';
+    const fname = encodeURIComponent(filename);
+
+    const targetURL = `${s3url}/${projectName}/${fname}`.replace(/%20/g, '+');
+
+    // const targetURL =
+    //   MaxConstants.IMAGE_PATH +
+    //   encodeURIComponent(filename)
+    //     // S3는 공백을 + 로 반환하므로 맞춰줌 (optional)
+    //     .replace(/%20/g, '+');
     // const file = await resolveMaxFile(targetURL, filename, this.type);
 
     // return await this.load(file);

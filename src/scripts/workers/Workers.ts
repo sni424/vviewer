@@ -7,6 +7,7 @@ import {
   WorkerTaskDecompress,
   WorkerTaskExr,
   WorkerTaskFetch,
+  WorkerTaskFetchJson,
   WorkerTaskGeometryDeserialize,
 } from './Worker';
 
@@ -49,6 +50,7 @@ type TaskGeometryDeserialize = WorkerTaskGeometryDeserialize & {
 
 type Task =
   | TaskFetch
+  | TaskFetchJson
   | TaskExr
   | TaskBitmapToArrayBuffer
   | TaskCompress
@@ -61,6 +63,10 @@ type TaskReturn<T extends { resolve: (...args: any[]) => void }> = Parameters<
 
 type TaskFetch = WorkerTaskFetch & {
   resolve: (buf: ArrayBuffer) => void;
+  reject: (err: any) => void;
+};
+type TaskFetchJson<T = any> = WorkerTaskFetchJson & {
+  resolve: (buf: T) => void;
   reject: (err: any) => void;
 };
 export type TaskFetchReturn = TaskReturn<TaskFetch>;
@@ -86,7 +92,7 @@ export default class Workers {
   private queue: Task[] = [];
   private taskId = 0;
   private taskMap = new Map<number, Task>();
-  private cache = new Map<string, ArrayBuffer>();
+  private cache = new Map<string, any>();
   private busyWorkers = new Set<number>();
 
   private constructor(concurrency = navigator.hardwareConcurrency ?? 4) {
@@ -113,6 +119,14 @@ export default class Workers {
     }
 
     return this.instance._fetch(url, inflate);
+  }
+
+  public static async fetchJson<T = any>(url: string): Promise<T> {
+    if (url.includes('undefined')) {
+      debugger;
+    }
+
+    return this.instance._fetchJson(url);
   }
 
   // trasnfer이면 worker로 넘겨버려서 앞으로 buffer을 사용할 수 없음
@@ -256,6 +270,26 @@ export default class Workers {
     }).then((buffer: any) => {
       this.cache.set(url, buffer);
       return buffer;
+    });
+    this.cache.set(url, prom as any);
+    return prom as any;
+  }
+
+  private async _fetchJson<T = any>(url: string): Promise<T> {
+    if (this.cache.has(url)) return this.cache.get(url)!;
+    const id = this.taskId++;
+
+    const prom = new Promise((resolve, reject) => {
+      const task: TaskFetchJson<T> = {
+        id,
+        action: 'fetchJson',
+        data: { url },
+        resolve,
+        reject,
+      };
+      this.taskMap.set(id, task);
+      this.enqueue(task);
+      // resolve는 onMessage에서 task.resolve 참조
     });
     this.cache.set(url, prom as any);
     return prom as any;

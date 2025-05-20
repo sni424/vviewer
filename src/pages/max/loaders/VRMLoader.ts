@@ -68,7 +68,7 @@ class VRMLoader implements MaxLoader<THREE.MeshPhysicalMaterial> {
 
       for (const key of others) {
         const value = json[key as keyof MaxMaterialJSON];
-        console.log(`checking key ${key}, `, value);
+        // console.log(`checking key ${key}, `, value);
         if (value !== null) {
           let resultValue: any;
           if (typeof value === 'object' && !Array.isArray(value)) {

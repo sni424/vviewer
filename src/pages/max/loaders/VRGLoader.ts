@@ -1,5 +1,4 @@
 import { MaxCache } from 'src/pages/max/loaders/MaxCache.ts';
-import { MaxConstants } from 'src/pages/max/loaders/MaxConstants.ts';
 import { MaxLoader } from 'src/pages/max/loaders/MaxLoader.ts';
 import { MaxFile, MaxFileType } from 'src/pages/max/maxAtoms.ts';
 import Workers from 'src/scripts/workers/Workers';
@@ -51,14 +50,22 @@ class VRGLoader implements MaxLoader<THREE.BufferGeometry> {
       ) as Promise<THREE.BufferGeometry>;
     }
 
+    console.log('cache missed : ', filename);
+
     const prom = new Promise<THREE.BufferGeometry>(async res => {
-      const targetURL =
-        MaxConstants.GEOMETRY_PATH +
-        encodeURIComponent(filename)
-          // S3는 공백을 + 로 반환하므로 맞춰줌 (optional)
-          .replace(/%20/g, '+');
-      console.log('fileName', filename);
-      console.log('targetURL', targetURL);
+      const s3url = import.meta.env.VITE_S3_DEV_URL;
+      const projectName = 'max_test';
+      const fname = encodeURIComponent(filename);
+
+      const targetURL = `${s3url}/${projectName}/${fname}`.replace(/%20/g, '+');
+
+      // const targetURL =
+      //   MaxConstants.GEOMETRY_PATH +
+      //   encodeURIComponent(filename)
+      //     // S3는 공백을 + 로 반환하므로 맞춰줌 (optional)
+      //     .replace(/%20/g, '+');
+      // console.log('fileName', filename);
+      // console.log('targetURL', targetURL);
       // const file = await resolveMaxFile(targetURL, filename, this.type);
 
       // return await this.load(file);
