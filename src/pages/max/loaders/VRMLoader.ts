@@ -1,9 +1,8 @@
 import 'VTHREE';
 import * as THREE from 'VTHREE';
 import { MaxCache } from 'src/pages/max/loaders/MaxCache.ts';
-import { MaxConstants } from 'src/pages/max/loaders/MaxConstants.ts';
 import { MaxLoader } from 'src/pages/max/loaders/MaxLoader.ts';
-import { resolveMaxFile } from 'src/pages/max/loaders/MaxUtils.ts';
+import { downloadJson } from 'src/pages/max/loaders/MaxUtils.ts';
 import VRTLoader from 'src/pages/max/loaders/VRTLoader.ts';
 import { MaxFile, MaxFileType } from 'src/pages/max/maxAtoms.ts';
 import { ColorJSON, MaxMaterialJSON } from 'src/pages/max/types';
@@ -135,16 +134,16 @@ class VRMLoader implements MaxLoader<THREE.MeshPhysicalMaterial> {
       ) as Promise<THREE.MeshPhysicalMaterial>;
     }
 
-    const targetURL =
-      MaxConstants.MATERIAL_PATH +
-      encodeURIComponent(filename)
-        // S3는 공백을 + 로 반환하므로 맞춰줌 (optional)
-        .replace(/%20/g, '+');
-    console.log('fileName', filename);
-    console.log('targetURL', targetURL);
-    const file = await resolveMaxFile(targetURL, filename, this.type);
+    const projectName = 'max_test';
+    const fname = filename;
 
-    return await this.load(file);
+    const file: MaxMaterialJSON = await downloadJson(projectName, fname);
+    return this.load({
+      loaded: false,
+      originalFile: file,
+      type: this.type,
+      fileName: filename,
+    });
   }
 }
 

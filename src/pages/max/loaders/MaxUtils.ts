@@ -31,10 +31,12 @@ const maxDownloadCount = 50;
 export async function downloadJson<T = any>(
   projectName: string,
   fileName: string,
+  withChildren?: boolean,
 ): Promise<T> {
   const key = new URLSearchParams({
     projectId: projectName,
     fileId: fileName,
+    withChildren: withChildren ? 'true' : 'false',
   }).toString();
 
   if (downloadCache.has(key)) {
@@ -50,7 +52,12 @@ export async function downloadJson<T = any>(
   }
 
   downloadCount.value++;
-  const url = `http://localhost:4000/retrieve?${key}`;
+  // is vite production
+  const isProd = import.meta.env.PROD;
+  const serverUri = isProd
+    ? `https://stan-vite-server.jp.ngrok.io`
+    : 'http://localhost:4000';
+  const url = `${serverUri}/retrieve?${key}`;
 
   const prom = fetch(url)
     .then(res => res.json())

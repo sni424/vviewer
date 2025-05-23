@@ -1,13 +1,14 @@
 import { useEffect } from 'react';
 import { Route, Routes, useNavigate } from 'react-router-dom';
 import { ENV } from 'src/Constants';
+import MaxPage from 'src/pages/max/MaxPage.tsx';
 import { useRegion } from 'src/scripts/useRegion';
 import { useEnvParams } from '../scripts/atoms';
+import DracoViewer from './DracoViewer';
 import MobilePage from './MobilePage';
 import TestPage from './TestPage';
 import { loadSettings, saveSettings } from './useSettings';
 import ViewerPage from './ViewerPage';
-import MaxPage from 'src/pages/max/MaxPage.tsx';
 
 const MyRoutes = () => {
   const navigate = useNavigate();
@@ -15,7 +16,7 @@ const MyRoutes = () => {
   useEffect(() => {
     const checkWidth = () => {
       if (window.innerWidth < 600) {
-        navigate('/mobile');
+        navigate('/max');
       }
     };
     checkWidth();
@@ -27,7 +28,8 @@ const MyRoutes = () => {
       {/* <Route path="/upload" element={<UploadPage />} /> */}
       <Route path="/test" element={<TestPage />} />
       <Route path="/mobile" element={<MobilePage />} />
-      <Route path="/max" element={<MaxPage/>}/>
+      <Route path="/max" element={<MaxPage />} />
+      <Route path="/draco" element={<DracoViewer />} />
     </Routes>
   );
 };

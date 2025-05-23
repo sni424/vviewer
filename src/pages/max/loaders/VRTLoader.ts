@@ -1,7 +1,6 @@
 import { MaxCache } from 'src/pages/max/loaders/MaxCache.ts';
-import { MaxConstants } from 'src/pages/max/loaders/MaxConstants.ts';
 import { MaxLoader } from 'src/pages/max/loaders/MaxLoader.ts';
-import { resolveMaxFile } from 'src/pages/max/loaders/MaxUtils.ts';
+import { downloadJson } from 'src/pages/max/loaders/MaxUtils.ts';
 import VRILoader from 'src/pages/max/loaders/VRILoader.ts';
 import { MaxFile, MaxFileType } from 'src/pages/max/maxAtoms.ts';
 import { MaxTextureJSON } from 'src/pages/max/types';
@@ -79,17 +78,16 @@ class VRTLoader implements MaxLoader<THREE.Texture> {
         this.type,
       ) as Promise<THREE.Texture>;
     }
-    debugger;
-    const targetURL =
-      MaxConstants.TEXTURE_PATH +
-      encodeURIComponent(filename)
-        // S3는 공백을 + 로 반환하므로 맞춰줌 (optional)
-        .replace(/%20/g, '+');
-    console.log('fileName', filename);
-    console.log('targetURL', targetURL);
-    const file = await resolveMaxFile(targetURL, filename, this.type);
+    const projectName = 'max_test';
+    const fname = filename;
 
-    return await this.load(file);
+    const file: MaxTextureJSON = await downloadJson(projectName, fname);
+    return this.load({
+      loaded: false,
+      originalFile: file,
+      type: this.type,
+      fileName: filename,
+    });
   }
 }
 

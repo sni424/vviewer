@@ -12,12 +12,8 @@ import useMaxFileController from 'src/pages/max/UseMaxFileController.ts';
 import { threeExportsAtom } from 'src/scripts/atoms.ts';
 import { recompileAsync } from 'src/scripts/atomUtils.ts';
 import * as THREE from 'VTHREE';
-import { downloadBinary, downloadJson } from './loaders/MaxUtils';
-import VRGLoader from './loaders/VRGLoader';
-import VRILoader from './loaders/VRILoader';
-import VRMLoader from './loaders/VRMLoader';
+import { downloadJson } from './loaders/MaxUtils';
 import VROLoader from './loaders/VROLoader';
-import VRTLoader from './loaders/VRTLoader';
 
 const MaxPageRightBar = ({
   expanded,
@@ -40,6 +36,15 @@ const MaxPageRightBar = ({
   );
   const [reflectMode, setReflectMode] = useState<boolean>(false);
   const threeExports = useAtomValue(threeExportsAtom);
+  const [messages, _setMessages] = useState<{ key: string; msg: string }[]>([]);
+  const setMessage = (key: string, msg: string) => {
+    _setMessages(pre => {
+      const newMsg = { key, msg };
+      const newMsgs = pre.filter(m => m.key !== key);
+      newMsgs.push(newMsg);
+      return newMsgs;
+    });
+  };
 
   function rerender() {
     render(pre => pre + 1);
@@ -129,7 +134,7 @@ const MaxPageRightBar = ({
     }
   }
 
-  function loadRemote() {
+  async function loadRemote() {
     const projectName = 'max_test';
     const projectPath = `${projectName}/${projectName}`;
 
@@ -138,176 +143,89 @@ const MaxPageRightBar = ({
       name: string;
       json_uploaded: string[];
       binary_uploaded: string[];
+      json_filled?: [string, any][];
     };
     const startAll = performance.now();
-    downloadJson<ProjectInfo>(projectName, projectName).then(async json => {
+    setMessage('download project', `프로젝트 다운로드 시작...`);
+    const objects = await downloadJson<ProjectInfo>(
+      projectName,
+      projectName,
+      true,
+    ).then(async json => {
+      setMessage(
+        'download project',
+        `프로젝트 다운로드 : ${Math.round(performance.now() - start)}ms`,
+      );
       const {
         name,
         json_uploaded: jsonFiles,
         binary_uploaded: binaryFiles,
+        json_filled,
       } = json;
 
-      const jsonProms: Promise<[string, any][]> = Promise.all(
-        jsonFiles.map((filename: string) =>
-          downloadJson(projectName, filename).then(
-            res => [filename, res] as [string, any],
+      // console.log({ json_filled });
+      // debugger;
+
+      const objectDownloadStart = performance.now();
+      setMessage('download objects', `오브젝트 다운로드 시작...`);
+      const objects = await Promise.all(
+        jsonFiles
+          .filter(f => f.endsWith('.vro'))
+          .map((filename: string) =>
+            downloadJson(projectName, filename).then(
+              res => [filename, res] as [string, any],
+            ),
           ),
-        ),
       );
-      const binaryProms: Promise<[string, ArrayBuffer][]> = Promise.all(
-        binaryFiles.map((filename: string) =>
-          downloadBinary(projectName, filename).then(
-            res => [filename, res] as [string, ArrayBuffer],
-          ),
-        ),
+      const objectDownloadEnd = performance.now();
+      setMessage(
+        'download objects',
+        `오브젝트 다운로드 완료 : ${Math.round(objectDownloadEnd - objectDownloadStart)}ms`,
       );
-      await Promise.all([jsonProms, binaryProms]);
-      const jsons = await jsonProms;
-      const binaries = await binaryProms;
-      const end = performance.now();
-      console.log('다운로드 완료 : ' + (end - start) + 'ms');
-      console.log('jsonFiles', await jsons);
-      console.log('binaryFiles', await binaries);
 
-      const images = binaries.filter(arr => arr[0].endsWith('.vri'));
-      const geometries = binaries.filter(arr => arr[0].endsWith('.vrg'));
-      const textures = jsons.filter(json => json[0].endsWith('.vrt'));
-      const materials = jsons.filter(json => json[0].endsWith('.vrm'));
-      const objects = jsons.filter(json => json[0].endsWith('.vro'));
-
-      console.log({
-        textures,
-        materials,
-        objects,
-        geometries,
-        images,
-      });
-
-      const loadGeometry = () => {
-        const geoLoader = new VRGLoader();
-        const geoLoadStart = performance.now();
-        return Promise.all(
-          geometries.map(
-            geo =>
-              geoLoader.load({
-                loaded: false,
-                type: 'geometry',
-                originalFile: geo[1],
-                fileName: geo[0],
-              }),
-            // .then(geo => console.log({ geo })),
-          ),
-        ).then(res => {
-          const geoLoadEnd = performance.now();
-          console.log(
-            'geometry 로드 완료 : ' + (geoLoadEnd - geoLoadStart) + 'ms',
-          );
-          console.log({ res });
-        });
-      };
-
-      const loadImages = () => {
-        const imgLoader = new VRILoader();
-        const imgLoadStart = performance.now();
-        return Promise.all(
-          images.map(
-            img => imgLoader.loadFromBuffer(img[1], img[0]),
-            // .then(img => console.log({ img })),
-          ),
-        ).then(res => {
-          const imgLoadEnd = performance.now();
-          console.log(
-            'image 로드 완료 : ' + (imgLoadEnd - imgLoadStart) + 'ms',
-          );
-          console.log({ res });
-        });
-      };
-
-      const loadTextures = () => {
-        const texLoader = new VRTLoader();
-        const texLoadStart = performance.now();
-        return Promise.all(
-          textures.map(
-            tex =>
-              texLoader.load({
-                loaded: false,
-                type: 'texture',
-                originalFile: tex[1],
-                fileName: tex[0],
-              }),
-            // .then(tex => console.log({ tex })),
-          ),
-        ).then(res => {
-          const texLoadEnd = performance.now();
-          console.log(
-            'texture 로드 완료 : ' + (texLoadEnd - texLoadStart) + 'ms',
-          );
-          console.log({ res });
-        });
-      };
-
-      const loadMaterials = () => {
-        const matLoader = new VRMLoader();
-        const matLoadStart = performance.now();
-        return Promise.all(
-          materials.map(
-            mat =>
-              matLoader.load({
-                loaded: false,
-                type: 'material',
-                originalFile: mat[1],
-                fileName: mat[0],
-              }),
-            // .then(mat => console.log({ mat })),
-          ),
-        ).then(res => {
-          const matLoadEnd = performance.now();
-          console.log(
-            'material 로드 완료 : ' + (matLoadEnd - matLoadStart) + 'ms',
-          );
-          console.log({ res });
-        });
-      };
-
-      const loadObjects = () => {
-        const objLoader = new VROLoader();
-        const objLoadStart = performance.now();
-        return Promise.all(
-          objects.map(obj =>
-            objLoader
-              .load({
-                loaded: false,
-                type: 'object',
-                originalFile: obj[1],
-                fileName: obj[0],
-              })
-              .then(obj => {
-                console.log({ obj });
-                scene?.add(obj);
-                obj.layers.enable(Layer.Model);
-              }),
-          ),
-        ).then(res => {
-          const objLoadEnd = performance.now();
-          console.log(
-            'object 로드 완료 : ' + (objLoadEnd - objLoadStart) + 'ms',
-          );
-          console.log({ res });
-        });
-      };
-
-      const allLoadStart = performance.now();
-      Promise.all([loadGeometry(), loadImages()])
-        .then(() => loadTextures())
-        .then(() => loadMaterials())
-        .then(() => loadObjects())
-        .then(o => {
-          const allLoadEnd = performance.now();
-          console.log('모두 로드 완료 : ' + (allLoadEnd - allLoadStart) + 'ms');
-
-          console.log('처음부터 : ', allLoadEnd - startAll, 'ms');
-        });
+      return objects;
     });
+
+    // 옵젝트 로드
+    const objLoader = new VROLoader();
+    const objLoadStart = performance.now();
+    setMessage(
+      'load objects',
+      `오브젝트 로드 시작 : [ 0 /  ${objects.length} ]`,
+    );
+    let loadedCount = 0;
+    await Promise.all(
+      objects.map(obj =>
+        objLoader
+          .load({
+            loaded: false,
+            type: 'object',
+            originalFile: obj[1],
+            fileName: obj[0],
+          })
+          .then(obj => {
+            console.log({ obj });
+            scene?.add(obj);
+            obj.layers.enable(Layer.Model);
+
+            loadedCount++;
+            setMessage(
+              'load objects',
+              `오브젝트 로드 완료 : [ ${loadedCount} /  ${objects.length} ] ${Math.round(performance.now() - objLoadStart)}ms`,
+            );
+          }),
+      ),
+    );
+
+    const objLoadEnd = performance.now();
+    const msg =
+      'object 로드 완료 : ' + Math.round(objLoadEnd - objLoadStart) + 'ms';
+    setMessage(
+      'Finish',
+      `오브젝트 로드 완료 [ ${objects.length}개 ] : ${objLoadEnd - objLoadStart}ms`,
+    );
+    console.log(msg);
+    // alert(msg);
   }
 
   function loadAll() {
@@ -462,6 +380,8 @@ const MaxPageRightBar = ({
   }
 
   const sceneAddTypes: MaxFileType[] = ['geometry', 'object'];
+
+  const [hideStatus, setHideStatus] = useState(false);
 
   return (
     <>
@@ -673,6 +593,35 @@ const MaxPageRightBar = ({
           )}
         </div>
       </div>
+      {hideStatus ? (
+        <div className="absolute bg-white left-0 top-0 p-1">
+          <button
+            onClick={() => {
+              setHideStatus(false);
+            }}
+          >
+            Status보기
+          </button>
+        </div>
+      ) : (
+        <div className="absolute bg-white left-0 top-0 p-1">
+          <div className="flex gap-x-1">
+            Status
+            <button
+              onClick={() => {
+                setHideStatus(true);
+              }}
+            >
+              X
+            </button>
+          </div>
+          <ol>
+            {messages.map((msg, i) => (
+              <li key={`${i}-${msg.key}`}>{msg.msg}</li>
+            ))}
+          </ol>
+        </div>
+      )}
     </>
   );
 };
