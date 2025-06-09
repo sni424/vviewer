@@ -22,12 +22,25 @@ const parseMeshoptBuffer = async (
   const positions = new Float32Array(buffer, positionsOffset, positionsLength);
   const indices = new Uint32Array(buffer, indicesOffset, indexCount);
 
-  // MeshoptDecoder is NOT needed here since it's already optimized in C++
+  // ---- UV 파싱 (Encoder.cpp와 포맷 일치)
+  const uvCountOffset = indicesOffset + indexCount * 4;
+  const uvCount = view.getUint32(uvCountOffset, true);
+  let uvDataOffset = uvCountOffset + 4;
+
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
   geometry.setIndex(new THREE.BufferAttribute(indices, 1));
-  geometry.computeVertexNormals();
 
+  for (let i = 0; i < uvCount; ++i) {
+    const uvs = new Float32Array(buffer, uvDataOffset, vertexCount * 2);
+    geometry.setAttribute(
+      i === 0 ? 'uv' : 'uv' + (i + 1),
+      new THREE.BufferAttribute(uvs, 2),
+    );
+    uvDataOffset += vertexCount * 2 * 4;
+  }
+
+  geometry.computeVertexNormals();
   return geometry;
 };
 
@@ -56,7 +69,7 @@ const Scene: React.FC<{ files: File[]; setLoaded: (n: number) => void }> = ({
     return () => {
       meshes.forEach(m => m.geometry.dispose());
     };
-  }, [files]);
+  }, [files, setLoaded]);
 
   return (
     <>
