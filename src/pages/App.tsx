@@ -5,6 +5,7 @@ import MaxPage from 'src/pages/max/MaxPage.tsx';
 import { useRegion } from 'src/scripts/useRegion';
 import { useEnvParams } from '../scripts/atoms';
 import DracoViewer from './DracoViewer';
+import MeshoptViewer from './MeshoptViewer';
 import MobilePage from './MobilePage';
 import TestPage from './TestPage';
 import { loadSettings, saveSettings } from './useSettings';
@@ -30,6 +31,7 @@ const MyRoutes = () => {
       <Route path="/mobile" element={<MobilePage />} />
       <Route path="/max" element={<MaxPage />} />
       <Route path="/draco" element={<DracoViewer />} />
+      <Route path="/meshopt" element={<MeshoptViewer />} />
     </Routes>
   );
 };
