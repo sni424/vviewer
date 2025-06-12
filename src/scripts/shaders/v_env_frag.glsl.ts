@@ -30,10 +30,8 @@ vec3 vLinearToneMapping( vec3 color ) {
 }
 
 void e1MainImage(const in vec4 inputColor,  out vec4 outputColor) {
-if(uUseBrightnessValue){
 vec3 color = pow( inputColor.rgb / vec3(0.18), vec3(uContrastValue) ) * vec3(0.18);
     outputColor = vec4( color.rgb, inputColor.a );
-}
 }
 
 //finish 밝기,대비
@@ -47,9 +45,7 @@ vec3 e2Rh(vec3 color, float b) {
 }
 
 void e2MainImage(const in vec4 inputColor, out vec4 outputColor) {
-if(uUseHighlightBurn){
     outputColor = vec4( e2Rh(inputColor.rgb, 1.0/highlightBurnFactor), inputColor.a );
- }
 }
 
 vec4 blend23(const in vec4 x, const in vec4 y, const in float opacity) {
@@ -57,6 +53,49 @@ vec4 blend23(const in vec4 x, const in vec4 y, const in float opacity) {
 }
 //finish highlight burn
 
+
+//start whiteBalance
+uniform float uWhiteBalance;
+uniform bool uUseWhiteBalance;
+
+vec3 e3ColorTemperatureToRGB(const in float temperature) {
+    // Values from: http://blenderartists.org/forum/showthread.php?270332-OSL-Goodness&p = 2268693&viewfull = 1#post2268693   
+    mat3 m = (temperature <= 6500.0) ? mat3(vec3(0.0, -2902.1955373783176, -8257.7997278925690), vec3(0.0, 1669.5803561666639, 2575.2827530017594), vec3(1.0, 1.3302673723350029, 1.8993753891711275)) : 
+    mat3(vec3(1745.0425298314172, 1216.6168361476490, -8257.7997278925690), vec3(-2666.3474220535695, -2173.1012343082230, 2575.2827530017594), vec3(0.55995389139931482, 0.70381203140554553, 1.8993753891711275));
+    return mix(clamp(vec3(m[0] / (vec3(clamp(temperature, 1000.0, 40000.0)) + m[1]) + m[2]), vec3(0.0), vec3(1.0)), vec3(1.0), smoothstep(1000.0, 0.0, temperature));
+}
+
+//이미지의 전체적인 색감을 조절하여 흰색이 정말 흰색으로 보이도록 만드는 기능
+//리 눈은 조명의 색(예: 노란 백열등, 푸른 하늘빛)에 자동으로 적응해서 흰 종이를 
+//항상 흰색으로 인식하지만, 카메라는 이 조절을 수동 또는 자동으로 해주어야 합니다. 
+//이 코드가 바로 그 역할을 디지털로 수행
+//낮은 값 (예: 4000K): 노란색이나 붉은색 조명을 보정하기 위해 이미지를 전체적으로 파랗게 만듭니다.
+//높은 값 (예: 8000K): 그늘이나 푸른 하늘빛을 보정하기 위해 이미지를 전체적으로 노랗거나 붉게 만듭니다.
+void e3MainImage(const in vec4 inputColor,  out vec4 outputColor) {
+    vec3 color = mix(inputColor.rgb, inputColor.rgb * (vec3(1.0) / e3ColorTemperatureToRGB(uWhiteBalance)), 1.0);
+    color *= mix(1.0, dot(inputColor.rgb, vec3(0.2126, 0.7152, 0.0722)) / max(dot(color.rgb, vec3(0.2126, 0.7152, 0.0722)), 1e-5), 1.0);
+    outputColor = vec4( color.rgb, inputColor.a );
+}
+//finish whiteBalance
+
+
+//start saturation
+uniform float uSaturation;
+uniform bool uUseSaturation;
+vec3 v4ApplySaturation(vec3 rgb, float adjustment) {
+    // Algorithm from Chapter 16 of OpenGL Shading Language
+    const vec3 W = vec3(0.2125, 0.7154, 0.0721);
+    vec3 intensity = vec3(dot(rgb, W));
+    return mix(intensity, rgb, adjustment);
+}
+//채도(Saturation)조절
+//이미지의 색상이 얼마나 선명하고 진하게(또는 옅고 흐리게) 보일지를 결정
+void v4MainImage(const in vec4 inputColor, out vec4 outputColor) {
+    vec3 color = inputColor.rgb;
+    color = v4ApplySaturation(color.rgb, uSaturation+1.0);
+    outputColor = vec4( color, inputColor.a );
+}
+//finish saturation
 
 uniform bool uUseLightMapTransition;
 uniform bool uUseMeshTransition;
@@ -895,10 +934,22 @@ const debugging = /* glsl */ `
 //   gl_FragColor = texture2D(lightMapTo, vLightMapUv);
 // }
 
-  e1MainImage(color0,  color1);
+    if(uUseBrightnessValue){
+    e1MainImage(color0,  color1);
     color0 = blend23(color0, color1, 1.0);
+    }
+    if(uUseHighlightBurn){
     e2MainImage(color0,  color1);
     color0 = blend23(color0, color1, 1.0);
+    }
+    if(uUseWhiteBalance){
+    e3MainImage(color0,color1);
+    color0 = blend23(color0, color1, 1.0);
+    }
+    if(uUseSaturation){
+    v4MainImage(color0,  color1);
+    color0 = blend23(color0, color1, 1.0);
+    }
     gl_FragColor = color0;
 //END_OF_FRAG
 `;

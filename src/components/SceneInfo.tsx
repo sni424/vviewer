@@ -41,6 +41,7 @@ import {
   minimapAtom,
   postprocessAtoms,
   ProbeAtom,
+  saturationAtom,
   selectedAtom,
   sharpenAtom,
   testAtom,
@@ -49,6 +50,7 @@ import {
   useBenchmark,
   useEnvParams,
   useToast,
+  whiteBalanceAtom,
 } from '../scripts/atoms';
 import {
   loadPostProcessAndSet,
@@ -1200,6 +1202,8 @@ export const TestControl = () => {
   const [test, setTest] = useAtom(testAtom);
   const [hBurn, setHBurn] = useAtom(highlightBurnAtom);
   const [brightness, setBrightness] = useAtom(BrightnessContrastAtom);
+  const [whiteBalance, setWhiteBalance] = useAtom(whiteBalanceAtom);
+  const [saturation, setSaturation] = useAtom(saturationAtom);
   const [sharpen, setSharpen] = useAtom(sharpenAtom);
   const { scene } = threeExports;
 
@@ -1375,7 +1379,7 @@ export const TestControl = () => {
               checked={sharpen.isSharpen}
               onChange={e => {
                 setSharpen(pre => {
-                  return { ...pre, use: !pre.isSharpen };
+                  return { ...pre, isSharpen: !pre.isSharpen };
                 });
               }}
             />
@@ -1432,6 +1436,107 @@ export const TestControl = () => {
             </div>
           )}
         </div> */}
+      </div>
+
+      <strong>whiteBalance</strong>
+      <div>
+        <div className="flex gap-x-1">
+          <span>사용</span>
+          <input
+            type="checkbox"
+            checked={whiteBalance.use}
+            onChange={e => {
+              setWhiteBalance(pre => {
+                const target = !pre.use;
+                scene.traverseAll(o => {
+                  if (o.type === 'Mesh') {
+                    const mat = (o as THREE.Mesh).mat;
+                    mat.apply('whiteBalance', {
+                      uUseWhiteBalance: target,
+                      uWhiteBalance: pre.uWhiteBalance,
+                    });
+                  }
+                });
+                return { ...pre, use: target };
+              });
+            }}
+          />
+        </div>
+        {whiteBalance.use && (
+          <div className="flex gap-x-1">
+            <input
+              type="range"
+              min={2000}
+              max={20000}
+              step={0.1}
+              value={whiteBalance.uWhiteBalance}
+              onChange={e => {
+                const value = parseFloat(e.target.value);
+                scene.traverseAll(o => {
+                  if (o.type === 'Mesh') {
+                    const mat = (o as THREE.Mesh).mat;
+                    mat.apply('whiteBalance', {
+                      uUseWhiteBalance: whiteBalance.use,
+                      uWhiteBalance: value,
+                    });
+                  }
+                });
+                setWhiteBalance(pre => ({ ...pre, uWhiteBalance: value }));
+              }}
+            ></input>
+            <span>{whiteBalance.uWhiteBalance}</span>
+          </div>
+        )}
+      </div>
+      <strong>saturation(채도)</strong>
+      <div>
+        <div className="flex gap-x-1">
+          <span>사용</span>
+          <input
+            type="checkbox"
+            checked={saturation.use}
+            onChange={e => {
+              setSaturation(pre => {
+                const target = !pre.use;
+                scene.traverseAll(o => {
+                  if (o.type === 'Mesh') {
+                    const mat = (o as THREE.Mesh).mat;
+                    mat.apply('saturation', {
+                      uUseSaturation: target,
+                      uSaturation: pre.uSaturation,
+                    });
+                  }
+                });
+                return { ...pre, use: target };
+              });
+            }}
+          />
+        </div>
+        {saturation.use && (
+          <div className="flex gap-x-1">
+            <input
+              type="range"
+              min={-1}
+              max={1}
+              step={0.1}
+              value={saturation.uSaturation}
+              onChange={e => {
+                const value = parseFloat(e.target.value);
+                scene.traverseAll(o => {
+                  if (o.type === 'Mesh') {
+                    const mat = (o as THREE.Mesh).mat;
+                    mat.apply('saturation', {
+                      uUseSaturation: saturation.use,
+                      uSaturation: value,
+                    });
+                  }
+                });
+                setSaturation(pre => ({ ...pre, uSaturation: value }));
+              }}
+            />
+            <span>{saturation.uSaturation}</span>
+          </div>
+        )}
       </div>
     </section>
   );
