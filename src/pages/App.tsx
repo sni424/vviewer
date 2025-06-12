@@ -7,6 +7,7 @@ import MobilePage from './MobilePage';
 import TestPage from './TestPage';
 import { loadSettings, saveSettings } from './useSettings';
 import ViewerPage from './ViewerPage';
+import MaxPage from 'src/pages/max/MaxPage.tsx';
 
 const MyRoutes = () => {
   const navigate = useNavigate();
@@ -26,6 +27,7 @@ const MyRoutes = () => {
       {/* <Route path="/upload" element={<UploadPage />} /> */}
       <Route path="/test" element={<TestPage />} />
       <Route path="/mobile" element={<MobilePage />} />
+      <Route path="/max" element={<MaxPage/>}/>
     </Routes>
   );
 };
@@ -36,7 +38,7 @@ function AppWithRegion() {
     loadSettings();
 
     const settingSaver = () => {
-      console.log('here');
+      // console.log('here');
       saveSettings();
     };
 

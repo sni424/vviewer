@@ -284,7 +284,7 @@ function Renderer() {
   const { scene, camera, gl } = threeExports;
   useLoadModel(threeExports);
   const setCameraAtom = useSetAtom(cameraMatrixAtom);
-  const { use: useSharpen } = useAtomValue(sharpenAtom);
+
 
   useEffect(() => {
     scene.addEventListener('childadded', event => {
@@ -309,7 +309,6 @@ function Renderer() {
       <Hotspot></Hotspot>
       <Anisotropy></Anisotropy>
       <SkyBoxMesh></SkyBoxMesh>
-      {useSharpen && <Sharpen />}
     </>
   );
 }
@@ -337,7 +336,7 @@ const pointOnPlane = (
   return intersection;
 };
 
-const useMouseHandler = () => {
+export const useMouseHandler = () => {
   const threeExports = useAtomValue(threeExportsAtom);
   const [selected, setSelected] = useAtom(selectedAtom);
   const setMaterialSelected = useSetAtom(materialSelectedAtom);
@@ -538,7 +537,9 @@ const useMouseHandler = () => {
           return [...selected, intersects[0].object.uuid];
         });
       } else {
+        console.log('intersected? ', intersects);
         if (!intersects[0].object.vUserData.isProbeMesh) {
+          console.log(intersects[0].object);
           setSelected([intersects[0].object.uuid]);
           setScrollTo(intersects[0].object.uuid);
           if (intersects[0].object.type === 'Mesh') {

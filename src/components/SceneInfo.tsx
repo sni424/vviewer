@@ -1002,10 +1002,11 @@ const LightmapImageContrastControl = () => {
         const mesh = o as THREE.Mesh;
         const mat = mesh.material as THREE.Material;
 
+        console.log('before Apply : ', mesh, mat);
         if (use) {
-          mat.uniform.uLightMapContrast.value = value;
+          mat.apply('lightmapContrast', value);
         } else {
-          mat.uniform.uLightMapContrast.value = 1;
+          mat.apply('lightmapContrast', 1);
         }
         mat.needsUpdate = true;
       }
@@ -1102,7 +1103,7 @@ const SRGBControl = () => {
   );
 };
 
-const GeneralPostProcessingControl = () => {
+export const GeneralPostProcessingControl = () => {
   return (
     <section
       style={{
@@ -1190,7 +1191,7 @@ const GeneralMinimapControl = () => {
   );
 };
 
-const TestControl = () => {
+export const TestControl = () => {
   const threeExports = getAtomValue(threeExportsAtom);
   if (!threeExports) {
     return null;
@@ -1927,7 +1928,7 @@ const GeneralStats = () => {
   );
 };
 
-const AnisotropyControl = () => {
+export const AnisotropyControl = () => {
   const [anisotropyValue, setAnisotropyValue] = useAtom(anisotropyAtom);
   return (
     <div>

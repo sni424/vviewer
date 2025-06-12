@@ -61,6 +61,8 @@ export type MaterialSlot =
   | 'aoMap'
   | 'gradientMap'
   | 'specularMap'
+  | 'specularColorMap'
+  | 'specularIntensityMap'
   | 'clearcoatMap'
   | 'clearcoat';
 

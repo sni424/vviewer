@@ -1,8 +1,6 @@
-import { useFrame, useThree } from '@react-three/fiber';
-import { useEffect, useRef } from 'react';
+import { extend, useFrame, useThree } from '@react-three/fiber';
+import { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'VTHREE';
-import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer';
-import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass';
 import { useAtomValue } from 'jotai';
 import { sharpenAtom } from 'src/scripts/atoms.ts';
@@ -53,36 +51,27 @@ const sharpenShader = {
   `,
 };
 
+extend({ShaderPass});
+
 const Sharpen = () => {
-  const { gl, scene, camera, size } = useThree();
-  const composer = useRef<EffectComposer>();
-  const sharpenPassRef = useRef<ShaderPass>();
-  const {value: sharpenValue} = useAtomValue(sharpenAtom);
+  const { size } = useThree();
+  const sharpenValue = useAtomValue(sharpenAtom);
 
+  // Create the ShaderPass with memoization to avoid unnecessary re-creation
+  const sharpenPass = useMemo(() => {
+    const pass = new ShaderPass(sharpenShader);
+    pass.uniforms.resolution.value.set(size.width, size.height);
+    pass.uniforms.strength.value = sharpenValue;
+    return pass;
+  }, [size.width, size.height]);
+
+  // Update uniforms when sharpenValue or size changes
   useEffect(() => {
-    const renderPass = new RenderPass(scene, camera);
-    const sharpenPass = new ShaderPass(sharpenShader);
-    sharpenPassRef.current = sharpenPass;
-    composer.current = new EffectComposer(gl);
-    const c = composer.current;
-    c.addPass(renderPass);
-    c.addPass(sharpenPass);
-    c.setSize(size.width, size.height);
+    sharpenPass.uniforms.strength.value = sharpenValue.value;
     sharpenPass.uniforms.resolution.value.set(size.width, size.height);
-  }, [gl, scene, camera, size]);
+  }, [sharpenPass, sharpenValue, size.width, size.height]);
 
-  useFrame(() => {
-    composer.current.render();
-  }, 1)
-
-  useEffect(() => {
-    if (sharpenPassRef.current) {
-      const sp = sharpenPassRef.current;
-      sp.uniforms.strength.value = sharpenValue;
-    }
-  }, [sharpenValue]);
-
-  return null;
+  return <shaderPass attach="passes" args={[sharpenPass]} />;
 };
 
 export default Sharpen;

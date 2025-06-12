@@ -74,10 +74,12 @@ export const parseDroppedFiles = async (
     }
   }
   // Filter files by .gltf and .glb extensions
-  const filteredFiles = files.filter(file =>
-    acceptedExtensions.some(ext => file.name.toLowerCase().endsWith(ext)),
-  );
-  return filteredFiles;
+  if (acceptedExtensions.length > 0) {
+    return files.filter(file =>
+      acceptedExtensions.some(ext => file.name.toLowerCase().endsWith(ext)),
+    );
+  }
+  return files;
 };
 
 const useModelDragAndDrop = () => {

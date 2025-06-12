@@ -19,6 +19,25 @@ export default class VKTX2Loader extends KTX2Loader {
 
     return this;
   }
+
+  parse(
+    buffer: ArrayBuffer,
+    onLoad?: (texture: THREE.CompressedTexture) => void,
+    onError?: (err: unknown) => void,
+  ): void {
+    const copied = buffer.slice(0);
+    const onLoadIntercepter: (
+      texture: THREE.CompressedTexture,
+    ) => void = texture => {
+      if (!texture.vUserData) {
+        texture.vUserData = {};
+      }
+      texture.vUserData.ktx2Buffer = copied;
+
+      return onLoad?.(texture);
+    };
+    super.parse(buffer, onLoadIntercepter, onError);
+  }
 }
 
 export function getVKTX2Loader(gl?: THREE.WebGLRenderer) {

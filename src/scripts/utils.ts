@@ -60,7 +60,11 @@ export const groupInfo = (
       try {
         const geometry = node.geometry;
         if (geometry instanceof THREE.BufferGeometry) {
-          triangleCount += geometry.index!.count / 3;
+          if (geometry.index != null) {
+            triangleCount += geometry.index!.count / 3;
+          } else {
+            triangleCount += geometry.attributes.position.count / 3;
+          }
           vertexCount += geometry.attributes.position.count;
           meshCount++;
         }
