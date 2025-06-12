@@ -78,6 +78,14 @@ export type MaterialApplyType = {
     uUseHighlightBurn: boolean;
     highlightBurnFactor: number;
   };
+  whiteBalance: {
+    uUseWhiteBalance: boolean;
+    uWhiteBalance: number;
+  };
+  saturation: {
+    uUseSaturation: boolean;
+    uSaturation: number;
+  };
 };
 
 declare module 'three' {
@@ -769,6 +777,16 @@ THREE.Material.prototype.apply = function <T extends keyof MaterialApplyType>(
       this.upsertUniform('uUseBrightnessValue', bl.uUseBrightnessValue);
       this.upsertUniform('uBrightnessValue', bl.uBrightnessValue);
       this.upsertUniform('uContrastValue', bl.uContrastValue);
+      break;
+    case 'whiteBalance':
+      const wb = params as MaterialApplyType['whiteBalance'];
+      this.upsertUniform('uUseWhiteBalance', wb.uUseWhiteBalance);
+      this.upsertUniform('uWhiteBalance', wb.uWhiteBalance);
+      break;
+    case 'saturation':
+      const sa = params as MaterialApplyType['saturation'];
+      this.upsertUniform('uUseSaturation', sa.uUseSaturation);
+      this.upsertUniform('uSaturation', sa.uSaturation);
   }
 };
 

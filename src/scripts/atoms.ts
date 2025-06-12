@@ -657,6 +657,22 @@ export const sharpenAtom = atom<{
   aliasing: 8,
 });
 
+export const whiteBalanceAtom = atom<{
+  use: boolean;
+  uWhiteBalance: number;
+}>({
+  use: false,
+  uWhiteBalance: 6500,
+});
+
+export const saturationAtom = atom<{
+  use: boolean;
+  uSaturation: number;
+}>({
+  use: false,
+  uSaturation: 0,
+});
+
 export const skyBoxAtom = atom<SkyBoxState>({
   isSkyBox: false,
   type: 'mesh',

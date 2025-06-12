@@ -120,6 +120,30 @@ export type MATERIAL_SHADER = {
     };
     defines: {};
   };
+  WHITE_BALANCE: {
+    type: 'WHITE_BALANCE';
+    uniforms: {
+      uUseWhiteBalance: {
+        value: boolean;
+      };
+      uWhiteBalance: {
+        value: number;
+      };
+    };
+    defines: {};
+  };
+  SATURATION: {
+    type: 'SATURATION';
+    uniforms: {
+      uUseSaturation: {
+        value: boolean;
+      };
+      uSaturation: {
+        value: number;
+      };
+    };
+    defines: {};
+  };
 };
 
 export type MATERIAL_UNIFORM_VALUE<K extends string> = {
@@ -285,6 +309,23 @@ export const DEFAULT_MATERIAL_SHADER: MATERIAL_SHADER = {
     uniforms: {
       uUseHighlightBurn: { value: true },
       highlightBurnFactor: { value: 0.001 },
+    },
+    defines: {},
+  },
+
+  WHITE_BALANCE: {
+    type: 'WHITE_BALANCE',
+    uniforms: {
+      uUseWhiteBalance: { value: false },
+      uWhiteBalance: { value: 6500 },
+    },
+    defines: {},
+  },
+  SATURATION: {
+    type: 'SATURATION',
+    uniforms: {
+      uUseSaturation: { value: false },
+      uSaturation: { value: 0 },
     },
     defines: {},
   },
