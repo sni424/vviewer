@@ -25,7 +25,7 @@ import {
   pathfindingAtom,
   pointsAtom,
   selectedAtom,
-  setAtomValue, sharpenAtom,
+  setAtomValue,
   sourceAtom,
   threeExportsAtom,
   toggleGrid,
@@ -51,12 +51,11 @@ import Anisotropy from './Anisotropy.tsx';
 import MyEnvironment from './EnvironmentMap';
 import Grid from './Grid';
 import Hotspot from './Hotspot';
-import PostProcess from './PostProcess';
 import Rooms from './Rooms';
 import SelectBox from './SelectBox';
+import ShaderPassComponent from './ShaderPassComponent.tsx';
 import SkyBoxMesh from './SkyBox.tsx';
 import Walls from './Walls.tsx';
-import Sharpen from 'src/components/canvas/Sharpen.tsx';
 
 const MainGrid = () => {
   const on = useAtomValue(viewGridAtom);
@@ -285,7 +284,6 @@ function Renderer() {
   useLoadModel(threeExports);
   const setCameraAtom = useSetAtom(cameraMatrixAtom);
 
-
   useEffect(() => {
     scene.addEventListener('childadded', event => {
       recompileAsync();
@@ -302,7 +300,8 @@ function Renderer() {
       <UnifiedCameraControls />
       <MyEnvironment></MyEnvironment>
       <SelectBox></SelectBox>
-      <PostProcess></PostProcess>
+      {/* <PostProcess></PostProcess> */}
+      <ShaderPassComponent />
       <Rooms></Rooms>
       <Walls></Walls>
       <MainGrid></MainGrid>
