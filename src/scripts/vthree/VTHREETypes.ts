@@ -93,6 +93,21 @@ export type MATERIAL_SHADER = {
     };
     defines: {};
   };
+  BRIGHTNESS_CONTRAST: {
+    type: 'BRIGHTNESS_CONTRAST';
+    uniforms: {
+      uBrightnessValue: {
+        value: number;
+      };
+      uContrastValue: {
+        value: number;
+      };
+      uUseBrightnessValue: {
+        value: boolean;
+      };
+    };
+    defines: {};
+  };
   HIGHLIGHT_BURN: {
     type: 'HIGHLIGHT_BURN';
     uniforms: {
@@ -249,10 +264,26 @@ export const DEFAULT_MATERIAL_SHADER: MATERIAL_SHADER = {
     defines: {},
   },
 
+  BRIGHTNESS_CONTRAST: {
+    type: 'BRIGHTNESS_CONTRAST',
+    defines: {},
+    uniforms: {
+      uBrightnessValue: {
+        value: 1.91,
+      },
+      uContrastValue: {
+        value: 1.14,
+      },
+      uUseBrightnessValue: {
+        value: true,
+      },
+    },
+  },
+
   HIGHLIGHT_BURN: {
     type: 'HIGHLIGHT_BURN',
     uniforms: {
-      uUseHighlightBurn: { value: false },
+      uUseHighlightBurn: { value: true },
       highlightBurnFactor: { value: 0.001 },
     },
     defines: {},

@@ -69,10 +69,15 @@ export type MaterialApplyType = {
   probe: applyProbeReflectionProbe | applyProbeGeneral;
   lightmapContrast: number;
   progress: number;
+  brightnessContrast: {
+    uBrightnessValue: number;
+    uContrastValue: number;
+    uUseBrightnessValue: boolean;
+  };
   highlightBurn: {
-    useHighlightBurn: boolean;
+    uUseHighlightBurn: boolean;
     highlightBurnFactor: number;
-  }
+  };
 };
 
 declare module 'three' {
@@ -370,7 +375,10 @@ THREE.Material.prototype.prepareMeshTransition = function (params: {
 
     // dissolveOrigin을 Three.js Vector3로 설정
     // const dissolveOrigin = direction === 'fadeIn' ?  new THREE.Vector3(minX, centerY, minZ) : new THREE.Vector3(maxX, centerY, maxZ);
-    const dissolveOrigin = direction === 'fadeIn' ?  new THREE.Vector3(minX, centerY, minZ) : new THREE.Vector3(maxX, centerY, maxZ);
+    const dissolveOrigin =
+      direction === 'fadeIn'
+        ? new THREE.Vector3(minX, centerY, minZ)
+        : new THREE.Vector3(maxX, centerY, maxZ);
 
     const dissolveMaxDist = box.max.distanceTo(box.min);
 
@@ -753,8 +761,14 @@ THREE.Material.prototype.apply = function <T extends keyof MaterialApplyType>(
       break;
     case 'highlightBurn':
       const ph = params as MaterialApplyType['highlightBurn'];
-      this.upsertUniform('uUseHighlightBurn', ph.useHighlightBurn);
+      this.upsertUniform('uUseHighlightBurn', ph.uUseHighlightBurn);
       this.upsertUniform('highlightBurnFactor', ph.highlightBurnFactor);
+      break;
+    case 'brightnessContrast':
+      const bl = params as MaterialApplyType['brightnessContrast'];
+      this.upsertUniform('uUseBrightnessValue', bl.uUseBrightnessValue);
+      this.upsertUniform('uBrightnessValue', bl.uBrightnessValue);
+      this.upsertUniform('uContrastValue', bl.uContrastValue);
   }
 };
 

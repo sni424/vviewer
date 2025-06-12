@@ -19,8 +19,44 @@ const defines = /* glsl */ `
 
 // MAX_PROBE_COUNT_REPLACE
 
+
+//start 밝기,대비
+uniform float uBrightnessValue;
+uniform float uContrastValue;
+uniform bool uUseBrightnessValue;
+
+vec3 vLinearToneMapping( vec3 color ) {
+    return uBrightnessValue * color;
+}
+
+void e1MainImage(const in vec4 inputColor,  out vec4 outputColor) {
+if(uUseBrightnessValue){
+vec3 color = pow( inputColor.rgb / vec3(0.18), vec3(uContrastValue) ) * vec3(0.18);
+    outputColor = vec4( color.rgb, inputColor.a );
+}
+}
+
+//finish 밝기,대비
+
+//start highlight burn
 uniform float highlightBurnFactor;
 uniform bool uUseHighlightBurn;
+
+vec3 e2Rh(vec3 color, float b) {
+    return (color * (vec3(1.0) + color / (b * b))) / (vec3(1.0) + color);
+}
+
+void e2MainImage(const in vec4 inputColor, out vec4 outputColor) {
+if(uUseHighlightBurn){
+    outputColor = vec4( e2Rh(inputColor.rgb, 1.0/highlightBurnFactor), inputColor.a );
+ }
+}
+
+vec4 blend23(const in vec4 x, const in vec4 y, const in float opacity) {
+    return mix(x, y, opacity);
+}
+//finish highlight burn
+
 
 uniform bool uUseLightMapTransition;
 uniform bool uUseMeshTransition;
@@ -36,11 +72,30 @@ uniform vec3 uDissolveOrigin;
 uniform float uDissolveMaxDist;
 uniform bool uDissolveDirection;
 
+
 float progressiveAlpha(float progress, float x, float xMin, float xMax) {
   float mid = mix(xMin, xMax, 0.5); // Midpoint of xMin and xMax
   float factor = abs(x - mid) / max(xMax - mid, 0.0001); // 0으로 나누는 문제 방지
   return clamp(1.0 - 4.0 * progress * factor, 0.0, 1.0);
 }
+
+//start transmission
+float specularRoughness;
+
+
+float linearToRelativeLuminance( const in vec3 color ) {
+    vec3 weights = vec3( 0.2126, 0.7152, 0.0722 );
+    return dot( weights, color.rgb );
+}
+
+vec3 F_Schlick_RoughnessDependent( const in vec3 F0, const in float F90, const in float dotNV, const in float roughness ) {
+    float fresnel = exp2( ( -5.55473 * dotNV - 6.98316 ) * dotNV );
+    vec3 Fr = max( vec3( F90 - roughness ), F0 ) - F0;
+    return Fr * fresnel + F0;
+}
+
+//finish transmission
+
 
 vec3 adjustHB(vec3 color) {
   float a = 1.0 / max(highlightBurnFactor, 0.001);
@@ -699,15 +754,152 @@ const lightmapContent = /* glsl */ `
 #endif //!V_FRAG_LIGHTMAP_CONTRAST_GUARD
 `;
 
+const transmissionParsTarget = /*glsl */ `#include <transmission_pars_fragment>`;
+const transmissionParsContent = /* glsl */ `
+// <transmission_pars_fragment>을 복사해와서 중간 부분을 수정
+#ifdef USE_TRANSMISSION
+    // 이유: MeshPhysicalMaterial의 transmission 효과를 프레임 버퍼 기반으로 커스터마이징
+    // 결과: reflectivity 기반 IOR 계산과 프레임 버퍼 샘플링으로 투과 효과 구현
+
+    uniform float transmission;
+    uniform float thickness;
+    uniform float attenuationDistance;
+    uniform vec3 attenuationColor;
+    uniform float reflectivity; // 반사율 (IOR 계산에 사용)
+    uniform mat4 modelMatrix;
+    uniform mat4 projectionMatrix;
+
+    #ifdef USE_TRANSMISSIONMAP
+        uniform sampler2D transmissionMap;
+    #endif
+    #ifdef USE_THICKNESSMAP
+        uniform sampler2D thicknessMap;
+    #endif
+
+    uniform vec2 transmissionSamplerSize;
+    uniform sampler2D transmissionSamplerMap;
+
+    varying vec3 vWorldPosition; // patchFragment와 호환
+
+    vec3 getVolumeTransmissionRay(vec3 n, vec3 v, float thickness, float ior, mat4 modelMatrix) {
+        vec3 refractionVector = refract(-v, normalize(n), 1.0 / ior);
+        vec3 modelScale;
+        modelScale.x = length(vec3(modelMatrix[0].xyz));
+        modelScale.y = length(vec3(modelMatrix[1].xyz));
+        modelScale.z = length(vec3(modelMatrix[2].xyz));
+        return normalize(refractionVector) * thickness * modelScale;
+    }
+
+    float applyIorToRoughness(float roughness, float ior) {
+        return roughness * clamp(ior * 2.0 - 2.0, 0.0, 1.0);
+    }
+
+    vec3 getTransmissionSample(vec2 fragCoord, float roughness, float ior) {
+        float framebufferLod = log2(transmissionSamplerSize.x) * applyIorToRoughness(roughness, ior);
+        return texture2D(transmissionSamplerMap, fragCoord.xy).rgb; // texture2DLodEXT 대체
+    }
+
+    vec3 applyVolumeAttenuation(vec3 radiance, float transmissionDistance, vec3 attenuationColor, float attenuationDistance) {
+        if (attenuationDistance == 0.0) {
+            return radiance;
+        } else {
+            vec3 attenuationCoefficient = -log(attenuationColor) / attenuationDistance;
+            vec3 transmittance = exp(-attenuationCoefficient * transmissionDistance);
+            return transmittance * radiance;
+        }
+    }
+
+    vec3 getIBLVolumeRefraction(
+        vec3 n, vec3 v, float perceptualRoughness, vec3 baseColor, vec3 specularColor,
+        vec3 position, mat4 modelMatrix, mat4 viewMatrix, mat4 projMatrix,
+        float ior, float thickness, vec3 attenuationColor, float attenuationDistance
+    ) {
+        vec3 transmissionRay = getVolumeTransmissionRay(n, v, thickness, ior, modelMatrix);
+        vec3 refractedRayExit = position + transmissionRay;
+        vec4 ndcPos = projMatrix * viewMatrix * vec4(refractedRayExit, 1.0);
+        vec2 refractionCoords = ndcPos.xy / ndcPos.w;
+        refractionCoords += 1.0;
+        refractionCoords /= 2.0;
+        vec3 transmittedLight = getTransmissionSample(refractionCoords, perceptualRoughness, ior);
+        vec3 attenuatedColor = applyVolumeAttenuation(transmittedLight, length(transmissionRay), attenuationColor, attenuationDistance);
+        return (1.0 - specularColor) * attenuatedColor * baseColor;
+    }
+#endif
+`;
+
+const transmissionTarget = /*glsl */ `#include <transmission_fragment>`;
+const transmissionContent = /* glsl */ `
+  #ifdef USE_TRANSMISSION
+          
+    float transmissionFactor = transmission;
+    float thicknessFactor = thickness;
+    specularRoughness = max(roughness, 0.02625000 );
+    material.transmissionAlpha = 1.0;
+// totalEmissiveRadiance = emissive;
+
+    #ifdef USE_TRANSMISSIONMAP
+        transmissionFactor *= transmissionMapTexelToLinear( texture2D(transmissionMap, vUvTransmission) ).r;
+    #endif
+
+    #ifdef USE_THICKNESSMAP
+        thicknessFactor *=thicknessMapTexelToLinear( texture2D(thicknessMap, vUvTransmission) ).g;
+    #endif
+
+    vec3 pos = vWorldPosition;
+    vec3 v = normalize(cameraPosition - pos);
+    float ior  = (1.0 + 0.4 * reflectivity) / (1.0 - 0.4 * reflectivity);
+ 
+    vec3 transmission = transmissionFactor * getIBLVolumeRefraction(
+        geometryNormal,
+        v,
+        roughness,
+        material.diffuseColor,
+        material.specularColor,
+        pos,
+        modelMatrix,
+        viewMatrix,
+        projectionMatrix,
+        ior,
+        thicknessFactor,
+        attenuationColor,
+        attenuationDistance
+    );            
+   
+    totalDiffuse = mix(totalDiffuse, transmission, transmissionFactor);
+    
+    vec3 specularLinear = (reflectedLight.directSpecular + reflectedLight.indirectSpecular);
+    float specularLumi = linearToRelativeLuminance( specularLinear ); 
+        float dotNV = saturate( dot( normal, normalize( vViewPosition ) ) );
+    float FCustom = F_Schlick_RoughnessDependent( vec3(0.04), 1.0, dotNV, specularRoughness ).r;
+    
+    #ifdef USE_TRANSMISSIONMAP
+    float finalTransmission = mix( transmissionFactor, transmissionMapTexelToLinear(texture2D(transmissionMap, vUvTransmission)).b, transmissionMapAmount );
+    diffuseColor.a *= saturate( 1. - finalTransmission + specularLumi + FCustom );
+    #else
+    // diffuseColor.a *= clamp(1.0 - transmissionFactor + luminance(material.specularColor), 0.0, 1.0);
+      diffuseColor.a *= saturate( 1. - transmissionFactor + specularLumi + FCustom );
+     #endif 
+  #endif    
+`;
+
 const debugging = /* glsl */ `
+
+ gl_FragColor.rgb = vLinearToneMapping( gl_FragColor.rgb );
+
+ vec4 color0 =gl_FragColor;
+  vec4 color1 = vec4(0.0);
+
+
+
 // if(uUseLightMapTransition){
 //   gl_FragColor = texture2D(lightMapTo, vLightMapUv);
 // }
 
-if (uUseHighlightBurn) {
-  vec4 adjusted = adjustHighlightBurn(gl_FragColor);
-  gl_FragColor = mix(gl_FragColor, adjusted, 1.0);
-}
+  e1MainImage(color0,  color1);
+    color0 = blend23(color0, color1, 1.0);
+    e2MainImage(color0,  color1);
+    color0 = blend23(color0, color1, 1.0);
+    gl_FragColor = color0;
 //END_OF_FRAG
 `;
 
@@ -733,6 +925,16 @@ export const patchFragment = (shader: Shader) => {
     lightmapContent,
   );
 
+  shader.fragmentShader = shader.fragmentShader.replace(
+    transmissionParsTarget,
+    transmissionParsContent,
+  );
+
+  shader.fragmentShader = shader.fragmentShader.replace(
+    transmissionTarget,
+    transmissionContent,
+  );
+
   // 5. 디버깅용으로 셰이더 가장 마지막 부분에 추가
   shader.fragmentShader = shader.fragmentShader.replace(
     '//END_OF_FRAG',
@@ -751,4 +953,8 @@ export const v_env_frag_shaders = {
   progAlphaTarget,
   lightmapContent,
   lightmapTarget,
+  transmissionParsTarget,
+  transmissionParsContent,
+  transmissionTarget,
+  transmissionContent,
 };

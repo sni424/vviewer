@@ -31,17 +31,18 @@ import {
 import { defaultSettings, loadSettings } from '../pages/useSettings.ts';
 import {
   anisotropyAtom,
+  BrightnessContrastAtom,
   cameraMatrixAtom,
-  DPAtom,
-  DPCModeAtom,
-  getAtomValue, highlightBurnAtom,
+  getAtomValue,
+  highlightBurnAtom,
   lightMapAtom,
   lightMapContrastAtom,
   materialSettingAtom,
   minimapAtom,
   postprocessAtoms,
   ProbeAtom,
-  selectedAtom, sharpenAtom,
+  selectedAtom,
+  sharpenAtom,
   testAtom,
   threeExportsAtom,
   uploadingAtom,
@@ -1198,6 +1199,7 @@ export const TestControl = () => {
   }
   const [test, setTest] = useAtom(testAtom);
   const [hBurn, setHBurn] = useAtom(highlightBurnAtom);
+  const [brightness, setBrightness] = useAtom(BrightnessContrastAtom);
   const [sharpen, setSharpen] = useAtom(sharpenAtom);
   const { scene } = threeExports;
 
@@ -1240,15 +1242,15 @@ export const TestControl = () => {
               onChange={e => {
                 setHBurn(pre => {
                   const target = !pre.use;
-                  scene.traverseAll((o) => {
+                  scene.traverseAll(o => {
                     if (o.type === 'Mesh') {
                       const mat = (o as THREE.Mesh).mat;
                       mat.apply('highlightBurn', {
-                        useHighlightBurn: target,
-                        highlightBurnFactor: pre.value
-                      })
+                        uUseHighlightBurn: target,
+                        highlightBurnFactor: pre.value,
+                      });
                     }
-                  })
+                  });
                   return { ...pre, use: target };
                 });
               }}
@@ -1258,21 +1260,21 @@ export const TestControl = () => {
             <div className="flex gap-x-1">
               <input
                 type="range"
-                min={0.001}
-                max={1}
+                min={0.0}
+                max={1.5}
                 step={0.001}
                 value={hBurn.value}
                 onChange={e => {
                   const value = parseFloat(e.target.value);
-                  scene.traverseAll((o) => {
+                  scene.traverseAll(o => {
                     if (o.type === 'Mesh') {
                       const mat = (o as THREE.Mesh).mat;
                       mat.apply('highlightBurn', {
-                        useHighlightBurn: hBurn.use,
-                        highlightBurnFactor: value
-                      })
+                        uUseHighlightBurn: hBurn.use,
+                        highlightBurnFactor: value,
+                      });
                     }
-                  })
+                  });
                   setHBurn(pre => ({ ...pre, value: value }));
                 }}
               ></input>
@@ -1282,7 +1284,122 @@ export const TestControl = () => {
         </div>
       </div>
       <div>
+        <strong>밝기/대비</strong>
+        <div>
+          <div className="flex gap-x-1">
+            <span>사용</span>
+            <input
+              type="checkbox"
+              checked={brightness.use}
+              onChange={e => {
+                setBrightness(pre => {
+                  const target = !pre.use;
+                  scene.traverseAll(o => {
+                    if (o.type === 'Mesh') {
+                      const mat = (o as THREE.Mesh).mat;
+                      mat.apply('brightnessContrast', {
+                        uUseBrightnessValue: target,
+                        uBrightnessValue: pre.brightnessValue,
+                        uContrastValue: pre.contrastValue,
+                      });
+                    }
+                  });
+                  return { ...pre, use: target };
+                });
+              }}
+            />
+          </div>
+          {brightness.use && (
+            <div className="flex gap-x-1">
+              <div>
+                <span>밝기</span>
+                <input
+                  type="range"
+                  min={0.0}
+                  max={5.0}
+                  step={0.001}
+                  value={brightness.brightnessValue}
+                  onChange={e => {
+                    const value = parseFloat(e.target.value);
+                    scene.traverseAll(o => {
+                      if (o.type === 'Mesh') {
+                        const mat = (o as THREE.Mesh).mat;
+                        mat.apply('brightnessContrast', {
+                          uUseBrightnessValue: brightness.use,
+                          uBrightnessValue: value,
+                          uContrastValue: brightness.contrastValue,
+                        });
+                      }
+                    });
+                    setBrightness(pre => ({ ...pre, brightnessValue: value }));
+                  }}
+                ></input>
+                <p className="min-w-[20px]">{brightness.brightnessValue}</p>
+              </div>
+              <div>
+                <span>대비</span>
+                <input
+                  type="range"
+                  min={0.5}
+                  max={3.0}
+                  step={0.001}
+                  value={brightness.contrastValue}
+                  onChange={e => {
+                    const value = parseFloat(e.target.value);
+                    scene.traverseAll(o => {
+                      if (o.type === 'Mesh') {
+                        const mat = (o as THREE.Mesh).mat;
+                        mat.apply('brightnessContrast', {
+                          uUseBrightnessValue: brightness.use,
+                          uBrightnessValue: brightness.brightnessValue,
+                          uContrastValue: value,
+                        });
+                      }
+                    });
+                    setBrightness(pre => ({ ...pre, contrastValue: value }));
+                  }}
+                ></input>
+                <p className="min-w-[20px]">{brightness.contrastValue}</p>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+      <div>
         <strong>sharpen</strong>
+        <div>
+          <div className="flex gap-x-1">
+            <span>사용</span>
+            <input
+              type="checkbox"
+              checked={sharpen.isSharpen}
+              onChange={e => {
+                setSharpen(pre => {
+                  return { ...pre, use: !pre.isSharpen };
+                });
+              }}
+            />
+          </div>
+          {sharpen.isSharpen && (
+            <div className="flex gap-x-1">
+              <input
+                type="range"
+                min={0}
+                max={2}
+                step={0.01}
+                value={sharpen.strength}
+                onChange={e => {
+                  setSharpen(pre => ({
+                    ...pre,
+                    strength: parseFloat(e.target.value),
+                  }));
+                }}
+              ></input>
+              <span>{sharpen.strength}</span>
+            </div>
+          )}
+        </div>
+        {/* <strong>sharpen</strong>
         <div>
           <div className="flex gap-x-1">
             <span>사용</span>
@@ -1305,13 +1422,16 @@ export const TestControl = () => {
                 step={0.01}
                 value={sharpen.value}
                 onChange={e => {
-                  setSharpen(pre => ({ ...pre, value: parseFloat(e.target.value) }));
+                  setSharpen(pre => ({
+                    ...pre,
+                    value: parseFloat(e.target.value),
+                  }));
                 }}
               ></input>
               <span>{sharpen.value}</span>
             </div>
           )}
-        </div>
+        </div> */}
       </div>
     </section>
   );
@@ -2041,7 +2161,7 @@ const SceneInfo = () => {
       <TestControl />
       <GeneralMinimapControl></GeneralMinimapControl>
       <AnisotropyControl></AnisotropyControl>
-      <GeneralPostProcessingControl></GeneralPostProcessingControl>
+      {/* <GeneralPostProcessingControl></GeneralPostProcessingControl> */}
       <SceneBackColor></SceneBackColor>
       <GeneralSceneInfo></GeneralSceneInfo>
 

@@ -114,10 +114,6 @@ export const loadHistoryAtom = atom<
 >(new Map());
 export const threeExportsAtom = atom<RootState>();
 export const orbitControlAtom = atom<OrbitControls>();
-export const sharpenAtom = atom<{use: boolean; value: number}>({
-  use: false,
-  value: 2.0
-})
 
 export type Env = {
   select: 'none' | 'preset' | 'custom' | 'url';
@@ -632,10 +628,34 @@ export const testAtom = atom<{ useSkyBox: boolean; showSelectBox: boolean }>({
   showSelectBox: true,
 });
 
-export const highlightBurnAtom = atom<{use:boolean; value: number}>({
-  use: false,
+export const highlightBurnAtom = atom<{ use: boolean; value: number }>({
+  use: true,
   value: 0.001,
-})
+});
+
+export const BrightnessContrastAtom = atom<{
+  use: boolean;
+  brightnessValue: number;
+  contrastValue: number;
+}>({
+  use: true,
+  brightnessValue: 1.91,
+  contrastValue: 1.14,
+});
+
+export const sharpenAtom = atom<{
+  strength: number;
+  opacity: number;
+  isSharpen: boolean;
+  isRatio: boolean;
+  aliasing: number;
+}>({
+  strength: 0.25,
+  opacity: 1.0,
+  isSharpen: true,
+  isRatio: true,
+  aliasing: 8,
+});
 
 export const skyBoxAtom = atom<SkyBoxState>({
   isSkyBox: false,
