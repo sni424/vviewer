@@ -600,9 +600,11 @@ export const settingsAtom = atom<Settings>({
 export const materialSettingAtom = atom<{
   lightMapIntensity: number;
   aoMapIntensity: number;
+  lightMapContrast: number;
 }>({
-  lightMapIntensity: 6,
+  lightMapIntensity: 1,
   aoMapIntensity: 0,
+  lightMapContrast: 1,
 });
 
 export const pathfindingAtom = atom<{

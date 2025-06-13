@@ -1200,6 +1200,8 @@ export const TestControl = () => {
     return null;
   }
   const [test, setTest] = useAtom(testAtom);
+  const [lmIntensityValue, setlmIntensityValue] = useState(1);
+  const [materialSetInfo, setMaterialInfo] = useAtom(materialSettingAtom);
   const [hBurn, setHBurn] = useAtom(highlightBurnAtom);
   const [brightness, setBrightness] = useAtom(BrightnessContrastAtom);
   const [whiteBalance, setWhiteBalance] = useAtom(whiteBalanceAtom);
@@ -1233,6 +1235,60 @@ export const TestControl = () => {
               setTest(pre => ({ ...pre, showSelectBox: !pre.showSelectBox }));
             }}
           />
+        </div>
+      </div>
+
+      <div>
+        <strong>라이트맵</strong>
+
+        <div className="flex gap-x-1">
+          <span>세기</span>
+          <input
+            type="range"
+            min={0.0}
+            max={5}
+            step={0.001}
+            value={materialSetInfo.lightMapIntensity}
+            onChange={e => {
+              const allMeshes: THREE.Mesh[] = [];
+              scene.traverse(child => {
+                if (child instanceof THREE.Mesh) {
+                  allMeshes.push(child);
+                }
+              });
+              allMeshes.forEach(mesh => {
+                (
+                  mesh.material as THREE.MeshStandardMaterial
+                ).lightMapIntensity = parseFloat(e.target.value);
+              });
+              setMaterialInfo(pre => ({
+                ...pre,
+                lightMapIntensity: parseFloat(e.target.value),
+              }));
+            }}
+          ></input>
+          <span>{materialSetInfo.lightMapIntensity}</span>
+        </div>
+        <div className="flex gap-x-1">
+          <span>대비</span>
+          <input
+            type="range"
+            min={0.0}
+            max={5}
+            step={0.001}
+            value={materialSetInfo.lightMapContrast}
+            onChange={e => {
+              const value = parseFloat(e.target.value);
+              scene.traverseAll(o => {
+                if (o.type === 'Mesh') {
+                  const mat = (o as THREE.Mesh).mat;
+                  mat.apply('lightmapContrast', value);
+                }
+              });
+              setMaterialInfo(pre => ({ ...pre, lightMapContrast: value }));
+            }}
+          ></input>
+          <span>{materialSetInfo.lightMapContrast}</span>
         </div>
       </div>
       <div>
