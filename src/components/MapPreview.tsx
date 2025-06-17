@@ -9,7 +9,7 @@ import {
 } from '../scripts/atoms';
 
 export interface MapPreviewProps {
-  material: THREE.Material;
+  material: THREE.Material | THREE.MeshStandardMaterial | THREE.MeshPhysicalMaterial;
   matKey: MaterialSlot;
   width?: number;
   height?: number;

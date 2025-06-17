@@ -59,7 +59,7 @@ class VROLoader implements MaxLoader<THREE.Object3D> {
         object.position[2] = object.position[2] / 1000;
         // TODO 올바르게 아랫값 추출, geometry position reset
         mesh.position.fromArray([0, 0, 0]);
-        mesh.scale.fromArray([0.01, 0.01, 0.01]);
+        mesh.scale.fromArray([0.001, 0.001, 0.001]);
         mesh.quaternion.fromArray(object.rotation);
         mesh.rotation.set(0, 0, 0);
 

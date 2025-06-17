@@ -98,10 +98,20 @@ const MapInfo = (props: MapInfoProps) => {
   const threeExports = useAtomValue(threeExportsAtom)!;
   const uuid = texture?.uuid;
 
-  const materialRangeKey = materialRange?.matKey as keyof THREE.Material;
-  const materialValue = materialRangeKey
-    ? material[materialRangeKey]
+  const materialRangeKey = materialRange?.matKey as keyof THREE.MeshStandardMaterial;
+  let materialValue = materialRangeKey
+    ? (material as THREE.MeshStandardMaterial)[materialRangeKey]
     : undefined;
+
+  if (materialValue) {
+    if (typeof materialValue === 'object') {
+      const keys = Object.keys(materialValue);
+      if (keys.includes('x') && keys.length === 2) {
+        materialValue = (materialValue as THREE.Vector2).x;
+      }
+    }
+  }
+
   const [materialRangeValue, setMaterialRangeValue] = useState(
     (materialValue as number) ?? -1,
   );
@@ -451,7 +461,15 @@ const MapSection = ({ mat }: { mat: THREE.MeshPhysicalMaterial }) => {
             }}
           ></MapInfo>
           <MapInfo label="Diffuse" material={mat} matKey="map"></MapInfo>
-          <MapInfo label="Normal" material={mat} matKey="normalMap"></MapInfo>
+          <MapInfo label="Normal" material={mat} matKey="normalMap" materialRange={{
+            matKey: 'normalScale',
+            onChange: value => {
+              mat.standard.normalScale.set(value, -value);
+              mat.needsUpdate = true;
+            },
+            min: 0,
+            max: 5
+          }}></MapInfo>
           <MapInfo
             label="Roughness"
             material={mat}

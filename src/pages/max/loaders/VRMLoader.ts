@@ -66,20 +66,13 @@ class VRMLoader implements MaxLoader<THREE.MeshPhysicalMaterial> {
             }
           } else if (mapKey === 'baseColorMap') {
             physicalParams.map = texture;
+          } else if (mapKey === 'displacementMap') {
+            // pass displacement
           } else {
             physicalParams[mapKey as keyof TargetParams] = texture;
           }
         }
       }
-
-
-
-      // test
-      // const lightmap = physicalParams.lightMap;
-      // if (lightmap) {
-      //   lightmap.channel = 0;
-      // }
-      // physicalParams.map = lightmap;
 
       for (const key of others) {
         const value = json[key as keyof MaxMaterialJSON];
