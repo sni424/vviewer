@@ -13,6 +13,7 @@ import {
 } from 'src/scripts/atoms.ts';
 import { getVKTX2Loader } from 'src/scripts/loaders/VKTX2Loader.ts';
 import * as THREE from 'VTHREE';
+import Walls from 'src/components/canvas/Walls.tsx';
 
 const MaxPageMain = ({
   setScene,
@@ -50,6 +51,7 @@ const MaxPageMain = ({
         {/*/>*/}
         <MyEnvironment></MyEnvironment>
         <ShaderPassComponent />
+        <Walls></Walls>
         {/* <PostProcess></PostProcess> */}
         <SelectBox></SelectBox>
         {/*<ambientLight color={'#ffffff'} intensity={1}/>*/}

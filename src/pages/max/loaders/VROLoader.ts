@@ -41,7 +41,7 @@ class VROLoader implements MaxLoader<THREE.Object3D> {
         );
 
         let material = new THREE.MeshPhysicalMaterial({
-          color: 'blue',
+          color: '#5f5f5f',
           roughness: 1,
           metalness: 0,
         });
