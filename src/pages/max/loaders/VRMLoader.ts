@@ -16,6 +16,7 @@ class VRMLoader implements MaxLoader<THREE.MeshPhysicalMaterial> {
 
   readonly type: MaxFileType = 'material';
   private textureLoader: VRTLoader = new VRTLoader();
+  serverURL: string = MaxConstants.MATERIAL_PATH
 
   async load(maxFile: MaxFile): Promise<THREE.MeshPhysicalMaterial> {
     const { originalFile, loaded, resultData, type } = maxFile;
@@ -66,20 +67,13 @@ class VRMLoader implements MaxLoader<THREE.MeshPhysicalMaterial> {
             }
           } else if (mapKey === 'baseColorMap') {
             physicalParams.map = texture;
+          } else if (mapKey === 'displacementMap') {
+            // pass displacement
           } else {
             physicalParams[mapKey as keyof TargetParams] = texture;
           }
         }
       }
-
-
-
-      // test
-      // const lightmap = physicalParams.lightMap;
-      // if (lightmap) {
-      //   lightmap.channel = 0;
-      // }
-      // physicalParams.map = lightmap;
 
       for (const key of others) {
         const value = json[key as keyof MaxMaterialJSON];
@@ -156,7 +150,7 @@ class VRMLoader implements MaxLoader<THREE.MeshPhysicalMaterial> {
     }
 
     const targetURL =
-      MaxConstants.MATERIAL_PATH +
+      this.serverURL +
       encodeURIComponent(filename)
         // S3는 공백을 + 로 반환하므로 맞춰줌 (optional)
         .replace(/%20/g, '+');
@@ -165,6 +159,10 @@ class VRMLoader implements MaxLoader<THREE.MeshPhysicalMaterial> {
     const file = await resolveMaxFile(targetURL, filename, this.type);
 
     return await this.load(file);
+  }
+
+  resetServerURL() {
+    this.serverURL = MaxConstants.MATERIAL_PATH;
   }
 }
 

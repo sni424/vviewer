@@ -1,5 +1,5 @@
 import { set } from 'idb-keyval';
-import { EXRLoader } from 'three/examples/jsm/Addons.js';
+import { EXRLoader, RGBELoader } from 'three/examples/jsm/Addons.js';
 import { THREE } from 'VTHREE';
 import { getVKTX2Loader } from './VKTX2Loader.ts';
 
@@ -111,7 +111,8 @@ export default class VTextureLoader {
       ? fileOrUrl.name.toLowerCase()
       : fileOrUrl.toLowerCase();
 
-    const isHdr = fork.endsWith('.hdr') || fork.endsWith('.exr');
+    const isHdr = fork.endsWith('.hdr');
+    const isExr = fork.endsWith('.exr')
     const isJpg = isFile
       ? fileOrUrl.type === 'image/jpeg'
       : fork.endsWith('.jpg') || fork.endsWith('.jpeg');
@@ -130,8 +131,15 @@ export default class VTextureLoader {
         texture.needsUpdate = true;
         return texture;
       });
-    } else if (isHdr) {
+    } else if (isExr) {
       return new EXRLoader().loadAsync(url).then(texture => {
+        texture.flipY = flipY;
+        texture.channel = inputOption.channel;
+        texture.needsUpdate = true;
+        return texture;
+      });
+    } else if (isHdr) {
+      return new RGBELoader().loadAsync(url).then(texture => {
         texture.flipY = flipY;
         texture.channel = inputOption.channel;
         texture.needsUpdate = true;

@@ -17,7 +17,51 @@ import { MaxConstants } from 'src/pages/max/loaders/MaxConstants.ts';
 import VTextureLoader from 'src/scripts/loaders/VTextureLoader.ts';
 import ReflectionProbe from 'src/scripts/ReflectionProbe.ts';
 
-const VIZ4D_LIGHT_MAPS = ['c1_C01.exr', 'c2_BAE.exr', 'c3_C47.exr', 'c4_3E9.exr', 'c5_231.exr', 'c6_ECC.exr', 'c7_327.exr', 'c8_DAE.exr', 'msm1_439.exr', 'msm2_5D2.exr', 'msm3_26E.exr'];
+const VIZ4D_LIGHT_MAPS = [
+  'c1_C01.exr',
+  'c2_BAE.exr',
+  'c3_C47.exr',
+  'c4_3E9.exr',
+  'c5_231.exr',
+  'c6_ECC.exr',
+  'c7_327.exr',
+  'c8_DAE.exr',
+  'msm1_439.exr',
+  'msm2_5D2.exr',
+  'msm3_26E.exr',
+];
+const VR_LIGHT_MAPS = [
+  '59B_Wall_001_mID_2_VRayRawTotalLightingMap_denoised.hdr',
+  '59B_Wall_002_VRayRawTotalLightingMap_denoised.hdr',
+  '59B_Wall_004_mID_13_VRayRawTotalLightingMap_denoised.hdr',
+  '59B_Wall_021_VRayRawTotalLightingMap_denoised.hdr',
+  '59B_걸레받이_VRayRawTotalLightingMap_denoised.hdr',
+  'Ceiling_Cap_top_VRayRawTotalLightingMap_denoised.hdr',
+  'Circle079_VRayRawTotalLightingMap_denoised.hdr',
+  'dp1_VRayRawTotalLightingMap_denoised.hdr',
+  'dp2_VRayRawTotalLightingMap_denoised.hdr',
+  'dp3_VRayRawTotalLightingMap_denoised.hdr',
+  '주방_VRayRawTotalLightingMap_denoised.hdr',
+];
+
+const VR_0613_LIGHT_MAPS = [
+  'q1_VRayRawTotalLightingMap_denoised.hdr',
+  'q2_VRayRawTotalLightingMap_denoised.hdr',
+  'q3_VRayRawTotalLightingMap_denoised.hdr',
+  'q4_VRayRawTotalLightingMap_denoised.hdr',
+  'q5_VRayRawTotalLightingMap_denoised.hdr',
+];
+
+const VR_0617_LIGHT_MAPS = [
+  'dp1',
+  'dp2',
+  'layer1',
+  'layer2',
+  'layer3',
+  'layer4',
+];
+
+const LIGHTMAP_SUFFIX = '_VRayRawTotalLightingMap_denoised.hdr';
 
 const MaxPageRightBar = ({
   expanded,
@@ -41,7 +85,14 @@ const MaxPageRightBar = ({
   const [reflectMode, setReflectMode] = useState<boolean>(false);
   const threeExports = useAtomValue(threeExportsAtom);
 
-  const [vizLightMaps, setVizLightMaps] = useState<{[key: string] : THREE.Texture}>({})
+  const [vizLightMaps, setVizLightMaps] = useState<{
+    [key: string]: THREE.Texture;
+  }>({});
+
+  const [vrLightMaps, setVrLightMaps] = useState<{
+    [key: string]: THREE.Texture;
+  }>({});
+  const [vrLightMapsLoaded, setVrLightMapsLoaded] = useState(false);
   const [lightMapsLoaded, setLightMapsLoaded] = useState(false);
   const [innerProbe, setInnerProbe] = useState<ReflectionProbe | null>(null);
 
@@ -93,7 +144,7 @@ const MaxPageRightBar = ({
     if (scene) {
       scene.traverseAll(o => {
         if (o.type === 'Mesh') {
-          const geo =  (o as THREE.Mesh).geometry;
+          const geo = (o as THREE.Mesh).geometry;
           geo.computeVertexNormals();
           geo.computeBoundingBox();
           geo.computeBoundingSphere();
@@ -247,7 +298,7 @@ const MaxPageRightBar = ({
             return key.toLowerCase().endsWith('map');
           });
 
-          const liveKeys = ['map', 'lightMap'];
+          const liveKeys = ['map', 'lightMap', 'envMap'];
           mapKeys.forEach(key => {
             if (!liveKeys.includes(key) && (mat as any)[key] !== null) {
               if (!mat.vUserData.tempMaps) mat.vUserData.tempMaps = {};
@@ -301,81 +352,111 @@ const MaxPageRightBar = ({
 
   const sceneAddTypes: MaxFileType[] = ['geometry', 'object'];
 
-  function animateFOV(toFOV: number, camera: THREE.PerspectiveCamera, duration = 1) {
+  function animateFOV(
+    toFOV: number,
+    camera: THREE.PerspectiveCamera,
+    duration = 1,
+  ) {
     gsap.to(camera, {
       fov: toFOV,
       duration,
-      ease: "power2.out",
+      ease: 'power2.out',
       onUpdate: () => {
         camera.updateProjectionMatrix(); // 변경 사항 적용
-      }
+      },
     });
   }
 
   function showLocalLightMapApplies() {
     if (scene) {
-      const applies: {[key: string]: string} = {};
+      const applies: { [key: string]: string } = {};
       scene.traverseAll(o => {
         if (o.type === 'Mesh') {
           const mat = (o as THREE.Mesh).matPhysical;
           if (mat.lightMap && mat.vUserData.viz4dLightMap) {
-            applies[mat.name] = mat.vUserData.viz4dLightMap
+            applies[mat.name] = mat.vUserData.viz4dLightMap;
           }
         }
-      })
+      });
 
       console.log('applies', applies);
-      const arr:string[] = [];
-      Object.values(applies).forEach((value) => {
+      const arr: string[] = [];
+      Object.values(applies).forEach(value => {
         if (!arr.includes(value)) {
           arr.push(value);
         }
-      })
+      });
 
       arr.sort();
 
-      console.log('maps', arr)
+      console.log('maps', arr);
     }
   }
 
   function exportLightMapOutputs() {
     if (scene) {
-      const applies: {[key: string]: string} = {};
+      const applies: { [key: string]: string } = {};
       scene.traverseAll(o => {
         if (o.type === 'Mesh') {
           const mat = (o as THREE.Mesh).matPhysical;
           if (mat.lightMap && mat.vUserData.viz4dLightMap) {
-            applies[mat.name] = mat.vUserData.viz4dLightMap
+            applies[mat.name] = mat.vUserData.viz4dLightMap;
           }
         }
-      })
+      });
 
       console.log('applies', applies);
       saveJSON(applies);
     }
   }
 
-  async function loadCustomLightMaps() {
-    if (lightMapsLoaded) {
-      alert('이미 불러왓슴')
+  async function loadVRCustomLightMaps() {
+    if (vrLightMapsLoaded) {
+      alert('이미 불러왓슴');
       return;
     }
-    const url = MaxConstants.base + "lightmaps/"
+    const url = MaxConstants.base + 'lightmaps/';
 
     const textures: { [key: string]: THREE.Texture } = Object.fromEntries(
       await Promise.all(
-        VIZ4D_LIGHT_MAPS.map(async (uri) => {
+        VR_0617_LIGHT_MAPS.map(async uri => {
+          const tex = await VTextureLoader.loadAsync(
+            url + uri + LIGHTMAP_SUFFIX,
+            threeExports,
+          );
+          tex.flipY = uri.endsWith('hdr');
+          tex.needsUpdate = true;
+          return [uri, tex]; // [key, value] 형태로 반환
+        }),
+      ),
+    );
+
+    setVrLightMaps(textures);
+    setVrLightMapsLoaded(true);
+    alert('완료!');
+  }
+
+  async function loadCustomLightMaps() {
+    if (lightMapsLoaded) {
+      alert('이미 불러왓슴');
+      return;
+    }
+    const url = MaxConstants.base + 'lightmaps/';
+
+    const textures: { [key: string]: THREE.Texture } = Object.fromEntries(
+      await Promise.all(
+        VIZ4D_LIGHT_MAPS.map(async uri => {
           const tex = await VTextureLoader.loadAsync(url + uri, threeExports);
           tex.flipY = false;
           tex.needsUpdate = true;
           return [uri, tex]; // [key, value] 형태로 반환
-        })
-      )
+        }),
+      ),
     );
 
     setVizLightMaps(textures);
     setLightMapsLoaded(true);
-    alert('완료!')
+    alert('완료!');
   }
 
   function importLightMapApplies() {
@@ -387,7 +468,7 @@ const MaxPageRightBar = ({
     input.type = 'file';
     input.accept = '.json';
 
-    input.addEventListener('change', (event) => {
+    input.addEventListener('change', event => {
       const file = (event.target as HTMLInputElement).files?.[0];
       if (!file) return;
 
@@ -402,23 +483,25 @@ const MaxPageRightBar = ({
           // 여기서 data 를 활용하세요
           // applyLightMapData(data); 같은 식으로
           if (scene) {
-            const applies: {[key: string]: string} = data;
+            const applies: { [key: string]: string } = data;
             scene.traverseAll(o => {
               if (o.type === 'Mesh') {
                 const mat = (o as THREE.Mesh).matPhysical;
                 if (!mat.lightMap) {
                   if (mats.includes(mat.name)) {
                     const targetLightMap = vizLightMaps[data[mat.name]];
-                    console.log('this lightmap ', data[mat.name], targetLightMap)
+                    console.log(
+                      'this lightmap ',
+                      data[mat.name],
+                      targetLightMap,
+                    );
                     mat.lightMap = targetLightMap;
                     mat.vUserData.viz4dLightMap = data[mat.name];
                     mat.needsUpdate = true;
                   }
                 }
               }
-            })
-
-
+            });
           }
         } catch (e) {
           console.error('❌ JSON 파싱 오류:', e);
@@ -428,6 +511,104 @@ const MaxPageRightBar = ({
     });
 
     input.click(); // 파일 선택창 열기
+  }
+
+  function importVRLightMapApplies() {
+    if (!vrLightMapsLoaded) {
+      alert('라이트맵을 먼저 불러오세요.');
+      return;
+    }
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+
+    input.addEventListener('change', event => {
+      const file = (event.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const result = reader.result as string;
+          const data = JSON.parse(result);
+          console.log('✅ JSON loaded:', data);
+
+          // 여기서 data 를 활용하세요
+          // applyLightMapData(data); 같은 식으로
+          if (scene) {
+            const keys = Object.keys(data);
+            scene.traverseAll(o => {
+              if (o.type === 'Mesh') {
+                const mesh = o as THREE.Mesh;
+                // 이미 넣었으면 패스
+                if (!mesh.matPhysical.lightMap) {
+                  if (keys.includes(mesh.name)) {
+                    const targetLightMapKey: string = data[mesh.name] as string;
+                    if (targetLightMapKey.startsWith('fi_')) {
+                      const key = extractQName(targetLightMapKey);
+                      console.log(key, targetLightMapKey);
+                      if (key) {
+                        const mat = mesh.matPhysical;
+                        mat.lightMap = vrLightMaps[key];
+                        if (!mat.lightMap.flipY) {
+                          mat.lightMap.flipY = true;
+                        }
+                        mat.vUserData.viz4dLightMap = key;
+                        mat.needsUpdate = true;
+                      }
+                    }
+                  } else if (keys.includes(stripMatSuffix(mesh.name))) {
+                    const formattedKey = stripMatSuffix(mesh.name);
+                    const targetLightMapKey: string = data[
+                      formattedKey
+                    ] as string;
+                    if (targetLightMapKey.startsWith('fi_')) {
+                      const key = extractQName(targetLightMapKey);
+                      if (key) {
+                        const mat = mesh.matPhysical;
+                        mat.lightMap = vrLightMaps[key];
+                        if (!mat.lightMap.flipY) {
+                          mat.lightMap.flipY = true;
+                        }
+                        mat.vUserData.viz4dLightMap = key;
+                        mat.needsUpdate = true;
+                      }
+                    }
+                  }
+                }
+              }
+            });
+          }
+        } catch (e) {
+          console.error('❌ JSON 파싱 오류:', e);
+        }
+      };
+      reader.readAsText(file);
+    });
+
+    input.click(); // 파일 선택창 열기
+  }
+
+  function stripMatSuffix(str: string) {
+    return str.replace(/_mat_sub_\d+$/, '');
+  }
+
+  function extractQName(str: string) {
+    const match = str.match(/fi_([a-z]+\d+)/i);
+    return match ? match[1] : null;
+  }
+
+  function removeAllLightMaps() {
+    if (scene) {
+      scene.traverseAll(o => {
+        if (o.type === 'Mesh') {
+          const mat = (o as THREE.Mesh).matPhysical;
+          mat.lightMap = null;
+          mat.vUserData.viz4dLightMap = null;
+          mat.needsUpdate = true;
+        }
+      });
+    }
   }
 
   function saveJSON(obj: any, filename = 'data.json') {
@@ -448,7 +629,7 @@ const MaxPageRightBar = ({
       const camera = threeExports.camera;
       const position = camera.matrix;
 
-      alert('Camera position : ' +position.toArray() );
+      alert('Camera position : ' + position.toArray());
 
       return position;
     } else {
@@ -459,7 +640,7 @@ const MaxPageRightBar = ({
 
   function createProbe() {
     if (threeExports) {
-      const {scene, gl, camera} = threeExports;
+      const { scene, gl, camera } = threeExports;
       // 먼저 기존 프로브 제거
 
       if (innerProbe) {
@@ -468,19 +649,24 @@ const MaxPageRightBar = ({
       }
 
       const size = new THREE.Vector3(-14.7, 2.9, 11.04);
-      const position =  new THREE.Vector3(0.5, 1.09, -0.09);
+      const position = new THREE.Vector3(0.5, 1.09, -0.09);
 
-      const probe = new ReflectionProbe(gl, scene, camera, 512);
+      const probe = new ReflectionProbe(gl, scene, camera, 2048);
+      probe.setControlsVisible(false);
+      probe.getBoxMesh().visible = false;
       probe.setCenterAndSize(position, size);
       probe.addToScene(true);
+      const texture = probe.getRenderTargetTexture();
       scene.traverseAll(o => {
         if (o.type === 'Mesh') {
           const mat = (o as THREE.Mesh).matPhysical;
           // mat.prepareProbe({probeCount: 1, usePmrem:false})
-          mat.apply('probe', {probes: [probe]});
+          // mat.apply('probe', {probes: [probe]});
+          mat.envMap = texture;
+          mat.envMapIntensity = 0.3;
           mat.needsUpdate = true;
         }
-      })
+      });
 
       setInnerProbe(probe);
     }
@@ -488,7 +674,7 @@ const MaxPageRightBar = ({
 
   function removeProbe() {
     if (threeExports) {
-      const {scene} = threeExports;
+      const { scene } = threeExports;
       const objsToRemove: THREE.Object3D[] = [];
       scene.traverseAll(o => {
         if (o.vUserData.isProbeMesh) {
@@ -497,21 +683,21 @@ const MaxPageRightBar = ({
         if (o.type === 'Mesh') {
           if (!o.vUserData.isProbeMesh) {
             const mat = (o as THREE.Mesh).matPhysical;
-            mat.remove('probe');
+            mat.envMap = null;
             mat.needsUpdate = true;
           }
         }
-      })
+      });
 
       objsToRemove.forEach(obj => {
         obj.removeFromParent();
-      })
+      });
     }
   }
 
   function getNowProbePositionAndSize() {
     if (threeExports) {
-      console.log(scene)
+      console.log(scene);
     }
   }
 
@@ -720,28 +906,56 @@ const MaxPageRightBar = ({
           <section className="text-sm px-1 flex flex-col my-1">
             <strong>viz4d lightMap</strong>
             <div className="flex gap-x-1 py-1">
-              <button onClick={showLocalLightMapApplies}>적용 정보 보기</button>
-              <button onClick={exportLightMapOutputs}>적용 정보 내보내기</button>
-              <button onClick={importLightMapApplies}>적용 정보 가져오기</button>
-              <button onClick={loadCustomLightMaps}>라이트맵 불러오기</button>
+              {/*<button onClick={showLocalLightMapApplies}>적용 정보 보기</button>*/}
+              <button onClick={exportLightMapOutputs}>
+                적용 정보 내보내기
+              </button>
+              <button onClick={importLightMapApplies}>
+                Viz4d 용 적용 정보 가져오기
+              </button>
+              <button onClick={loadCustomLightMaps}>
+                viz4d 라이트맵 불러오기
+              </button>
+              <button onClick={importVRLightMapApplies}>
+                VR 용 적용 정보 가져오기
+              </button>
+              <button onClick={loadVRCustomLightMaps}>
+                vr 라이트맵 불러오기
+              </button>
+              <button onClick={removeAllLightMaps}>라이트맵 제거</button>
             </div>
           </section>
           {threeExports && (
             <section className="text-sm px-1 flex flex-col my-1">
               <strong>Camera FOV</strong>
               <div className="flex gap-x-1 my-1">
-                <button onClick={() => {
-                  const camera = threeExports!.camera as THREE.PerspectiveCamera;
-                  animateFOV(75, camera);
-                }}>Three.js</button>
-                <button onClick={() => {
-                  const camera = threeExports!.camera as THREE.PerspectiveCamera;
-                  animateFOV(45, camera);
-                }}>Max</button>
-                <button onClick={() => {
-                  const camera = threeExports!.camera as THREE.PerspectiveCamera;
-                  animateFOV(55, camera);
-                }}>Viz4d</button>
+                <button
+                  onClick={() => {
+                    const camera = threeExports!
+                      .camera as THREE.PerspectiveCamera;
+                    animateFOV(75, camera);
+                  }}
+                >
+                  Three.js
+                </button>
+                <button
+                  onClick={() => {
+                    const camera = threeExports!
+                      .camera as THREE.PerspectiveCamera;
+                    animateFOV(45, camera);
+                  }}
+                >
+                  Max
+                </button>
+                <button
+                  onClick={() => {
+                    const camera = threeExports!
+                      .camera as THREE.PerspectiveCamera;
+                    animateFOV(57.6, camera);
+                  }}
+                >
+                  Viz4d
+                </button>
               </div>
             </section>
           )}
