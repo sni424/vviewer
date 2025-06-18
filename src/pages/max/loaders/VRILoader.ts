@@ -11,6 +11,7 @@ import * as THREE from 'VTHREE';
 class VRILoader implements MaxLoader<THREE.Texture> {
   readonly type: MaxFileType = 'image';
   private loader: VKTX2Loader = getVKTX2Loader();
+  serverURL: string = MaxConstants.IMAGE_PATH;
 
   constructor() {}
 
@@ -75,7 +76,7 @@ class VRILoader implements MaxLoader<THREE.Texture> {
     }
 
     const targetURL =
-      MaxConstants.IMAGE_PATH +
+      this.serverURL +
       encodeURIComponent(filename)
         // S3는 공백을 + 로 반환하므로 맞춰줌 (optional)
         .replace(/%20/g, '+');
@@ -85,6 +86,10 @@ class VRILoader implements MaxLoader<THREE.Texture> {
 
     const buffer = await Workers.fetch(targetURL);
     return this.loadFromBuffer(buffer, filename);
+  }
+
+  resetServerURL() {
+    this.serverURL = MaxConstants.IMAGE_PATH;
   }
 }
 

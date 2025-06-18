@@ -18,4 +18,5 @@ export const MaxConstants = {
   TEXTURE_PATH: DEFAULT_PATH + 'textures/',
   GEOMETRY_PATH: DEFAULT_PATH + 'geometry/',
   MATERIAL_PATH: DEFAULT_PATH + 'material/',
+  OBJECT_PATH: DEFAULT_PATH + 'object/',
 };

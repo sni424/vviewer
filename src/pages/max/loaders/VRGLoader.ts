@@ -9,6 +9,7 @@ import * as BufferGeometryUtils from 'three/addons/utils/BufferGeometryUtils.js'
 
 class VRGLoader implements MaxLoader<THREE.BufferGeometry> {
   readonly type: MaxFileType = 'geometry';
+  serverURL: string = MaxConstants.GEOMETRY_PATH;
 
   constructor() {}
 
@@ -54,7 +55,7 @@ class VRGLoader implements MaxLoader<THREE.BufferGeometry> {
 
     const prom = new Promise<THREE.BufferGeometry>(async res => {
       const targetURL =
-        MaxConstants.GEOMETRY_PATH +
+        this.serverURL +
         encodeURIComponent(filename)
           // S3는 공백을 + 로 반환하므로 맞춰줌 (optional)
           .replace(/%20/g, '+');
@@ -69,6 +70,10 @@ class VRGLoader implements MaxLoader<THREE.BufferGeometry> {
 
     MaxCache.addPromiseByNameAndType(filename, 'geometry', prom);
     return prom;
+  }
+
+  resetServerURL() {
+    this.serverURL = MaxConstants.GEOMETRY_PATH;
   }
 }
 

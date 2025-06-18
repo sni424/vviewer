@@ -6,11 +6,13 @@ import VRMLoader from 'src/pages/max/loaders/VRMLoader.ts';
 import { MaxCache } from 'src/pages/max/loaders/MaxCache.ts';
 import { fileToJson } from 'src/scripts/atomUtils.ts';
 import { MaxObjectJSON } from 'src/pages/max/types';
+import { MaxConstants } from 'src/pages/max/loaders/MaxConstants.ts';
 
 class VROLoader implements MaxLoader<THREE.Object3D> {
   constructor() {}
 
   readonly type: MaxFileType = 'object';
+  serverURL: string = MaxConstants.OBJECT_PATH
 
   private geometryLoader = new VRGLoader();
   private materialLoader = new VRMLoader();
@@ -87,6 +89,10 @@ class VROLoader implements MaxLoader<THREE.Object3D> {
 
   private isMesh(json: MaxObjectJSON) {
     return json.geometry !== null;
+  }
+
+  resetServerURL() {
+    this.serverURL = MaxConstants.OBJECT_PATH;
   }
 }
 
