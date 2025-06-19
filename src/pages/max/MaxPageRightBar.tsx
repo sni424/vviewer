@@ -716,56 +716,56 @@ const MaxPageRightBar = ({
         position: { x: number; y: number; z: number };
         size: { x: number; y: number; z: number };
       }[] = [
-        {
-          name: "거실",
-          position: { x: -754.938, y: 1189.94, z: 1400.82 },
-          size: { x: 4459.44, y: 3020.0, z: 4564.66 },
-        },
-        {
-          name: "복도1",
-          position: { x: -4035.2, y: 0.0, z: -400.591 },
-          size: { x: 2160.68, y: 3020.0, z: 1059.1 },
-        },
-        {
-          name: "욕실1",
-          position: { x: -3879.14, y: 0.0, z: -1814.74 },
-          size: { x: 2200.0, y: 3020.0, z: 1500.0 },
-        },
-        {
-          name: "욕실2",
-          position: { x: 5212.89, y: 1189.94, z: -586.161 },
-          size: { x: 2300.0, y: 3020.0, z: 1500.0 },
-        },
-        {
-          name: "욕실2 앞",
-          position: { x: 3512.89, y: 1189.94, z: -386.161 },
-          size: { x: 1000.0, y: 3020.0, z: 1300.0 },
-        },
+        // {
+        //   name: "거실",
+        //   position: { x: -754.938, y: 1189.94, z: 1400.82 },
+        //   size: { x: 4459.44, y: 3020.0, z: 4564.66 },
+        // },
+        // {
+        //   name: "복도1",
+        //   position: { x: -4035.2, y: 0.0, z: -400.591 },
+        //   size: { x: 2160.68, y: 3020.0, z: 1059.1 },
+        // },
+        // {
+        //   name: "욕실1",
+        //   position: { x: -3879.14, y: 0.0, z: -1814.74 },
+        //   size: { x: 2200.0, y: 3020.0, z: 1500.0 },
+        // },
+        // {
+        //   name: "욕실2",
+        //   position: { x: 5212.89, y: 1189.94, z: -586.161 },
+        //   size: { x: 2300.0, y: 3020.0, z: 1500.0 },
+        // },
+        // {
+        //   name: "욕실2 앞",
+        //   position: { x: 3512.89, y: 1189.94, z: -386.161 },
+        //   size: { x: 1000.0, y: 3020.0, z: 1300.0 },
+        // },
         {
           name: "주방",
           position: { x: -200.52, y: 0.0, z: -2790.591 },
           size: { x: 3165.5, y: 3020.0, z: 3749.49 },
         },
-        {
-          name: "침실1",
-          position: { x: 3412.89, y: 1189.94, z: 2023.88 },
-          size: { x: 3479.8, y: 3020.0, z: 3349.0 },
-        },
-        {
-          name: "침실2",
-          position: { x: -5005.0, y: 1189.94, z: 2023.88 },
-          size: { x: 3500.0, y: 3020.0, z: 3349.0 },
-        },
-        {
-          name: "침실3",
-          position: { x: 2840.92, y: 1189.94, z: -2870.43 },
-          size: { x: 2392.0, y: 3020.0, z: 3584.0 },
-        },
-        {
-          name: "현관",
-          position: { x: -5746.3, y: 0.0, z: -1234.74 },
-          size: { x: 1158.46, y: 3020.0, z: 2748.96 },
-        },
+        // {
+        //   name: "침실1",
+        //   position: { x: 3412.89, y: 1189.94, z: 2023.88 },
+        //   size: { x: 3479.8, y: 3020.0, z: 3349.0 },
+        // },
+        // {
+        //   name: "침실2",
+        //   position: { x: -5005.0, y: 1189.94, z: 2023.88 },
+        //   size: { x: 3500.0, y: 3020.0, z: 3349.0 },
+        // },
+        // {
+        //   name: "침실3",
+        //   position: { x: 2840.92, y: 1189.94, z: -2870.43 },
+        //   size: { x: 2392.0, y: 3020.0, z: 3584.0 },
+        // },
+        // {
+        //   name: "현관",
+        //   position: { x: -5746.3, y: 0.0, z: -1234.74 },
+        //   size: { x: 1158.46, y: 3020.0, z: 2748.96 },
+        // },
       ];
 
       const probes = coordsAndSizes.map(c => {
@@ -785,7 +785,7 @@ const MaxPageRightBar = ({
       scene.traverseAll(o => {
         if (o.type === 'Mesh') {
           const mat = (o as THREE.Mesh).matPhysical;
-          mat.prepareProbe({ probeCount: probes.length, usePmrem: false });
+          // mat.prepareProbe({ probeCount: probes.length, usePmrem: false });
           mat.apply('probe', { probes });
           // mat.envMap = texture;
           // mat.envMapIntensity = 0.3;
@@ -793,7 +793,7 @@ const MaxPageRightBar = ({
         }
       });
 
-      setInnerProbes(probes);
+      // setInnerProbes(probes);
     }
   }
 

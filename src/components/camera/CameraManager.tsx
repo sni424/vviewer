@@ -11,7 +11,7 @@ import {
   setAtomValue,
 } from '../../scripts/atoms';
 import { cameraInRoom } from '../../scripts/atomUtils';
- 
+
 interface UnifiedCameraControlsProps {
   //회전 속도
   rotationSpeed?: number;

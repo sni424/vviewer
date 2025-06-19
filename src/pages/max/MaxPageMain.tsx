@@ -51,7 +51,7 @@ const MaxPageMain = ({
         {/*/>*/}
         <MyEnvironment></MyEnvironment>
         <ShaderPassComponent />
-        <Walls></Walls>
+        {/*<Walls></Walls>*/}
         {/* <PostProcess></PostProcess> */}
         <SelectBox></SelectBox>
         {/*<ambientLight color={'#ffffff'} intensity={1}/>*/}
