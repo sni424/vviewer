@@ -852,6 +852,10 @@ const MaxPageRightBar = ({
     }
   }
 
+  function loadObjects() {
+    
+  }
+
   function getNowProbePositionAndSize() {
     if (threeExports) {
       console.log(threeExports.camera.position);
@@ -890,8 +894,8 @@ const MaxPageRightBar = ({
             <button onClick={getMyCameraPosition}>My position</button>
             <button onClick={createProbe}>probe test</button>
             <button onClick={removeProbe}>removeProbe</button>
-            <button onClick={toggleWall}>
-              {tab === 'wall' ? 'wall off' : 'wall on'}
+            <button onClick={loadObjects}>
+              objects call
             </button>
             <button onClick={getNowProbePositionAndSize}>debug</button>
           </div>

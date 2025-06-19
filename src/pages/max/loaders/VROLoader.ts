@@ -7,6 +7,7 @@ import { MaxCache } from 'src/pages/max/loaders/MaxCache.ts';
 import { fileToJson } from 'src/scripts/atomUtils.ts';
 import { MaxObjectJSON } from 'src/pages/max/types';
 import { MaxConstants } from 'src/pages/max/loaders/MaxConstants.ts';
+import { resolveMaxFile } from 'src/pages/max/loaders/MaxUtils.ts';
 
 class VROLoader implements MaxLoader<THREE.Object3D> {
   constructor() {}
@@ -92,6 +93,30 @@ class VROLoader implements MaxLoader<THREE.Object3D> {
     MaxCache.addPromise(maxFile, prom);
 
     return prom;
+  }
+
+  async loadFromFileName(
+    filename: string | null,
+  ): Promise<THREE.Object3D<THREE.Object3DEventMap>> {
+    if (filename === null) {
+      throw new Error('filename is null');
+    }
+
+    if (MaxCache.hasByNameAndType(filename, this.type)) {
+      return MaxCache.getByNameAndType(
+        filename,
+        this.type,
+      ) as Promise<THREE.Object3D<THREE.Object3DEventMap>>;
+    }
+
+    const targetURL =
+      this.serverURL +
+      encodeURIComponent(filename)
+        // S3는 공백을 + 로 반환하므로 맞춰줌 (optional)
+        .replace(/%20/g, '+');
+    const file = await resolveMaxFile(targetURL, filename, this.type);
+
+    return await this.load(file);
   }
 
   private isMesh(json: MaxObjectJSON) {

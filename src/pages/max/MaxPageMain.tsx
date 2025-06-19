@@ -14,13 +14,13 @@ import {
 } from 'src/scripts/atoms.ts';
 import { getVKTX2Loader } from 'src/scripts/loaders/VKTX2Loader.ts';
 import * as THREE from 'VTHREE';
-import Walls from 'src/components/canvas/Walls.tsx';
-import PostProcess from 'src/components/canvas/PostProcess.tsx';
 
 const MaxPageMain = ({
   setScene,
+  useMouseEvent = false,
 }: {
-  setScene: Dispatch<SetStateAction<THREE.Scene>>;
+  setScene?: Dispatch<SetStateAction<THREE.Scene>>;
+  useMouseEvent?: boolean;
 }) => {
   const gl = getAtomValue(globalGlAtom);
   const mouse = useMouseHandler();
@@ -31,9 +31,18 @@ const MaxPageMain = ({
       <Canvas
         gl={gl}
         id="canvasDiv"
-        onMouseDown={mouse?.handleMouseDown}
-        onMouseMove={mouse?.handleMouseMove}
-        onMouseUp={mouse?.handleMouseUp}
+        onMouseDown={e => {
+          if (useMouseEvent)
+          mouse?.handleMouseDown(e);
+        }}
+        onMouseMove={e => {
+          if (useMouseEvent)
+            mouse?.handleMouseMove(e);
+        }}
+        onMouseUp={e => {
+          if (useMouseEvent)
+            mouse?.handleMouseUp(e);
+        }}
         style={{
           width: '100%',
           height: '100%',
@@ -42,7 +51,9 @@ const MaxPageMain = ({
         onCreated={state => {
           getVKTX2Loader(state.gl);
           state.scene.background = new THREE.Color('gray');
-          setScene(state.scene);
+          if (setScene) {
+            setScene(state.scene);
+          }
           state.camera.layers.enableAll();
           setThreeExports(state);
         }}

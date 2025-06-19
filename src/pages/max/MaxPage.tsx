@@ -113,7 +113,7 @@ const MaxPage = () => {
       onDrop={handleDrop}
     >
       {/* MAIN DIV */}
-      <MaxPageMain setScene={setScene}/>
+      <MaxPageMain useMouseEvent setScene={setScene}/>
       {/* RIGHT BAR */}
       <MaxPageRightBar
         scene={scene}
