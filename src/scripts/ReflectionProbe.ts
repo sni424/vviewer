@@ -8,7 +8,7 @@ import { getVKTX2Loader } from './loaders/VKTX2Loader.ts';
 import VTextureLoader from './loaders/VTextureLoader.ts';
 import { splitExtension } from './utils.ts';
 
-const DEFAULT_RESOLUTION: ReflectionProbeResolutions = 1024;
+const DEFAULT_RESOLUTION: ReflectionProbeResolutions = 512;
 const DEFAULT_POSITION: THREE.Vector3 = new THREE.Vector3(0, 0, 0);
 const DEFAULT_SIZE: THREE.Vector3 = new THREE.Vector3(4, 4, 4);
 const CUBE_CAMERA_FILTER_LAYERS = [
@@ -779,7 +779,7 @@ export default class ReflectionProbe {
     console.log('uploadEnvImage Done');
   }
 
-  async toJSON(): Promise<ReflectionProbeJSON> {
+  toJSON(): ReflectionProbeJSON {
     console.log(this.customRenderedTime, this.renderedTime);
     // if (
     //   !this.textureUrls ||

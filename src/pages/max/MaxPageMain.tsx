@@ -14,6 +14,7 @@ import {
 import { getVKTX2Loader } from 'src/scripts/loaders/VKTX2Loader.ts';
 import * as THREE from 'VTHREE';
 import Walls from 'src/components/canvas/Walls.tsx';
+import PostProcess from 'src/components/canvas/PostProcess.tsx';
 
 const MaxPageMain = ({
   setScene,
@@ -44,40 +45,11 @@ const MaxPageMain = ({
           setThreeExports(state);
         }}
       >
-        {/*<Environment*/}
-        {/*  preset="warehouse"*/}
-        {/*  background={false}*/}
-        {/*  environmentIntensity={0.5}*/}
-        {/*/>*/}
         <MyEnvironment></MyEnvironment>
-        <ShaderPassComponent />
-        {/*<Walls></Walls>*/}
-        {/* <PostProcess></PostProcess> */}
+        {/*<ShaderPassComponent />*/}
+        <PostProcess/>
         <SelectBox></SelectBox>
-        {/*<ambientLight color={'#ffffff'} intensity={1}/>*/}
         <UnifiedCameraControls />
-        {/*<mesh position={[0, 10, 0]}>*/}
-        {/*  <boxGeometry args={[4, 4, 4]}></boxGeometry>*/}
-        {/*  <meshStandardMaterial*/}
-        {/*    color={'#97efff'}*/}
-        {/*    metalness={0.5}*/}
-        {/*    roughness={0}*/}
-        {/*    vUserData={{*/}
-        {/*      isVMaterial: true*/}
-        {/*    }}*/}
-        {/*  ></meshStandardMaterial>*/}
-        {/*</mesh>*/}
-        {/*<mesh position={[8, 10, 0]}>*/}
-        {/*  <sphereGeometry args={[2, 128, 64]}></sphereGeometry>*/}
-        {/*  <meshStandardMaterial*/}
-        {/*    color={'#97efff'}*/}
-        {/*    metalness={0.5}*/}
-        {/*    roughness={0}*/}
-        {/*    vUserData={{*/}
-        {/*      isVMaterial: true*/}
-        {/*    }}*/}
-        {/*  ></meshStandardMaterial>*/}
-        {/*</mesh>*/}
       </Canvas>
     </div>
   );

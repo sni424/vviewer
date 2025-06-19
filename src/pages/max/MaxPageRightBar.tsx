@@ -9,7 +9,7 @@ import {
 import { Layer } from 'src/Constants.ts';
 import { MaxFile, maxFileAtom, MaxFileType } from 'src/pages/max/maxAtoms.ts';
 import useMaxFileController from 'src/pages/max/UseMaxFileController.ts';
-import { panelTabAtom, threeExportsAtom } from 'src/scripts/atoms.ts';
+import { panelTabAtom, ProbeAtom, threeExportsAtom } from 'src/scripts/atoms.ts';
 import { recompileAsync } from 'src/scripts/atomUtils.ts';
 import * as THREE from 'VTHREE';
 import { gsap } from 'gsap';
@@ -20,6 +20,7 @@ import {
   callLightMapsWithQuality,
   LightMapQuality,
 } from 'src/pages/max/loaders/FreezeLoader.ts';
+import ProbeInfo from 'src/components/ProbeInfo.tsx';
 
 const VIZ4D_LIGHT_MAPS = [
   'c1_C01.exr',
@@ -83,6 +84,7 @@ const MaxPageRightBar = ({
   const [lightMapsLoaded, setLightMapsLoaded] = useState(false);
   const [innerProbes, setInnerProbes] = useState<ReflectionProbe[]>([]);
   const [tab, setTab] = useAtom(panelTabAtom);
+  const [probes, setProbes] = useAtom<ReflectionProbe[]>(ProbeAtom);
 
   function showWall() {
     setTab('wall');
@@ -701,14 +703,31 @@ const MaxPageRightBar = ({
     }
   }
 
-  function createProbe() {
+  async function exportEqui(probe: ReflectionProbe) {
+    probe.applyTextureOnQuad();
+    const canvas = probe.getCanvas();
+    if (!canvas) {
+      alert('Can not find canvas in probe');
+      return;
+    }
+    canvas.toBlob(function (blob) {
+      const url = URL.createObjectURL(blob!);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = probe.getName() + '_canvas-image.png';
+      a.click();
+      URL.revokeObjectURL(url); // 메모리 해제
+    }, 'image/png');
+  }
+
+  async function createProbe() {
     if (threeExports) {
       const { scene, gl, camera } = threeExports;
       // 먼저 기존 프로브 제거
 
-      if (innerProbes.length > 0) {
-        innerProbes.forEach(p => p.removeFromScene());
-        setInnerProbes([]);
+      if (probes.length > 0) {
+        probes.forEach(p => p.removeFromScene());
+        setProbes([]);
       }
 
       const coordsAndSizes: {
@@ -716,62 +735,72 @@ const MaxPageRightBar = ({
         position: { x: number; y: number; z: number };
         size: { x: number; y: number; z: number };
       }[] = [
-        // {
-        //   name: "거실",
-        //   position: { x: -754.938, y: 1189.94, z: 1400.82 },
-        //   size: { x: 4459.44, y: 3020.0, z: 4564.66 },
-        // },
-        // {
-        //   name: "복도1",
-        //   position: { x: -4035.2, y: 0.0, z: -400.591 },
-        //   size: { x: 2160.68, y: 3020.0, z: 1059.1 },
-        // },
-        // {
-        //   name: "욕실1",
-        //   position: { x: -3879.14, y: 0.0, z: -1814.74 },
-        //   size: { x: 2200.0, y: 3020.0, z: 1500.0 },
-        // },
-        // {
-        //   name: "욕실2",
-        //   position: { x: 5212.89, y: 1189.94, z: -586.161 },
-        //   size: { x: 2300.0, y: 3020.0, z: 1500.0 },
-        // },
-        // {
-        //   name: "욕실2 앞",
-        //   position: { x: 3512.89, y: 1189.94, z: -386.161 },
-        //   size: { x: 1000.0, y: 3020.0, z: 1300.0 },
-        // },
         {
-          name: "주방",
+          name: "거실",
+          position: { x: -754.938, y: 1189.94, z: 1400.82 },
+          size: { x: 4459.44, y: 3020.0, z: 4564.66 },
+        },
+        {
+          name: "복도1",
+          position: { x: -4035.2, y: 0.0, z: -400.591 },
+          size: { x: 2160.68, y: 3020.0, z: 1059.1 },
+        },
+        {
+          name: "욕실1",
+          position: { x: -3879.14, y: 0.0, z: -1814.74 },
+          size: { x: 2200.0, y: 3020.0, z: 1500.0 },
+        },
+        {
+          name: "욕실2",
+          position: { x: 5212.89, y: 1189.94, z: -586.161 },
+          size: { x: 2300.0, y: 3020.0, z: 1500.0 },
+        },
+        {
+          name: "욕실2 앞",
+          position: { x: 3512.89, y: 1189.94, z: -386.161 },
+          size: { x: 1000.0, y: 3020.0, z: 1300.0 },
+        },
+        {
+          name: '주방',
           position: { x: -200.52, y: 0.0, z: -2790.591 },
           size: { x: 3165.5, y: 3020.0, z: 3749.49 },
         },
-        // {
-        //   name: "침실1",
-        //   position: { x: 3412.89, y: 1189.94, z: 2023.88 },
-        //   size: { x: 3479.8, y: 3020.0, z: 3349.0 },
-        // },
-        // {
-        //   name: "침실2",
-        //   position: { x: -5005.0, y: 1189.94, z: 2023.88 },
-        //   size: { x: 3500.0, y: 3020.0, z: 3349.0 },
-        // },
-        // {
-        //   name: "침실3",
-        //   position: { x: 2840.92, y: 1189.94, z: -2870.43 },
-        //   size: { x: 2392.0, y: 3020.0, z: 3584.0 },
-        // },
-        // {
-        //   name: "현관",
-        //   position: { x: -5746.3, y: 0.0, z: -1234.74 },
-        //   size: { x: 1158.46, y: 3020.0, z: 2748.96 },
-        // },
+        {
+          name: "침실1",
+          position: { x: 3412.89, y: 1189.94, z: 2023.88 },
+          size: { x: 3479.8, y: 3020.0, z: 3349.0 },
+        },
+        {
+          name: "침실2",
+          position: { x: -5005.0, y: 1189.94, z: 2023.88 },
+          size: { x: 3500.0, y: 3020.0, z: 3349.0 },
+        },
+        {
+          name: "침실3",
+          position: { x: 2840.92, y: 1189.94, z: -2870.43 },
+          size: { x: 2392.0, y: 3020.0, z: 3584.0 },
+        },
+        {
+          name: "현관",
+          position: { x: -5746.3, y: 0.0, z: -1234.74 },
+          size: { x: 1158.46, y: 3020.0, z: 2748.96 },
+        },
       ];
 
-      const probes = coordsAndSizes.map(c => {
-        const probe = new ReflectionProbe(gl, scene, camera, 512);
-        const position = new THREE.Vector3(c.position.x, c.position.y, c.position.z).multiplyScalar(1 / 1000)
-        const scale = new THREE.Vector3(c.size.x, c.size.y, c.size.z).multiplyScalar(1 / 1000);
+      const newProbes = coordsAndSizes.map(c => {
+        const probe = new ReflectionProbe(gl, scene, camera);
+        const json = probe.toJSON();
+        probe.fromJSON(json)
+        const position = new THREE.Vector3(
+          c.position.x,
+          c.position.y,
+          c.position.z,
+        ).multiplyScalar(1 / 1000);
+        const scale = new THREE.Vector3(
+          c.size.x,
+          c.size.y,
+          c.size.z,
+        ).multiplyScalar(1 / 1000);
         position.setY(1.2);
         scale.setY(3.2);
         probe.setName(c.name);
@@ -786,12 +815,14 @@ const MaxPageRightBar = ({
         if (o.type === 'Mesh') {
           const mat = (o as THREE.Mesh).matPhysical;
           // mat.prepareProbe({ probeCount: probes.length, usePmrem: false });
-          mat.apply('probe', { probes });
+          mat.apply('probe', { probes: newProbes });
           // mat.envMap = texture;
           // mat.envMapIntensity = 0.3;
           mat.needsUpdate = true;
         }
       });
+
+      setProbes(newProbes);
 
       // setInnerProbes(probes);
     }
@@ -1094,11 +1125,18 @@ const MaxPageRightBar = ({
             <EnvController />
           </section>
           {threeExports && (
-            <section className="text-sm px-1">
-              <TestControl />
-              <AnisotropyControl></AnisotropyControl>
-              <GeneralPostProcessingControl></GeneralPostProcessingControl>
-            </section>
+            <>
+              <section className="text-sm px-1">
+                <TestControl />
+                <AnisotropyControl></AnisotropyControl>
+                <GeneralPostProcessingControl></GeneralPostProcessingControl>
+              </section>
+              <section className="text-sm px-1">
+                <ProbeInfo/>
+              </section>
+            </>
+
+
           )}
         </div>
       </div>
