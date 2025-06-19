@@ -8,6 +8,7 @@ import VTextureLoader from 'src/scripts/loaders/VTextureLoader.ts';
 import * as THREE from 'VTHREE';
 import ReflectionProbe from 'src/scripts/ReflectionProbe.ts';
 import { Layer } from 'src/Constants.ts';
+import { gsap } from 'gsap';
 
 const MaxFreezeSub = () => {
   const threeExports = useAtomValue(threeExportsAtom);
@@ -19,19 +20,66 @@ const MaxFreezeSub = () => {
   const [statusMessage, setStatusMessage] = useState('시작 전');
   const [objectLoaded, setObjectLoaded] = useState(false);
   const [sceneAdded, setSceneAdded] = useState(false);
+  const [showDP, setShowDP] = useState(true);
+
+  useEffect(() => {
+    if (init && sceneAdded) {
+      const { scene } = threeExports!!;
+      scene.traverse(o => {
+        if (o.type === 'Mesh') {
+          const mat = (o as THREE.Mesh).matPhysical;
+          const layer = mat.vUserData.viz4dLightMap;
+          if (layer && layer.startsWith('dp')) {
+            if (showDP !== o.visible) {
+              gsap.to(
+                { progress: 0 },
+                {
+                  progress: 1,
+                  duration: 2,
+                  onStart() {
+                    mat.apply('meshTransition', {
+                      direction: showDP ? 'fadeIn' : 'fadeOut',
+                    });
+                    o.visible = true;
+                    mat.transparent = true;
+                  },
+                  onUpdate() {
+                    const progressValue = this.targets()[0].progress;
+                    mat.progress = progressValue;
+                  },
+                  onComplete() {
+                    if (mat.transmission > 0) {
+                      mat.transparent = true;
+                    } else {
+                      mat.transparent = false;
+                    }
+                    o.visible = showDP;
+                    mat.remove('meshTransition');
+                  },
+                },
+              );
+            }
+          }
+        }
+      });
+    }
+  }, [showDP]);
+
+  function toggleDP() {
+    if (init && sceneAdded) {
+      setShowDP(pre => !pre);
+    }
+  }
 
   async function loadObjects() {
     if (objectRef.current) {
-
       const paths = objectRef.current.paths;
       const loader = new VROLoader();
       let completed = 0;
 
       const loadedObjects: THREE.Object3D[] = [];
 
-      setStatusMessage(
-        `Object 불러오는 중.. (${completed} / ${paths.length})`,
-      );
+      setStatusMessage(`Object 불러오는 중.. (${completed} / ${paths.length})`);
 
       await Promise.all(
         paths.map(async (path, index) => {
@@ -46,10 +94,10 @@ const MaxFreezeSub = () => {
       );
 
       tempSceneRef.current.add(...loadedObjects);
-      setStatusMessage('라이트맵 불러오는 중..');
-      await loadLightMaps();
       setStatusMessage('불러오기 완료');
       setObjectLoaded(true);
+
+      await loadLightMaps();
 
       console.log('after added to Scene : ', tempSceneRef.current);
     } else {
@@ -67,7 +115,6 @@ const MaxFreezeSub = () => {
     const objects = await callObject();
     console.log('init', objects);
     objectRef.current = objects;
-    await loadLightMaps();
     setInit(true);
   }
 
@@ -259,22 +306,46 @@ const MaxFreezeSub = () => {
   }
 
   async function addToScene() {
-    const {scene} = threeExports!!;
+    const { scene } = threeExports!!;
     scene.add(...tempSceneRef.current.children);
     setSceneAdded(true);
   }
 
-  function renderProbe() {
-    probes.forEach(p => {
+  function hasProbe(material: THREE.Material) {
+    return material.vUserData.probeIds && material.vUserData.probeType;
+  }
+
+  function renderProbe(paramProbes?:ReflectionProbe[]) {
+    const { scene } = threeExports!!;
+    let ps = paramProbes ? paramProbes : probes;
+    ps.forEach(p => {
       p.renderCamera(true);
-    })
+    });
+    const probeApplyInfo = objectRef.current!!.probeApplyInfo;
+
+    const keys = Object.keys(probeApplyInfo);
+
+    scene.traverseAll(o => {
+      if (o.type === 'Mesh') {
+        const mat = (o as THREE.Mesh).matPhysical;
+        if (keys.includes(mat.name)) {
+            const names = probeApplyInfo[mat.name].probeNames;
+            const filtered = ps.filter(p => {
+              return names.includes(p.getName());
+            });
+
+            mat.apply('probe', { probes: filtered });
+            mat.needsUpdate = true;
+        }
+      }
+    });
   }
 
   function applyProbe(paramProbes?: ReflectionProbe[]) {
     let ps = paramProbes ? paramProbes : probes;
 
     if (ps.length > 0) {
-      const {scene} = threeExports!!;
+      const { scene } = threeExports!!;
       const probeApplyInfo = objectRef.current!!.probeApplyInfo;
 
       const keys = Object.keys(probeApplyInfo);
@@ -286,21 +357,28 @@ const MaxFreezeSub = () => {
             if (!mat.vUserData.probeNames) {
               const names = probeApplyInfo[mat.name].probeNames;
               const filtered = ps.filter(p => {
-                return names.includes(p.getName())
+                return names.includes(p.getName());
               });
 
-              mat.apply('probe', {probes: filtered});
+              mat.apply('probe', { probes: filtered });
               mat.needsUpdate = true;
             }
           }
         }
       });
+
+      for (let i = 0; i < 3; i++) {
+        renderProbe(ps);
+      }
+
+      setStatusMessage('완료');
     }
   }
 
   async function oneClick() {
     await loadObjects();
     await addToScene();
+    setStatusMessage('프로브 생성 및 적용 중..');
     await createProbes();
     applyProbe();
   }
@@ -326,9 +404,12 @@ const MaxFreezeSub = () => {
         >
           load Objects
         </button>
-        <button disabled={!objectLoaded || sceneAdded} onClick={addToScene}>View 에 추가</button>
+        <button disabled={!objectLoaded || sceneAdded} onClick={addToScene}>
+          View 에 추가
+        </button>
         <button onClick={createProbes}>프로브 생성</button>
-        <button onClick={renderProbe}>render Probe</button>
+        <button onClick={() => renderProbe()}>render Probe</button>
+        <button onClick={toggleDP}>dp toggle (분류 미완성)</button>
       </div>
     </div>
   );
