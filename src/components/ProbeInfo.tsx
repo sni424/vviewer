@@ -230,30 +230,31 @@ const ProbeInfo = () => {
         const mat = mesh.material as THREE.Material;
         const probeIds = mat.vUserData.probeIds;
         const probeType = mat.vUserData.probeType;
+        const probeNames = mat.vUserData.probeNames;
 
         if (probeIds && probeType) {
-          probeMap.set(mesh.name, {
-            probeIds,
+          probeMap.set(mat.name, {
+            probeNames,
             probeType,
           });
         }
       }
     });
     const object = Object.fromEntries(probeMap);
-    console.log(object);
-    uploadJson('probe_apply.json', object)
-      .then(res => res.json())
-      .then(res => {
-        if (res?.success === true) {
-          alert('업로드 완료');
-        } else {
-          throw res;
-        }
-      })
-      .catch(err => {
-        console.log(err);
-        alert('업로드 실패');
-      });
+    saveJSON( object, 'probe_apply.json')
+  }
+
+  function saveJSON(obj: any, filename = 'data.json') {
+    const json = JSON.stringify(obj, null, 2); // 보기 좋게 들여쓰기 포함
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+
+    URL.revokeObjectURL(url);
   }
 
   function callProbeApplyInfo() {
@@ -331,6 +332,56 @@ const ProbeInfo = () => {
       });
   }
 
+  function loadProbeApplyInfoLocal(isMobile: boolean = false) {
+    if (!isMobile && probes.length === 0) {
+      alert('프로브를 먼저 생성하세요.');
+      return;
+    }
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+
+    input.addEventListener('change', event => {
+      const file = (event.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const result = reader.result as string;
+          const data = JSON.parse(result) as { [key: string]: { probeNames: string[], probeType: 'multi' } };
+          console.log('✅ JSON loaded:', data);
+
+          if (scene) {
+            const keys = Object.keys(data);
+            scene.traverseAll(o => {
+              if (o.type === 'Mesh') {
+                const mat = (o as THREE.Mesh).matPhysical;
+                if (keys.includes(mat.name)) {
+                  if (!mat.vUserData.probeNames) {
+                    const names = data[mat.name].probeNames;
+                    const filtered = probes.filter(p => {
+                      return names.includes(p.getName())
+                    });
+
+                    mat.apply('probe', {probes: filtered});
+                    mat.needsUpdate = true;
+                  }
+                }
+              }
+            });
+          }
+        } catch (e) {
+          console.error('❌ JSON 파싱 오류:', e);
+        }
+      };
+      reader.readAsText(file);
+    });
+
+    input.click(); // 파일 선택창 열기
+
+  }
+
   return (
     <div
       style={{
@@ -404,7 +455,7 @@ const ProbeInfo = () => {
             >
               프로브 적용 정보 업데이트
             </button>
-            <button onClick={callProbeApplyInfo}>
+            <button onClick={loadProbeApplyInfoLocal}>
               프로브 적용 정보 가져오기
             </button>
           </>

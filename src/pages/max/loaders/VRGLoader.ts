@@ -5,7 +5,6 @@ import { MaxFile, MaxFileType } from 'src/pages/max/maxAtoms.ts';
 import Workers from 'src/scripts/workers/Workers';
 import { BufferGeometry } from 'three';
 import * as THREE from 'VTHREE';
-import * as BufferGeometryUtils from 'three/addons/utils/BufferGeometryUtils.js'
 
 class VRGLoader implements MaxLoader<THREE.BufferGeometry> {
   readonly type: MaxFileType = 'geometry';

@@ -1200,7 +1200,6 @@ export const TestControl = () => {
     return null;
   }
   const [test, setTest] = useAtom(testAtom);
-  const [lmIntensityValue, setlmIntensityValue] = useState(1);
   const [materialSetInfo, setMaterialInfo] = useAtom(materialSettingAtom);
   const [hBurn, setHBurn] = useAtom(highlightBurnAtom);
   const [brightness, setBrightness] = useAtom(BrightnessContrastAtom);

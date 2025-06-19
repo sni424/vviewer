@@ -8,13 +8,14 @@ import TestPage from './TestPage';
 import { loadSettings, saveSettings } from './useSettings';
 import ViewerPage from './ViewerPage';
 import MaxPage from 'src/pages/max/MaxPage.tsx';
+import MaxFreezePage from 'src/pages/max/MaxFreezePage.tsx';
 
 const MyRoutes = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
     const checkWidth = () => {
-      if (window.innerWidth < 600) {
+      if (window.innerWidth < 600 && window.location.pathname === '/') {
         navigate('/mobile');
       }
     };
@@ -28,6 +29,7 @@ const MyRoutes = () => {
       <Route path="/test" element={<TestPage />} />
       <Route path="/mobile" element={<MobilePage />} />
       <Route path="/max" element={<MaxPage/>}/>
+      <Route path="/freeze" element={<MaxFreezePage/>}/>
     </Routes>
   );
 };

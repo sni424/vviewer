@@ -168,6 +168,7 @@ export interface VUserData {
   isProbeMesh?: boolean;
   probeId?: string;
   probeIds?: string[];
+  probeNames?: string[];
   probeType?: ProbeTypes;
   probeIntensity?: number;
   probeContrast?: number;
