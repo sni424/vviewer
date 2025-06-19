@@ -482,6 +482,12 @@ const GeneralButtons = () => {
       <button onClick={handleResetSettings}>카메라 세팅 초기화</button>
       <button onClick={recompileAsync}>리컴파일</button>
       <button onClick={downloadSet}>세트 다운로드</button>
+      <button onClick={() => {
+        navigate('/max');
+      }}>맥스 설정</button>
+      <button onClick={() => {
+        navigate('/freeze');
+      }}>맥스 프리뷰</button>
     </section>
   );
 };
