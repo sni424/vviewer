@@ -82,7 +82,6 @@ const MaxPageRightBar = ({
   );
   const [vrLightMapsLoaded, setVrLightMapsLoaded] = useState(false);
   const [lightMapsLoaded, setLightMapsLoaded] = useState(false);
-  const [innerProbes, setInnerProbes] = useState<ReflectionProbe[]>([]);
   const [tab, setTab] = useAtom(panelTabAtom);
   const [probes, setProbes] = useAtom<ReflectionProbe[]>(ProbeAtom);
 
@@ -434,7 +433,7 @@ const MaxPageRightBar = ({
       alert('이미 불러왓슴');
       return;
     }
-    const url = MaxConstants.base + 'lightmaps/';
+    const url = MaxConstants.base + 'lightmaps/final/';
 
     const textures: { [key: string]: THREE.Texture } = Object.fromEntries(
       await Promise.all(
@@ -807,20 +806,21 @@ const MaxPageRightBar = ({
         probe.setCenterAndSize(position, scale);
         probe.getBoxMesh().visible = false;
         probe.setShowControls(false);
+        probe.setShowProbe(false);
         probe.addToScene(true);
         return probe;
       });
 
-      scene.traverseAll(o => {
-        if (o.type === 'Mesh') {
-          const mat = (o as THREE.Mesh).matPhysical;
-          // mat.prepareProbe({ probeCount: probes.length, usePmrem: false });
-          mat.apply('probe', { probes: newProbes });
-          // mat.envMap = texture;
-          // mat.envMapIntensity = 0.3;
-          mat.needsUpdate = true;
-        }
-      });
+      // scene.traverseAll(o => {
+      //   if (o.type === 'Mesh') {
+      //     const mat = (o as THREE.Mesh).matPhysical;
+      //     // mat.prepareProbe({ probeCount: probes.length, usePmrem: false });
+      //     mat.apply('probe', { probes: newProbes });
+      //     // mat.envMap = texture;
+      //     // mat.envMapIntensity = 0.3;
+      //     mat.needsUpdate = true;
+      //   }
+      // });
 
       setProbes(newProbes);
 
@@ -847,6 +847,8 @@ const MaxPageRightBar = ({
       objsToRemove.forEach(obj => {
         obj.removeFromParent();
       });
+
+      setProbes([]);
     }
   }
 
@@ -1129,14 +1131,11 @@ const MaxPageRightBar = ({
               <section className="text-sm px-1">
                 <TestControl />
                 <AnisotropyControl></AnisotropyControl>
-                <GeneralPostProcessingControl></GeneralPostProcessingControl>
               </section>
               <section className="text-sm px-1">
                 <ProbeInfo/>
               </section>
             </>
-
-
           )}
         </div>
       </div>

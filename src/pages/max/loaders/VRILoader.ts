@@ -13,7 +13,11 @@ class VRILoader implements MaxLoader<THREE.Texture> {
   private loader: VKTX2Loader = getVKTX2Loader();
   serverURL: string = MaxConstants.IMAGE_PATH;
 
-  constructor() {}
+  constructor(useLowResolution?: boolean) {
+    if (useLowResolution) {
+      this.serverURL = this.serverURL + "low/";
+    }
+  }
 
   async load(maxFile: MaxFile): Promise<THREE.Texture> {
     const { originalFile, loaded, resultData, type } = maxFile;

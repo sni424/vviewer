@@ -45,6 +45,13 @@ class VROLoader implements MaxLoader<THREE.Object3D> {
           roughness: 1,
           metalness: 0,
         });
+
+        if (object.name.includes('욕실1_샤워기')) {
+          material.metalness = 1;
+          material.roughness = 0.2;
+          material.color.set(1, 1, 1);
+        }
+
         material.vUserData.isMultiMaterial = true;
         material.vUserData.isVMaterial = true;
         if (object.material) {

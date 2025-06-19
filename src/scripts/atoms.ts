@@ -604,7 +604,7 @@ export const materialSettingAtom = atom<{
 }>({
   lightMapIntensity: 1,
   aoMapIntensity: 0,
-  lightMapContrast: 1,
+  lightMapContrast: 1.25,
 });
 
 export const pathfindingAtom = atom<{
@@ -632,7 +632,7 @@ export const testAtom = atom<{ useSkyBox: boolean; showSelectBox: boolean }>({
 
 export const highlightBurnAtom = atom<{ use: boolean; value: number }>({
   use: true,
-  value: 0.001,
+  value: 0.600,
 });
 
 export const BrightnessContrastAtom = atom<{
@@ -640,7 +640,7 @@ export const BrightnessContrastAtom = atom<{
   brightnessValue: number;
   contrastValue: number;
 }>({
-  use: true,
+  use: false,
   brightnessValue: 1.91,
   contrastValue: 1.14,
 });
@@ -672,7 +672,7 @@ export const saturationAtom = atom<{
   uSaturation: number;
 }>({
   use: false,
-  uSaturation: 0,
+  uSaturation: 0.3,
 });
 
 export const skyBoxAtom = atom<SkyBoxState>({

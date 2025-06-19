@@ -1200,7 +1200,6 @@ export const TestControl = () => {
     return null;
   }
   const [test, setTest] = useAtom(testAtom);
-  const [lmIntensityValue, setlmIntensityValue] = useState(1);
   const [materialSetInfo, setMaterialInfo] = useAtom(materialSettingAtom);
   const [hBurn, setHBurn] = useAtom(highlightBurnAtom);
   const [brightness, setBrightness] = useAtom(BrightnessContrastAtom);
@@ -1440,24 +1439,24 @@ export const TestControl = () => {
               }}
             />
           </div>
-          {/*{sharpen.isSharpen && (*/}
-          {/*  <div className="flex gap-x-1">*/}
-          {/*    <input*/}
-          {/*      type="range"*/}
-          {/*      min={0}*/}
-          {/*      max={2}*/}
-          {/*      step={0.01}*/}
-          {/*      value={sharpen.strength}*/}
-          {/*      onChange={e => {*/}
-          {/*        setSharpen(pre => ({*/}
-          {/*          ...pre,*/}
-          {/*          strength: parseFloat(e.target.value),*/}
-          {/*        }));*/}
-          {/*      }}*/}
-          {/*    ></input>*/}
-          {/*    <span>{sharpen.strength}</span>*/}
-          {/*  </div>*/}
-          {/*)}*/}
+          {sharpen.isSharpen && (
+            <div className="flex gap-x-1">
+              <input
+                type="range"
+                min={0}
+                max={2}
+                step={0.01}
+                value={sharpen.strength}
+                onChange={e => {
+                  setSharpen(pre => ({
+                    ...pre,
+                    strength: parseFloat(e.target.value),
+                  }));
+                }}
+              ></input>
+              <span>{sharpen.strength}</span>
+            </div>
+          )}
         </div>
         {/* <strong>sharpen</strong>
         <div>

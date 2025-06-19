@@ -492,6 +492,7 @@ export default class ReflectionProbe {
     }
 
     const transmissionChanges: { [key: string]: number } = {};
+    const originalTransparency: { [key: string]: boolean } = {};
 
     scene.traverse(o => {
       if (o.type === 'Mesh') {
@@ -499,6 +500,7 @@ export default class ReflectionProbe {
         if (mat.type === 'MeshPhysicalMaterial' && mat.transmission > 0) {
           // Transmission > 0 일 때 opacity => 0.2 로 설정 후 촬영
           transmissionChanges[mat.uuid] = mat.transmission;
+          originalTransparency[mat.uuid] = mat.transparent;
           mat.transparent = true;
           mat.opacity = 0.2;
           mat.transmission = 0;
@@ -524,6 +526,7 @@ export default class ReflectionProbe {
       localClippingEnabled: isLocalClippingEnabled,
       originalClippedPlanes,
       transmissionChanges,
+      originalTransparency,
     };
   }
 
@@ -532,11 +535,13 @@ export default class ReflectionProbe {
     localClippingEnabled,
     originalClippedPlanes,
     transmissionChanges,
+    originalTransparency,
   }: {
     filteredObjects: THREE.Object3D[];
     localClippingEnabled: boolean;
     originalClippedPlanes?: THREE.Plane[];
     transmissionChanges: { [key: string]: number };
+    originalTransparency: { [key: string]: boolean };
   }) {
     filteredObjects.forEach(child => {
       child.visible = true;
@@ -555,7 +560,7 @@ export default class ReflectionProbe {
         const mat = (o as THREE.Mesh).material as THREE.MeshPhysicalMaterial;
         if (mat.type === 'MeshPhysicalMaterial' && keys.includes(mat.uuid)) {
           mat.transmission = transmissionChanges[mat.uuid];
-          mat.transparent = false;
+          mat.transparent = originalTransparency[mat.uuid] || false;
           mat.opacity = 1;
         }
       }

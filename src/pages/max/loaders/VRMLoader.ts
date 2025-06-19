@@ -116,6 +116,9 @@ class VRMLoader implements MaxLoader<THREE.MeshPhysicalMaterial> {
 
       const material = new THREE.MeshPhysicalMaterial(physicalParams);
       material.normalScale.set(0, 0);
+      if (material.transmission > 0) {
+        material.transparent = true;
+      }
 
       material.vUserData.originalColor = material.color.getHexString();
       material.vUserData.originalMetalness = material.metalness;

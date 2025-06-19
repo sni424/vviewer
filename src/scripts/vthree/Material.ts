@@ -518,9 +518,11 @@ function _applyProbeReflectionProbe(
 
   // basic info setup
   const targetProbeIds = probes.map(p => p.getId());
+  const targetProbeNames = probes.map(p => p.getName());
 
   this.vUserData.probeType = 'multi';
   this.vUserData.probeIds = targetProbeIds;
+  this.vUserData.probeNames = targetProbeNames;
 
   const useWall = walls && walls.length > 0;
 

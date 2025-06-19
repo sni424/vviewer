@@ -80,6 +80,7 @@ const mainShader = {
     // 이유: 프래그먼트 셰이더 진입점
     // 결과: 샤프닝 및 블렌딩 적용
     void main() {
+      
       vec4 color0 = texture2D(tDiffuse, vUv); // sRGB 입력
            vec4 color1 = vec4(0.0);
       if (strength > 0.0 && opacity > 0.0 && isSharpen) {
@@ -90,6 +91,8 @@ const mainShader = {
    
       }
       gl_FragColor = linearToOutputTexel2( color0 );
+      // gl_FragColor = color0;
+      
     }
   `,
 };
