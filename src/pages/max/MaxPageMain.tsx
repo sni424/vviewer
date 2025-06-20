@@ -43,6 +43,9 @@ const MaxPageMain = ({
           if (useMouseEvent)
             mouse?.handleMouseUp(e);
         }}
+        camera={{
+          position: new THREE.Vector3(-0.3, 1.15, -0.4),
+        }}
         style={{
           width: '100%',
           height: '100%',

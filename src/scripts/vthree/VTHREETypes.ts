@@ -283,7 +283,7 @@ export const DEFAULT_MATERIAL_SHADER: MATERIAL_SHADER = {
   LIGHTMAP_CONTRAST: {
     type: 'LIGHTMAP_CONTRAST',
     uniforms: {
-      uLightMapContrast: { value: 1 },
+      uLightMapContrast: { value: 1.2 },
       uGlobalLightMapContrast: { value: 1 },
     },
     defines: {},
@@ -309,7 +309,7 @@ export const DEFAULT_MATERIAL_SHADER: MATERIAL_SHADER = {
     type: 'HIGHLIGHT_BURN',
     uniforms: {
       uUseHighlightBurn: { value: true },
-      highlightBurnFactor: { value: 0.001 },
+      highlightBurnFactor: { value: 0.4 },
     },
     defines: {},
   },
@@ -325,8 +325,8 @@ export const DEFAULT_MATERIAL_SHADER: MATERIAL_SHADER = {
   SATURATION: {
     type: 'SATURATION',
     uniforms: {
-      uUseSaturation: { value: false },
-      uSaturation: { value: 0 },
+      uUseSaturation: { value: true },
+      uSaturation: { value: 0.2 },
     },
     defines: {},
   },

@@ -275,6 +275,12 @@ const MaxFreezeSub = () => {
               if (key) {
                 const mat = mesh.matPhysical;
                 mat.lightMap = textures[key];
+                mat.lightMapIntensity = 2.0;
+                // mat.apply('lightmapContra  st', 1.2);
+                // mat.apply('saturation', {
+                //   uUseSaturation: true,
+                //   uSaturation: 0.2,
+                // });
                 if (!mat.lightMap.flipY) {
                   mat.lightMap.flipY = true;
                 }
@@ -292,6 +298,12 @@ const MaxFreezeSub = () => {
               if (key) {
                 const mat = mesh.matPhysical;
                 mat.lightMap = textures[key];
+                mat.lightMapIntensity = 2.0;
+                // mat.apply('lightmapContrast', 1.2);
+                // mat.apply('saturation', {
+                //   uUseSaturation: true,
+                //   uSaturation: 0.2,
+                // });
                 if (!mat.lightMap.flipY) {
                   mat.lightMap.flipY = true;
                 }
