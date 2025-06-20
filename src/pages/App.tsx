@@ -19,17 +19,17 @@ const MyRoutes = () => {
         navigate('/mobile');
       }
     };
-    checkWidth();
+    // checkWidth();
   }, []);
 
   return (
     <Routes>
-      <Route path="/" element={<ViewerPage />} />
+      <Route path="/viewer" element={<ViewerPage />} />
       {/* <Route path="/upload" element={<UploadPage />} /> */}
       <Route path="/test" element={<TestPage />} />
       <Route path="/mobile" element={<MobilePage />} />
       <Route path="/max" element={<MaxPage/>}/>
-      <Route path="/freeze" element={<MaxFreezePage/>}/>
+      <Route path="/" element={<MaxFreezePage/>}/>
     </Routes>
   );
 };
