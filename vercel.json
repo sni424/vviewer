@@ -1,0 +1,7 @@
+{
+  "ignoreCommand": "git branch | grep -q dev || exit 1",
+  "routes": [{ "src": "/[^.]+", "dest": "/", "status": 200 }],
+  "buildCommand": "vite build",
+  "devCommand": "vite",
+  "framework": "vite"
+}
