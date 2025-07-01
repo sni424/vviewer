@@ -1,6 +1,7 @@
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import React, {
   Dispatch,
+  MouseEvent,
   SetStateAction,
   useEffect,
   useRef,
@@ -241,7 +242,7 @@ const ProbeInfo = () => {
       }
     });
     const object = Object.fromEntries(probeMap);
-    saveJSON( object, 'probe_apply.json')
+    saveJSON(object, 'probe_apply.json');
   }
 
   function saveJSON(obj: any, filename = 'data.json') {
@@ -332,7 +333,7 @@ const ProbeInfo = () => {
       });
   }
 
-  function loadProbeApplyInfoLocal(isMobile: boolean = false) {
+  function loadProbeApplyInfoLocal(event: MouseEvent, isMobile?: boolean) {
     if (!isMobile && probes.length === 0) {
       alert('프로브를 먼저 생성하세요.');
       return;
@@ -349,7 +350,9 @@ const ProbeInfo = () => {
       reader.onload = () => {
         try {
           const result = reader.result as string;
-          const data = JSON.parse(result) as { [key: string]: { probeNames: string[], probeType: 'multi' } };
+          const data = JSON.parse(result) as {
+            [key: string]: { probeNames: string[]; probeType: 'multi' };
+          };
           console.log('✅ JSON loaded:', data);
 
           if (scene) {
@@ -361,10 +364,10 @@ const ProbeInfo = () => {
                   if (!mat.vUserData.probeNames) {
                     const names = data[mat.name].probeNames;
                     const filtered = probes.filter(p => {
-                      return names.includes(p.getName())
+                      return names.includes(p.getName());
                     });
 
-                    mat.apply('probe', {probes: filtered});
+                    mat.apply('probe', { probes: filtered });
                     mat.needsUpdate = true;
                   }
                 }
@@ -379,7 +382,6 @@ const ProbeInfo = () => {
     });
 
     input.click(); // 파일 선택창 열기
-
   }
 
   return (
@@ -458,6 +460,7 @@ const ProbeInfo = () => {
             <button onClick={loadProbeApplyInfoLocal}>
               프로브 적용 정보 가져오기
             </button>
+            <button onClick={callProbeApplyInfo}>프로브 정보 적용하기</button>
           </>
         )}
       </section>
