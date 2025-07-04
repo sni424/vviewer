@@ -13,6 +13,7 @@ import { ENV, Layer } from '../Constants';
 import {
   FileInfo,
   MoveActionOptions,
+  Point2D,
   View,
   WallPoint,
   WallPointView,
@@ -1751,3 +1752,185 @@ import { VUserData } from './vthree/VTHREETypes.ts';
 export function cn(...inputs: ClassValue[]): string {
   return twMerge(clsx(...inputs));
 }
+
+//박스의 최대 최소값 구하기기
+const getBoundingBox = (
+  polygon: Point2D[],
+): {
+  minX: number;
+  maxX: number;
+  minY: number;
+  maxY: number;
+} => {
+  const xs = polygon.map(p => p[0]);
+  const ys = polygon.map(p => p[1]);
+
+  return {
+    minX: Math.min(...xs),
+    maxX: Math.max(...xs),
+    minY: Math.min(...ys),
+    maxY: Math.max(...ys),
+  };
+};
+
+// 포인트가 폴리곤 내부에 있는지 확인하는 함수
+const isPointInPolygon = (point: Point2D, polygon: Point2D[]): boolean => {
+  // 포인트의 x, y 좌표를 추출
+  const x = point[0],
+    y = point[1];
+
+  // 포인트가 폴리곤 내부에 있는지 여부를 추적 (초기값은 false)
+  let inside = false;
+
+  // 폴리곤의 모든 변을 순회
+  // i는 현재 정점, j는 이전 정점 (마지막 정점과 첫 번째 정점을 연결하기 위해 j 사용)
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    // 현재 정점(i)의 x, z 좌표
+    const xi = polygon[i][0],
+      yi = polygon[i][1];
+    // 이전 정점(j)의 x, z 좌표
+    const xj = polygon[j][0],
+      yj = polygon[j][1];
+
+    // Ray Casting 알고리즘의 교차 조건 확인
+    // 1. yi와 yj가 y를 기준으로 서로 다른 방향에 있는지 확인 (yi > y !== yj > y)
+    // 2. 포인트의 x 좌표가 변의 x 범위 내에 있는지 확인
+    const intersect =
+      yi > y !== yj > y && // y 좌표가 변의 y 범위 사이에 있는지
+      x < ((xj - xi) * (y - yi)) / (yj - yi) + xi; // x 좌표가 변의 방정식 왼쪽에 있는지
+
+    // 교차가 발생하면 inside 값을 토글 (true ↔ false)
+    if (intersect) inside = !inside;
+  }
+
+  // 최종적으로 inside 값 반환 (true면 내부, false면 외부)
+  return inside;
+};
+
+//그리드를 깔아서 포인트를 일정하게 폴리곤안에 찍는 함수
+export const generateGridPointsInsidePolygon = (
+  polygon: Point2D[],
+): Point2D[] => {
+  const points: Point2D[] = [];
+  const { minX, maxX, minY, maxY } = getBoundingBox(polygon);
+
+  for (
+    let x = minX;
+    x <= maxX;
+    x += maxX === minX || maxX - minX > 0.1 ? 0.1 : maxX - minX / 2
+  ) {
+    for (
+      let y = minY;
+      y <= maxY;
+      y += maxY === minY || maxY - minY > 0.1 ? 0.1 : maxY - minY / 2
+    ) {
+      const point: Point2D = [x, y];
+      if (isPointInPolygon(point, polygon)) {
+        points.push(point); // 다각형 내부 포인트만 추가
+      }
+    }
+  }
+  return points;
+};
+
+export const getContourSegments2D = (
+  mesh: THREE.Mesh,
+): [number, number][][] => {
+  const geometry = mesh.geometry as THREE.BufferGeometry;
+  const edges = new THREE.EdgesGeometry(geometry);
+  const posAttr = edges.attributes.position;
+
+  // 선분 배열 생성 (XZ 평면 기준)
+  const segments: [number, number][][] = [];
+
+  // 2개씩 짝을 이루어 선분 생성
+  for (let i = 0; i < posAttr.count; i += 2) {
+    const start: [number, number] = [posAttr.getX(i), posAttr.getZ(i)];
+    const end: [number, number] = [posAttr.getX(i + 1), posAttr.getZ(i + 1)];
+    segments.push([start, end]);
+  }
+
+  return segments;
+};
+
+export const getContourPolygon2D = (mesh: THREE.Mesh): [number, number][] => {
+  const segments = getContourSegments2D(mesh);
+  if (segments.length === 0) return [];
+
+  // 연결된 정점 순서로 정렬
+  const polygon: [number, number][] = [];
+  const visited = new Set<number>();
+
+  // 첫 번째 선분의 시작점과 끝점 추가
+  polygon.push(segments[0][0]);
+  polygon.push(segments[0][1]);
+  visited.add(0);
+
+  let currentPoint = segments[0][1];
+  const distance = 0.0001;
+  // 남은 선분들 연결
+  while (visited.size < segments.length) {
+    let found = false;
+
+    for (let i = 0; i < segments.length; i++) {
+      if (visited.has(i)) continue;
+
+      const [start, end] = segments[i];
+
+      // 시작점과 현재 점이 같은 경우
+      if (
+        Math.abs(start[0] - currentPoint[0]) < distance &&
+        Math.abs(start[1] - currentPoint[1]) < distance
+      ) {
+        polygon.push(end);
+        currentPoint = end;
+        visited.add(i);
+        found = true;
+        break;
+      }
+
+      // 끝점과 현재 점이 같은 경우
+      if (
+        Math.abs(end[0] - currentPoint[0]) < distance &&
+        Math.abs(end[1] - currentPoint[1]) < distance
+      ) {
+        polygon.push(start);
+        currentPoint = start;
+        visited.add(i);
+        found = true;
+        break;
+      }
+    }
+
+    // 연결된 선분을 찾지 못했다면 루프 종료
+    if (!found) break;
+  }
+
+  return polygon;
+};
+
+export const meshInsidePoint = (
+  polygon: Point2D[],
+  min: THREE.Vector3,
+  max: THREE.Vector3,
+): Point2D[] => {
+  const points: Point2D[] = [];
+
+  for (
+    let x = min.x;
+    x <= max.x;
+    x += max.x === min.x || max.x - min.x > 0.1 ? 0.1 : (max.x - min.x) / 2
+  ) {
+    for (
+      let y = min.z;
+      y <= max.z;
+      y += max.z === min.z || max.z - min.z > 0.1 ? 0.1 : (max.y - min.y) / 2
+    ) {
+      const point: Point2D = [x, y];
+      if (isPointInPolygon(point, polygon)) {
+        points.push(point); // 다각형 내부 포인트만 추가
+      }
+    }
+  }
+  return points;
+};

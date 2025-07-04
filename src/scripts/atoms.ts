@@ -521,6 +521,7 @@ export type newRoom = {
   index: string;
   creating?: boolean;
   visible: boolean;
+  inCludeMesh: string[];
 };
 
 export type newRoomCreateOption = {
@@ -632,7 +633,7 @@ export const testAtom = atom<{ useSkyBox: boolean; showSelectBox: boolean }>({
 
 export const highlightBurnAtom = atom<{ use: boolean; value: number }>({
   use: true,
-  value: 0.600,
+  value: 0.6,
 });
 
 export const BrightnessContrastAtom = atom<{

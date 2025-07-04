@@ -1,5 +1,6 @@
 // WorkerPool.ts
 
+import { MeshInfoType, occlusionType, Point2D, Walls } from 'src/types';
 import { THREE } from 'VTHREE';
 import {
   WorkerTaskBitmapToArrayBuffer,
@@ -47,13 +48,50 @@ type TaskGeometryDeserialize = WorkerTaskGeometryDeserialize & {
   reject: (err: any) => void;
 };
 
+type TaskExteriorMeshes = {
+  id: number;
+  action: 'processExterior';
+  data: {
+    wallPoints: Point2D[];
+    meshInfoArray: MeshInfoType[];
+    meshArray: string[];
+  };
+  resolve: (value: number[]) => void;
+  reject: (err: any) => void;
+};
+
+type TaskNavPoint = {
+  id: number;
+  action: 'processNav';
+  data: {
+    navPointArray: Point2D[];
+    meshInfoArray: MeshInfoType[];
+    wallData: Walls;
+  };
+  resolve: (value: [{ navPoint: Point2D; dpName: string[] | [] }]) => void;
+  reject: (err: any) => void;
+};
+
+type TaskFilterNav = {
+  id: number;
+  action: 'processFilterNav';
+  data: {
+    occlusionArray: occlusionType[];
+  };
+  resolve: (value: occlusionType[]) => void;
+  reject: (err: any) => void;
+};
+
 type Task =
   | TaskFetch
   | TaskExr
   | TaskBitmapToArrayBuffer
   | TaskCompress
   | TaskDecompress
-  | TaskGeometryDeserialize;
+  | TaskGeometryDeserialize
+  | TaskNavPoint
+  | TaskFilterNav
+  | TaskExteriorMeshes;
 
 type TaskReturn<T extends { resolve: (...args: any[]) => void }> = Parameters<
   T['resolve']
@@ -115,6 +153,62 @@ export default class Workers {
     return this.instance._fetch(url, inflate);
   }
 
+  public static async processExteriorMeshes(
+    wallPoints: Point2D[],
+    meshInfoArray: MeshInfoType[],
+    meshArray: string[],
+    parts: number = navigator.hardwareConcurrency,
+  ): Promise<number[]> {
+    const total = meshInfoArray.length;
+
+    const promises = Array.from({ length: parts }, (_, part) => {
+      const start = Math.floor((part * total) / parts);
+      const end = Math.floor(((part + 1) * total) / parts);
+      const batch = meshInfoArray.slice(start, end);
+
+      return this.instance._processExteriorMeshes(batch, wallPoints, meshArray);
+    });
+
+    const allResults = await Promise.all(promises);
+    return allResults.flat();
+  }
+
+  public static async processNavPoints(
+    navPoints: Point2D[],
+    meshInfoArray: MeshInfoType[],
+    wallData: Walls,
+    parts: number = navigator.hardwareConcurrency,
+  ): Promise<{ navPoint: [number, number]; dpName: string[] }[]> {
+    const total = navPoints.length;
+
+    const promises = Array.from({ length: parts }, (_, part) => {
+      const start = Math.floor((part * total) / parts);
+      const end = Math.floor(((part + 1) * total) / parts);
+      const batch = navPoints.slice(start, end);
+      return this.instance._processNavPoint(batch, meshInfoArray, wallData);
+    });
+
+    const allResults = await Promise.all(promises);
+    return allResults.flat();
+  }
+
+  public static async filterNavArray(
+    occlusionArray: occlusionType[],
+    parts: number = navigator.hardwareConcurrency,
+  ): Promise<{ navPoint: [number, number]; dpName: string[] }[]> {
+    const total = occlusionArray.length;
+
+    const promises = Array.from({ length: parts }, (_, part) => {
+      const start = Math.floor((part * total) / parts);
+      const end = Math.floor(((part + 1) * total) / parts);
+      const batch = occlusionArray.slice(start, end);
+      return this.instance._processFilterNavArray(batch);
+    });
+
+    const allResults = await Promise.all(promises);
+    return allResults.flat();
+  }
+
   // trasnfer이면 worker로 넘겨버려서 앞으로 buffer을 사용할 수 없음
   public static async compress(
     buffer: ArrayBuffer,
@@ -143,6 +237,76 @@ export default class Workers {
     } else {
       throw new Error('Invalid argument');
     }
+  }
+
+  private async _processExteriorMeshes(
+    meshInfoArray: MeshInfoType[],
+    wallPoints: Point2D[],
+    meshArray: string[],
+  ): Promise<number[]> {
+    const id = this.taskId++;
+    const prom = new Promise<number[]>((resolve, reject) => {
+      const task: TaskExteriorMeshes = {
+        id,
+        action: 'processExterior',
+        data: { meshInfoArray, wallPoints, meshArray },
+        resolve,
+        reject,
+      };
+      this.taskMap.set(id, task);
+      this.enqueue(task);
+    });
+    return prom.then(res => {
+      return res;
+    });
+  }
+  private async _processNavPoint(
+    navPointArray: Point2D[],
+    meshInfoArray: MeshInfoType[],
+    wallData: Walls,
+  ): Promise<{ navPoint: [number, number]; dpName: string[] }[]> {
+    const id = this.taskId++;
+    const prom = new Promise<
+      [
+        {
+          navPoint: [number, number];
+          dpName: string[] | [];
+        },
+      ]
+    >((resolve, reject) => {
+      const task: TaskNavPoint = {
+        id,
+        action: 'processNav',
+        data: { navPointArray, meshInfoArray, wallData },
+        resolve,
+        reject,
+      };
+      this.taskMap.set(id, task);
+      this.enqueue(task);
+    });
+    return prom.then(res => {
+      return res;
+    });
+  }
+
+  private async _processFilterNavArray(
+    occlusionArray: occlusionType[],
+  ): Promise<occlusionType[]> {
+    const id = this.taskId++;
+    const prom = new Promise<occlusionType[]>((resolve, reject) => {
+      const task: TaskFilterNav = {
+        id,
+        action: 'processFilterNav',
+        data: { occlusionArray },
+        resolve,
+        reject,
+      };
+      this.taskMap.set(id, task);
+      this.enqueue(task);
+    });
+    return prom.then(res => {
+      return res;
+    });
   }
 
   public static async bitmapToArrayBuffer(bitmap: ImageBitmap) {
@@ -398,6 +562,24 @@ export default class Workers {
               };
           error?: any;
         }
+      | {
+          id: number;
+          action: 'processNav';
+          data: { navPoint: Point2D; dpName: string[] };
+          error?: any;
+        }
+      | {
+          id: number;
+          action: 'processFilterNav';
+          data: { occlusionArray: occlusionType[] };
+          error?: any;
+        }
+      | {
+          id: number;
+          action: 'processExterior';
+          data: number[];
+          error?: any;
+        }
     >,
   ) {
     const { id, action, data, error } = e.data;
@@ -458,8 +640,14 @@ export default class Workers {
           const { positions, normals, uvs, indices } = data;
 
           const geometry = new THREE.BufferGeometry();
-          geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-          geometry.setAttribute('normal', new THREE.BufferAttribute(normals, 3));
+          geometry.setAttribute(
+            'position',
+            new THREE.BufferAttribute(positions, 3),
+          );
+          geometry.setAttribute(
+            'normal',
+            new THREE.BufferAttribute(normals, 3),
+          );
           uvs.forEach((uv, i) => {
             const name = i === 0 ? 'uv' : `uv${i}`;
             geometry.setAttribute(name, new THREE.BufferAttribute(uv, 2));
@@ -470,7 +658,10 @@ export default class Workers {
           geometry.computeBoundingSphere();
 
           try {
-            if (geometry.getAttribute('uv') && geometry.getAttribute('normal')) {
+            if (
+              geometry.getAttribute('uv') &&
+              geometry.getAttribute('normal')
+            ) {
               geometry.computeTangents();
             }
           } catch (e) {
@@ -483,6 +674,12 @@ export default class Workers {
           debugger;
           throw new Error(`Unknown format: ${format}`);
         }
+      } else if (action === 'processNav') {
+        (task as TaskNavPoint).resolve(data as any);
+      } else if (action === 'processFilterNav') {
+        (task as TaskFilterNav).resolve(data as any);
+      } else if (action === 'processExterior') {
+        (task as TaskExteriorMeshes).resolve(data as number[]);
       } else {
         throw new Error(`Unknown action: ${action}`);
       }
