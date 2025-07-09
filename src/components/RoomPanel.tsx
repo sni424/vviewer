@@ -1,7 +1,7 @@
 import { useAtom } from 'jotai';
 import { useEffect, useMemo, useState } from 'react';
 import { THREE } from 'VTHREE';
-import { ENV, newRoomColorString } from '../Constants';
+import { newRoomColorString } from '../Constants';
 
 import VGLTFLoader from 'src/scripts/loaders/VGLTFLoader';
 import {
@@ -10,6 +10,7 @@ import {
   meshInsidePoint,
 } from 'src/scripts/utils';
 
+import { MaxConstants } from 'src/pages/max/loaders/MaxConstants';
 import Workers from 'src/scripts/workers/Workers';
 import {
   IncludeRoomType,
@@ -125,7 +126,7 @@ function RoomSetting() {
   }
 
   async function loadNav(): Promise<any> {
-    const url = `${ENV.base}nav2.glb`;
+    const url = `${MaxConstants.base}viewer/floor/59b_floor.glb`;
     const loader = VGLTFLoader.instance;
     if (!loader) {
       throw new Error('VGLTFLoader is not initialized');

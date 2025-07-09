@@ -462,7 +462,6 @@ self.onmessage = async (e: MessageEvent<WorkerTask>) => {
     };
 
     if (url && !arrayBuffer) {
-      console.log('url', url);
       arrayBuffer = await fetchArrayBuffer(url);
       const result = loadSmartGeometry(arrayBuffer);
       if (result.format === 'VXQ1') {

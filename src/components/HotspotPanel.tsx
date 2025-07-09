@@ -15,7 +15,7 @@ const uploadHotspot = async () => {
   const hotspots = getAtomValue(hotspotAtom);
 
   if (hotspots) {
-    downloadJsonFile(hotspots, 'rooms-data.json');
+    downloadJsonFile(hotspots, 'hotSpot-data.json');
   } else {
     console.error('no rooms');
   }

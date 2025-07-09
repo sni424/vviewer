@@ -1980,7 +1980,6 @@ export function applyLightMap(
   lightMapApplies: any,
   mesh: THREE.Mesh,
 ) {
-  console.log('lightMapApplies', lightMapApplies);
   const keys = Object.keys(lightMapApplies);
 
   // 이미 넣었으면 패스
