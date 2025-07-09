@@ -1,26 +1,26 @@
+import { gsap } from 'gsap';
 import { useAtom, useAtomValue } from 'jotai';
 import { Dispatch, SetStateAction, useEffect, useRef, useState } from 'react';
 import { EnvController } from 'src/components/mobile/MobileControlPanel.tsx';
-import {
-  AnisotropyControl,
-  GeneralPostProcessingControl,
-  TestControl,
-} from 'src/components/SceneInfo';
+import ProbeInfo from 'src/components/ProbeInfo.tsx';
+import { AnisotropyControl, TestControl } from 'src/components/SceneInfo';
 import { Layer } from 'src/Constants.ts';
-import { MaxFile, maxFileAtom, MaxFileType } from 'src/pages/max/maxAtoms.ts';
-import useMaxFileController from 'src/pages/max/UseMaxFileController.ts';
-import { panelTabAtom, ProbeAtom, threeExportsAtom } from 'src/scripts/atoms.ts';
-import { recompileAsync } from 'src/scripts/atomUtils.ts';
-import * as THREE from 'VTHREE';
-import { gsap } from 'gsap';
-import { MaxConstants } from 'src/pages/max/loaders/MaxConstants.ts';
-import VTextureLoader from 'src/scripts/loaders/VTextureLoader.ts';
-import ReflectionProbe from 'src/scripts/ReflectionProbe.ts';
 import {
   callLightMapsWithQuality,
   LightMapQuality,
 } from 'src/pages/max/loaders/FreezeLoader.ts';
-import ProbeInfo from 'src/components/ProbeInfo.tsx';
+import { MaxConstants } from 'src/pages/max/loaders/MaxConstants.ts';
+import { MaxFile, maxFileAtom, MaxFileType } from 'src/pages/max/maxAtoms.ts';
+import useMaxFileController from 'src/pages/max/UseMaxFileController.ts';
+import {
+  panelTabAtom,
+  ProbeAtom,
+  threeExportsAtom,
+} from 'src/scripts/atoms.ts';
+import { recompileAsync } from 'src/scripts/atomUtils.ts';
+import VTextureLoader from 'src/scripts/loaders/VTextureLoader.ts';
+import ReflectionProbe from 'src/scripts/ReflectionProbe.ts';
+import * as THREE from 'VTHREE';
 
 const VIZ4D_LIGHT_MAPS = [
   'c1_C01.exr',
@@ -194,6 +194,7 @@ const MaxPageRightBar = ({
 
   function addAll() {
     if (scene) {
+      console.log('scene', scene);
       scene.children.forEach(c => {
         c.removeFromParent();
       });
@@ -735,27 +736,27 @@ const MaxPageRightBar = ({
         size: { x: number; y: number; z: number };
       }[] = [
         {
-          name: "거실",
+          name: '거실',
           position: { x: -754.938, y: 1189.94, z: 1400.82 },
           size: { x: 4459.44, y: 3020.0, z: 4564.66 },
         },
         {
-          name: "복도1",
+          name: '복도1',
           position: { x: -4035.2, y: 0.0, z: -400.591 },
           size: { x: 2160.68, y: 3020.0, z: 1059.1 },
         },
         {
-          name: "욕실1",
+          name: '욕실1',
           position: { x: -3879.14, y: 0.0, z: -1814.74 },
           size: { x: 2200.0, y: 3020.0, z: 1500.0 },
         },
         {
-          name: "욕실2",
+          name: '욕실2',
           position: { x: 5212.89, y: 1189.94, z: -586.161 },
           size: { x: 2300.0, y: 3020.0, z: 1500.0 },
         },
         {
-          name: "욕실2 앞",
+          name: '욕실2 앞',
           position: { x: 3512.89, y: 1189.94, z: -386.161 },
           size: { x: 1000.0, y: 3020.0, z: 1300.0 },
         },
@@ -765,22 +766,22 @@ const MaxPageRightBar = ({
           size: { x: 3165.5, y: 3020.0, z: 3749.49 },
         },
         {
-          name: "침실1",
+          name: '침실1',
           position: { x: 3412.89, y: 1189.94, z: 2023.88 },
           size: { x: 3479.8, y: 3020.0, z: 3349.0 },
         },
         {
-          name: "침실2",
+          name: '침실2',
           position: { x: -5005.0, y: 1189.94, z: 2023.88 },
           size: { x: 3500.0, y: 3020.0, z: 3349.0 },
         },
         {
-          name: "침실3",
+          name: '침실3',
           position: { x: 2840.92, y: 1189.94, z: -2870.43 },
           size: { x: 2392.0, y: 3020.0, z: 3584.0 },
         },
         {
-          name: "현관",
+          name: '현관',
           position: { x: -5746.3, y: 0.0, z: -1234.74 },
           size: { x: 1158.46, y: 3020.0, z: 2748.96 },
         },
@@ -789,7 +790,7 @@ const MaxPageRightBar = ({
       const newProbes = coordsAndSizes.map(c => {
         const probe = new ReflectionProbe(gl, scene, camera);
         const json = probe.toJSON();
-        probe.fromJSON(json)
+        probe.fromJSON(json);
         const position = new THREE.Vector3(
           c.position.x,
           c.position.y,
@@ -852,9 +853,7 @@ const MaxPageRightBar = ({
     }
   }
 
-  function loadObjects() {
-    
-  }
+  function loadObjects() {}
 
   function getNowProbePositionAndSize() {
     if (threeExports) {
@@ -894,9 +893,7 @@ const MaxPageRightBar = ({
             <button onClick={getMyCameraPosition}>My position</button>
             <button onClick={createProbe}>probe test</button>
             <button onClick={removeProbe}>removeProbe</button>
-            <button onClick={loadObjects}>
-              objects call
-            </button>
+            <button onClick={loadObjects}>objects call</button>
             <button onClick={getNowProbePositionAndSize}>debug</button>
           </div>
           <section className="p-1 my-1 text-sm">
@@ -1137,7 +1134,7 @@ const MaxPageRightBar = ({
                 <AnisotropyControl></AnisotropyControl>
               </section>
               <section className="text-sm px-1">
-                <ProbeInfo/>
+                <ProbeInfo />
               </section>
             </>
           )}

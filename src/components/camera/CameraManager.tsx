@@ -25,6 +25,7 @@ const CameraManager: React.FC<UnifiedCameraControlsProps> = ({
 }) => {
   //threejs 객체 가져오기
   const { camera, raycaster, pointer, scene } = useThree();
+
   //카메라 회전 boolean
   const isRotateRef = useRef(false);
   // TransformControls 조작 ing boolean

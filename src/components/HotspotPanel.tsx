@@ -1,5 +1,6 @@
 import { useAtom, useAtomValue } from 'jotai';
 import { useState } from 'react';
+import { downloadJsonFile } from 'src/scripts/utils';
 import {
   getAtomValue,
   hotspotAtom,
@@ -8,24 +9,30 @@ import {
   settingsAtom,
   threeExportsAtom,
 } from '../scripts/atoms';
-import { loadHotspot, uploadJson } from '../scripts/atomUtils';
+import { loadHotspot } from '../scripts/atomUtils';
 
 const uploadHotspot = async () => {
   const hotspots = getAtomValue(hotspotAtom);
 
-  uploadJson('hotspots.json', hotspots)
-    .then(res => res.json())
-    .then(res => {
-      if (res?.success === true) {
-        alert('업로드 완료');
-      } else {
-        throw res;
-      }
-    })
-    .catch(err => {
-      console.error(err);
-      alert('업로드 실패');
-    });
+  if (hotspots) {
+    downloadJsonFile(hotspots, 'rooms-data.json');
+  } else {
+    console.error('no rooms');
+  }
+
+  // uploadJson('hotspots.json', hotspots)
+  //   .then(res => res.json())
+  //   .then(res => {
+  //     if (res?.success === true) {
+  //       alert('업로드 완료');
+  //     } else {
+  //       throw res;
+  //     }
+  //   })
+  //   .catch(err => {
+  //     console.error(err);
+  //     alert('업로드 실패');
+  //   });
 };
 
 function HotspotPanel() {

@@ -9,7 +9,12 @@ export type MaxFileType =
   | 'geometry'
   | 'object';
 
-export type MaxFileData = THREE.MeshPhysicalMaterial | THREE.Texture | THREE.Source | THREE.BufferGeometry | THREE.Object3D
+export type MaxFileData =
+  | THREE.MeshPhysicalMaterial
+  | THREE.Texture
+  | THREE.Source
+  | THREE.BufferGeometry
+  | THREE.Object3D;
 
 export function getMaxFileType(file: File): MaxFileType {
   const { ext } = splitExtension(file.name);
@@ -35,6 +40,7 @@ export type MaxFile = {
   originalFile: File;
   type: MaxFileType;
   loaded: boolean;
+  name: string;
   resultData?: MaxFileData | any;
 };
 

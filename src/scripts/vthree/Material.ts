@@ -247,7 +247,7 @@ THREE.Material.prototype.onBeforeCompile = function (
     return;
   }
 
-  console.log('onBeforeCompile', this.name, this.type);
+  // console.log('onBeforeCompile', this.name, this.type);
 
   patchVertex(shader);
   patchFragment(shader);
@@ -284,9 +284,9 @@ THREE.Material.prototype.onBeforeCompile = function (
   this._removeUniform = [];
 
   // 컴파일 시 this.uniform 호출 가능
-  console.log('before insert uniform');
+  // console.log('before insert uniform');
   this.uniform = shader.uniforms as any;
-  console.log('after insert uniform ', this.uniform);
+  // console.log('after insert uniform ', this.uniform);
 };
 
 THREE.Material.prototype.setDefines = function (

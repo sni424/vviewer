@@ -5,7 +5,7 @@ import { ENV, newRoomColorString } from '../Constants';
 
 import VGLTFLoader from 'src/scripts/loaders/VGLTFLoader';
 import {
-  generateGridPointsInsidePolygon,
+  downloadJsonFile,
   getContourPolygon2D,
   meshInsidePoint,
 } from 'src/scripts/utils';
@@ -282,17 +282,6 @@ function RoomSetting() {
     });
   };
 
-  function downloadJsonFile<T>(data: T, filename: string) {
-    const json = JSON.stringify(data);
-    const blob = new Blob([json], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    a.click();
-    URL.revokeObjectURL(url);
-  }
-
   const newCreateRoom = () => {
     setNewRooms(prev => {
       return [
@@ -337,71 +326,71 @@ function RoomSetting() {
     return points;
   };
 
-  const checkDpInRoom = (room: newRoom) => {
-    if (MeshArray.length < 1 || !wallData) {
-      return console.warn('Dp가져오기와 벽 정보 가져오기기 부터 해주세요.');
-    } else {
-      let insideDpArray: string[] = [];
-      const generatedPoints = generateGridPointsInsidePolygon(room.border);
-      // debugger;
-      // const boxes = DpArray.map(dp => {
-      //   const box = new THREE.Box3().setFromObject(dp);
-      //   return {
-      //     min: box.min,
-      //     max: box.max,
-      //   };
-      // });
-      // debugger;
-      // console.log("boxes.length",boxes.length);
-      // const boxPoints = boxes.map(({ min, max }, i) => {
-      //   const points = boxPoint(min, max);
-      //   console.log(`${i + 1} / ${boxes.length} : ${points}`)
-      //   return points;
-      // });
-      // debugger;
+  // const checkDpInRoom = (room: newRoom) => {
+  //   if (MeshArray.length < 1 || !wallData) {
+  //     return console.warn('Dp가져오기와 벽 정보 가져오기기 부터 해주세요.');
+  //   } else {
+  //     let insideDpArray: string[] = [];
+  //     const generatedPoints = generateGridPointsInsidePolygon(room.border);
+  //     // debugger;
+  //     // const boxes = DpArray.map(dp => {
+  //     //   const box = new THREE.Box3().setFromObject(dp);
+  //     //   return {
+  //     //     min: box.min,
+  //     //     max: box.max,
+  //     //   };
+  //     // });
+  //     // debugger;
+  //     // console.log("boxes.length",boxes.length);
+  //     // const boxPoints = boxes.map(({ min, max }, i) => {
+  //     //   const points = boxPoint(min, max);
+  //     //   console.log(`${i + 1} / ${boxes.length} : ${points}`)
+  //     //   return points;
+  //     // });
+  //     // debugger;
 
-      // boxPoints.forEach((meshPoint, i) => {
-      //   console.log(`${i + 1} / ${boxPoints.length}`);
-      //   const result = checkBoxToObject(generatedPoints, meshPoint, wallData);
-      //   if (result) {
-      //     insideDpArray.push(result);
-      //   }
-      // });
-      // debugger;
+  //     // boxPoints.forEach((meshPoint, i) => {
+  //     //   console.log(`${i + 1} / ${boxPoints.length}`);
+  //     //   const result = checkBoxToObject(generatedPoints, meshPoint, wallData);
+  //     //   if (result) {
+  //     //     insideDpArray.push(result);
+  //     //   }
+  //     // });
+  //     // debugger;
 
-      // DpArray.forEach(child => {
-      //   const boundingBox = new THREE.Box3().setFromObject(child);
-      //   const { min, max } = boundingBox;
-      //   const meshPoint = boxPoint(min, max);
-      //   const result = checkBoxToObject(generatedPoints, meshPoint, wallData);
-      //   if (result) {
-      //     insideDpArray.push(child.name);
-      //   }
-      // });
-      setNewRooms(prev =>
-        prev.map((prevChild, index) => ({
-          ...prevChild,
-          roomInfo: prevChild.roomInfo.map(roomChild =>
-            roomChild.index === room.index
-              ? {
-                  ...roomChild,
-                  inCludeMesh: insideDpArray,
-                }
-              : roomChild,
-          ),
-        })),
-      );
-      if (isOpen && !isOpen[Number(room.index)]) {
-        const keyNumber = Number(room.index);
-        setOpen(prev => ({
-          ...prev,
-          [keyNumber]: true,
-        }));
-      }
+  //     // DpArray.forEach(child => {
+  //     //   const boundingBox = new THREE.Box3().setFromObject(child);
+  //     //   const { min, max } = boundingBox;
+  //     //   const meshPoint = boxPoint(min, max);
+  //     //   const result = checkBoxToObject(generatedPoints, meshPoint, wallData);
+  //     //   if (result) {
+  //     //     insideDpArray.push(child.name);
+  //     //   }
+  //     // });
+  //     setNewRooms(prev =>
+  //       prev.map((prevChild, index) => ({
+  //         ...prevChild,
+  //         roomInfo: prevChild.roomInfo.map(roomChild =>
+  //           roomChild.index === room.index
+  //             ? {
+  //                 ...roomChild,
+  //                 inCludeMesh: insideDpArray,
+  //               }
+  //             : roomChild,
+  //         ),
+  //       })),
+  //     );
+  //     if (isOpen && !isOpen[Number(room.index)]) {
+  //       const keyNumber = Number(room.index);
+  //       setOpen(prev => ({
+  //         ...prev,
+  //         [keyNumber]: true,
+  //       }));
+  //     }
 
-      console.log('insideDpArray', insideDpArray);
-    }
-  };
+  //     console.log('insideDpArray', insideDpArray);
+  //   }
+  // };
 
   // 입력 핸들러 수정
   const handleInputChange = (
@@ -806,6 +795,17 @@ function RoomSetting() {
         >
           좌표빼오기 및 json데이터 추가 {occlusionData ? '완료' : '실행'}
         </button>
+        <button
+          onClick={() => {
+            if (occlusionData) {
+              downloadJsonFile(occlusionData, 'occlusion-data.json');
+            } else {
+              console.error('no filterOcclusion');
+            }
+          }}
+        >
+          충돌데이터 pc에 저장
+        </button>
       </div>
       {newRoomsArray.length > 0 &&
         newRoomsArray.map((room, i) => {
@@ -1073,7 +1073,7 @@ function RoomSetting() {
                               보이는방 확인
                             </button>
                           </div> */}
-                          <div>
+                          {/* <div>
                             <button
                               onClick={() => {
                                 checkDpInRoom(child);
@@ -1081,7 +1081,7 @@ function RoomSetting() {
                             >
                               보이는방 DP확인
                             </button>
-                          </div>
+                          </div> */}
 
                           {child.inCludeMesh &&
                             child.inCludeMesh.length > 0 && (
@@ -1429,14 +1429,16 @@ function RoomSetting() {
         </button>
         <button
           onClick={() => {
-            if (occlusionData) {
-              downloadJsonFile(occlusionData, 'occlusion-data.json');
+            const hotspots = getAtomValue(newRoomAtom);
+
+            if (hotspots) {
+              downloadJsonFile(hotspots, 'rooms-data.json');
             } else {
-              console.error('no filterOcclusion');
+              console.error('no rooms');
             }
           }}
         >
-          pc에 저장
+          방정보 pc에 저장
         </button>
         <button
           onClick={() => {

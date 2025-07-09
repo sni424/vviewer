@@ -1745,7 +1745,9 @@ export function computeBoundingBoxForMaterial(
 }
 
 import { ClassValue, clsx } from 'clsx';
+import { MaxConstants } from 'src/pages/max/loaders/MaxConstants.ts';
 import { twMerge } from 'tailwind-merge';
+import VTextureLoader from './loaders/VTextureLoader.ts';
 import { VUserData } from './vthree/VTHREETypes.ts';
 
 // tailwind에 동적으로 클래스이름 할당할 때 필요
@@ -1934,3 +1936,119 @@ export const meshInsidePoint = (
   }
   return points;
 };
+
+export async function loadLightMaps() {
+  const threeExports = getAtomValue(threeExportsAtom);
+  const url = MaxConstants.base + 'lightmaps/final/';
+  const VR_0617_LIGHT_MAPS = [
+    'dp1',
+    'dp2',
+    'layer1',
+    'layer2',
+    'layer3',
+    'layer4',
+  ];
+  const LIGHTMAP_SUFFIX = '_VRayRawTotalLightingMap_denoised.hdr';
+  const textures: { [key: string]: THREE.Texture } = Object.fromEntries(
+    await Promise.all(
+      VR_0617_LIGHT_MAPS.map(async uri => {
+        const tex = await VTextureLoader.loadAsync(
+          url + uri + LIGHTMAP_SUFFIX,
+          threeExports,
+        );
+        tex.flipY = uri.endsWith('hdr');
+        tex.needsUpdate = true;
+        return [uri, tex]; // [key, value] 형태로 반환
+      }),
+    ),
+  );
+  return textures;
+  // applyLightMap(textures);
+}
+
+function extractQName(str: string) {
+  const match = str.match(/fi_([a-z]+\d+)/i);
+  return match ? match[1] : null;
+}
+
+function stripMatSuffix(str: string) {
+  return str.replace(/_mat_sub_\d+$/, '');
+}
+
+export function applyLightMap(
+  textures: { [key: string]: THREE.Texture },
+  lightMapApplies: any,
+  mesh: THREE.Mesh,
+) {
+  console.log('lightMapApplies', lightMapApplies);
+  const keys = Object.keys(lightMapApplies);
+
+  // 이미 넣었으면 패스
+  if (!mesh.matPhysical.lightMap) {
+    if (keys.includes(mesh.name)) {
+      let targetLightMapKey: string;
+      if (mesh.name === 'Sphere034') {
+        const matName = mesh.matPhysical.name;
+        if (matName.includes('암막커튼')) {
+          targetLightMapKey = 'dp1';
+        } else {
+          targetLightMapKey = 'dp2';
+        }
+      } else {
+        targetLightMapKey = lightMapApplies[mesh.name] as string;
+      }
+      if (targetLightMapKey.startsWith('fi_')) {
+        const key = extractQName(targetLightMapKey);
+        console.log(key, targetLightMapKey);
+        if (key) {
+          const mat = mesh.matPhysical;
+          mat.lightMap = textures[key];
+          mat.lightMapIntensity = 2.0;
+          // mat.apply('lightmapContra  st', 1.2);
+          // mat.apply('saturation', {
+          //   uUseSaturation: true,
+          //   uSaturation: 0.2,
+          // });
+          if (!mat.lightMap.flipY) {
+            mat.lightMap.flipY = true;
+          }
+          mat.vUserData.viz4dLightMap = key;
+          mat.needsUpdate = true;
+        }
+      }
+    } else if (keys.includes(stripMatSuffix(mesh.name))) {
+      const formattedKey = stripMatSuffix(mesh.name);
+      const targetLightMapKey: string = lightMapApplies[formattedKey] as string;
+      if (targetLightMapKey.startsWith('fi_')) {
+        const key = extractQName(targetLightMapKey);
+        if (key) {
+          const mat = mesh.matPhysical;
+          mat.lightMap = textures[key];
+          mat.lightMapIntensity = 2.0;
+          // mat.apply('lightmapContrast', 1.2);
+          // mat.apply('saturation', {
+          //   uUseSaturation: true,
+          //   uSaturation: 0.2,
+          // });
+          if (!mat.lightMap.flipY) {
+            mat.lightMap.flipY = true;
+          }
+          mat.vUserData.viz4dLightMap = key;
+          mat.needsUpdate = true;
+        }
+      }
+    }
+  }
+}
+
+//json파일 pc에 저장
+export function downloadJsonFile<T>(data: T, filename: string) {
+  const json = JSON.stringify(data);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}

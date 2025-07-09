@@ -1,17 +1,17 @@
 import React, { useEffect, useState } from 'react';
 
-import { parseDroppedFiles } from 'src/scripts/useModelDragAndDrop.ts';
 import { useAtom } from 'jotai';
+import VRGLoader from 'src/pages/max/loaders/VRGLoader.ts';
+import VRILoader from 'src/pages/max/loaders/VRILoader.ts';
+import VRMLoader from 'src/pages/max/loaders/VRMLoader.ts';
+import VROLoader from 'src/pages/max/loaders/VROLoader.ts';
+import VRTLoader from 'src/pages/max/loaders/VRTLoader.ts';
 import {
   getMaxFileType,
   MaxFile,
   maxFileAtom,
 } from 'src/pages/max/maxAtoms.ts';
-import VRMLoader from 'src/pages/max/loaders/VRMLoader.ts';
-import VRTLoader from 'src/pages/max/loaders/VRTLoader.ts';
-import VRILoader from 'src/pages/max/loaders/VRILoader.ts';
-import VROLoader from 'src/pages/max/loaders/VROLoader.ts';
-import VRGLoader from 'src/pages/max/loaders/VRGLoader.ts';
+import { parseDroppedFiles } from 'src/scripts/useModelDragAndDrop.ts';
 
 const useMaxFileController = () => {
   const [isDragging, setIsDragging] = useState(false);
@@ -45,12 +45,12 @@ const useMaxFileController = () => {
     }
 
     if (!loader) {
-      alert('Not yet Supported Type : ' + type)
+      alert('Not yet Supported Type : ' + type);
       return null;
     }
 
     const result = await loader.load(maxFile);
-    console.log('result : ', result);
+    // console.log('result : ', result);
 
     return result;
   }
@@ -102,7 +102,7 @@ const useMaxFileController = () => {
     handleDragOver,
     handleDragLeave,
     handleDrop,
-    handleMaxFile
+    handleMaxFile,
   };
 };
 

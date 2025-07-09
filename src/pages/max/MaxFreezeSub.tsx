@@ -1,14 +1,14 @@
+import { gsap } from 'gsap';
 import { useAtom, useAtomValue } from 'jotai';
-import { ProbeAtom, threeExportsAtom } from 'src/scripts/atoms.ts';
 import { useEffect, useRef, useState } from 'react';
+import { Layer } from 'src/Constants.ts';
+import { MaxConstants } from 'src/pages/max/loaders/MaxConstants.ts';
 import { callObject, MaxCallObject } from 'src/pages/max/loaders/MaxUtils.ts';
 import VROLoader from 'src/pages/max/loaders/VROLoader.ts';
-import { MaxConstants } from 'src/pages/max/loaders/MaxConstants.ts';
+import { ProbeAtom, threeExportsAtom } from 'src/scripts/atoms.ts';
 import VTextureLoader from 'src/scripts/loaders/VTextureLoader.ts';
-import * as THREE from 'VTHREE';
 import ReflectionProbe from 'src/scripts/ReflectionProbe.ts';
-import { Layer } from 'src/Constants.ts';
-import { gsap } from 'gsap';
+import * as THREE from 'VTHREE';
 
 const MaxFreezeSub = () => {
   const threeExports = useAtomValue(threeExportsAtom);
@@ -245,12 +245,13 @@ const MaxFreezeSub = () => {
         }),
       ),
     );
-
+    console.log('확인');
     applyLightMap(textures);
   }
 
   function applyLightMap(textures: { [key: string]: THREE.Texture }) {
     const lightMapApplies = objectRef.current!!.sectionMapping;
+    console.log('lightMapApplies', lightMapApplies);
     const keys = Object.keys(lightMapApplies);
     tempSceneRef.current.traverseAll(o => {
       if (o.type === 'Mesh') {
@@ -327,7 +328,7 @@ const MaxFreezeSub = () => {
     return material.vUserData.probeIds && material.vUserData.probeType;
   }
 
-  function renderProbe(paramProbes?:ReflectionProbe[]) {
+  function renderProbe(paramProbes?: ReflectionProbe[]) {
     const { scene } = threeExports!!;
     let ps = paramProbes ? paramProbes : probes;
     ps.forEach(p => {
@@ -341,13 +342,13 @@ const MaxFreezeSub = () => {
       if (o.type === 'Mesh') {
         const mat = (o as THREE.Mesh).matPhysical;
         if (keys.includes(mat.name)) {
-            const names = probeApplyInfo[mat.name].probeNames;
-            const filtered = ps.filter(p => {
-              return names.includes(p.getName());
-            });
+          const names = probeApplyInfo[mat.name].probeNames;
+          const filtered = ps.filter(p => {
+            return names.includes(p.getName());
+          });
 
-            mat.apply('probe', { probes: filtered });
-            mat.needsUpdate = true;
+          mat.apply('probe', { probes: filtered });
+          mat.needsUpdate = true;
         }
       }
     });

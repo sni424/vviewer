@@ -2,6 +2,9 @@ import { Canvas, RootState, useThree } from '@react-three/fiber';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import { useEffect, useRef } from 'react';
 import SkyBox from 'src/components/test/SkyBox.tsx';
+import { callObject } from 'src/pages/max/loaders/MaxUtils.ts';
+import { MaxFile, maxFileAtom } from 'src/pages/max/maxAtoms.ts';
+import useMaxFileController from 'src/pages/max/UseMaxFileController.ts';
 import { recompileAsync } from 'src/scripts/atomUtils.ts';
 import { v4 } from 'uuid';
 import { THREE } from 'VTHREE';
@@ -38,9 +41,11 @@ import VGLTFLoader from '../../scripts/loaders/VGLTFLoader.ts';
 import VTextureLoader from '../../scripts/loaders/VTextureLoader.ts';
 import { useSetThreeExports } from '../../scripts/useGetThreeExports.ts';
 import {
+  applyLightMap,
   createWallFromPoints,
   getIntersectLayer,
   getIntersects,
+  loadLightMaps,
   resetColor,
   zoomToSelected,
 } from '../../scripts/utils';
@@ -107,6 +112,70 @@ const useLoadModel = ({
   const setLoadHistoryAtom = useSetAtom(loadHistoryAtom);
   const loaderRef = useRef(new VGLTFLoader(gl));
   const [dp, setDp] = useAtom(DPAtom);
+  const maxFiles = useAtomValue(maxFileAtom);
+  const { handleMaxFile } = useMaxFileController();
+  const lightMapTextureRef = useRef<any>();
+  const jsonDataRef = useRef<any>();
+
+  //max파일을 위한 로드 함수
+  async function load(maxFile: MaxFile) {
+    console.log('maxFile', maxFile);
+    return handleMaxFile(maxFile).then(() => {
+      const { originalFile, type, name, resultData } = maxFile;
+
+      if (type === 'geometry') {
+        const mesh = new THREE.Mesh();
+
+        mesh.scale.set(0.001, 0.001, 0.001);
+        mesh.name = originalFile.name;
+        mesh.position.set(0, 0, 0);
+        mesh.geometry = resultData;
+        mesh.material = new THREE.MeshPhysicalMaterial({
+          color: new THREE.Color('white'),
+          metalness: 0.2,
+          roughness: 1,
+          side: THREE.DoubleSide,
+        });
+        mesh.material.vUserData.isVMaterial = true;
+        setLoadHistoryAtom(history => {
+          const newHistory = new Map(history);
+          newHistory.get(name)!.end = Date.now();
+          return newHistory;
+        });
+        const newMesh = { name: originalFile.name, mesh: mesh };
+
+        applyLightMap(
+          lightMapTextureRef.current,
+          jsonDataRef.current.sectionMapping,
+          newMesh.mesh,
+        );
+
+        scene.add(newMesh.mesh);
+        // setMeshes(pre => [...pre, { name: originalFile.name, mesh: mesh }]);
+        // meshRef.current.push({ name: originalFile.name, mesh: mesh });
+      } else if (type === 'object') {
+        resultData.layers.enable(Layer.Model);
+        setLoadHistoryAtom(history => {
+          const newHistory = new Map(history);
+          newHistory.get(name)!.end = Date.now();
+          return newHistory;
+        });
+        const newMesh = { name: originalFile.name, mesh: resultData };
+
+        applyLightMap(
+          lightMapTextureRef.current,
+          jsonDataRef.current.sectionMapping,
+          newMesh.mesh,
+        );
+        scene.add(newMesh.mesh);
+        // setMeshes(pre => [
+        //   ...pre,
+        //   { name: originalFile.name, mesh: resultData },
+        // ]);
+        // meshRef.current.push({ name: originalFile.name, mesh: resultData });
+      }
+    });
+  }
 
   useEffect(() => {
     console.log('catalogue changed');
@@ -207,6 +276,46 @@ const useLoadModel = ({
       });
     });
   }, [catalogue]);
+
+  //max파일 드래그앤드랍 후 처리
+  useEffect(() => {
+    const maxLoad = async () => {
+      const res = await loadLightMaps();
+      lightMapTextureRef.current = res;
+
+      const objects = await callObject();
+      jsonDataRef.current = objects;
+
+      await Promise.all(maxFiles.filter(f => !f.loaded).map(f => load(f))).then(
+        res => {
+          setLoadHistoryAtom(new Map());
+        },
+      );
+
+      const end = performance.now();
+      // setMeshes([...meshRef.current]);
+    };
+    if (maxFiles.length > 0) {
+      //업로드중인 파일 보이는 ui
+      maxFiles.forEach(maxFile => {
+        const { name, originalFile } = maxFile;
+        setLoadHistoryAtom(history => {
+          const newHistory = new Map(history);
+          //@ts-ignore
+          newHistory.set(maxFile.name, {
+            name,
+            start: Date.now(),
+            end: 0,
+            file: originalFile,
+            uuid: null,
+          });
+          return newHistory;
+        });
+      });
+      maxLoad();
+      //max파일 로드 처리
+    }
+  }, [maxFiles]);
 
   useEffect(() => {
     sources.forEach(source => {

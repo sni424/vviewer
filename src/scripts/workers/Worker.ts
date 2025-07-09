@@ -297,9 +297,9 @@ self.onmessage = async (e: MessageEvent<WorkerTask>) => {
   if (action === 'fetch') {
     try {
       const { url, inflate } = data;
-      console.log('worker fetch url:', url);
+      // console.log('worker fetch url:', url);
       const buffer = await fetchArrayBuffer(url, {});
-      console.log('worker fetch buffer:', buffer);
+      // console.log('worker fetch buffer:', buffer);
 
       const result = inflate
         ? pako.inflate(new Uint8Array(buffer)).buffer
@@ -316,9 +316,6 @@ self.onmessage = async (e: MessageEvent<WorkerTask>) => {
     const navMeshArray: number[] = [];
 
     meshInfoArray.forEach(navInfo => {
-      if (navInfo.name.includes('침실1dp004')) {
-        console.log(navInfo.name, navInfo.box, wallPoints);
-      }
       const newPoint = meshInsidePoint(
         wallPoints,
         navInfo.box.min,
@@ -465,6 +462,7 @@ self.onmessage = async (e: MessageEvent<WorkerTask>) => {
     };
 
     if (url && !arrayBuffer) {
+      console.log('url', url);
       arrayBuffer = await fetchArrayBuffer(url);
       const result = loadSmartGeometry(arrayBuffer);
       if (result.format === 'VXQ1') {
