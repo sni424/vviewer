@@ -249,7 +249,7 @@ const ProbeSelector = ({ material }: { material: THREE.Material }) => {
                   material.vUserData.probeType = useWall
                     ? 'multiWall'
                     : 'multi';
-
+                  console.log('probeSelections', probeSelections, probes);
                   const selectedProbes = probes.filter(p =>
                     probeSelections.includes(p.getId()),
                   );

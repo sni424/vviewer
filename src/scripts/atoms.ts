@@ -338,7 +338,7 @@ export const Tabs = [
   'option',
   'wall',
   'skyBox',
-  'clipping',
+  'iso',
 ] as const;
 export type Tab = (typeof Tabs)[number];
 export const panelTabAtom = atom<Tab>('scene');
@@ -707,3 +707,21 @@ export const addPoints = (...points: DrawablePoint[]) => {
 };
 
 export const anisotropyAtom = atom<number>(1);
+
+export const IsoViewInfoAtom = atom<{
+  cameraMatrix: number[];
+  clippingValue: number;
+  beforeClippingValue: number;
+  boundingBox: {
+    center: number[];
+    size: number[];
+  };
+}>({
+  cameraMatrix: [],
+  clippingValue: 2.1,
+  beforeClippingValue: 10,
+  boundingBox: {
+    center: [0, 0, 0],
+    size: [0, 0, 0],
+  },
+});
