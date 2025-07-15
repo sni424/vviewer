@@ -71,7 +71,7 @@ export async function fetchArrayBuffer(
   ...params: Parameters<typeof fetch>
 ): Promise<ArrayBuffer> {
   const response = await fetch(...params);
-  if (!response.ok) throw new Error('Fetch failed');
+  if (!response.ok) throw new Error('Fetch failed : ' + response.url);
 
   // Get total size from headers (if available)
   const contentLength = response.headers.get('Content-Length');

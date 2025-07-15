@@ -210,6 +210,7 @@ export interface VUserData {
   originalRoughness?: number;
   tempMaps?: { [key: string]: THREE.Texture | null };
   viz4dLightMap?: string;
+  lightmapLayer?: string;
 }
 
 export const MATERIAL_DEFINES = [

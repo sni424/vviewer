@@ -10,7 +10,7 @@ import * as THREE from 'VTHREE';
 
 class VRTLoader implements MaxLoader<THREE.Texture> {
   readonly type: MaxFileType = 'texture';
-  private imageLoader: VRILoader = new VRILoader(true);
+  private imageLoader: VRILoader = new VRILoader();
   serverURL: string = MaxConstants.TEXTURE_PATH;
 
   constructor() {}

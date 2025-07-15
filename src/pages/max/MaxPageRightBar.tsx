@@ -9,7 +9,11 @@ import {
 import { Layer } from 'src/Constants.ts';
 import { MaxFile, maxFileAtom, MaxFileType } from 'src/pages/max/maxAtoms.ts';
 import useMaxFileController from 'src/pages/max/UseMaxFileController.ts';
-import { panelTabAtom, ProbeAtom, threeExportsAtom } from 'src/scripts/atoms.ts';
+import {
+  panelTabAtom,
+  ProbeAtom,
+  threeExportsAtom,
+} from 'src/scripts/atoms.ts';
 import { recompileAsync } from 'src/scripts/atomUtils.ts';
 import * as THREE from 'VTHREE';
 import { gsap } from 'gsap';
@@ -39,10 +43,40 @@ const VIZ4D_LIGHT_MAPS = [
 const VR_0617_LIGHT_MAPS = [
   'dp1',
   'dp2',
-  'layer1',
-  'layer2',
-  'layer3',
-  'layer4',
+  'layer001',
+  'layer002',
+  'layer003',
+  'layer004',
+];
+
+const LIGHTMAPS_0715 = [
+  'dp01',
+  'dp02',
+  'layer001',
+  'layer002',
+  'layer003',
+  'layer004',
+  'option_lg',
+  'option_ss',
+  'option_x',
+];
+
+const DP_ON_LIGHTMAPS = [
+  'dp01',
+  'dp02',
+  'layer001',
+  'layer002',
+  'layer003',
+  'layer004',
+  'option_DP_on',
+];
+
+const DP_OFF_LIGHTMAPS = [
+  'layer001',
+  'layer002',
+  'layer003',
+  'layer004',
+  'option_DP_off',
 ];
 
 const LIGHTMAP_SUFFIX = '_VRayRawTotalLightingMap_denoised.hdr';
@@ -66,6 +100,7 @@ const MaxPageRightBar = ({
   const [meshes, setMeshes] = useState<{ name: string; mesh: THREE.Mesh }[]>(
     [],
   );
+  const [dpVisible, setDpVisible] = useState(false);
   const [reflectMode, setReflectMode] = useState<boolean>(false);
   const threeExports = useAtomValue(threeExportsAtom);
 
@@ -77,13 +112,104 @@ const MaxPageRightBar = ({
     [key: string]: THREE.Texture;
   }>({});
 
+  const [dpOffLightMaps, setDpOffLightMaps] = useState<{
+    [key: string]: THREE.Texture;
+  }>({});
+
   const [applyInfo, setApplyInfo] = useState<{ [key: string]: string } | null>(
     null,
   );
+
+  const [showLoadeds, setShowLoadeds] = useState<boolean>(false);
   const [vrLightMapsLoaded, setVrLightMapsLoaded] = useState(false);
+  const [dpList, setDPList] = useState<string[]>([]);
+  const [dpOffLightMapsLoaded, setDpOffLightMapsLoaded] = useState(false);
   const [lightMapsLoaded, setLightMapsLoaded] = useState(false);
   const [tab, setTab] = useAtom(panelTabAtom);
   const [probes, setProbes] = useAtom<ReflectionProbe[]>(ProbeAtom);
+
+  useEffect(() => {
+    if (scene) {
+      if (vrLightMapsLoaded && dpOffLightMapsLoaded) {
+        const timeLines: gsap.core.Timeline[] = [];
+        scene.traverse(o => {
+          if (o.type === 'Mesh') {
+            const timeLine = gsap.timeline().pause();
+            const mesh = o as THREE.Mesh;
+            const mat = (o as THREE.Mesh).matPhysical;
+            if (dpList.includes(mesh.name)) {
+              const transparency = mat.transparent;
+              timeLine.to(
+                { progress: 0 },
+                {
+                  progress: 1,
+                  duration: 1.5,
+                  onStart() {
+                    mat.apply('meshTransition', {
+                      direction: dpVisible ? 'fadeIn' : 'fadeOut',
+                    });
+                    mesh.visible = true;
+                    mat.transparent = true;
+                  },
+                  onUpdate() {
+                    const progressValue = this.targets()[0].progress;
+                    mat.progress = progressValue;
+                  },
+                  onComplete() {
+                    mesh.visible = dpVisible;
+                    mat.remove('meshTransition');
+                    mat.transparent = transparency;
+                  },
+                },
+              );
+              timeLines.push(timeLine);
+            } else if (mat.vUserData.viz4dLightMap?.includes('layer') || mat.vUserData.viz4dLightMap?.includes('option')) {
+              const targetLightmap = dpVisible
+                ? vrLightMaps[mat.vUserData.viz4dLightMap]
+                : dpOffLightMaps[mat.vUserData.viz4dLightMap];
+              targetLightmap.flipY = true;
+              targetLightmap.needsUpdate = true;
+              console.log(
+                mat.vUserData.viz4dLightMap,
+                targetLightmap,
+                dpVisible,
+              );
+              timeLine.to(
+                { progress: 0 },
+                {
+                  progress: 1,
+                  duration: 1.5,
+                  onStart() {
+                    mat.uniform.uLightMapTo.value = targetLightmap;
+                    mat.uniform.uUseLightMapTransition.value = true;
+                    mat.progress = 0;
+                    mat.needsUpdate = true;
+                  },
+                  onUpdate() {
+                    const progressValue = this.targets()[0].progress;
+                    mat.progress = progressValue;
+                    console.log(progressValue);
+                  },
+                  onComplete() {
+                    mat.lightMap = targetLightmap;
+                    mat.uniform.uUseLightMapTransition.value = false;
+                    mat.needsUpdate = true;
+                  },
+                },
+              );
+              timeLines.push(timeLine);
+            }
+          }
+        });
+
+        timeLines.forEach(timeLine => {
+          timeLine.play(0);
+        });
+      } else {
+        alert('라이트맵을 먼저 불러오세요.');
+      }
+    }
+  }, [dpVisible]);
 
   function showWall() {
     setTab('wall');
@@ -99,6 +225,42 @@ const MaxPageRightBar = ({
     } else {
       showWall();
     }
+  }
+
+  function callDPInfos() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+
+    input.addEventListener('change', event => {
+      const file = (event.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const result = reader.result as string;
+          const data = JSON.parse(result);
+          console.log('✅ JSON loaded:', data);
+
+          // 여기서 data 를 활용하세요
+          // applyLightMapData(data); 같은 식으로
+          if (scene) {
+            const dpNameList = data.dp as string[];
+            setDPList(dpNameList);
+          }
+        } catch (e) {
+          console.error('❌ JSON 파싱 오류:', e);
+        }
+      };
+      reader.readAsText(file);
+    });
+
+    input.click(); // 파일 선택창 열기
+  }
+
+  function toggleDP() {
+    setDpVisible(pre => !pre);
   }
 
   function rerender() {
@@ -237,6 +399,10 @@ const MaxPageRightBar = ({
     };
 
     saveJSON(result);
+  }
+
+  function hideLoadeds() {
+    setShowLoadeds(pre => !pre);
   }
 
   function addToScene(maxFile: MaxFile) {
@@ -433,16 +599,16 @@ const MaxPageRightBar = ({
       alert('이미 불러왓슴');
       return;
     }
-    const url = MaxConstants.base + 'lightmaps/final/';
+    const url = MaxConstants.base + 'lightmaps/0715/';
 
     const textures: { [key: string]: THREE.Texture } = Object.fromEntries(
       await Promise.all(
-        VR_0617_LIGHT_MAPS.map(async uri => {
+        LIGHTMAPS_0715.map(async uri => {
           const tex = await VTextureLoader.loadAsync(
-            url + uri + LIGHTMAP_SUFFIX,
+            url + uri + '_dpon.hdr',
             threeExports,
           );
-          tex.flipY = uri.endsWith('hdr');
+          tex.flipY = true;
           tex.needsUpdate = true;
           return [uri, tex]; // [key, value] 형태로 반환
         }),
@@ -452,6 +618,93 @@ const MaxPageRightBar = ({
     setVrLightMaps(textures);
     setVrLightMapsLoaded(true);
     alert('완료!');
+  }
+
+  async function loadVRDPOffCustomLightMaps() {
+    if (dpOffLightMapsLoaded) {
+      alert('이미 불러왓슴');
+      return;
+    }
+    const url = MaxConstants.base + 'lightmaps/0715/';
+
+    const textures: { [key: string]: THREE.Texture } = Object.fromEntries(
+      await Promise.all(
+        LIGHTMAPS_0715.filter(s => !s.startsWith('dp')).map(async uri => {
+          const tex = await VTextureLoader.loadAsync(
+            url + uri + '_dpoff.hdr',
+            threeExports,
+          );
+          tex.flipY = true;
+          tex.needsUpdate = true;
+          return [uri, tex]; // [key, value] 형태로 반환
+        }),
+      ),
+    );
+
+    setDpOffLightMaps(textures);
+    setDpOffLightMapsLoaded(true);
+    alert('완료!');
+  }
+
+  function toggleLG() {
+    if (scene) {
+      scene.traverse(o => {
+        if (o.type === 'Mesh') {
+          const mesh = o as THREE.Mesh;
+          const mat = mesh.matPhysical;
+          const layer = mesh.vUserData.lightmapLayer;
+          const type = mat.vUserData.viz4dLightMap;
+          if (type && layer && layer.startsWith('op')) {
+            mesh.visible = layer === 'op_L';
+            mat.lightMap = vrLightMaps['option_lg'];
+          }
+        }
+      });
+    }
+  }
+
+  function toggleSS() {
+    if (scene) {
+      scene.traverse(o => {
+        if (o.type === 'Mesh') {
+          const mesh = o as THREE.Mesh;
+          const mat = mesh.matPhysical;
+          const layer = mesh.vUserData.lightmapLayer;
+          const type = mat.vUserData.viz4dLightMap;
+          if (type && layer && layer.startsWith('op')) {
+            mesh.visible = layer === 'op_S';
+            mat.lightMap = vrLightMaps['option_ss'];
+          }
+        }
+      });
+    }
+  }
+
+  function toggleX() {
+    if (scene) {
+      scene.traverse(o => {
+        if (o.type === 'Mesh') {
+          const mesh = o as THREE.Mesh;
+          const mat = mesh.matPhysical;
+          const layer = mesh.vUserData.lightmapLayer;
+          const type = mat.vUserData.viz4dLightMap;
+          if (type && layer && layer.startsWith('op')) {
+            mesh.visible = layer === 'op_X';
+            mat.lightMap = vrLightMaps['option_x'];
+          }
+        }
+      });
+    }
+  }
+
+  function toggleAllVisible() {
+    if (scene) {
+      scene.traverse(o => {
+        if (o.type === 'Mesh' && !o.visible) {
+          o.visible = true;
+        }
+      });
+    }
   }
 
   async function loadLightMapWithQuailty(quality: LightMapQuality) {
@@ -594,6 +847,20 @@ const MaxPageRightBar = ({
             scene.traverseAll(o => {
               if (o.type === 'Mesh') {
                 const mesh = o as THREE.Mesh;
+
+                if (keys.includes(mesh.name)) {
+                  const layerName = extractQName(data[mesh.name]);
+                  if (layerName) {
+                    mesh.vUserData.lightmapLayer = layerName;
+                  }
+                } else if (keys.includes(stripMatSuffix(mesh.name))) {
+                  const formattedKey = stripMatSuffix(mesh.name);
+                  const layerName = extractQName(data[formattedKey]);
+                  if (layerName) {
+                    mesh.vUserData.lightmapLayer = layerName;
+                  }
+                }
+
                 // 이미 넣었으면 패스
                 if (!mesh.matPhysical.lightMap) {
                   if (keys.includes(mesh.name)) {
@@ -601,18 +868,22 @@ const MaxPageRightBar = ({
                     if (mesh.name === 'Sphere034') {
                       const matName = mesh.matPhysical.name;
                       if (matName.includes('암막커튼')) {
-                        targetLightMapKey = 'dp1';
+                        targetLightMapKey = 'dp01';
                       } else {
-                        targetLightMapKey = 'dp2';
+                        targetLightMapKey = 'dp02';
                       }
                     } else {
                       targetLightMapKey = data[mesh.name] as string;
                     }
                     if (targetLightMapKey.startsWith('fi_')) {
-                      const key = extractQName(targetLightMapKey);
+                      let key = extractQName(targetLightMapKey);
                       console.log(key, targetLightMapKey);
+
                       if (key) {
                         const mat = mesh.matPhysical;
+                        if (key.includes('op')) {
+                          key = 'option_lg';
+                        }
                         mat.lightMap = vrLightMaps[key];
                         if (!mat.lightMap.flipY) {
                           mat.lightMap.flipY = true;
@@ -627,8 +898,11 @@ const MaxPageRightBar = ({
                       formattedKey
                     ] as string;
                     if (targetLightMapKey.startsWith('fi_')) {
-                      const key = extractQName(targetLightMapKey);
+                      let key = extractQName(targetLightMapKey);
                       if (key) {
+                        if (key.includes('op')) {
+                          key = 'option_lg';
+                        }
                         const mat = mesh.matPhysical;
                         mat.lightMap = vrLightMaps[key];
                         if (!mat.lightMap.flipY) {
@@ -654,11 +928,17 @@ const MaxPageRightBar = ({
   }
 
   function stripMatSuffix(str: string) {
-    return str.replace(/_mat_sub_\d+$/, '');
+    if (str.indexOf('_mat_sub_') !== -1) {
+      return str.replace(/_mat_sub_\d+$/, '');
+    } else if (str.indexOf('_mat_id_') !== -1) {
+      return str.replace(/_mat_id_\d+$/, '');
+    } else {
+      return str;
+    }
   }
 
   function extractQName(str: string) {
-    const match = str.match(/fi_([a-z]+\d+)/i);
+    const match = str.match(/fi_([a-zA-Z0-9_]+)/i);
     return match ? match[1] : null;
   }
 
@@ -735,27 +1015,27 @@ const MaxPageRightBar = ({
         size: { x: number; y: number; z: number };
       }[] = [
         {
-          name: "거실",
+          name: '거실',
           position: { x: -754.938, y: 1189.94, z: 1400.82 },
           size: { x: 4459.44, y: 3020.0, z: 4564.66 },
         },
         {
-          name: "복도1",
+          name: '복도1',
           position: { x: -4035.2, y: 0.0, z: -400.591 },
           size: { x: 2160.68, y: 3020.0, z: 1059.1 },
         },
         {
-          name: "욕실1",
+          name: '욕실1',
           position: { x: -3879.14, y: 0.0, z: -1814.74 },
           size: { x: 2200.0, y: 3020.0, z: 1500.0 },
         },
         {
-          name: "욕실2",
+          name: '욕실2',
           position: { x: 5212.89, y: 1189.94, z: -586.161 },
           size: { x: 2300.0, y: 3020.0, z: 1500.0 },
         },
         {
-          name: "욕실2 앞",
+          name: '욕실2 앞',
           position: { x: 3512.89, y: 1189.94, z: -386.161 },
           size: { x: 1000.0, y: 3020.0, z: 1300.0 },
         },
@@ -765,22 +1045,22 @@ const MaxPageRightBar = ({
           size: { x: 3165.5, y: 3020.0, z: 3749.49 },
         },
         {
-          name: "침실1",
+          name: '침실1',
           position: { x: 3412.89, y: 1189.94, z: 2023.88 },
           size: { x: 3479.8, y: 3020.0, z: 3349.0 },
         },
         {
-          name: "침실2",
+          name: '침실2',
           position: { x: -5005.0, y: 1189.94, z: 2023.88 },
           size: { x: 3500.0, y: 3020.0, z: 3349.0 },
         },
         {
-          name: "침실3",
+          name: '침실3',
           position: { x: 2840.92, y: 1189.94, z: -2870.43 },
           size: { x: 2392.0, y: 3020.0, z: 3584.0 },
         },
         {
-          name: "현관",
+          name: '현관',
           position: { x: -5746.3, y: 0.0, z: -1234.74 },
           size: { x: 1158.46, y: 3020.0, z: 2748.96 },
         },
@@ -789,7 +1069,7 @@ const MaxPageRightBar = ({
       const newProbes = coordsAndSizes.map(c => {
         const probe = new ReflectionProbe(gl, scene, camera);
         const json = probe.toJSON();
-        probe.fromJSON(json)
+        probe.fromJSON(json);
         const position = new THREE.Vector3(
           c.position.x,
           c.position.y,
@@ -852,9 +1132,7 @@ const MaxPageRightBar = ({
     }
   }
 
-  function loadObjects() {
-    
-  }
+  function loadObjects() {}
 
   function getNowProbePositionAndSize() {
     if (threeExports) {
@@ -894,9 +1172,7 @@ const MaxPageRightBar = ({
             <button onClick={getMyCameraPosition}>My position</button>
             <button onClick={createProbe}>probe test</button>
             <button onClick={removeProbe}>removeProbe</button>
-            <button onClick={loadObjects}>
-              objects call
-            </button>
+            <button onClick={loadObjects}>objects call</button>
             <button onClick={getNowProbePositionAndSize}>debug</button>
           </div>
           <section className="p-1 my-1 text-sm">
@@ -909,28 +1185,35 @@ const MaxPageRightBar = ({
               <button onClick={loadAll}>모두 로드</button>
               <button onClick={addAll}>geometry 전체 추가</button>
               <button onClick={getFilePaths}>debug</button>
+              <button onClick={hideLoadeds}>
+                로드 된 file {showLoadeds ? '안보기' : '보기'}
+              </button>
             </div>
             <div className="p-1 h-[300px] w-full max-h-[300px] overflow-y-auto">
               {files.map(maxFile => {
                 const { originalFile, type, loaded } = maxFile;
-                return (
-                  <div className="text-sm my-1">
-                    <p className="text-gray-500">{type}</p>
-                    <span>{originalFile.name}</span>
-                    <span
-                      className="ml-1"
-                      style={{ color: loaded ? 'blue' : 'red' }}
-                    >
-                      {loaded ? '로드 됨' : '로드 안됨'}
-                    </span>
-                    <button onClick={() => load(maxFile)}>로드</button>
-                    {sceneAddTypes.includes(type) && loaded && (
-                      <button onClick={() => addToScene(maxFile)}>
-                        씬에 추가
-                      </button>
-                    )}
-                  </div>
-                );
+                if (!loaded || (showLoadeds && loaded)) {
+                  return (
+                    <div className="text-sm my-1">
+                      <p className="text-gray-500">{type}</p>
+                      <span>{originalFile.name}</span>
+                      <span
+                        className="ml-1"
+                        style={{ color: loaded ? 'blue' : 'red' }}
+                      >
+                        {loaded ? '로드 됨' : '로드 안됨'}
+                      </span>
+                      <button onClick={() => load(maxFile)}>로드</button>
+                      {sceneAddTypes.includes(type) && loaded && (
+                        <button onClick={() => addToScene(maxFile)}>
+                          씬에 추가
+                        </button>
+                      )}
+                    </div>
+                  );
+                } else {
+                  return null;
+                }
               })}
             </div>
           </section>
@@ -1069,19 +1352,55 @@ const MaxPageRightBar = ({
             </div>
           </section>
           <section className="text-sm px-1 flex flex-col my-1">
+            <strong>dp toggle</strong>
+            <div className="flex gap-x-1 py-1">
+              <button onClick={callDPInfos}>DP 정보 가져오기</button>
+              <button disabled={dpList.length === 0} onClick={toggleDP}>
+                DP ({dpVisible ? '끄기' : '켜기'})
+              </button>
+            </div>
+          </section>
+          <section className="text-sm px-1 flex flex-col my-1">
             <strong>lightMap</strong>
+            <div className="">
+              <div className="flex gap-x-1 py-1">
+                <strong>DP ON 라이트맵</strong>
+                <span>{vrLightMapsLoaded ? '불러옴' : '안불러옴'}</span>
+              </div>
+              <div className="flex gap-x-1 py-1">
+                <strong>DP OFF 라이트맵</strong>
+                <span>{dpOffLightMapsLoaded ? '불러옴' : '안불러옴'}</span>
+              </div>
+            </div>
             <div className="flex gap-x-1 py-1">
               {/*<button onClick={showLocalLightMapApplies}>적용 정보 보기</button>*/}
-              <button onClick={exportLightMapOutputs}>
-                적용 정보 내보내기
-              </button>
+              {/*<button onClick={exportLightMapOutputs}>*/}
+              {/*  적용 정보 내보내기*/}
+              {/*</button>*/}
               <button onClick={importVRLightMapApplies}>
                 VR 용 적용 정보 가져오기
               </button>
               <button onClick={loadVRCustomLightMaps}>
                 vr 라이트맵 불러오기
               </button>
-              <button onClick={removeAllLightMaps}>라이트맵 제거</button>
+              <button onClick={loadVRDPOffCustomLightMaps}>
+                DP OFF 라이트맵 불러오기
+              </button>
+              {/*<button onClick={removeAllLightMaps}>라이트맵 제거</button>*/}
+            </div>
+          </section>
+          <section className="text-sm px-1 flex flex-col my-1">
+            <strong>option Toggle</strong>
+            <div className="flex gap-x-1 py-1">
+              {/*<button onClick={showLocalLightMapApplies}>적용 정보 보기</button>*/}
+              {/*<button onClick={exportLightMapOutputs}>*/}
+              {/*  적용 정보 내보내기*/}
+              {/*</button>*/}
+              <button onClick={toggleLG}>lg</button>
+              <button onClick={toggleSS}>samsung</button>
+              <button onClick={toggleX}>default</button>
+              <button onClick={toggleAllVisible}>all visible</button>
+              {/*<button onClick={removeAllLightMaps}>라이트맵 제거</button>*/}
             </div>
           </section>
           <section className="text-sm px-1 flex flex-col my-1">
@@ -1137,7 +1456,7 @@ const MaxPageRightBar = ({
                 <AnisotropyControl></AnisotropyControl>
               </section>
               <section className="text-sm px-1">
-                <ProbeInfo/>
+                <ProbeInfo />
               </section>
             </>
           )}
