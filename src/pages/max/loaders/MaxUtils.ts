@@ -23,7 +23,7 @@ export async function resolveMaxFile(
 }
 
 async function callObject() {
-  const objectURL = MaxConstants.base + 'objects.json';
+  const objectURL = MaxConstants.base + 'objects_0715.json';
   return fetch(objectURL).then(res => res.json() as Promise<MaxCallObject>);
 }
 
@@ -34,6 +34,7 @@ export type MaxCallObject = {
   paths: string[];
   sectionMapping:  { [key: MeshName]: MaxLayers };
   probeApplyInfo: { [key: MaterialName]: { probeNames: string[], probeType: 'multi' }}
+  dp: string[];
 }
 
 export { callObject };

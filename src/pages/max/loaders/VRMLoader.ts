@@ -124,7 +124,7 @@ class VRMLoader implements MaxLoader<THREE.MeshPhysicalMaterial> {
       material.vUserData.originalMetalness = material.metalness;
       material.vUserData.originalRoughness = material.roughness;
       material.vUserData.isVMaterial = true;
-      material.dithering = true;
+      material.dithering = false;
 
       material.needsUpdate = true;
 

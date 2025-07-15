@@ -21,46 +21,90 @@ const MaxFreezeSub = () => {
   const [objectLoaded, setObjectLoaded] = useState(false);
   const [sceneAdded, setSceneAdded] = useState(false);
   const [showDP, setShowDP] = useState(true);
+  const [dpOnLightMaps, setDPOnLightMaps] = useState<{
+    [key: string]: THREE.Texture;
+  }>({});
+  const [dpOFFLightMaps, setDPOFFLightMaps] = useState<{
+    [key: string]: THREE.Texture;
+  }>({});
 
   useEffect(() => {
-    if (init && sceneAdded) {
+    if (init && sceneAdded && objectRef.current) {
       const { scene } = threeExports!!;
+      const timeLines: gsap.core.Timeline[] = [];
       scene.traverse(o => {
         if (o.type === 'Mesh') {
+          const timeLine = gsap.timeline().pause();
+          const mesh = o as THREE.Mesh;
           const mat = (o as THREE.Mesh).matPhysical;
-          const layer = mat.vUserData.viz4dLightMap;
-          if (layer && layer.startsWith('dp')) {
-            if (showDP !== o.visible) {
-              gsap.to(
-                { progress: 0 },
-                {
-                  progress: 1,
-                  duration: 2,
-                  onStart() {
-                    mat.apply('meshTransition', {
-                      direction: showDP ? 'fadeIn' : 'fadeOut',
-                    });
-                    o.visible = true;
-                    mat.transparent = true;
-                  },
-                  onUpdate() {
-                    const progressValue = this.targets()[0].progress;
-                    mat.progress = progressValue;
-                  },
-                  onComplete() {
-                    if (mat.transmission > 0) {
-                      mat.transparent = true;
-                    } else {
-                      mat.transparent = false;
-                    }
-                    o.visible = showDP;
-                    mat.remove('meshTransition');
-                  },
+          if (objectRef.current?.dp.includes(mesh.name)) {
+            const transparency = mat.transparent;
+            timeLine.to(
+              { progress: 0 },
+              {
+                progress: 1,
+                duration: 1.5,
+                onStart() {
+                  mat.apply('meshTransition', {
+                    direction: showDP ? 'fadeIn' : 'fadeOut',
+                  });
+                  mesh.visible = true;
+                  mat.transparent = true;
                 },
-              );
-            }
+                onUpdate() {
+                  const progressValue = this.targets()[0].progress;
+                  mat.progress = progressValue;
+                },
+                onComplete() {
+                  mesh.visible = showDP;
+                  mat.remove('meshTransition');
+                  mat.transparent = transparency;
+                },
+              },
+            );
+            timeLines.push(timeLine);
+          } else if (
+            mesh.vUserData.lightmapLayer?.includes('layer') ||
+            mesh.vUserData.lightmapLayer?.includes('op')
+          ) {
+            const key = mesh.vUserData.lightmapLayer?.includes('op')
+              ? 'option_lg'
+              : mesh.vUserData.lightmapLayer;
+            const targetLightmap = showDP
+              ? dpOnLightMaps[key]
+              : dpOFFLightMaps[key];
+            targetLightmap.flipY = true;
+            targetLightmap.needsUpdate = true;
+            console.log(mesh.vUserData.lightmapLayer, targetLightmap, showDP);
+            timeLine.to(
+              { progress: 0 },
+              {
+                progress: 1,
+                duration: 1.5,
+                onStart() {
+                  mat.uniform.uLightMapTo.value = targetLightmap;
+                  mat.uniform.uUseLightMapTransition.value = true;
+                  mat.progress = 0;
+                  mat.needsUpdate = true;
+                },
+                onUpdate() {
+                  const progressValue = this.targets()[0].progress;
+                  mat.progress = progressValue;
+                },
+                onComplete() {
+                  mat.lightMap = targetLightmap;
+                  mat.uniform.uUseLightMapTransition.value = false;
+                  mat.needsUpdate = true;
+                },
+              },
+            );
+            timeLines.push(timeLine);
           }
         }
+      });
+
+      timeLines.forEach(timeLine => {
+        timeLine.play(0);
       });
     }
   }, [showDP]);
@@ -222,40 +266,77 @@ const MaxFreezeSub = () => {
       alert('아직 준비되지 않았습니다.');
       return;
     }
-    const url = MaxConstants.base + 'lightmaps/final/';
-    const VR_0617_LIGHT_MAPS = [
-      'dp1',
-      'dp2',
-      'layer1',
-      'layer2',
-      'layer3',
-      'layer4',
+    const url = MaxConstants.base + 'lightmaps/0715/';
+    const VR_0715_LIGHT_MAPS = [
+      'dp01',
+      'dp02',
+      'layer001',
+      'layer002',
+      'layer003',
+      'layer004',
+      'option_lg',
     ];
-    const LIGHTMAP_SUFFIX = '_VRayRawTotalLightingMap_denoised.hdr';
-    const textures: { [key: string]: THREE.Texture } = Object.fromEntries(
-      await Promise.all(
-        VR_0617_LIGHT_MAPS.map(async uri => {
-          const tex = await VTextureLoader.loadAsync(
-            url + uri + LIGHTMAP_SUFFIX,
-            threeExports,
-          );
-          tex.flipY = uri.endsWith('hdr');
-          tex.needsUpdate = true;
-          return [uri, tex]; // [key, value] 형태로 반환
-        }),
-      ),
+    const DPON_LIGHTMAP_SUFFIX = '_dpon.hdr';
+    const DPOFF_LIGHTMAP_SUFFIX = '_dpoff.hdr';
+
+    const awaitedDPON = await Promise.all(
+      VR_0715_LIGHT_MAPS.map(async uri => {
+        const tex = await VTextureLoader.loadAsync(
+          url + uri + DPON_LIGHTMAP_SUFFIX,
+          threeExports,
+        );
+        tex.flipY = uri.endsWith('hdr');
+        tex.needsUpdate = true;
+        return [uri, tex]; // [key, value] 형태로 반환
+      }),
     );
-    console.log('확인');
-    applyLightMap(textures);
+
+    const awaitedDPOff = await Promise.all(
+      VR_0715_LIGHT_MAPS.filter(d => !d.includes('dp')).map(async uri => {
+        const tex = await VTextureLoader.loadAsync(
+          url + uri + DPOFF_LIGHTMAP_SUFFIX,
+          threeExports,
+        );
+        tex.flipY = uri.endsWith('hdr');
+        tex.needsUpdate = true;
+        return [uri, tex]; // [key, value] 형태로 반환
+      }),
+    );
+
+    const dpOnTextures: { [key: string]: THREE.Texture } =
+      Object.fromEntries(awaitedDPON);
+
+    const dpOffTextures: { [key: string]: THREE.Texture } =
+      Object.fromEntries(awaitedDPOff);
+
+    applyLightMap(dpOnTextures);
+
+    setDPOnLightMaps(dpOnTextures);
+    setDPOFFLightMaps(dpOffTextures);
   }
 
   function applyLightMap(textures: { [key: string]: THREE.Texture }) {
     const lightMapApplies = objectRef.current!!.sectionMapping;
-    console.log('lightMapApplies', lightMapApplies);
+
+    console.log('applyLightMap', textures);
     const keys = Object.keys(lightMapApplies);
     tempSceneRef.current.traverseAll(o => {
       if (o.type === 'Mesh') {
         const mesh = o as THREE.Mesh;
+
+        if (keys.includes(mesh.name)) {
+          const layerName = extractQName(lightMapApplies[mesh.name]);
+          if (layerName) {
+            mesh.vUserData.lightmapLayer = layerName;
+          }
+        } else if (keys.includes(stripMatSuffix(mesh.name))) {
+          const formattedKey = stripMatSuffix(mesh.name);
+          const layerName = extractQName(lightMapApplies[formattedKey]);
+          if (layerName) {
+            mesh.vUserData.lightmapLayer = layerName;
+          }
+        }
+
         // 이미 넣었으면 패스
         if (!mesh.matPhysical.lightMap) {
           if (keys.includes(mesh.name)) {
@@ -263,28 +344,27 @@ const MaxFreezeSub = () => {
             if (mesh.name === 'Sphere034') {
               const matName = mesh.matPhysical.name;
               if (matName.includes('암막커튼')) {
-                targetLightMapKey = 'dp1';
+                targetLightMapKey = 'dp01';
               } else {
-                targetLightMapKey = 'dp2';
+                targetLightMapKey = 'dp02';
               }
             } else {
               targetLightMapKey = lightMapApplies[mesh.name] as string;
             }
             if (targetLightMapKey.startsWith('fi_')) {
-              const key = extractQName(targetLightMapKey);
+              let key = extractQName(targetLightMapKey);
               console.log(key, targetLightMapKey);
+
               if (key) {
                 const mat = mesh.matPhysical;
+                if (key.includes('op')) {
+                  key = 'option_lg';
+                }
                 mat.lightMap = textures[key];
-                mat.lightMapIntensity = 2.0;
-                // mat.apply('lightmapContra  st', 1.2);
-                // mat.apply('saturation', {
-                //   uUseSaturation: true,
-                //   uSaturation: 0.2,
-                // });
                 if (!mat.lightMap.flipY) {
                   mat.lightMap.flipY = true;
                 }
+                mat.lightMapIntensity = 2;
                 mat.vUserData.viz4dLightMap = key;
                 mat.needsUpdate = true;
               }
@@ -295,19 +375,17 @@ const MaxFreezeSub = () => {
               formattedKey
             ] as string;
             if (targetLightMapKey.startsWith('fi_')) {
-              const key = extractQName(targetLightMapKey);
+              let key = extractQName(targetLightMapKey);
               if (key) {
+                if (key.includes('op')) {
+                  key = 'option_lg';
+                }
                 const mat = mesh.matPhysical;
                 mat.lightMap = textures[key];
-                mat.lightMapIntensity = 2.0;
-                // mat.apply('lightmapContrast', 1.2);
-                // mat.apply('saturation', {
-                //   uUseSaturation: true,
-                //   uSaturation: 0.2,
-                // });
                 if (!mat.lightMap.flipY) {
                   mat.lightMap.flipY = true;
                 }
+                mat.lightMapIntensity = 2;
                 mat.vUserData.viz4dLightMap = key;
                 mat.needsUpdate = true;
               }
@@ -337,6 +415,15 @@ const MaxFreezeSub = () => {
     const probeApplyInfo = objectRef.current!!.probeApplyInfo;
 
     const keys = Object.keys(probeApplyInfo);
+    const realKeys = Object.fromEntries(
+      keys.map(key => {
+        const idx = key.lastIndexOf('_');
+        const prefix = idx !== -1 ? key.substring(0, idx) : key;
+        return [prefix, key];
+      }),
+    );
+
+    const rkKeys = Object.keys(realKeys);
 
     scene.traverseAll(o => {
       if (o.type === 'Mesh') {
@@ -349,6 +436,22 @@ const MaxFreezeSub = () => {
 
           mat.apply('probe', { probes: filtered });
           mat.needsUpdate = true;
+        } else {
+          const lastUnderScoreIndex = mat.name.lastIndexOf('_');
+          if (lastUnderScoreIndex !== -1) {
+            const realName = mat.name.substring(0, lastUnderScoreIndex);
+            if (rkKeys.includes(realName)) {
+              if (!mat.vUserData.probeNames) {
+                const names = probeApplyInfo[realKeys[realName]].probeNames;
+                const filtered = ps.filter(p => {
+                  return names.includes(p.getName());
+                });
+
+                mat.apply('probe', { probes: filtered });
+                mat.needsUpdate = true;
+              }
+            }
+          }
         }
       }
     });
@@ -363,6 +466,16 @@ const MaxFreezeSub = () => {
 
       const keys = Object.keys(probeApplyInfo);
 
+      const realKeys = Object.fromEntries(
+        keys.map(key => {
+          const idx = key.lastIndexOf('_');
+          const prefix = idx !== -1 ? key.substring(0, idx) : key;
+          return [prefix, key];
+        }),
+      );
+
+      const rkKeys = Object.keys(realKeys);
+
       scene.traverseAll(o => {
         if (o.type === 'Mesh') {
           const mat = (o as THREE.Mesh).matPhysical;
@@ -375,6 +488,22 @@ const MaxFreezeSub = () => {
 
               mat.apply('probe', { probes: filtered });
               mat.needsUpdate = true;
+            }
+          } else {
+            const lastUnderScoreIndex = mat.name.lastIndexOf('_');
+            if (lastUnderScoreIndex !== -1) {
+              const realName = mat.name.substring(0, lastUnderScoreIndex);
+              if (rkKeys.includes(realName)) {
+                if (!mat.vUserData.probeNames) {
+                  const names = probeApplyInfo[realKeys[realName]].probeNames;
+                  const filtered = ps.filter(p => {
+                    return names.includes(p.getName());
+                  });
+
+                  mat.apply('probe', { probes: filtered });
+                  mat.needsUpdate = true;
+                }
+              }
             }
           }
         }
@@ -397,12 +526,18 @@ const MaxFreezeSub = () => {
   }
 
   function extractQName(str: string) {
-    const match = str.match(/fi_([a-z]+\d+)/i);
+    const match = str.match(/fi_([a-zA-Z0-9_]+)/i);
     return match ? match[1] : null;
   }
 
   function stripMatSuffix(str: string) {
-    return str.replace(/_mat_sub_\d+$/, '');
+    if (str.indexOf('_mat_sub_') !== -1) {
+      return str.replace(/_mat_sub_\d+$/, '');
+    } else if (str.indexOf('_mat_id_') !== -1) {
+      return str.replace(/_mat_id_\d+$/, '');
+    } else {
+      return str;
+    }
   }
 
   return (
