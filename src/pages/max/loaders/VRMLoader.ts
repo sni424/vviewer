@@ -16,7 +16,7 @@ class VRMLoader implements MaxLoader<THREE.MeshPhysicalMaterial> {
 
   readonly type: MaxFileType = 'material';
   private textureLoader: VRTLoader = new VRTLoader();
-  serverURL: string = MaxConstants.MATERIAL_PATH
+  serverURL: string = MaxConstants.MATERIAL_PATH;
 
   async load(maxFile: MaxFile): Promise<THREE.MeshPhysicalMaterial> {
     const { originalFile, loaded, resultData, type } = maxFile;
@@ -50,7 +50,7 @@ class VRMLoader implements MaxLoader<THREE.MeshPhysicalMaterial> {
         key => !key.toLowerCase().endsWith('map'),
       );
 
-      console.log(`others : ${others}`);
+      // console.log(`others : ${others}`);
 
       const physicalParams = {} as TargetParams;
       const specializedVrayMaps = ['reflectionMap', 'glossinessMap'];
@@ -77,7 +77,7 @@ class VRMLoader implements MaxLoader<THREE.MeshPhysicalMaterial> {
 
       for (const key of others) {
         const value = json[key as keyof MaxMaterialJSON];
-        console.log(`checking key ${key}, `, value);
+        // console.log(`checking key ${key}, `, value);
         if (value !== null) {
           let resultValue: any;
           if (typeof value === 'object' && !Array.isArray(value)) {
@@ -104,7 +104,7 @@ class VRMLoader implements MaxLoader<THREE.MeshPhysicalMaterial> {
         }
       }
 
-      console.log(json, physicalParams);
+      // console.log(json, physicalParams);
       physicalParams.depthWrite = true;
       physicalParams.depthTest = true;
       // if (!physicalParams.metalnessMap) {
@@ -158,8 +158,8 @@ class VRMLoader implements MaxLoader<THREE.MeshPhysicalMaterial> {
       encodeURIComponent(filename)
         // S3는 공백을 + 로 반환하므로 맞춰줌 (optional)
         .replace(/%20/g, '+');
-    console.log('fileName', filename);
-    console.log('targetURL', targetURL);
+    // console.log('fileName', filename);
+    // console.log('targetURL', targetURL);
     const file = await resolveMaxFile(targetURL, filename, this.type);
 
     return await this.load(file);

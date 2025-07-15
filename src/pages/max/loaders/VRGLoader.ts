@@ -58,8 +58,12 @@ class VRGLoader implements MaxLoader<THREE.BufferGeometry> {
         encodeURIComponent(filename)
           // S3는 공백을 + 로 반환하므로 맞춰줌 (optional)
           .replace(/%20/g, '+');
-      console.log('fileName', filename);
-      console.log('targetURL', targetURL);
+      if (filename.includes('환풍기')) {
+        console.log('fileName', filename, targetURL);
+        console.log('targetURL', targetURL);
+      }
+      // console.log('fileName', filename);
+      // console.log('targetURL', targetURL);
       // const file = await resolveMaxFile(targetURL, filename, this.type);
 
       // return await this.load(file);
@@ -259,42 +263,63 @@ function parseVXQ0(view: DataView): THREE.BufferGeometry {
 function parseVXQ1(view: DataView): THREE.BufferGeometry {
   let offset = 4; // VXQ1
 
-  const vertexCount = view.getInt32(offset, true); offset += 4;
-  const indexCount = view.getInt32(offset, true); offset += 4;
-  const uvChannelCount = view.getInt32(offset, true); offset += 4;
+  const vertexCount = view.getInt32(offset, true);
+  offset += 4;
+  const indexCount = view.getInt32(offset, true);
+  offset += 4;
+  const uvChannelCount = view.getInt32(offset, true);
+  offset += 4;
 
-  const minX = view.getFloat32(offset, true); offset += 4;
-  const minY = view.getFloat32(offset, true); offset += 4;
-  const minZ = view.getFloat32(offset, true); offset += 4;
-  const maxX = view.getFloat32(offset, true); offset += 4;
-  const maxY = view.getFloat32(offset, true); offset += 4;
-  const maxZ = view.getFloat32(offset, true); offset += 4;
+  const minX = view.getFloat32(offset, true);
+  offset += 4;
+  const minY = view.getFloat32(offset, true);
+  offset += 4;
+  const minZ = view.getFloat32(offset, true);
+  offset += 4;
+  const maxX = view.getFloat32(offset, true);
+  offset += 4;
+  const maxY = view.getFloat32(offset, true);
+  offset += 4;
+  const maxZ = view.getFloat32(offset, true);
+  offset += 4;
 
   const uvBounds: [number, number, number, number][] = [];
   for (let i = 0; i < uvChannelCount; i++) {
-    const minU = view.getFloat32(offset, true); offset += 4;
-    const maxU = view.getFloat32(offset, true); offset += 4;
-    const minV = view.getFloat32(offset, true); offset += 4;
-    const maxV = view.getFloat32(offset, true); offset += 4;
+    const minU = view.getFloat32(offset, true);
+    offset += 4;
+    const maxU = view.getFloat32(offset, true);
+    offset += 4;
+    const minV = view.getFloat32(offset, true);
+    offset += 4;
+    const maxV = view.getFloat32(offset, true);
+    offset += 4;
     uvBounds.push([minU, maxU, minV, maxV]);
   }
 
   const positions = new Float32Array(vertexCount * 3);
   const normals = new Float32Array(vertexCount * 3);
-  const uvChannels = Array.from({ length: uvChannelCount }, () => new Float32Array(vertexCount * 2));
+  const uvChannels = Array.from(
+    { length: uvChannelCount },
+    () => new Float32Array(vertexCount * 2),
+  );
 
   for (let i = 0; i < vertexCount; i++) {
-    const x = unquantizeSigned(view.getInt16(offset, true), 16); offset += 2;
-    const y = unquantizeSigned(view.getInt16(offset, true), 16); offset += 2;
-    const z = unquantizeSigned(view.getInt16(offset, true), 16); offset += 2;
+    const x = unquantizeSigned(view.getInt16(offset, true), 16);
+    offset += 2;
+    const y = unquantizeSigned(view.getInt16(offset, true), 16);
+    offset += 2;
+    const z = unquantizeSigned(view.getInt16(offset, true), 16);
+    offset += 2;
 
-    positions[i * 3] = x * (maxX - minX) / 2 + (minX + maxX) / 2;
-    positions[i * 3 + 1] = y * (maxY - minY) / 2 + (minY + maxY) / 2;
-    positions[i * 3 + 2] = z * (maxZ - minZ) / 2 + (minZ + maxZ) / 2;
+    positions[i * 3] = (x * (maxX - minX)) / 2 + (minX + maxX) / 2;
+    positions[i * 3 + 1] = (y * (maxY - minY)) / 2 + (minY + maxY) / 2;
+    positions[i * 3 + 2] = (z * (maxZ - minZ)) / 2 + (minZ + maxZ) / 2;
 
     for (let ch = 0; ch < uvChannelCount; ch++) {
-      const uRaw = view.getUint16(offset, true); offset += 2;
-      const vRaw = view.getUint16(offset, true); offset += 2;
+      const uRaw = view.getUint16(offset, true);
+      offset += 2;
+      const vRaw = view.getUint16(offset, true);
+      offset += 2;
       const [minU, maxU, minV, maxV] = uvBounds[ch];
 
       const u = unquantizeUnsigned(uRaw, 16) * (maxU - minU) + minU;
@@ -313,7 +338,8 @@ function parseVXQ1(view: DataView): THREE.BufferGeometry {
 
   const indices = new Uint32Array(indexCount);
   for (let i = 0; i < indexCount; i++) {
-    indices[i] = view.getUint32(offset, true); offset += 4;
+    indices[i] = view.getUint32(offset, true);
+    offset += 4;
   }
 
   const geometry = new THREE.BufferGeometry();

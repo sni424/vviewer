@@ -1,5 +1,6 @@
 import { useAtomValue, useSetAtom } from 'jotai';
 import React, { useState } from 'react';
+import { getMaxFileType, MaxFile, maxFileAtom } from 'src/pages/max/maxAtoms';
 import { Walls } from '../types';
 import {
   MapDst,
@@ -100,82 +101,172 @@ const useModelDragAndDrop = () => {
     event.preventDefault();
     setIsDragging(false);
 
+    const extensions = [
+      '.gltf',
+      '.glb',
+      '.png',
+      '.jpg',
+      '.exr',
+      '.ktx',
+      '.json',
+    ];
+    const maxExtensions = ['.vrt', '.vri', '.vrg', '.vrm', '.vro'];
     if (event.dataTransfer.items && event.dataTransfer.items.length > 0) {
-      const extensions = [
-        '.gltf',
-        '.glb',
-        '.png',
-        '.jpg',
-        '.exr',
-        '.ktx',
-        '.json',
-      ];
-      parseDroppedFiles(event, extensions)
-        .then(async filteredFiles => {
-          if (filteredFiles.length === 0) {
-            alert(`다음 파일들만 가능 : ${extensions.join(', ')}`);
-            return;
-          }
+      // 우선 파일 전부 가져오기
+      const allFiles = await parseDroppedFiles(event, [
+        ...extensions,
+        ...maxExtensions,
+      ]);
+      if (allFiles.length === 0) {
+        // alert(
+        //   `다음 파일들만 가능 : ${[...extensions, ...maxExtensions].join(', ')}`,
+        // );
+        return;
+      }
+      // max 확장자가 하나라도 있는 경우
+      const hasMax = allFiles.some(file =>
+        maxExtensions.some(ext => file.name.toLowerCase().endsWith(ext)),
+      );
 
-          const wallFile = filteredFiles.find(
-            file => file.name === 'walls.json',
-          );
-          if (wallFile) {
-            const walls = (await fileToJson(wallFile)) as Walls;
-            if (verifyWalls(walls)) {
-              const wallCreateOption = wallsToWallOption(walls);
-              setAtomValue(wallOptionAtom, wallCreateOption);
-            } else {
-              alert('walls.json 파일이 잘못되었습니다.');
-            }
-            return;
-          }
-
-          // 1. 같은 이름의 glb, json, jpg(jgpeg) 확인
-          const gltfs = filteredFiles.filter(
-            file =>
-              file.name.toLowerCase().endsWith('.gltf') ||
-              file.name.toLowerCase().endsWith('.glb'),
-          );
-
-          const inputMaps = filteredFiles.filter(
-            file =>
-              file.name.toLowerCase().endsWith('.png') ||
-              file.name.toLowerCase().endsWith('.exr') ||
-              file.name.toLowerCase().endsWith('.ktx') || //라이트맵
-              file.name.toLowerCase().endsWith('.jpg'), // 게인맵
-          );
-
-          // 이미지파일이 있으면 Lightmap에 넣을지 Emissive에 넣을지 등을 선택해야한다.
-          const hasMaps = inputMaps.length > 0;
-
-          // 2. 모델 + 이미지
-          if (hasMaps) {
-            // 게인맵 선택?
-            // if (
-            //   inputMaps.some(map => map.name.toLowerCase().endsWith('.exr'))
-            // ) {
-            //   openModal(<MapSelectorModal models={gltfs} maps={inputMaps} />);
-            // } else {
-            //   const sources = parse(gltfs, inputMaps, 'lightmap');
-            //   setSourceUrls(sources);
-            // }
-            const sources = parse(gltfs, inputMaps, 'lightmap');
-            setSourceUrls(sources);
+      if (hasMax) {
+        const maxFiles: MaxFile[] = allFiles
+          .filter(file =>
+            maxExtensions.some(ext => file.name.toLowerCase().endsWith(ext)),
+          )
+          .map(file => ({
+            originalFile: file,
+            name: file.name,
+            type: getMaxFileType(file),
+            loaded: false,
+          }));
+        setAtomValue(maxFileAtom, pre => [...pre, ...maxFiles]);
+      }
+      //glb파일
+      else {
+        const filteredFiles = allFiles.filter(file =>
+          extensions.some(ext => file.name.toLowerCase().endsWith(ext)),
+        );
+        const wallFile = filteredFiles.find(file => file.name === 'walls.json');
+        if (wallFile) {
+          const walls = (await fileToJson(wallFile)) as Walls;
+          if (verifyWalls(walls)) {
+            const wallCreateOption = wallsToWallOption(walls);
+            setAtomValue(wallOptionAtom, wallCreateOption);
           } else {
-            // 3. 모델만
-            const fileUrls = gltfs.map(file => ({
-              name: file.name,
-              file,
-            }));
-
-            // Renderer에서 모델 추가됨
-            setSourceUrls(fileUrls);
+            alert('walls.json 파일이 잘못되었습니다.');
           }
-        })
-        .finally(() => {
-          event.dataTransfer.clearData();
-        });
+          return;
+        }
+
+        // 1. 같은 이름의 glb, json, jpg(jgpeg) 확인
+        const gltfs = filteredFiles.filter(
+          file =>
+            file.name.toLowerCase().endsWith('.gltf') ||
+            file.name.toLowerCase().endsWith('.glb'),
+        );
+
+        const inputMaps = filteredFiles.filter(
+          file =>
+            file.name.toLowerCase().endsWith('.png') ||
+            file.name.toLowerCase().endsWith('.exr') ||
+            file.name.toLowerCase().endsWith('.ktx') || //라이트맵
+            file.name.toLowerCase().endsWith('.jpg'), // 게인맵
+        );
+
+        // 이미지파일이 있으면 Lightmap에 넣을지 Emissive에 넣을지 등을 선택해야한다.
+        const hasMaps = inputMaps.length > 0;
+
+        // 2. 모델 + 이미지
+        if (hasMaps) {
+          // 게인맵 선택?
+          // if (
+          //   inputMaps.some(map => map.name.toLowerCase().endsWith('.exr'))
+          // ) {
+          //   openModal(<MapSelectorModal models={gltfs} maps={inputMaps} />);
+          // } else {
+          //   const sources = parse(gltfs, inputMaps, 'lightmap');
+          //   setSourceUrls(sources);
+          // }
+          const sources = parse(gltfs, inputMaps, 'lightmap');
+          setSourceUrls(sources);
+        } else {
+          // 3. 모델만
+          const fileUrls = gltfs.map(file => ({
+            name: file.name,
+            file,
+          }));
+
+          // Renderer에서 모델 추가됨
+          setSourceUrls(fileUrls);
+        }
+      }
+      event.dataTransfer.clearData();
+      // parseDroppedFiles(event, extensions)
+      //   .then(async filteredFiles => {
+      //     if (filteredFiles.length === 0) {
+      //       alert(`다음 파일들만 가능 : ${extensions.join(', ')}`);
+      //       return;
+      //     }
+
+      //     const wallFile = filteredFiles.find(
+      //       file => file.name === 'walls.json',
+      //     );
+      //     if (wallFile) {
+      //       const walls = (await fileToJson(wallFile)) as Walls;
+      //       if (verifyWalls(walls)) {
+      //         const wallCreateOption = wallsToWallOption(walls);
+      //         setAtomValue(wallOptionAtom, wallCreateOption);
+      //       } else {
+      //         alert('walls.json 파일이 잘못되었습니다.');
+      //       }
+      //       return;
+      //     }
+
+      //     // 1. 같은 이름의 glb, json, jpg(jgpeg) 확인
+      //     const gltfs = filteredFiles.filter(
+      //       file =>
+      //         file.name.toLowerCase().endsWith('.gltf') ||
+      //         file.name.toLowerCase().endsWith('.glb'),
+      //     );
+
+      //     const inputMaps = filteredFiles.filter(
+      //       file =>
+      //         file.name.toLowerCase().endsWith('.png') ||
+      //         file.name.toLowerCase().endsWith('.exr') ||
+      //         file.name.toLowerCase().endsWith('.ktx') || //라이트맵
+      //         file.name.toLowerCase().endsWith('.jpg'), // 게인맵
+      //     );
+
+      //     // 이미지파일이 있으면 Lightmap에 넣을지 Emissive에 넣을지 등을 선택해야한다.
+      //     const hasMaps = inputMaps.length > 0;
+
+      //     // 2. 모델 + 이미지
+      //     if (hasMaps) {
+      //       // 게인맵 선택?
+      //       // if (
+      //       //   inputMaps.some(map => map.name.toLowerCase().endsWith('.exr'))
+      //       // ) {
+      //       //   openModal(<MapSelectorModal models={gltfs} maps={inputMaps} />);
+      //       // } else {
+      //       //   const sources = parse(gltfs, inputMaps, 'lightmap');
+      //       //   setSourceUrls(sources);
+      //       // }
+      //       const sources = parse(gltfs, inputMaps, 'lightmap');
+      //       setSourceUrls(sources);
+      //     } else {
+      //       // 3. 모델만
+      //       const fileUrls = gltfs.map(file => ({
+      //         name: file.name,
+      //         file,
+      //       }));
+
+      //       // Renderer에서 모델 추가됨
+      //       setSourceUrls(fileUrls);
+      //     }
+      //   })
+      //   .finally(() => {
+      //     event.dataTransfer.clearData();
+      //   });
     }
   };
 

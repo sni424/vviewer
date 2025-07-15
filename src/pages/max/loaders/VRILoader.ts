@@ -15,7 +15,7 @@ class VRILoader implements MaxLoader<THREE.Texture> {
 
   constructor(useLowResolution?: boolean) {
     if (useLowResolution) {
-      this.serverURL = this.serverURL + "low/";
+      this.serverURL = this.serverURL + 'low/';
     }
   }
 
@@ -87,7 +87,6 @@ class VRILoader implements MaxLoader<THREE.Texture> {
     // const file = await resolveMaxFile(targetURL, filename, this.type);
 
     // return await this.load(file);
-
     const buffer = await Workers.fetch(targetURL);
     return this.loadFromBuffer(buffer, filename);
   }

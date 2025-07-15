@@ -7,6 +7,7 @@ import {
   FaPause,
 } from 'react-icons/fa';
 
+import { downloadJsonFile } from 'src/scripts/utils';
 import {
   cameraActionAtom,
   cameraSettingAtom,
@@ -47,6 +48,15 @@ const uploadTourSpot = async () => {
     });
 };
 
+const saveInPc = () => {
+  const tourSpots = getAtomValue(tourAtom);
+  if (tourSpots) {
+    downloadJsonFile(tourSpots, 'tourSpots-data.json');
+  } else {
+    console.error('no tourSpots');
+  }
+};
+
 function HotSpotPanel() {
   // 핫스팟 정보
   const [placeInfo, setPlaceInfo] = useState<placeInfoType[]>([]);
@@ -70,6 +80,7 @@ function HotSpotPanel() {
   if (!threeExports) return null;
 
   const { camera, scene } = threeExports;
+
   // 투어 추가 함수수
   const addTour = () => {
     if (placeName.length > 0) {
@@ -432,6 +443,12 @@ function HotSpotPanel() {
           onClick={() => uploadTourSpot()}
         >
           업로드
+        </button>
+        <button
+          className="px-4 py-2 mt-2 text-white bg-blue-600 rounded-lg shadow-md hover:bg-blue-700 active:scale-95 transition-transform duration-150 ease-in-out"
+          onClick={() => saveInPc()}
+        >
+          pc에저장
         </button>
         <button
           className="px-4 py-2 mt-2 text-white bg-blue-600 rounded-lg shadow-md hover:bg-blue-700 active:scale-95 transition-transform duration-150 ease-in-out"

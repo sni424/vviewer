@@ -32,6 +32,7 @@ import ReflectionProbe, {
   ReflectionProbeResolutions,
 } from '../scripts/ReflectionProbe.ts';
 import {
+  downloadJsonFile,
   listFilesFromDrop,
   loadHDRTexture,
   loadPNGAsENV,
@@ -57,6 +58,16 @@ const uploadProbes = async () => {
       console.log(err);
       alert('업로드 실패');
     });
+};
+
+const saveInPc = async () => {
+  const probes = getAtomValue(ProbeAtom);
+  const toJSON = await Promise.all(probes.map(probe => probe.toJSON()));
+  if (toJSON) {
+    downloadJsonFile(toJSON, 'probe.json');
+  } else {
+    console.error('no tourSpots');
+  }
 };
 
 const ProbeInfo = () => {
@@ -423,6 +434,12 @@ const ProbeInfo = () => {
               onClick={uploadProbes}
             >
               업로드
+            </button>
+            <button
+              style={{ fontSize: 12, padding: '4px 8px', cursor: 'pointer' }}
+              onClick={saveInPc}
+            >
+              pc에 저장
             </button>
             <button
               style={{ fontSize: 12, padding: '4px 8px', cursor: 'pointer' }}

@@ -1,13 +1,15 @@
 import gsap from 'gsap';
 import { useAtom, useAtomValue } from 'jotai';
 import { useSetAtom } from 'jotai/index';
+import { applyProbeReflectionProbe } from 'src/scripts/vthree/Material.ts';
 import * as THREE from 'VTHREE';
 import { ENV } from '../../Constants.ts';
 import { Walls } from '../../types.ts';
 import {
   animationDurationAtom,
   getAtomValue,
-  getWallCacheAtom, getWallOptionAtom,
+  getWallCacheAtom,
+  getWallOptionAtom,
   lightMapAtom,
   minimapAtom,
   modelOptionClassAtom,
@@ -22,7 +24,9 @@ import {
 } from '../atoms.ts';
 import {
   loadJson,
-  loadOption, prepareWalls, recompileAsync,
+  loadOption,
+  prepareWalls,
+  recompileAsync,
   uploadJson,
   wallsToWallOption,
 } from '../atomUtils.ts';
@@ -32,7 +36,6 @@ import { Effects, ModelOptionObject } from '../ModelOptionObject.ts';
 import { isImage } from '../utils.ts';
 import ModelOption from './ModelOption.ts';
 import OptionState, { FunctionEffects } from './OptionState.ts';
-import { applyProbeReflectionProbe } from 'src/scripts/vthree/Material.ts';
 
 const useOptionManager = () => {
   const threeExports = useAtomValue(threeExportsAtom);
@@ -245,7 +248,11 @@ const useOptionManager = () => {
                     });
                     mesh.visible = true;
                     mat.transparent = true;
-                    if (!targetVisible && (mesh.name.toLowerCase().includes('base') || mesh.name.includes('에어컨'))) {
+                    if (
+                      !targetVisible &&
+                      (mesh.name.toLowerCase().includes('base') ||
+                        mesh.name.includes('에어컨'))
+                    ) {
                       mat.depthWrite = false;
                     }
                   },
@@ -257,10 +264,14 @@ const useOptionManager = () => {
                     mesh.visible = targetVisible;
                     mat.remove('meshTransition');
                     mat.transparent = transparency;
-                    if (!targetVisible && (mesh.name.toLowerCase().includes('base') || mesh.name.includes('에어컨'))) {
+                    if (
+                      !targetVisible &&
+                      (mesh.name.toLowerCase().includes('base') ||
+                        mesh.name.includes('에어컨'))
+                    ) {
                       mat.depthWrite = depthWrite;
                     }
-                      // mesh.renderOrder = renderOrder;
+                    // mesh.renderOrder = renderOrder;
                   },
                 },
               );
@@ -354,7 +365,8 @@ const useOptionManager = () => {
             );
             const params: applyProbeReflectionProbe = {
               probes: targetProbes,
-              walls: probeType === 'multiWall' ? prepareWalls(walls) : undefined,
+              walls:
+                probeType === 'multiWall' ? prepareWalls(walls) : undefined,
             };
             mat.applyProbe(params);
           }

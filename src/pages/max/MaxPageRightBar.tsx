@@ -1,12 +1,11 @@
+import { gsap } from 'gsap';
 import { useAtom, useAtomValue } from 'jotai';
 import { Dispatch, SetStateAction, useEffect, useRef, useState } from 'react';
 import { EnvController } from 'src/components/mobile/MobileControlPanel.tsx';
-import {
-  AnisotropyControl,
-  GeneralPostProcessingControl,
-  TestControl,
-} from 'src/components/SceneInfo';
+import ProbeInfo from 'src/components/ProbeInfo.tsx';
+import { AnisotropyControl, TestControl } from 'src/components/SceneInfo';
 import { Layer } from 'src/Constants.ts';
+import { MaxConstants } from 'src/pages/max/loaders/MaxConstants.ts';
 import { MaxFile, maxFileAtom, MaxFileType } from 'src/pages/max/maxAtoms.ts';
 import useMaxFileController from 'src/pages/max/UseMaxFileController.ts';
 import {
@@ -15,16 +14,14 @@ import {
   threeExportsAtom,
 } from 'src/scripts/atoms.ts';
 import { recompileAsync } from 'src/scripts/atomUtils.ts';
-import * as THREE from 'VTHREE';
-import { gsap } from 'gsap';
-import { MaxConstants } from 'src/pages/max/loaders/MaxConstants.ts';
 import VTextureLoader from 'src/scripts/loaders/VTextureLoader.ts';
 import ReflectionProbe from 'src/scripts/ReflectionProbe.ts';
+import * as THREE from 'VTHREE';
+
 import {
   callLightMapsWithQuality,
   LightMapQuality,
 } from 'src/pages/max/loaders/FreezeLoader.ts';
-import ProbeInfo from 'src/components/ProbeInfo.tsx';
 
 const VIZ4D_LIGHT_MAPS = [
   'c1_C01.exr',
@@ -163,7 +160,10 @@ const MaxPageRightBar = ({
                 },
               );
               timeLines.push(timeLine);
-            } else if (mat.vUserData.viz4dLightMap?.includes('layer') || mat.vUserData.viz4dLightMap?.includes('option')) {
+            } else if (
+              mat.vUserData.viz4dLightMap?.includes('layer') ||
+              mat.vUserData.viz4dLightMap?.includes('option')
+            ) {
               const targetLightmap = dpVisible
                 ? vrLightMaps[mat.vUserData.viz4dLightMap]
                 : dpOffLightMaps[mat.vUserData.viz4dLightMap];
@@ -356,6 +356,7 @@ const MaxPageRightBar = ({
 
   function addAll() {
     if (scene) {
+      console.log('scene', scene);
       scene.children.forEach(c => {
         c.removeFromParent();
       });
