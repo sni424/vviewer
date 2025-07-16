@@ -90,8 +90,8 @@ const mainShader = {
    
    
       }
-      // gl_FragColor = linearToOutputTexel2( color0 );
-      gl_FragColor = color0 * 2.0;
+      gl_FragColor = linearToOutputTexel2( color0 );
+      // gl_FragColor = color0;
       
     }
   `,

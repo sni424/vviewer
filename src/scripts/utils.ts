@@ -1939,35 +1939,61 @@ export const meshInsidePoint = (
 
 export async function loadLightMaps() {
   const threeExports = getAtomValue(threeExportsAtom);
-  const url = MaxConstants.base + 'lightmaps/final/';
-  const VR_0617_LIGHT_MAPS = [
-    'dp1',
-    'dp2',
-    'layer1',
-    'layer2',
-    'layer3',
-    'layer4',
+  const url = MaxConstants.base + 'lightmaps/0715/';
+  const VR_0715_LIGHT_MAPS = [
+    'dp01',
+    'dp02',
+    'layer001',
+    'layer002',
+    'layer003',
+    'layer004',
+    'option_lg',
   ];
+  const DPON_LIGHTMAP_SUFFIX = '_dpon.hdr';
+  const DPOFF_LIGHTMAP_SUFFIX = '_dpoff.hdr';
   const LIGHTMAP_SUFFIX = '_VRayRawTotalLightingMap_denoised.hdr';
-  const textures: { [key: string]: THREE.Texture } = Object.fromEntries(
-    await Promise.all(
-      VR_0617_LIGHT_MAPS.map(async uri => {
-        const tex = await VTextureLoader.loadAsync(
-          url + uri + LIGHTMAP_SUFFIX,
-          threeExports,
-        );
-        tex.flipY = uri.endsWith('hdr');
-        tex.needsUpdate = true;
-        return [uri, tex]; // [key, value] 형태로 반환
-      }),
-    ),
+
+  const awaitedDPON = await Promise.all(
+    VR_0715_LIGHT_MAPS.map(async uri => {
+      const tex = await VTextureLoader.loadAsync(
+        url + uri + DPON_LIGHTMAP_SUFFIX,
+        threeExports,
+      );
+      tex.flipY = uri.endsWith('hdr');
+      tex.needsUpdate = true;
+      return [uri, tex]; // [key, value] 형태로 반환
+    }),
   );
-  return textures;
+
+  const awaitedDPOff = await Promise.all(
+    VR_0715_LIGHT_MAPS.filter(d => !d.includes('dp')).map(async uri => {
+      const tex = await VTextureLoader.loadAsync(
+        url + uri + DPOFF_LIGHTMAP_SUFFIX,
+        threeExports,
+      );
+      tex.flipY = uri.endsWith('hdr');
+      tex.needsUpdate = true;
+      return [uri, tex]; // [key, value] 형태로 반환
+    }),
+  );
+
+  const dpOnTextures: { [key: string]: THREE.Texture } =
+    Object.fromEntries(awaitedDPON);
+
+  const dpOffTextures: { [key: string]: THREE.Texture } =
+    Object.fromEntries(awaitedDPOff);
+
+  return dpOnTextures;
   // applyLightMap(textures);
 }
 
+// function extractQName(str: string) {
+//   const match = str.match(/fi_([a-z]+\d+)/i);
+//   return match ? match[1] : null;
+// }
+
 function extractQName(str: string) {
-  const match = str.match(/fi_([a-z]+\d+)/i);
+  const match = str.match(/fi_([a-zA-Z0-9_]+)/i);
   return match ? match[1] : null;
 }
 
@@ -1981,6 +2007,19 @@ export function applyLightMap(
   mesh: THREE.Mesh,
 ) {
   const keys = Object.keys(lightMapApplies);
+
+  if (keys.includes(mesh.name)) {
+    const layerName = extractQName(lightMapApplies[mesh.name]);
+    if (layerName) {
+      mesh.vUserData.lightmapLayer = layerName;
+    }
+  } else if (keys.includes(stripMatSuffix(mesh.name))) {
+    const formattedKey = stripMatSuffix(mesh.name);
+    const layerName = extractQName(lightMapApplies[formattedKey]);
+    if (layerName) {
+      mesh.vUserData.lightmapLayer = layerName;
+    }
+  }
 
   // 이미 넣었으면 패스
   if (!mesh.matPhysical.lightMap) {
@@ -1997,20 +2036,18 @@ export function applyLightMap(
         targetLightMapKey = lightMapApplies[mesh.name] as string;
       }
       if (targetLightMapKey.startsWith('fi_')) {
-        const key = extractQName(targetLightMapKey);
+        let key = extractQName(targetLightMapKey);
         console.log(key, targetLightMapKey);
         if (key) {
           const mat = mesh.matPhysical;
+          if (key.includes('op')) {
+            key = 'option_lg';
+          }
           mat.lightMap = textures[key];
-          mat.lightMapIntensity = 2.0;
-          // mat.apply('lightmapContra  st', 1.2);
-          // mat.apply('saturation', {
-          //   uUseSaturation: true,
-          //   uSaturation: 0.2,
-          // });
           if (!mat.lightMap.flipY) {
             mat.lightMap.flipY = true;
           }
+          mat.lightMapIntensity = 2;
           mat.vUserData.viz4dLightMap = key;
           mat.needsUpdate = true;
         }
@@ -2019,19 +2056,17 @@ export function applyLightMap(
       const formattedKey = stripMatSuffix(mesh.name);
       const targetLightMapKey: string = lightMapApplies[formattedKey] as string;
       if (targetLightMapKey.startsWith('fi_')) {
-        const key = extractQName(targetLightMapKey);
+        let key = extractQName(targetLightMapKey);
         if (key) {
+          if (key.includes('op')) {
+            key = 'option_lg';
+          }
           const mat = mesh.matPhysical;
           mat.lightMap = textures[key];
-          mat.lightMapIntensity = 2.0;
-          // mat.apply('lightmapContrast', 1.2);
-          // mat.apply('saturation', {
-          //   uUseSaturation: true,
-          //   uSaturation: 0.2,
-          // });
           if (!mat.lightMap.flipY) {
             mat.lightMap.flipY = true;
           }
+          mat.lightMapIntensity = 2;
           mat.vUserData.viz4dLightMap = key;
           mat.needsUpdate = true;
         }
