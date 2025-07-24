@@ -142,6 +142,7 @@ export default class VTextureLoader {
       return new RGBELoader().loadAsync(url).then(texture => {
         texture.flipY = flipY;
         texture.channel = inputOption.channel;
+        texture.vUserData.isHdr = true;
         texture.needsUpdate = true;
         return texture;
       });

@@ -39,6 +39,7 @@ export const FullscreenCanvas = ({ texture }: { texture: THREE.Texture }) => {
       return;
     }
     const isKtx = texture.vUserData?.mimeType === 'image/ktx2';
+    const isHdr = texture.vUserData?.isHdr;
     innerCanvasRef.current.width = dstWidth;
     innerCanvasRef.current.height = dstHeight;
     const renderer = new THREE.WebGLRenderer();
@@ -46,7 +47,7 @@ export const FullscreenCanvas = ({ texture }: { texture: THREE.Texture }) => {
     const planeGeometry = new THREE.PlaneGeometry(2, 2);
     const plane = new THREE.Mesh(planeGeometry, m);
 
-    if (isKtx) {
+    if (isKtx || isHdr) {
       const t = texture as THREE.CompressedTexture;
       const cache = cachedTexture[t.uuid];
       let src;
@@ -151,6 +152,7 @@ const MapPreview: React.FC<MapPreviewProps> = ({
   const probes = useAtomValue(ProbeAtom);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const isKtx = texture?.vUserData?.mimeType === 'image/ktx2';
+  const isHdr = texture?.vUserData?.isHdr;
   const hasImage = texture && texture.image;
   const [materialPreviewCache, setMaterialPreviewCache] = useAtom(
     ktxTexturePreviewCachedAtom,
@@ -188,7 +190,7 @@ const MapPreview: React.FC<MapPreviewProps> = ({
     const plane = new THREE.Mesh(planeGeometry, m);
 
     try {
-      if (isKtx) {
+      if (isKtx || isHdr) {
         const context = canvasRef.current.getContext('2d');
         if (context) {
           const t = texture as THREE.CompressedTexture;

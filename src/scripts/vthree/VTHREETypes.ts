@@ -177,6 +177,7 @@ export interface VUserData {
   probes?: ReflectionProbeJSON[];
   hotspotIndex?: number;
   isExr?: boolean;
+  isHdr?: boolean;
   mimeType?: 'image/ktx2' | 'probe-captured-image'; // ktx2압축시 달려있음
   modelType?: 'DP' | 'BASE';
   dpOnLightMap?: Texture;

@@ -974,8 +974,10 @@ const MaterialPhysicalPanels = ({
 }: {
   mat: THREE.MeshPhysicalMaterial;
 }) => {
+  console.log(mat.name);
   const [specular, setSpecular] = useState<number>(mat.specularIntensity);
   const [reflectivity, setReflectivity] = useState<number>(mat.reflectivity);
+  const [ior, setIor] = useState<number>(mat.ior);
   return (
     <div className="w-full">
       <MapInfo
@@ -1005,7 +1007,7 @@ const MaterialPhysicalPanels = ({
             }}
             type="range"
             min={0}
-            max={1}
+            max={2.0}
             step={0.01}
             value={reflectivity}
             onChange={e => {
@@ -1020,7 +1022,7 @@ const MaterialPhysicalPanels = ({
           style={{ width: 35, borderRadius: 4 }}
           type="number"
           min={0}
-          max={1}
+          max={2.0}
           step={0.01}
           value={reflectivity}
           onChange={e => {
@@ -1031,46 +1033,86 @@ const MaterialPhysicalPanels = ({
           }}
         />
       </div>
-      {/*<strong>Specular</strong>*/}
-      {/*<div style={{ display: 'flex', width: '100%', gap: 8 }}>*/}
-      {/*  <div*/}
-      {/*    style={{*/}
-      {/*      flex: 1,*/}
-      {/*      minWidth: 0,*/}
-      {/*    }}*/}
-      {/*  >*/}
-      {/*    <input*/}
-      {/*      style={{*/}
-      {/*        width: '100%',*/}
-      {/*      }}*/}
-      {/*      type="range"*/}
-      {/*      min={0}*/}
-      {/*      max={1}*/}
-      {/*      step={0.01}*/}
-      {/*      value={specular}*/}
-      {/*      onChange={e => {*/}
-      {/*        const value = parseFloat(e.target.value);*/}
-      {/*        mat.specularIntensity = value;*/}
-      {/*        setSpecular(value);*/}
-      {/*        mat.needsUpdate = true;*/}
-      {/*      }}*/}
-      {/*    />*/}
-      {/*  </div>*/}
-      {/*  <input*/}
-      {/*    style={{ width: 35, borderRadius: 4 }}*/}
-      {/*    type="number"*/}
-      {/*    min={0}*/}
-      {/*    max={1}*/}
-      {/*    step={0.01}*/}
-      {/*    value={specular}*/}
-      {/*    onChange={e => {*/}
-      {/*      const value = parseFloat(e.target.value);*/}
-      {/*      mat.specularIntensity = value;*/}
-      {/*      setSpecular(value);*/}
-      {/*      mat.needsUpdate = true;*/}
-      {/*    }}*/}
-      {/*  />*/}
-      {/*</div>*/}
+      <strong>IOR</strong>
+      <div style={{ display: 'flex', width: '100%', gap: 8 }}>
+        <div
+          style={{
+            flex: 1,
+            minWidth: 0,
+          }}
+        >
+          <input
+            style={{
+              width: '100%',
+            }}
+            type="range"
+            min={1.0}
+            max={2.3333}
+            step={0.01}
+            value={ior}
+            onChange={e => {
+              const value = parseFloat(e.target.value);
+              mat.ior = value;
+              setIor(value);
+              mat.needsUpdate = true;
+            }}
+          />
+        </div>
+        <input
+          style={{ width: 35, borderRadius: 4 }}
+          type="number"
+          min={1.0}
+          max={2.3333}
+          step={0.01}
+          value={ior}
+          onChange={e => {
+            const value = parseFloat(e.target.value);
+            mat.ior = value;
+            setIor(value);
+            mat.needsUpdate = true;
+          }}
+        />
+      </div>
+      <strong>Specular</strong>
+      <div style={{ display: 'flex', width: '100%', gap: 8 }}>
+        <div
+          style={{
+            flex: 1,
+            minWidth: 0,
+          }}
+        >
+          <input
+            style={{
+              width: '100%',
+            }}
+            type="range"
+            min={0}
+            max={1}
+            step={0.01}
+            value={specular}
+            onChange={e => {
+              const value = parseFloat(e.target.value);
+              mat.specularIntensity = value;
+              setSpecular(value);
+              mat.needsUpdate = true;
+            }}
+          />
+        </div>
+        <input
+          style={{ width: 35, borderRadius: 4 }}
+          type="number"
+          min={0}
+          max={1}
+          step={0.01}
+          value={specular}
+          onChange={e => {
+            const value = parseFloat(e.target.value);
+            mat.specularIntensity = value;
+            setSpecular(value);
+            mat.needsUpdate = true;
+          }}
+        />
+      </div>
     </div>
   );
 };
