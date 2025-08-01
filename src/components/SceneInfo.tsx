@@ -70,6 +70,7 @@ import { FXAAOption } from './canvas/FXAA.tsx';
 import { HueSaturationOption } from './canvas/HueSaturation.tsx';
 import { SMAAOption } from './canvas/SMAA.tsx';
 import { ToneMappingOption } from './canvas/ToneMapping.tsx';
+import MergedProbe from './util/MergedProbe.tsx';
 
 const useEnvUrl = () => {
   const [envUrl, setEnvUrl] = useState<string | null>(null);
@@ -496,6 +497,7 @@ const GeneralButtons = () => {
       >
         맥스 프리뷰
       </button>
+      <MergedProbe></MergedProbe>
     </section>
   );
 };
