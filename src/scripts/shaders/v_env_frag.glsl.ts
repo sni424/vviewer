@@ -162,7 +162,7 @@ varying vec3 vWorldPos;
   };
   uniform Probe uProbe[PROBE_COUNT];
   #ifdef USE_PROBE_PMREM
-  uniform sampler2D uProbeTextures[PROBE_COUNT];
+  uniform sampler2D uProbeTextures;
   #else
   uniform samplerCube uProbeTextures[PROBE_COUNT];
   #endif
@@ -284,8 +284,10 @@ varying vec3 vWorldPos;
 
 	}
 
-	vec3 v_bilinearCubeUV( sampler2D envMap, vec3 direction, float mipInt ) {
+	vec3 v_bilinearCubeUV( sampler2D envMap, vec3 _direction, float mipInt, int tileIndex ) {
 
+    vec3 direction = _direction;
+    direction.x = -direction.x; // RH coordinate system
 		float face = v_getFace( direction );
 
 		float filterInt = max( v_cubeUV_minMipLevel - mipInt, 0.0 );
@@ -296,6 +298,31 @@ varying vec3 vWorldPos;
 
 		highp vec2 uv = v_getUV( direction, face ) * ( faceSize - 2.0 ) + 1.0; // #25071
 
+    // 타일링 된 UV 좌표 계산
+    {
+      float tilesCol = PROBE_COLS; 
+      float tilesRow = PROBE_ROWS;
+      float tileXSize = faceSize / tilesCol; // 현재 mip에서 한 타일의 픽셀 크기
+      float tileYSize = faceSize / tilesRow;
+
+      float tileX = float(tileIndex % int(tilesCol + 0.5));
+      float tileY = float(tileIndex / int(tilesCol + 0.5));
+
+      // 상단 기준 tileY → 하단 기준 변환
+      float tileYoffset = (tilesRow - 1.0 - tileY) * tileYSize;
+
+      // uv를 타일 내부 좌표로 축소
+      uv.x = uv.x * (1.0 / tilesCol);
+      uv.y = uv.y * (1.0 / tilesRow);
+
+      // 타일의 픽셀 오프셋 적용
+      uv.x += tileX * tileXSize;
+      uv.y += tileYoffset;
+    }
+    
+    
+
+    // 이제 PMREMGenerator 오프셋 적용
 		if ( face > 2.0 ) {
 
 			uv.y += faceSize;
@@ -366,7 +393,7 @@ varying vec3 vWorldPos;
 
 	}
 
-	vec4 probeTextureUV( sampler2D envMap, vec3 sampleDir, float roughness ) {
+	vec4 probeTextureUV( sampler2D envMap, vec3 sampleDir, float roughness, int tileIndex ) {
 
 		float mip = clamp( v_roughnessToMip( roughness ), v_cubeUV_m0, uCubeUVMaxMip );
 
@@ -374,7 +401,7 @@ varying vec3 vWorldPos;
 
 		float mipInt = floor( mip );
 
-		vec3 color0 = v_bilinearCubeUV( envMap, sampleDir, mipInt );
+		vec3 color0 = v_bilinearCubeUV( envMap, sampleDir, mipInt, tileIndex );
 
 		if ( mipF == 0.0 ) {
 
@@ -382,7 +409,7 @@ varying vec3 vWorldPos;
 
 		} else {
 
-			vec3 color1 = v_bilinearCubeUV( envMap, sampleDir, mipInt + 1.0 );
+			vec3 color1 = v_bilinearCubeUV( envMap, sampleDir, mipInt + 1.0, tileIndex );
 
 			return vec4( mix( color0, color1, mipF ), 1.0 );
 
@@ -435,132 +462,8 @@ varying vec3 vWorldPos;
       vec3 localReflectVec = _envMapRotation * parallaxCorrectNormal( worldReflectVec, probeSize, probeCenter );
 
 
-      vec4 envMapColor = vec4(0.0);
+      vec4 envMapColor = probeTextureUV( uProbeTextures, localReflectVec, roughness, i);
 
-      #if PROBE_COUNT > 0
-      if(i == 0){
-
-          envMapColor += probeTextureUV( uProbeTextures[0], localReflectVec, roughness );
-
-      }
-      #endif
-      #if PROBE_COUNT > 1
-      else if( i == 1){
-
-          envMapColor += probeTextureUV( uProbeTextures[1], localReflectVec, roughness );
-
-      }
-      #endif
-      #if PROBE_COUNT > 2
-      else if( i == 2){
-
-          envMapColor += probeTextureUV( uProbeTextures[2], localReflectVec, roughness );
-
-      }
-      #endif
-      #if PROBE_COUNT > 3
-      else if( i == 3){
-
-          envMapColor += probeTextureUV( uProbeTextures[3], localReflectVec, roughness );
-
-      }
-      #endif
-      #if PROBE_COUNT > 4
-      else if( i == 4){
-
-          envMapColor += probeTextureUV( uProbeTextures[4], localReflectVec, roughness );
-
-      }
-      #endif
-      #if PROBE_COUNT > 5
-      else if( i == 5){
-
-          envMapColor += probeTextureUV( uProbeTextures[5], localReflectVec, roughness );
-
-      }
-      #endif
-      #if PROBE_COUNT > 6
-      else if( i == 6){
-
-          envMapColor += probeTextureUV( uProbeTextures[6], localReflectVec, roughness );
-
-      }
-      #endif
-      #if PROBE_COUNT > 7
-      else if( i == 7){
-
-          envMapColor += probeTextureUV( uProbeTextures[7], localReflectVec, roughness );
-
-      }
-      #endif
-      #if PROBE_COUNT > 8
-      else if( i == 8){
-
-          envMapColor += probeTextureUV( uProbeTextures[8], localReflectVec, roughness );
-
-      }
-      #endif
-      #if PROBE_COUNT > 9
-      else if( i == 9){
-
-          envMapColor += probeTextureUV( uProbeTextures[9], localReflectVec, roughness );
-
-      }
-      #endif
-      #if PROBE_COUNT > 10
-      else if( i == 10){
-
-          envMapColor += probeTextureUV( uProbeTextures[10], localReflectVec, roughness );
-
-      }
-      #endif
-      #if PROBE_COUNT > 11
-      else if( i == 11){
-
-          envMapColor += probeTextureUV( uProbeTextures[11], localReflectVec, roughness );
-
-      }
-      #endif
-      #if PROBE_COUNT > 12
-      else if( i == 12){
-
-          envMapColor += probeTextureUV( uProbeTextures[12], localReflectVec, roughness );
-
-      }
-      #endif
-      #if PROBE_COUNT > 13
-      else if( i == 13){
-
-          envMapColor += probeTextureUV( uProbeTextures[13], localReflectVec, roughness );
-
-      }
-      #endif
-      #if PROBE_COUNT > 14
-      else if( i == 14){
-
-          envMapColor += probeTextureUV( uProbeTextures[14], localReflectVec, roughness );
-
-      }
-      #endif
-      #if PROBE_COUNT > 15
-      else if( i == 15){
-
-          envMapColor += probeTextureUV( uProbeTextures[15], localReflectVec, roughness );
-
-      }
-      #endif
-      #if PROBE_COUNT > 16
-      else if( i == 16){
-
-          envMapColor += probeTextureUV( uProbeTextures[16], localReflectVec, roughness );
-
-      }
-      #endif
-      // WebGL GLSL스펙 상 최대 텍스쳐 갯수는 16이므로 여기서 끝
-      else {
-
-          envMapColor = vec4(0.0);
-      }
       return envMapColor;
   }
 
@@ -624,7 +527,7 @@ for (int i = 0; i < PROBE_COUNT; i++) {
   vec3 probeCenter = uProbe[i].center;
   vec3 probeSize = uProbe[i].size;
 
-  float distFromCenter = lengthSquared(vWorldPos-probeCenter);
+  // float distFromCenter = lengthSquared(vWorldPos-probeCenter);
   float distFromBox = distanceToAABB(vWorldPos, probeCenter, probeSize);
   
   dists[i] = distFromBox;

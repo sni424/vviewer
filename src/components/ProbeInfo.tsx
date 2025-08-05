@@ -482,8 +482,13 @@ const ProbeInfo = () => {
         )}
       </section>
       <section style={{ width: '100%' }}>
-        {probes.map((probe, idx) => {
-          return <ProbeComponent probe={probe} key={idx} />;
+        {probes.map(probe => {
+          return (
+            <ProbeComponent
+              probe={probe}
+              key={`probe-panel-li-${probe.getId()}`}
+            />
+          );
         })}
       </section>
     </div>

@@ -10,6 +10,7 @@ import {
   VUserData,
 } from '../../scripts/vthree/VTHREETypes';
 import { threes } from '../atomUtils';
+import { getProbeSize } from '../probeUtils';
 import type ReflectionProbe from '../ReflectionProbe';
 import { patchFragment } from '../shaders/v_env_frag.glsl';
 import { patchVertex } from '../shaders/v_env_vertex.glsl';
@@ -36,6 +37,11 @@ export type applyProbeReflectionProbe = {
   }[];
   probeIntensity?: number; // default : 1.0
   probeContrast?: number; // default : 1.0
+  pmremTexture?: {
+    texture: THREE.Texture;
+    // tileSize: 4; // 4*4
+    resolution: 1024; // 1024를 4*4로 나눴다는 뜻
+  };
 };
 
 export type applyProbeGeneral = {
@@ -506,7 +512,19 @@ function _applyProbeReflectionProbe(
   this: THREE.Material,
   params: applyProbeReflectionProbe,
 ) {
-  const { probes, walls, probeContrast, probeIntensity } = params;
+  const {
+    probes,
+    walls,
+    probeContrast,
+    probeIntensity,
+    pmremTexture: pmremOptions,
+  } = params;
+  const {
+    texture: pmremTexture,
+    resolution: pmremResolution,
+    // tileSize: pmremTileSize,
+  } = pmremOptions!;
+
   if (probes.length === 0) {
     console.warn('applyProbe : probes 없음', this.name, this);
     return;
@@ -530,13 +548,17 @@ function _applyProbeReflectionProbe(
 
   this.addDefines({
     PROBE_COUNT: probes.length,
+    PROBE_COLS: `${getProbeSize(probes.length).cols}.0`,
+    PROBE_ROWS: `${getProbeSize(probes.length).rows}.0`,
   });
   if (usePmrem) {
     this.addDefines({
       USE_PROBE_PMREM: true,
+      // PMREM_TILESIZE: pmremTileSize,
     });
   } else {
     this.removeDefine('USE_PROBE_PMREM');
+    this.removeDefine('PMREM_TILESIZE');
   }
 
   const metaUniform = probes.map(p => ({
@@ -551,7 +573,8 @@ function _applyProbeReflectionProbe(
   let pmremUniforms = {};
 
   if (usePmrem) {
-    const pmremParams = generateCubeUVSize(probes[0]?.getResolution());
+    // const pmremParams = generateCubeUVSize(probes[0]?.getResolution());
+    const pmremParams = generateCubeUVSize(pmremResolution); // 256 * 4
     const { texelWidth, texelHeight, maxMip } = pmremParams;
 
     pmremUniforms = {
@@ -566,7 +589,7 @@ function _applyProbeReflectionProbe(
       value: metaUniform,
     },
     uProbeTextures: {
-      value: getTextures(),
+      value: pmremTexture as any,
     },
     uProbeIntensity: {
       value: probeIntensity ?? this.uniform?.uProbeIntensity?.value ?? 1.0,
@@ -808,6 +831,7 @@ THREE.Material.prototype.remove = function <T extends keyof MaterialApplyType>(
     case 'probe':
       this.removeDefine('PROBE_COUNT');
       this.removeDefine('USE_PROBE_PMREM');
+      this.removeDefine('PMREM_TILESIZE');
       this.removeDefine('WALL_COUNT');
       this.removeUniform(
         'uProbe',

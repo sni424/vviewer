@@ -218,6 +218,7 @@ export const MATERIAL_DEFINES = [
   'PROBE_COUNT',
   'WALL_COUNT',
   'USE_PROBE_PMREM',
+  'PMREM_TILESIZE',
 ] as const;
 
 export type MATERIAL_DEFINE = (typeof MATERIAL_DEFINES)[number];
