@@ -211,8 +211,8 @@ function captureAllFacesToCanvas(
 
   const probeCount = probes.length;
   const { cols, rows } = getProbeSize(probeCount);
-  const colWidth = Math.floor(pmremResolution / cols);
-  const rowHeight = Math.floor(pmremResolution / rows);
+  const colWidth = Math.round(pmremResolution / cols);
+  const rowHeight = Math.round(pmremResolution / rows);
 
   // 카메라 루프
   for (let i = 0; i < probeCount; i++) {
@@ -250,15 +250,24 @@ function captureAllFacesToCanvas(
 
         // face 캔버스에 붙이기
         // 이 때 colWidth * rowHeight로 리사이징됨
-        faceCanvases[faceIndex]
-          .getContext('2d')!
-          .drawImage(
-            tempCanvas,
-            (i % cols) * colWidth,
-            Math.floor(i / cols) * rowHeight,
-            colWidth,
-            rowHeight,
-          );
+        const faceCtx = faceCanvases[faceIndex].getContext('2d')!;
+
+        faceCtx.imageSmoothingEnabled = true;
+        faceCtx.imageSmoothingQuality = 'high';
+
+        const dx = (i % cols) * colWidth;
+        const dy = ((i / cols) | 0) * rowHeight; // |0 = 정수 캐스팅
+        faceCtx.drawImage(
+          tempCanvas,
+          -0.5,
+          -0.5,
+          tileSize + 1,
+          tileSize + 1,
+          dx,
+          dy,
+          colWidth,
+          rowHeight,
+        );
       },
     );
   }

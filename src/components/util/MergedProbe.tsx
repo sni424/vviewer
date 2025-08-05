@@ -15,8 +15,8 @@ export default function MergedProbe() {
     useState<THREE.WebGLRenderTarget<THREE.Texture> | null>(null);
 
   const handleMerge = () => {
-    const cubeResolution = 512;
-    const pmremResolution = 2048;
+    const cubeResolution = 256;
+    const pmremResolution = 1024;
 
     const pmremRT = renderProbesToPMREM({
       probes,
