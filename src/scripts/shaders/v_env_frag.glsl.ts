@@ -161,11 +161,7 @@ varying vec3 vWorldPos;
       // sampler2D envTexture;
   };
   uniform Probe uProbe[PROBE_COUNT];
-  #ifdef USE_PROBE_PMREM
-  uniform sampler2D uProbeTextures;
-  #else
-  uniform samplerCube uProbeTextures[PROBE_COUNT];
-  #endif
+  uniform sampler2D uProbeTexture;
   uniform float uProbeIntensity;
   uniform float uProbeContrast;
 
@@ -181,37 +177,11 @@ varying vec3 vWorldPos;
 
   #define lengthSquared(v) (dot((v), (v)))
 
-  /////////////////////////////////////////////////////////////////////
-// pmrem texture as a cube map
-
-#ifndef USE_PROBE_PMREM
-#define probeTextureUV texture // PMREM텍스쳐 아니면 기존의 textureCube 사용
-#endif //!USE_PROBE_PMREM
-
-#ifdef USE_PROBE_EQUIRECT
-  vec2 directionToEquirectUV(vec3 dir) {
-    // normalize just in case
-    vec3 n = normalize(dir);
-
-    float u = atan(n.z, n.x) / (2.0 * PI) + 0.5;
-    float v = asin(n.y) / PI + 0.5;
-
-    return vec2(u, v);
-  }
-
-  vec4 probeTextureUV(sampler2D tex, vec3 ray, float roughness) {
-    vec2 uv = directionToEquirectUV(ray);
-    return texture2D(tex, uv, roughness);
-  }
-#endif //!USE_PROBE_EQUIRECT
-
-#ifdef USE_PROBE_PMREM
-
 	#define v_cubeUV_minMipLevel 4.0
 	#define v_cubeUV_minTileSize 16.0
-  uniform float uCubeUVMaxMip;  
-  uniform float uCubeUVTexelWidth;
-  uniform float uCubeUVTexelHeight;  
+  // #define V_CUBE_UV_MAX_MIP;   // 밖에서 넣어주는 것
+  // #define V_CUBE_UV_TEXEL_WIDTH; // 밖에서 넣어주는 것
+  // #define V_CUBE_UV_TEXEL_HEIGHT;   // 밖에서 넣어주는 것
 
 	// These shader functions convert between the UV coordinates of a single face of
 	// a cubemap, the 0-5 integer index of a cube face, and the direction vector for
@@ -318,9 +288,28 @@ varying vec3 vWorldPos;
       // 타일의 픽셀 오프셋 적용
       uv.x += tileX * tileXSize;
       uv.y += tileYoffset;
+
+      // // --- mipInt 기반 경계 픽셀 보정 ---
+      // // 고해상도 mip에서는 0.5픽셀 보정, 저해상도 mip에서는 더 작게
+      float baseBorder = 3.0;
+      // float mipScale = clamp( exp2( -mipInt ), 0.25, 1.0 ); 
+      // float borderFix = baseBorder * mipScale;
+      float borderFix = baseBorder;
+
+      float epsX = borderFix;
+      float epsY = borderFix;
+
+      if (uv.x < epsX) return vec3(1.0, 0.0, 0.0);
+      if (uv.y < epsY) return vec3(0.0, 1.0, 0.0);
+      if (uv.x > faceSize - epsX) return vec3(0.0, 0.0, 1.0);
+      if (uv.y > faceSize - epsY) return vec3(0.0, 1.0, 1.0);
+
+      // // 타일 내부 경계 보정
+      // if (uv.x < epsX) uv.x = epsX;
+      // if (uv.y < epsY) uv.y = epsY;
+      // if (uv.x > faceSize - epsX) uv.x = faceSize - epsX;
+      // if (uv.y > faceSize - epsY) uv.y = faceSize - epsY;
     }
-    
-    
 
     // 이제 PMREMGenerator 오프셋 적용
 		if ( face > 2.0 ) {
@@ -335,10 +324,10 @@ varying vec3 vWorldPos;
 
 		uv.x += filterInt * 3.0 * v_cubeUV_minTileSize;
 
-		uv.y += 4.0 * ( exp2( uCubeUVMaxMip ) - faceSize );
+		uv.y += 4.0 * ( exp2( V_CUBE_UV_MAX_MIP ) - faceSize );
 
-		uv.x *= uCubeUVTexelWidth;
-		uv.y *= uCubeUVTexelHeight;
+		uv.x *= V_CUBE_UV_TEXEL_WIDTH;
+		uv.y *= V_CUBE_UV_TEXEL_HEIGHT;
 
 		#ifdef texture2DGradEXT
 
@@ -395,13 +384,14 @@ varying vec3 vWorldPos;
 
 	vec4 probeTextureUV( sampler2D envMap, vec3 sampleDir, float roughness, int tileIndex ) {
 
-		float mip = clamp( v_roughnessToMip( roughness ), v_cubeUV_m0, uCubeUVMaxMip );
+		float mip = clamp( v_roughnessToMip( roughness ), v_cubeUV_m0, V_CUBE_UV_MAX_MIP );
 
 		float mipF = fract( mip );
 
 		float mipInt = floor( mip );
 
 		vec3 color0 = v_bilinearCubeUV( envMap, sampleDir, mipInt, tileIndex );
+    return vec4(color0, 1.0);
 
 		if ( mipF == 0.0 ) {
 
@@ -412,12 +402,12 @@ varying vec3 vWorldPos;
 			vec3 color1 = v_bilinearCubeUV( envMap, sampleDir, mipInt + 1.0, tileIndex );
 
 			return vec4( mix( color0, color1, mipF ), 1.0 );
+			// return vec4( color1, 1.0 );
 
 		}
 
 	}
 
-#endif //! USE_PROBE_PMREM
 
 /////////////////////////////////////////////////////////////////////
 // multiprobe
@@ -462,7 +452,7 @@ varying vec3 vWorldPos;
       vec3 localReflectVec = _envMapRotation * parallaxCorrectNormal( worldReflectVec, probeSize, probeCenter );
 
 
-      vec4 envMapColor = probeTextureUV( uProbeTextures, localReflectVec, roughness, i);
+      vec4 envMapColor = probeTextureUV( uProbeTexture, localReflectVec, roughness, i);
 
       return envMapColor;
   }

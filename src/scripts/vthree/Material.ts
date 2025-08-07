@@ -30,6 +30,9 @@ export type applyProbeDefaultValues = keyof typeof applyProbeDefaultValues;
 
 export type applyProbeReflectionProbe = {
   probes: ReflectionProbe[];
+  texture: THREE.Texture;
+  resolution: number;
+
   walls?: {
     start: THREE.Vector3;
     end: THREE.Vector3;
@@ -37,11 +40,6 @@ export type applyProbeReflectionProbe = {
   }[];
   probeIntensity?: number; // default : 1.0
   probeContrast?: number; // default : 1.0
-  pmremTexture?: {
-    texture: THREE.Texture;
-    // tileSize: 4; // 4*4
-    resolution: 1024; // 1024를 4*4로 나눴다는 뜻
-  };
 };
 
 export type applyProbeGeneral = {
@@ -118,10 +116,7 @@ declare module 'three' {
       scene?: THREE.Scene; // undefined면 threeExports 사용
     }): void;
 
-    prepareProbe(params: { probeCount: number; wallCount?: number }): void;
-
     applyProbe(params: applyProbeReflectionProbe): void;
-    applyProbe(params: applyProbeGeneral): void;
 
     apply<T extends keyof MaterialApplyType>(
       key: T,
@@ -244,11 +239,12 @@ const upsert = (uniform: any, key: string, value: any) => {
     uniform[key] = { value };
   }
 };
-
+let compiled = 0;
 THREE.Material.prototype.onBeforeCompile = function (
   shader: THREE.WebGLProgramParametersWithUniforms,
   renderer: THREE.WebGLRenderer,
 ) {
+  console.log('onBeforeCompile', this.name, this.type, ++compiled);
   if (!this.vUserData.isVMaterial) {
     return;
   }
@@ -441,189 +437,129 @@ function generateCubeUVSize(imageHeight: number) {
 
   return { texelWidth, texelHeight, maxMip };
 }
-
-THREE.Material.prototype.prepareProbe = function (params: {
-  probeCount: number;
-  usePmrem?: boolean; // default : true
-  wallCount?: number;
-}) {
-  const { probeCount, wallCount, usePmrem = true } = params;
-  this.addDefines({
-    PROBE_COUNT: probeCount,
-  });
-  if (usePmrem) {
-    this.addDefines({
-      USE_PROBE_PMREM: true,
-    });
-  }
-
-  const probe = [];
-  const textures = [];
-  for (let i = 0; i < probeCount; i++) {
-    probe.push({
-      center: new THREE.Vector3(),
-      size: new THREE.Vector3(),
-    });
-    textures.push(EMPTY_TEXTURE.clone());
-  }
-
-  const uniform: Partial<MATERIAL_SHADER['PROBE']['uniforms']> = {
-    uProbe: { value: probe },
-    uProbeTextures: { value: textures },
-    uProbeIntensity: { value: 1.0 },
-    uProbeContrast: { value: 1.0 },
-  };
-
-  if (usePmrem) {
-    uniform.uCubeUVMaxMip = { value: 0.0 };
-    uniform.uCubeUVTexelWidth = { value: 0.0 };
-    uniform.uCubeUVTexelHeight = { value: 0.0 };
-  }
-
-  if (wallCount) {
-    this.addDefines({
-      WALL_COUNT: wallCount,
-    });
-
-    const walls = [];
-    for (let i = 0; i < wallCount; i++) {
-      walls.push({
-        start: new THREE.Vector3(),
-        end: new THREE.Vector3(),
-        index: -1,
-      });
-    }
-    uniform.uWall = { value: walls };
-    uniform.uProbeBlendDist = { value: 20.0 };
-  } else {
-    this.removeDefine('WALL_COUNT');
-    this.removeUniform('uWall', 'uProbeBlendDist');
-    this.needsUpdate = true;
-  }
-
-  for (const _key in uniform) {
-    const key = _key as MATERIAL_UNIFORM;
-    const value = (uniform as any)[key].value;
-    this.upsertUniform(key, value);
-  }
+type ProbeParam = {
+  defines: Partial<MaterialDefines>;
+  uniforms: MATERIAL_SHADER['PROBE']['uniforms'];
+  vUserData: VUserData;
 };
+const probeCache = new Map<applyProbeReflectionProbe, ProbeParam>();
 
-function _applyProbeReflectionProbe(
+function getProbeParams(
   this: THREE.Material,
   params: applyProbeReflectionProbe,
-) {
+): ProbeParam {
+  if (probeCache.has(params)) {
+    return probeCache.get(params)!;
+  }
+
+  const retval: ProbeParam = {
+    defines: {},
+    // @ts-ignore
+    uniforms: {},
+    vUserData: {},
+  };
+
   const {
     probes,
+    texture: pmremTexture,
+    resolution: pmremResolution,
     walls,
     probeContrast,
     probeIntensity,
-    pmremTexture: pmremOptions,
   } = params;
-  const {
-    texture: pmremTexture,
-    resolution: pmremResolution,
-    // tileSize: pmremTileSize,
-  } = pmremOptions!;
-
-  if (probes.length === 0) {
-    console.warn('applyProbe : probes 없음', this.name, this);
-    return;
-  }
-
-  if (walls && walls.length === 0) {
-    console.warn('applyProbe : walls 없음', this.name, this);
-  }
 
   // basic info setup
   const targetProbeIds = probes.map(p => p.getId());
   const targetProbeNames = probes.map(p => p.getName());
 
-  this.vUserData.probeType = 'multi';
-  this.vUserData.probeIds = targetProbeIds;
-  this.vUserData.probeNames = targetProbeNames;
+  retval.vUserData = {
+    probeType: 'multi',
+    probeIds: targetProbeIds,
+    probeNames: targetProbeNames,
+  };
 
-  const useWall = walls && walls.length > 0;
+  const useWall = typeof walls?.length === 'number' && walls.length > 0;
 
-  const usePmrem = true;
+  // const pmremImage = pmremTexture.image;
+  // debugger;
+  const { texelWidth, texelHeight, maxMip } = generateCubeUVSize(
+    pmremTexture.image.height,
+  );
 
-  this.addDefines({
+  retval.defines = {
     PROBE_COUNT: probes.length,
     PROBE_COLS: `${getProbeSize(probes.length).cols}.0`,
     PROBE_ROWS: `${getProbeSize(probes.length).rows}.0`,
-  });
-  if (usePmrem) {
-    this.addDefines({
-      USE_PROBE_PMREM: true,
-      // PMREM_TILESIZE: pmremTileSize,
-    });
-  } else {
-    this.removeDefine('USE_PROBE_PMREM');
-    this.removeDefine('PMREM_TILESIZE');
-  }
+    V_CUBE_UV_MAX_MIP: `${maxMip}.0`,
+    V_CUBE_UV_TEXEL_WIDTH: texelWidth,
+    V_CUBE_UV_TEXEL_HEIGHT: texelHeight,
+  };
 
   const metaUniform = probes.map(p => ({
     center: p.getBox().getCenter(new THREE.Vector3()),
     size: p.getBox().getSize(new THREE.Vector3()),
   }));
 
-  const getTextures = () =>
-    probes.map(p => (usePmrem ? p.getTexture() : p.getRenderTargetTexture()));
-  // const textures = getTextures();
-
-  let pmremUniforms = {};
-
-  if (usePmrem) {
-    // const pmremParams = generateCubeUVSize(probes[0]?.getResolution());
-    const pmremParams = generateCubeUVSize(pmremResolution); // 256 * 4
-    const { texelWidth, texelHeight, maxMip } = pmremParams;
-
-    pmremUniforms = {
-      uCubeUVMaxMip: { value: maxMip },
-      uCubeUVTexelWidth: { value: texelWidth },
-      uCubeUVTexelHeight: { value: texelHeight },
-    };
-  }
-
-  const uniforms: Partial<MATERIAL_SHADER['PROBE']['uniforms']> = {
+  retval.uniforms = {
     uProbe: {
       value: metaUniform,
     },
-    uProbeTextures: {
-      value: pmremTexture as any,
+    uProbeTexture: {
+      value: pmremTexture,
     },
-    uProbeIntensity: {
-      value: probeIntensity ?? this.uniform?.uProbeIntensity?.value ?? 1.0,
-    },
-    uProbeContrast: {
-      value: probeContrast ?? this.uniform?.uProbeContrast?.value ?? 1.0,
-    },
+    uProbeIntensity: this.uniform?.uProbeIntensity
+      ? this.uniform.uProbeIntensity
+      : { value: probeIntensity ?? 1.0 },
 
-    ...pmremUniforms,
+    uProbeContrast: this.uniform?.uProbeContrast
+      ? this.uniform.uProbeContrast
+      : {
+          value: probeContrast ?? 1.0,
+        },
   };
 
   if (useWall) {
-    this.addDefines({
-      WALL_COUNT: walls.length,
-    });
+    retval.defines.WALL_COUNT = walls.length;
+
     const targetWalls = walls.map(wall => ({
       start: wall.start,
       end: wall.end,
       index: targetProbeIds.indexOf(wall.probeId),
     }));
 
-    uniforms.uWall = {
+    retval.uniforms.uWall = {
       value: targetWalls,
     };
-    uniforms.uProbeBlendDist = {
+    retval.uniforms.uProbeBlendDist = {
       value: 20.0,
     };
 
-    this.vUserData.probeType = 'multiWall';
+    retval.vUserData.probeType = 'multiWall';
   } else {
     this.removeDefine('WALL_COUNT');
     delete (this.uniform as any).uWall;
     delete (this.uniform as any).uProbeBlendDist;
   }
+
+  probeCache.set(params, retval);
+
+  // debugger;
+
+  return retval;
+}
+
+function _applyProbeReflectionProbe(
+  this: THREE.Material,
+  params: applyProbeReflectionProbe,
+) {
+  if (params.probes.length === 0) {
+    console.warn('applyProbe : probes 없음', this.name, this);
+    return;
+  }
+
+  const { defines, uniforms, vUserData } = getProbeParams.call(this, params);
+
+  this.addDefines(defines);
 
   // shader.uniforms에 적용
   for (const _key in uniforms) {
@@ -632,133 +568,17 @@ function _applyProbeReflectionProbe(
     this.upsertUniform(key, value);
     // console.log(`this.uniform[${key}].value = ${uniform.value};`)
   }
-  // console.log(this.uniform);
-  // console.log(this.defines);
-}
 
-function _applyProbeGeneral(this: THREE.Material, params: applyProbeGeneral) {
-  const {
-    probeBoxes,
-    probeTextures,
-    textureType = 'pmrem',
-    probeResolution = 512,
-    probeIntensity,
-    probeContrast,
-    walls,
-  } = params;
-
-  if (probeBoxes.length === 0) {
-    console.warn('applyProbe : probes 없음', this.name, this);
-    return;
-  }
-
-  const checkLength = probeBoxes.length === probeTextures.length;
-  if (!checkLength) {
-    console.warn('applyProbe : 프로브 배열 길이 불일치', this.name, this);
-    return;
-  }
-
-  if (walls && walls.length === 0) {
-    console.warn('applyProbe : walls 없음', this.name, this);
-  }
-  const useWall = walls && walls.length > 0;
-
-  const usePmrem = textureType === 'pmrem';
-
-  this.addDefines({
-    PROBE_COUNT: probeBoxes.length,
-  });
-
-  let additionalUniforms = {};
-
-  function cleanupPmrem(this: THREE.Material) {
-    this.removeDefine('USE_PROBE_PMREM');
-    this.removeUniform(
-      'uCubeUVMaxMip',
-      'uCubeUVTexelWidth',
-      'uCubeUVTexelHeight',
-    );
-  }
-
-  function cleanupWall(this: THREE.Material) {
-    this.removeDefine('WALL_COUNT');
-    this.removeUniform('uWall', 'uProbeBlendDist');
-  }
-
-  if (usePmrem) {
-    this.addDefines({
-      USE_PROBE_PMREM: true,
-    });
-
-    const pmremParams = generateCubeUVSize(probeResolution);
-    const { texelWidth, texelHeight, maxMip } = pmremParams;
-
-    additionalUniforms = {
-      uCubeUVMaxMip: { value: maxMip },
-      uCubeUVTexelWidth: { value: texelWidth },
-      uCubeUVTexelHeight: { value: texelHeight },
-    };
-  } else {
-    cleanupPmrem.call(this);
-  }
-
-  // if (useEquirect) {
-  //   this.addDefines({
-  //     USE_PROBE_EQUIRECT: true,
-  //   })
-  //   cleanupPmrem.call(this);
-
-  // } else {
-  //   cleanupEquirect.call(this);
-  // }
-
-  const uniforms: Partial<MATERIAL_SHADER['PROBE']['uniforms']> = {
-    uProbe: {
-      value: probeBoxes,
-    },
-    uProbeTextures: {
-      value: probeTextures,
-    },
-    uProbeIntensity: {
-      value: probeIntensity ?? this.uniform?.uProbeIntensity?.value ?? 1.0,
-    },
-    uProbeContrast: {
-      value: probeContrast ?? this.uniform?.uProbeContrast?.value ?? 1.0,
-    },
-
-    ...additionalUniforms,
+  this.vUserData = {
+    ...this.vUserData,
+    ...vUserData,
   };
-
-  if (useWall) {
-    this.addDefines({
-      WALL_COUNT: walls.length,
-    });
-    uniforms.uWall = {
-      value: walls,
-    };
-    uniforms.uProbeBlendDist = {
-      value: this.uniform?.uProbeBlendDist?.value ?? 20.0,
-    };
-  } else {
-    cleanupWall.call(this);
-  }
-
-  // shader.uniforms에 적용
-  for (const _key in uniforms) {
-    const key = _key as MATERIAL_UNIFORM;
-    const value = (uniforms as any)[key].value;
-    this.upsertUniform(key, value);
-  }
 }
 
 THREE.Material.prototype.applyProbe = function (
-  params: applyProbeReflectionProbe & applyProbeGeneral,
+  params: applyProbeReflectionProbe,
 ) {
-  if ((params as any).probes) {
-    _applyProbeReflectionProbe.call(this, params as applyProbeReflectionProbe);
-  } else {
-    _applyProbeGeneral.call(this, params as applyProbeGeneral);
-  }
+  _applyProbeReflectionProbe.call(this, params as applyProbeReflectionProbe);
 };
 
 THREE.Material.prototype.apply = function <T extends keyof MaterialApplyType>(
@@ -830,19 +650,20 @@ THREE.Material.prototype.remove = function <T extends keyof MaterialApplyType>(
       break;
     case 'probe':
       this.removeDefine('PROBE_COUNT');
-      this.removeDefine('USE_PROBE_PMREM');
-      this.removeDefine('PMREM_TILESIZE');
       this.removeDefine('WALL_COUNT');
+      this.removeDefine('PROBE_VERSION');
+      this.removeDefine('PROBE_COLS');
+      this.removeDefine('PROBE_ROWS');
+      this.removeDefine('V_CUBE_UV_MAX_MIP');
+      this.removeDefine('V_CUBE_UV_TEXEL_WIDTH');
+      this.removeDefine('V_CUBE_UV_TEXEL_HEIGHT');
       this.removeUniform(
         'uProbe',
-        'uProbeTextures',
+        'uProbeTexture',
         'uProbeIntensity',
         'uProbeContrast',
         'uWall',
         'uProbeBlendDist',
-        'uCubeUVMaxMip',
-        'uCubeUVTexelWidth',
-        'uCubeUVTexelHeight',
       );
       break;
     case 'lightmapContrast':

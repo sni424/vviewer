@@ -50,8 +50,8 @@ export type MATERIAL_SHADER = {
           size: THREE.Vector3;
         }[];
       };
-      uProbeTextures: {
-        value: THREE.Texture[];
+      uProbeTexture: {
+        value: THREE.Texture;
       };
       uProbeIntensity: {
         value: number;
@@ -59,9 +59,9 @@ export type MATERIAL_SHADER = {
       uProbeContrast: {
         value: number;
       };
-      uCubeUVMaxMip: { value: number };
-      uCubeUVTexelWidth: { value: number };
-      uCubeUVTexelHeight: { value: number };
+      // uCubeUVMaxMip: { value: number };
+      // uCubeUVTexelWidth: { value: number };
+      // uCubeUVTexelHeight: { value: number };
 
       // 벽을 쓰는 프로브일 때만
       uWall?: {
@@ -217,8 +217,13 @@ export interface VUserData {
 export const MATERIAL_DEFINES = [
   'PROBE_COUNT',
   'WALL_COUNT',
-  'USE_PROBE_PMREM',
-  'PMREM_TILESIZE',
+
+  'PROBE_VERSION',
+  'PROBE_COLS',
+  'PROBE_ROWS',
+  'V_CUBE_UV_MAX_MIP',
+  'V_CUBE_UV_TEXEL_WIDTH',
+  'V_CUBE_UV_TEXEL_HEIGHT',
 ] as const;
 
 export type MATERIAL_DEFINE = (typeof MATERIAL_DEFINES)[number];
@@ -272,12 +277,12 @@ export const DEFAULT_MATERIAL_SHADER: MATERIAL_SHADER = {
       //   #2. 넣지 않는 경우, onBeforeCompile에서 아래 키 값들을 참조할 수 없음.
       //       밖에서 mat.uniform에 넣은 키들(ex. uProbe)을 순회하면서 shader.uniform에 재할당해야하는데, 이 때 참조할 키값들을 위해 undefined로라도 넣어둔다.
       uProbe: undefined as unknown as any,
-      uProbeTextures: undefined as unknown as any,
+      uProbeTexture: undefined as unknown as any,
       uProbeIntensity: undefined as unknown as any,
       uProbeContrast: undefined as unknown as any,
-      uCubeUVMaxMip: undefined as unknown as any,
-      uCubeUVTexelWidth: undefined as unknown as any,
-      uCubeUVTexelHeight: undefined as unknown as any,
+      // uCubeUVMaxMip: undefined as unknown as any,
+      // uCubeUVTexelWidth: undefined as unknown as any,
+      // uCubeUVTexelHeight: undefined as unknown as any,
       uWall: undefined,
       uProbeBlendDist: undefined,
     },

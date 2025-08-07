@@ -138,22 +138,27 @@ function cubeCameraUpdaterWithOnAfterFaceRender(
   renderTarget.texture.generateMipmaps = false;
 
   renderer.setRenderTarget(renderTarget, 0, activeMipmapLevel);
+  renderer.clear();
   renderer.render(scene, cameraPX);
   onAfterFaceRender?.(0, renderTarget, cameraPX);
 
   renderer.setRenderTarget(renderTarget, 1, activeMipmapLevel);
+  renderer.clear();
   renderer.render(scene, cameraNX);
   onAfterFaceRender?.(1, renderTarget, cameraNX);
 
   renderer.setRenderTarget(renderTarget, 2, activeMipmapLevel);
+  renderer.clear();
   renderer.render(scene, cameraPY);
   onAfterFaceRender?.(2, renderTarget, cameraPY);
 
   renderer.setRenderTarget(renderTarget, 3, activeMipmapLevel);
+  renderer.clear();
   renderer.render(scene, cameraNY);
   onAfterFaceRender?.(3, renderTarget, cameraNY);
 
   renderer.setRenderTarget(renderTarget, 4, activeMipmapLevel);
+  renderer.clear();
   renderer.render(scene, cameraPZ);
   onAfterFaceRender?.(4, renderTarget, cameraPZ);
 
@@ -163,6 +168,7 @@ function cubeCameraUpdaterWithOnAfterFaceRender(
   renderTarget.texture.generateMipmaps = generateMipmaps;
 
   renderer.setRenderTarget(renderTarget, 5, activeMipmapLevel);
+  renderer.clear();
   renderer.render(scene, cameraNZ);
   onAfterFaceRender?.(5, renderTarget, cameraNZ);
 
@@ -244,6 +250,7 @@ function captureAllFacesToCanvas(
           buffer,
         );
 
+        tempCtx.clearRect(0, 0, tileSize, tileSize);
         const imgData = tempCtx.createImageData(tileSize, tileSize);
         imgData.data.set(buffer);
         tempCtx.putImageData(imgData, 0, 0);
@@ -251,18 +258,30 @@ function captureAllFacesToCanvas(
         // face 캔버스에 붙이기
         // 이 때 colWidth * rowHeight로 리사이징됨
         const faceCtx = faceCanvases[faceIndex].getContext('2d')!;
-
         faceCtx.imageSmoothingEnabled = true;
         faceCtx.imageSmoothingQuality = 'high';
 
         const dx = (i % cols) * colWidth;
         const dy = ((i / cols) | 0) * rowHeight; // |0 = 정수 캐스팅
+
+        const offset = 0;
+        // faceCtx.drawImage(
+        //   tempCanvas,
+        //   -0.5,
+        //   -0.5,
+        //   tileSize + 1,
+        //   tileSize + 1,
+        //   dx,
+        //   dy,
+        //   colWidth,
+        //   rowHeight,
+        // );
         faceCtx.drawImage(
           tempCanvas,
-          -0.5,
-          -0.5,
-          tileSize + 1,
-          tileSize + 1,
+          0,
+          0,
+          tileSize,
+          tileSize,
           dx,
           dy,
           colWidth,
@@ -277,7 +296,11 @@ function captureAllFacesToCanvas(
 
 export function savePMREMTextureAsPNG(
   renderer: THREE.WebGLRenderer,
-  pmremTarget: THREE.WebGLRenderTarget<THREE.Texture>,
+  pmremTarget: {
+    texture: THREE.Texture;
+    width: number;
+    height: number;
+  },
   filename = 'pmrem.png',
 ) {
   const pmremTexture = pmremTarget.texture;
@@ -358,8 +381,8 @@ export type RenderProbePMREMOption = {
   // 다음 값 두 개는 다음 의미를 가짐
   // 1. 일단 cubeResolution로 cubeCamera.update()를 한다
   // 2. 그리고 pmrem을 만들 때 pmremResolution을 행/열로 나눈 사이즈에 리사이징해서 때려박는다
-  cubeResolution: 128 | 256 | 512 | 1024 | 2048;
-  pmremResolution: 128 | 256 | 512 | 1024 | 2048;
+  cubeResolution: number; // 128 | 256 | 512 | 1024 | 2048;
+  pmremResolution: number; // 128 | 256 | 512 | 1024 | 2048;
 };
 const defaultRenderProbeOption: Partial<RenderProbePMREMOption> = {
   pmremResolution: 1024,
@@ -418,7 +441,7 @@ export function renderProbesToPMREM(
   const canvases = captureAllFacesToCanvas(mergedOption);
 
   // 디버깅용 페이스 저장
-  if (!true) {
+  if (true) {
     const faceNames = ['px', 'nx', 'py', 'ny', 'pz', 'nz'];
     canvases.map((canvas, i) =>
       canvas.toBlob(blob => {
@@ -438,6 +461,7 @@ export function renderProbesToPMREM(
     sharedPMREMGen.compileCubemapShader();
   }
 
+  gl.clear();
   const pmremRT = sharedPMREMGen.fromCubemap(cubeTexture);
 
   // savePMREMTextureAsPNG(renderer, pmremRT, 'pmrem_result.png');
