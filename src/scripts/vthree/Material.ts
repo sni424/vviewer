@@ -442,7 +442,7 @@ type ProbeParam = {
   uniforms: MATERIAL_SHADER['PROBE']['uniforms'];
   vUserData: VUserData;
 };
-const probeCache = new Map<applyProbeReflectionProbe, ProbeParam>();
+const probeCache = new WeakMap<applyProbeReflectionProbe, ProbeParam>();
 
 function getProbeParams(
   this: THREE.Material,
@@ -490,6 +490,7 @@ function getProbeParams(
     PROBE_COUNT: probes.length,
     PROBE_COLS: `${getProbeSize(probes.length).cols}.0`,
     PROBE_ROWS: `${getProbeSize(probes.length).rows}.0`,
+    PROBE_RESOLUTION: `${pmremResolution}.0`,
     V_CUBE_UV_MAX_MIP: `${maxMip}.0`,
     V_CUBE_UV_TEXEL_WIDTH: texelWidth,
     V_CUBE_UV_TEXEL_HEIGHT: texelHeight,
@@ -654,6 +655,7 @@ THREE.Material.prototype.remove = function <T extends keyof MaterialApplyType>(
       this.removeDefine('PROBE_VERSION');
       this.removeDefine('PROBE_COLS');
       this.removeDefine('PROBE_ROWS');
+      this.removeDefine('PROBE_RESOLUTION');
       this.removeDefine('V_CUBE_UV_MAX_MIP');
       this.removeDefine('V_CUBE_UV_TEXEL_WIDTH');
       this.removeDefine('V_CUBE_UV_TEXEL_HEIGHT');

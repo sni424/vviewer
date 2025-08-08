@@ -285,30 +285,27 @@ varying vec3 vWorldPos;
       uv.x = uv.x * (1.0 / tilesCol);
       uv.y = uv.y * (1.0 / tilesRow);
 
+      // 테두리 보정
+      {
+        float cutoffPixel = 1.5;
+        float width = faceSize / tilesCol;
+        float xCut = (width - cutoffPixel) / width;
+        float height = faceSize / tilesRow;
+        float yCut = (height - cutoffPixel) / height;
+
+        uv -= 0.5;
+
+        uv.x *= xCut;
+        uv.y *= yCut;
+
+        uv += 0.5;
+      }
+      
+
       // 타일의 픽셀 오프셋 적용
       uv.x += tileX * tileXSize;
       uv.y += tileYoffset;
 
-      // // --- mipInt 기반 경계 픽셀 보정 ---
-      // // 고해상도 mip에서는 0.5픽셀 보정, 저해상도 mip에서는 더 작게
-      float baseBorder = 3.0;
-      // float mipScale = clamp( exp2( -mipInt ), 0.25, 1.0 ); 
-      // float borderFix = baseBorder * mipScale;
-      float borderFix = baseBorder;
-
-      float epsX = borderFix;
-      float epsY = borderFix;
-
-      if (uv.x < epsX) return vec3(1.0, 0.0, 0.0);
-      if (uv.y < epsY) return vec3(0.0, 1.0, 0.0);
-      if (uv.x > faceSize - epsX) return vec3(0.0, 0.0, 1.0);
-      if (uv.y > faceSize - epsY) return vec3(0.0, 1.0, 1.0);
-
-      // // 타일 내부 경계 보정
-      // if (uv.x < epsX) uv.x = epsX;
-      // if (uv.y < epsY) uv.y = epsY;
-      // if (uv.x > faceSize - epsX) uv.x = faceSize - epsX;
-      // if (uv.y > faceSize - epsY) uv.y = faceSize - epsY;
     }
 
     // 이제 PMREMGenerator 오프셋 적용
@@ -391,7 +388,7 @@ varying vec3 vWorldPos;
 		float mipInt = floor( mip );
 
 		vec3 color0 = v_bilinearCubeUV( envMap, sampleDir, mipInt, tileIndex );
-    return vec4(color0, 1.0);
+    // return vec4(color0, 1.0);
 
 		if ( mipF == 0.0 ) {
 
