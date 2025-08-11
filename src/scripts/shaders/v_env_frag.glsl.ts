@@ -187,6 +187,40 @@ varying vec3 vWorldPos;
 	// a cubemap, the 0-5 integer index of a cube face, and the direction vector for
 	// sampling a textureCube (not generally normalized ).
 
+#define epsilon (1e-1)
+
+  // vec3 v_getFaces( vec3 direction ) {
+
+  //   vec3 absDirection = abs( direction );
+
+	// 	float face = - 1.0;
+
+	// 	if ( absDirection.x > absDirection.z ) {
+
+	// 		if ( absDirection.x > absDirection.y )
+
+	// 			face = direction.x > 0.0 ? 0.0 : 3.0;
+
+	// 		else
+
+	// 			face = direction.y > 0.0 ? 1.0 : 4.0;
+
+	// 	} else {
+
+	// 		if ( absDirection.z > absDirection.y )
+
+	// 			face = direction.z > 0.0 ? 2.0 : 5.0;
+
+	// 		else
+
+	// 			face = direction.y > 0.0 ? 1.0 : 4.0;
+
+	// 	}
+
+	// 	return face;
+
+  // }
+
 	float v_getFace( vec3 direction ) {
 
 		vec3 absDirection = abs( direction );
@@ -218,6 +252,63 @@ varying vec3 vWorldPos;
 		return face;
 
 	}
+
+  // [ X, Y, Z ]의 면을 채운다. 
+  vec3 v_reflectionFaces( vec3 direction ){
+    vec3 ad = abs(direction);
+    vec3 retval = vec3(-1.0, -1.0, -1.0);
+
+    if (!false) {
+      retval.x = direction.x > 0.0 ? 0.0 : 3.0;
+      retval.y = direction.y > 0.0 ? 1.0 : 4.0;
+      retval.z = direction.z > 0.0 ? 2.0 : 5.0;
+      return retval;
+    }
+
+    if (ad.x >= ad.y && ad.x >= ad.z) { // On +/- X face
+        
+      retval.x = direction.x > 0.0 ? 0.0 : 3.0;
+
+      if(abs(ad.x - ad.y) < epsilon) {
+        retval.y = direction.y > 0.0 ? 1.0 : 4.0;
+      }
+
+      if(abs(ad.x - ad.z) < epsilon) {
+        retval.z = direction.z > 0.0 ? 2.0 : 5.0;
+      }
+    }
+
+    if(ad.y > ad.x && ad.y > ad.z) { // On +/- Y face
+
+      retval.y = direction.y > 0.0 ? 1.0 : 4.0;
+
+      if(abs(ad.y - ad.x) < epsilon) {
+        retval.x = direction.x > 0.0 ? 0.0 : 3.0;
+      }
+
+      if(abs(ad.y - ad.z) < epsilon) {
+        retval.z = direction.z > 0.0 ? 2.0 : 5.0;
+      }
+
+    }
+
+    if(ad.z > ad.x && ad.z > ad.y) { // On +/- Z face
+
+      retval.z = direction.z > 0.0 ? 2.0 : 5.0;
+
+      if(abs(ad.z - ad.x) < epsilon) {
+        retval.x = direction.x > 0.0 ? 0.0 : 3.0;
+      }
+
+      if(abs(ad.z - ad.y) < epsilon) {
+        retval.y = direction.y > 0.0 ? 1.0 : 4.0;
+      }
+
+    }
+
+    return retval;
+
+  }
 
 	// RH coordinate system; PMREM face-indexing convention
 	vec2 v_getUV( vec3 direction, float face ) {
@@ -254,7 +345,146 @@ varying vec3 vWorldPos;
 
 	}
 
-	vec3 v_bilinearCubeUV( sampler2D envMap, vec3 _direction, float mipInt, int tileIndex ) {
+  vec3 faceWiseColor( sampler2D envMap, vec3 direction, float mipInt, int tileIndex, float face, float roughness ) {
+
+    float filterInt = max( v_cubeUV_minMipLevel - mipInt, 0.0 );
+
+		mipInt = max( mipInt, v_cubeUV_minMipLevel );
+
+		float faceSize = exp2( mipInt );
+
+		highp vec2 uv = v_getUV( direction, face ) * ( faceSize - 2.0 ) + 1.0; // #25071
+
+    // 타일링 된 UV 좌표 계산
+    {
+      float tilesCol = PROBE_COLS; 
+      float tilesRow = PROBE_ROWS;
+      float tileXSize = faceSize / tilesCol; // 현재 mip에서 한 타일의 픽셀 크기
+      float tileYSize = faceSize / tilesRow;
+
+      float tileX = float(tileIndex % int(tilesCol + 0.5));
+      float tileY = float(tileIndex / int(tilesCol + 0.5));
+
+      // 상단 기준 tileY → 하단 기준 변환
+      float tileYoffset = (tilesRow - 1.0 - tileY) * tileYSize;
+
+      // uv를 타일 내부 좌표로 축소
+      uv.x = uv.x * (1.0 / tilesCol);
+      uv.y = uv.y * (1.0 / tilesRow);
+
+      // 테두리 보정
+      {
+        #define BORDER_MAGIC_NUMBER 1.5
+        // float cutoffPixel = min( BORDER_MAGIC_NUMBER * (11.0/(mipInt+1.0)) , 0.49 * faceSize );
+        float cutoffPixel = BORDER_MAGIC_NUMBER;
+        float width = faceSize / tilesCol;
+        float xCut = (width - cutoffPixel) / width;
+        float height = faceSize / tilesRow;
+        float yCut = (height - cutoffPixel) / height;
+
+        uv -= 0.5;
+
+        uv.x *= xCut;
+        uv.y *= yCut;
+
+        uv += 0.5;
+      }
+      
+
+      // 타일의 픽셀 오프셋 적용
+      uv.x += tileX * tileXSize;
+      uv.y += tileYoffset;
+
+    }
+
+    // 이제 PMREMGenerator 오프셋 적용
+		if ( face > 2.0 ) {
+
+			uv.y += faceSize;
+
+			face -= 3.0;
+
+		}
+
+		uv.x += face * faceSize;
+
+		uv.x += filterInt * 3.0 * v_cubeUV_minTileSize;
+
+		uv.y += 4.0 * ( exp2( V_CUBE_UV_MAX_MIP ) - faceSize );
+
+		uv.x *= V_CUBE_UV_TEXEL_WIDTH;
+		uv.y *= V_CUBE_UV_TEXEL_HEIGHT;
+
+		#ifdef texture2DGradEXT
+
+			return texture2DGradEXT( envMap, uv, vec2( 0.0 ), vec2( 0.0 ) ).rgb; // disable anisotropic filtering
+
+		#else
+
+			return texture2D( envMap, uv ).rgb;
+
+		#endif
+
+  }
+
+vec3 v_bilinearCubeUV( sampler2D envMap, vec3 _direction, float mipInt, int tileIndex, float roughness ) {
+  // RH 좌표계 보정
+  vec3 direction = _direction;
+  direction.x = -direction.x;
+
+  // {
+  //   float face = v_getFace(direction);
+  //   return faceWiseColor(envMap, direction, mipInt, tileIndex, face, roughness);
+  // }
+
+  // 각 축의 절대값 (가중치로 사용)
+  vec3 ad = abs(direction);
+
+  // 경계 판정 및 이웃 face 선택
+  float primaryFace = abs(direction.x) > abs(direction.z)
+    ? (abs(direction.x) > abs(direction.y) ? (direction.x > 0.0 ? 0.0 : 3.0) : (direction.y > 0.0 ? 1.0 : 4.0))
+    : (abs(direction.z) > abs(direction.y) ? (direction.z > 0.0 ? 2.0 : 5.0) : (direction.y > 0.0 ? 1.0 : 4.0));
+  vec3 primaryColor = faceWiseColor(envMap, direction, mipInt, tileIndex, primaryFace, roughness);
+  if(roughness < 0.06) {
+    return primaryColor;
+  }
+
+  vec3 faces = v_reflectionFaces(direction);
+
+  // 선택된 face들만 조건적으로 샘플 → 경계가 아니면 1회 샘플
+  vec3 accum = vec3(0.0);
+  float wsum = 0.0;
+
+  if (faces.x >= 0.0) {
+    float w = ad.x;
+    w = pow(w, 5.0);
+    accum += faceWiseColor(envMap, direction, mipInt, tileIndex, faces.x, roughness) * w;
+    wsum += w;
+  }
+  if (faces.y >= 0.0) {
+    float w = ad.y;
+    w = pow(w, 5.0);
+    accum += faceWiseColor(envMap, direction, mipInt, tileIndex, faces.y, roughness) * w;
+    wsum += w;
+  }
+  if (faces.z >= 0.0) {
+    float w = ad.z;
+    w = pow(w, 5.0);
+    accum += faceWiseColor(envMap, direction, mipInt, tileIndex, faces.z, roughness) * w;
+    wsum += w;
+  }
+
+  vec3 corrected = accum / wsum;
+
+
+  // return mix(primaryColor, corrected, roughness);
+  // return mix(primaryColor, corrected, 1.0);
+  return mix(primaryColor, corrected, (roughness + 0.5) * (roughness + 0.5));
+  // return corrected;
+  // return primaryColor;
+}
+
+	vec3 _v_bilinearCubeUV( sampler2D envMap, vec3 _direction, float mipInt, int tileIndex ) {
 
     vec3 direction = _direction;
     direction.x = -direction.x; // RH coordinate system
@@ -287,7 +517,7 @@ varying vec3 vWorldPos;
 
       // 테두리 보정
       {
-        float cutoffPixel = 1.5;
+        float cutoffPixel = 2.5;
         float width = faceSize / tilesCol;
         float xCut = (width - cutoffPixel) / width;
         float height = faceSize / tilesRow;
@@ -381,13 +611,13 @@ varying vec3 vWorldPos;
 
 	vec4 probeTextureUV( sampler2D envMap, vec3 sampleDir, float roughness, int tileIndex ) {
 
-		float mip = clamp( v_roughnessToMip( roughness ), v_cubeUV_m0, V_CUBE_UV_MAX_MIP );
+		float mip = clamp( v_roughnessToMip( roughness  * roughness ), v_cubeUV_m0, V_CUBE_UV_MAX_MIP );
 
 		float mipF = fract( mip );
 
 		float mipInt = floor( mip );
 
-		vec3 color0 = v_bilinearCubeUV( envMap, sampleDir, mipInt, tileIndex );
+		vec3 color0 = v_bilinearCubeUV( envMap, sampleDir, mipInt, tileIndex, roughness );
     // return vec4(color0, 1.0);
 
 		if ( mipF == 0.0 ) {
@@ -396,7 +626,7 @@ varying vec3 vWorldPos;
 
 		} else {
 
-			vec3 color1 = v_bilinearCubeUV( envMap, sampleDir, mipInt + 1.0, tileIndex );
+			vec3 color1 = v_bilinearCubeUV( envMap, sampleDir, mipInt + 1.0, tileIndex, roughness );
 
 			return vec4( mix( color0, color1, mipF ), 1.0 );
 			// return vec4( color1, 1.0 );
@@ -574,14 +804,14 @@ vec4 envMapColor = vec4(0.0);
   }    
   #pragma unroll_loop_end
 
-  envMapColor = probeColor(worldReflectVec, closestProbeIndex, roughness * roughness);
+  envMapColor = probeColor(worldReflectVec, closestProbeIndex, roughness);
 
 #else // ifndef V_ENV_MAP_FLOOR
 
   ////////////////////////////////////////////////
   // case2. 바닥이 아닌 여러 개의 프로브가 적용되는 경우
   // 그냥 제일 가까운 프로브 반사
-  envMapColor = probeColor(worldReflectVec, minIndex, roughness * roughness);
+  envMapColor = probeColor(worldReflectVec, minIndex, roughness);
   // envMapColor = vec4(1.0, 0.0, 0.0, 1.0);
       
 #endif //!V_ENV_MAP_FLOOR
